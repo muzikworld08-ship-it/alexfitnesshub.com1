@@ -37,17 +37,27 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   onLoad,
   ...restProps
 }) => {
+  const computeInitialSrc = () => {
+    if (src && src.trim() !== "") {
+      return getSupabaseCdnUrl(src, { width, height, quality, format, resize });
+    }
+    if (fallbackSrc && fallbackSrc.trim() !== "") {
+      return getSupabaseCdnUrl(fallbackSrc, { width, height, quality, format });
+    }
+    return undefined;
+  };
+
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [currentSrc, setCurrentSrc] = useState<string>("");
+  const [currentSrc, setCurrentSrc] = useState<string | undefined>(computeInitialSrc);
 
   useEffect(() => {
     setIsLoaded(false);
     setHasError(false);
 
-    if (!src) {
+    if (!src || src.trim() === "") {
       setHasError(true);
-      setCurrentSrc(fallbackSrc);
+      setCurrentSrc(fallbackSrc && fallbackSrc.trim() !== "" ? fallbackSrc : undefined);
       return;
     }
 
@@ -60,7 +70,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     };
 
     const cdnUrl = getSupabaseCdnUrl(src, options);
-    setCurrentSrc(cdnUrl);
+    setCurrentSrc(cdnUrl || (fallbackSrc && fallbackSrc.trim() !== "" ? fallbackSrc : undefined));
   }, [src, width, height, quality, format, resize, fallbackSrc]);
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -110,7 +120,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
       {/* Rendered Image */}
       <img
-        src={currentSrc}
+        src={currentSrc || undefined}
         srcSet={computedSrcSet}
         alt={alt || "AlexFitness Media"}
         width={width}
