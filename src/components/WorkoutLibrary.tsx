@@ -1859,14 +1859,16 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             </h1>
 
             {/* Simple Hero Image */}
-            <div className="w-full aspect-video sm:aspect-[16/8] rounded-2xl overflow-hidden border border-[#ECECEC] bg-white">
-              <img
-                src={resolveAdminMediaUrl(activeWorkout.imageUrl)}
-                alt={activeWorkout.name}
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
-            </div>
+            {resolveAdminMediaUrl(activeWorkout.imageUrl) ? (
+              <div className="w-full aspect-video sm:aspect-[16/8] rounded-2xl overflow-hidden border border-[#ECECEC] bg-white">
+                <img
+                  src={resolveAdminMediaUrl(activeWorkout.imageUrl)}
+                  alt={activeWorkout.name}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : null}
 
             <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-sans pt-2">
               {activeWorkout.description}

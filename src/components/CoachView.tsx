@@ -961,21 +961,23 @@ export default function CoachView() {
                       >
                         {/* Custom aspect ratio fitting based on item's meta */}
                         <div className="relative overflow-hidden bg-white">
-                          <img
-                            src={item.imageUrl || null}
-                            alt={item.prompt}
-                            referrerPolicy="no-referrer"
-                            className={`w-full object-cover group-hover:scale-105 transition duration-300 ${
-                              item.aspectRatio === "1:1" ? "aspect-square" :
-                              item.aspectRatio === "2:3" ? "aspect-[2/3]" :
-                              item.aspectRatio === "3:2" ? "aspect-[3/2]" :
-                              item.aspectRatio === "3:4" ? "aspect-[3/4]" :
-                              item.aspectRatio === "4:3" ? "aspect-[4/3]" :
-                              item.aspectRatio === "9:16" ? "aspect-[9/16]" :
-                              item.aspectRatio === "16:9" ? "aspect-[16/9]" :
-                              item.aspectRatio === "21:9" ? "aspect-[21/9]" : "aspect-square"
-                            }`}
-                          />
+                          {item.imageUrl && item.imageUrl.trim() !== "" ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.prompt}
+                              referrerPolicy="no-referrer"
+                              className={`w-full object-cover group-hover:scale-105 transition duration-300 ${
+                                item.aspectRatio === "1:1" ? "aspect-square" :
+                                item.aspectRatio === "2:3" ? "aspect-[2/3]" :
+                                item.aspectRatio === "3:2" ? "aspect-[3/2]" :
+                                item.aspectRatio === "3:4" ? "aspect-[3/4]" :
+                                item.aspectRatio === "4:3" ? "aspect-[4/3]" :
+                                item.aspectRatio === "9:16" ? "aspect-[9/16]" :
+                                item.aspectRatio === "16:9" ? "aspect-[16/9]" :
+                                item.aspectRatio === "21:9" ? "aspect-[21/9]" : "aspect-square"
+                              }`}
+                            />
+                          ) : null}
                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition duration-200 flex items-center justify-center gap-2">
                             <button
                               onClick={() => handleDownloadImage(item.imageUrl, item.prompt)}

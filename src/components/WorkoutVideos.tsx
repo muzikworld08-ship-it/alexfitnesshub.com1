@@ -663,12 +663,14 @@ export default function WorkoutVideos() {
                     >
                       {/* Image Box */}
                       <div className="relative overflow-hidden rounded-2xl bg-slate-100 aspect-video mb-4 shadow">
-                        <img
-                          src={video.thumbnail || null}
-                          alt={video.title}
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
-                        />
+                        {video.thumbnail && video.thumbnail.trim() !== "" ? (
+                          <img
+                            src={video.thumbnail}
+                            alt={video.title}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
+                          />
+                        ) : null}
                         <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-300">
                           <button
                             onClick={() => setCurrentVideo(video)}
@@ -772,12 +774,14 @@ export default function WorkoutVideos() {
                 >
                   {/* Image Box */}
                   <div className="relative overflow-hidden rounded-2xl bg-slate-100 aspect-video mb-4 shadow">
-                    <img
-                      src={video.thumbnail || null}
-                      alt={video.title}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
-                    />
+                    {video.thumbnail && video.thumbnail.trim() !== "" ? (
+                      <img
+                        src={video.thumbnail}
+                        alt={video.title}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
+                      />
+                    ) : null}
                     <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-300">
                       <button
                         onClick={() => setCurrentVideo(video as any)}

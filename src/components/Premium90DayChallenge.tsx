@@ -826,7 +826,9 @@ export default function Premium90DayChallenge() {
               {PREMIUM_CHALLENGES.map((challenge) => (
                 <div key={challenge.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-md flex flex-col justify-between h-[420px] group hover:border-red-500/50 transition-all">
                   <div className="relative h-44 overflow-hidden">
-                    <img src={challenge.image || null} alt={challenge.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+                    {challenge.image && challenge.image.trim() !== "" ? (
+                      <img src={challenge.image} alt={challenge.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+                    ) : null}
                     <div className="absolute top-3 left-3 bg-red-600 text-white font-mono font-black text-[9px] uppercase px-2.5 py-1 rounded-full shadow-md">
                       {challenge.category}
                     </div>

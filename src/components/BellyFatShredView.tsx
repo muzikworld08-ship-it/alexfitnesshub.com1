@@ -2994,12 +2994,14 @@ export default function BellyFatShredView() {
                   progress.progressPhotos.map((photo, idx) => (
                     <div key={idx} className={`border rounded-2xl overflow-hidden group ${secondaryCardBg} ${borderCol}`}>
                       <div className="h-48 w-full bg-slate-900/10 overflow-hidden relative">
-                        <img 
-                          src={photo.url || null} 
-                          alt={photo.note} 
-                          className="w-full h-full object-cover transition duration-300 group-hover:scale-110"
-                          referrerPolicy="no-referrer"
-                        />
+                        {photo.url && photo.url.trim() !== "" ? (
+                          <img 
+                            src={photo.url} 
+                            alt={photo.note} 
+                            className="w-full h-full object-cover transition duration-300 group-hover:scale-110"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : null}
                         <div className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs px-2 py-0.5 rounded text-[9px] font-mono font-bold text-[#D32F2F]">
                           {photo.date}
                         </div>

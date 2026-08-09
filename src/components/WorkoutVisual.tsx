@@ -120,15 +120,17 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
                 <span className="text-[8px] font-mono font-bold text-slate-400 tracking-wider">LOADING SKELETON</span>
               </div>
             )}
-            <img 
-              src={formatMediaSrc(resolvedMediaUrl, retryCount)} 
-              alt={exerciseName || "Exercise Preview"} 
-              className={`w-full h-full object-cover transition-opacity duration-700 filter brightness-110 ${loading ? 'opacity-0' : 'opacity-100'}`} 
-              referrerPolicy="no-referrer"
-              loading="lazy"
-              onLoad={() => setLoading(false)}
-              onError={handleMediaError}
-            />
+            {formatMediaSrc(resolvedMediaUrl, retryCount) ? (
+              <img 
+                src={formatMediaSrc(resolvedMediaUrl, retryCount)} 
+                alt={exerciseName || "Exercise Preview"} 
+                className={`w-full h-full object-cover transition-opacity duration-700 filter brightness-110 ${loading ? 'opacity-0' : 'opacity-100'}`} 
+                referrerPolicy="no-referrer"
+                loading="lazy"
+                onLoad={() => setLoading(false)}
+                onError={handleMediaError}
+              />
+            ) : null}
             <div className="absolute inset-0 bg-white/10" />
           </div>
         ) : null}
@@ -243,7 +245,7 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
                 onCanPlay={() => setLoading(false)}
                 onError={handleMediaError}
               />
-            ) : (
+            ) : formatMediaSrc(resolvedMediaUrl, retryCount) ? (
               <img 
                 src={formatMediaSrc(resolvedMediaUrl, retryCount)} 
                 alt={exerciseName || "Exercise Demo GIF"} 
@@ -254,7 +256,7 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
                 onLoad={() => setLoading(false)}
                 onError={handleMediaError}
               />
-            )}
+            ) : null}
           </>
         ) : (
           <div className="flex flex-col items-center justify-center space-y-3 p-6 text-center">

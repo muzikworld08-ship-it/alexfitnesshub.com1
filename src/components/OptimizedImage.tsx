@@ -119,21 +119,23 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       )}
 
       {/* Rendered Image */}
-      <img
-        src={currentSrc || undefined}
-        srcSet={computedSrcSet}
-        alt={alt || "AlexFitness Media"}
-        width={width}
-        height={height}
-        loading={loading}
-        referrerPolicy={referrerPolicy}
-        onError={handleImageError}
-        onLoad={handleImageLoad}
-        className={`w-full h-full object-cover transition-opacity duration-300 ${
-          isLoaded ? "opacity-100" : "opacity-0"
-        }`}
-        {...restProps}
-      />
+      {currentSrc && currentSrc.trim() !== "" ? (
+        <img
+          src={currentSrc}
+          srcSet={computedSrcSet}
+          alt={alt || "AlexFitness Media"}
+          width={width}
+          height={height}
+          loading={loading}
+          referrerPolicy={referrerPolicy}
+          onError={handleImageError}
+          onLoad={handleImageLoad}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${
+            isLoaded ? "opacity-100" : "opacity-0"
+          }`}
+          {...restProps}
+        />
+      ) : null}
     </div>
   );
 };
