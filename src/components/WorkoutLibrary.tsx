@@ -17,6 +17,7 @@ import MuscleAnatomyVisual from "./MuscleAnatomyVisual";
 import PageHero from "./PageHero";
 import WorkoutPlayer from "./WorkoutPlayer";
 import { OptimizedImage } from "./OptimizedImage";
+import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
 
 const BODY_PARTS_DETAILS = [
   { name: "Chest", desc: "Build thick pectoralis major/minor fibers and front deltoid symmetry", img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7G_JEDmUiLxTLVwV35owlnJssH_3TLx1qdCmEWF9WOZ4WfE9mFQL1ZpQ&s=10" },
@@ -3928,7 +3929,7 @@ function CustomPerformanceUpload({
     }
   };
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     if (!file) return;
     setLoading(true);
     setErrorMsg("");
@@ -3949,22 +3950,17 @@ function CustomPerformanceUpload({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        const mediaUrl = event.target.result as string;
-        const mediaType = isVideo ? "video" : "image";
-        uploadExerciseMedia(exercise.id, mediaUrl, mediaType);
-      } else {
-        setErrorMsg("Failed to read file.");
-      }
+    try {
+      const mediaType = isVideo ? "video" : "image";
+      const finalCloudUrl = await uploadMediaToCloud(file, exercise.id, mediaType);
+      await saveExerciseMediaToDatabase(exercise.id, finalCloudUrl, mediaType);
+      uploadExerciseMedia(exercise.id, finalCloudUrl, mediaType);
+    } catch (err: any) {
+      console.error("WorkoutLibrary media upload error:", err);
+      setErrorMsg("An error occurred during cloud upload: " + (err?.message || "Unknown error"));
+    } finally {
       setLoading(false);
-    };
-    reader.onerror = () => {
-      setErrorMsg("An error occurred reading the file.");
-      setLoading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {

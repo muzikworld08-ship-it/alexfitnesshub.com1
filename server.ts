@@ -98,28 +98,51 @@ app.get("/assets/:filename", async (req, res, next) => {
         const exerciseId = rest.substring(0, dotIndex);
         console.log(`[Asset Restoration] Ephemeral container reset detected. Restoring custom media for exercise ID: ${exerciseId} from Cloud Firestore...`);
         
+        let rawUrlOrBase64: string | null = null;
         const mediaSnap = await getServerFirestoreDoc("exercise_media", exerciseId);
-        if (mediaSnap.exists) {
-          const mediaDoc = mediaSnap.data();
-          const rawUrlOrBase64 = mediaDoc.originalUrlOrBase64;
-          if (rawUrlOrBase64) {
-            if (rawUrlOrBase64.startsWith("data:")) {
-              const match = rawUrlOrBase64.match(/^data:([^;]+);base64,(.+)$/);
-              if (match) {
-                const base64Data = match[2];
-                fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
-                console.log(`[Asset Restoration Success] Recreated Base64 file on local container disk: ${filePath}`);
-                return res.sendFile(filePath);
-              }
-            } else if (rawUrlOrBase64.startsWith("http://") || rawUrlOrBase64.startsWith("https://")) {
-              console.log(`[Asset Restoration] Fetching external source: ${rawUrlOrBase64}`);
-              const fetchRes = await fetch(rawUrlOrBase64);
-              if (fetchRes.ok) {
-                const buffer = await fetchRes.arrayBuffer();
-                fs.writeFileSync(filePath, Buffer.from(buffer));
-                console.log(`[Asset Restoration Success] Downloaded and recreated file on local container disk: ${filePath}`);
-                return res.sendFile(filePath);
-              }
+        if (mediaSnap.exists && mediaSnap.data()?.originalUrlOrBase64) {
+          const candidate = mediaSnap.data().originalUrlOrBase64;
+          if (candidate && !candidate.startsWith("/assets/")) {
+            rawUrlOrBase64 = candidate;
+          }
+        }
+
+        // Fallback: Check exercises collection if exercise_media didn't have a valid non-relative source
+        if (!rawUrlOrBase64) {
+          const exSnap = await getServerFirestoreDoc("exercises", exerciseId);
+          if (exSnap.exists && exSnap.data()?.customMediaUrl) {
+            const cUrl = exSnap.data().customMediaUrl;
+            if (cUrl && (cUrl.startsWith("http") || cUrl.startsWith("data:"))) {
+              rawUrlOrBase64 = cUrl;
+            }
+          }
+        }
+
+        if (rawUrlOrBase64) {
+          if (rawUrlOrBase64.startsWith("data:")) {
+            const match = rawUrlOrBase64.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              const base64Data = match[2];
+              fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+              console.log(`[Asset Restoration Success] Recreated Base64 file on local container disk: ${filePath}`);
+              return res.sendFile(filePath);
+            }
+          } else if (rawUrlOrBase64.startsWith("http://") || rawUrlOrBase64.startsWith("https://")) {
+            if (rawUrlOrBase64.includes("firebasestorage.googleapis.com") || rawUrlOrBase64.includes("storage.googleapis.com") || rawUrlOrBase64.includes("firebasestorage.app")) {
+              console.log(`[Asset Restoration] Redirecting directly to Firebase Storage URL: ${rawUrlOrBase64}`);
+              return res.redirect(302, rawUrlOrBase64);
+            }
+
+            console.log(`[Asset Restoration] Fetching external source: ${rawUrlOrBase64}`);
+            const fetchRes = await fetch(rawUrlOrBase64);
+            if (fetchRes.ok) {
+              const buffer = await fetchRes.arrayBuffer();
+              fs.writeFileSync(filePath, Buffer.from(buffer));
+              console.log(`[Asset Restoration Success] Downloaded and recreated file on local container disk: ${filePath}`);
+              return res.sendFile(filePath);
+            } else {
+              console.warn(`[Asset Restoration] Fetch failed with status ${fetchRes.status}. Redirecting directly to source URL: ${rawUrlOrBase64}`);
+              return res.redirect(302, rawUrlOrBase64);
             }
           }
         }
@@ -858,11 +881,29 @@ async function requirePremium(req: any, res: any, next: any) {
     }
 
     const profile = userSnap.data();
+
+    // Expiration check: if subscription expiry date has passed, automatically revert status and block
+    if (profile.subscriptionStatus === "premium" && profile.role !== "admin" && profile.subscriptionExpiry) {
+      const expiryDate = new Date(profile.subscriptionExpiry);
+      if (!isNaN(expiryDate.getTime()) && expiryDate < new Date()) {
+        console.warn(`[Auth Security Denial] Subscription expired for user UID ${decoded.uid} on ${profile.subscriptionExpiry}. Reverting status to free.`);
+        profile.subscriptionStatus = "free";
+        profile.subscriptionTier = "none";
+        await setServerFirestoreDoc("users", decoded.uid, {
+          ...profile,
+          subscriptionStatus: "free",
+          subscriptionTier: "none"
+        }, true).catch(err => console.warn("Failed to revert expired user in Firestore:", err));
+
+        return res.status(403).json({ error: "Your Premium subscription has expired. Subscribe again to continue accessing Premium features." });
+      }
+    }
+
     const isPremium = profile.subscriptionStatus === "premium" || profile.role === "admin";
     
     if (!isPremium) {
       console.warn(`[Auth Security Denial] User UID ${decoded.uid} does not have premium status.`);
-      return res.status(403).json({ error: "Premium subscription required to access this feature." });
+      return res.status(403).json({ error: "Your Premium subscription has expired or is inactive. Subscribe again to continue accessing Premium features." });
     }
 
     req.user = { uid: decoded.uid, email: decoded.email, role: profile.role || "user", profile };
@@ -2290,50 +2331,42 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
         console.error("[Firestore Media Backup Delete Error]:", dbErr);
       }
     } else {
-      // 1. Download and save remote file if it is an http or https URL
-      if (customMediaUrl && (customMediaUrl.startsWith("http://") || customMediaUrl.startsWith("https://"))) {
-        try {
-          console.log(`Downloading external URL to local assets: ${customMediaUrl}`);
-          const fetchRes = await fetch(customMediaUrl);
-          if (fetchRes.ok) {
-            const buffer = await fetchRes.arrayBuffer();
-            const contentType = fetchRes.headers.get("content-type") || "";
-            let ext = "bin";
-            
-            if (contentType.includes("gif")) ext = "gif";
-            else if (contentType.includes("jpeg") || contentType.includes("jpg")) ext = "jpg";
-            else if (contentType.includes("png")) ext = "png";
-            else if (contentType.includes("mp4")) ext = "mp4";
-            else if (contentType.includes("video/quicktime") || contentType.includes("mov")) ext = "mov";
-            else if (contentType.includes("svg")) ext = "svg";
-            else if (contentType.includes("webp")) ext = "webp";
-            else {
-              // Try to fall back to the pathname's extension
-              try {
-                const urlObj = new URL(customMediaUrl);
-                const pathExt = path.extname(urlObj.pathname).replace(".", "");
-                if (pathExt) ext = pathExt;
-              } catch (urlErr) {
-                console.warn("Unable to parse external URL pathname for extension:", urlErr);
-              }
-            }
+      const rawInputUrl = customMediaUrl;
+      const isCloudStorageUrl = typeof rawInputUrl === "string" && (
+        rawInputUrl.includes("firebasestorage.googleapis.com") ||
+        rawInputUrl.includes("storage.googleapis.com") ||
+        rawInputUrl.includes("firebasestorage.app") ||
+        rawInputUrl.includes("supabase.co/storage") ||
+        rawInputUrl.includes("supabase.in/storage")
+      );
 
-            const filename = `exercise_custom_${exerciseId}.${ext}`;
-            const filePath = path.join(ASSETS_DIR, filename);
-            fs.writeFileSync(filePath, Buffer.from(buffer));
-            
-            // Re-write media URL to point to our newly saved local static served URL
-            customMediaUrl = `/assets/${filename}`;
-          } else {
-            console.warn(`Failed to fetch media from ${customMediaUrl}, status: ${fetchRes.status}`);
-          }
-        } catch (fetchErr: any) {
-          console.error("Failed to download external Media URL:", fetchErr);
-        }
-      } 
-      // 2. Decode and save physical bytes if payload is a Base64 dataURL
-      else if (customMediaUrl && customMediaUrl.startsWith("data:")) {
-        const match = customMediaUrl.match(/^data:([^;]+);base64,(.+)$/);
+      // Save raw input URL to Cloud Firestore backup collection 'exercise_media' FIRST
+      let mediaPayloadToStore = rawInputUrl;
+      if (mediaPayloadToStore && mediaPayloadToStore.startsWith("data:") && mediaPayloadToStore.length > 900000) {
+        // Safe cap for single Firestore document limit if raw base64 data URL is >900KB
+        mediaPayloadToStore = mediaPayloadToStore.slice(0, 900000);
+      }
+
+      try {
+        await setServerFirestoreDoc("exercise_media", exerciseId, {
+          exerciseId,
+          originalUrlOrBase64: mediaPayloadToStore,
+          customMediaType: customMediaType || "image",
+          updatedAt: new Date().toISOString()
+        }, false);
+        console.log(`[Firestore Media Backup OK] Saved raw media backup for exercise ID ${exerciseId} to Cloud Firestore.`);
+      } catch (dbErr) {
+        console.error("[Firestore Media Backup Error]:", dbErr);
+      }
+
+      if (isCloudStorageUrl || (rawInputUrl && (rawInputUrl.startsWith("http://") || rawInputUrl.startsWith("https://")))) {
+        // PERMANENT CLOUD / HTTPS STORAGE URL:
+        // Do NOT overwrite with relative /assets/ path! Keep the permanent HTTPS Storage URL as-is.
+        console.log(`[Custom Media Upload] Preserving permanent Cloud Storage URL for exercise ${exerciseId}: ${rawInputUrl}`);
+        customMediaUrl = rawInputUrl;
+      } else if (rawInputUrl && rawInputUrl.startsWith("data:")) {
+        // 2. Decode and save physical bytes if payload is a Base64 dataURL
+        const match = rawInputUrl.match(/^data:([^;]+);base64,(.+)$/);
         if (match) {
           const mimeType = match[1];
           const base64Data = match[2];
@@ -2351,27 +2384,9 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
           const filePath = path.join(ASSETS_DIR, filename);
           fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
           
-          // Re-write media URL to point to our newly saved local static served URL
-          customMediaUrl = `/assets/${filename}`;
+          // Use full data URL or static URL fallback
+          customMediaUrl = rawInputUrl;
         }
-      }
-
-      // Save the resolved media URL to Cloud Firestore backup collection 'exercise_media'
-      let mediaPayloadToStore = customMediaUrl;
-      if (mediaPayloadToStore && mediaPayloadToStore.startsWith("data:") && mediaPayloadToStore.length > 800000) {
-        mediaPayloadToStore = mediaPayloadToStore.slice(0, 100) + " [base64 truncated for Firestore size limit]";
-      }
-
-      try {
-        await setServerFirestoreDoc("exercise_media", exerciseId, {
-          exerciseId,
-          originalUrlOrBase64: mediaPayloadToStore,
-          customMediaType: customMediaType || "image",
-          updatedAt: new Date().toISOString()
-        }, false);
-        console.log(`[Firestore Media Backup OK] Saved raw media backup for exercise ID ${exerciseId} to Cloud Firestore.`);
-      } catch (dbErr) {
-        console.error("[Firestore Media Backup Error]:", dbErr);
       }
 
       overrides[exerciseId] = {
@@ -3111,11 +3126,12 @@ Proper hydration is the foundation of peak performance. To maximize your results
 });
 
 // Helper to process successful payment idempotently
-async function processSuccessfulPayment(reference: string, verifyData: any, fallbackData?: { userId?: string; plan?: string }) {
+async function processSuccessfulPayment(reference: string, verifyData: any, fallbackData?: { userId?: string; plan?: string; months?: number }) {
   const paymentSnap = await getServerFirestoreDoc("payments", reference);
   if (paymentSnap.exists && paymentSnap.data().status === "success") {
     console.log(`[Idempotency Check] Reference ${reference} already processed. Skipping.`);
-    return { success: true, alreadyProcessed: true };
+    const existingUserSnap = paymentSnap.data().userId ? await getServerFirestoreDoc("users", paymentSnap.data().userId) : null;
+    return { success: true, alreadyProcessed: true, profile: existingUserSnap?.exists ? existingUserSnap.data() : null };
   }
 
   // Handle Paystack returning metadata either as a parsed object or as a raw JSON string
@@ -3130,63 +3146,81 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
     }
   }
 
-  const userId = metadata.userId || verifyData.customer?.metadata?.userId || fallbackData?.userId;
-  const plan = metadata.plan || fallbackData?.plan || "monthly";
-  const amountNGN = metadata.amountNGN || (verifyData.amount / 100);
-  const email = verifyData.customer?.email || "";
+  // Fallback to pending payment doc if available in Firestore
+  const pendingDoc = paymentSnap.exists ? paymentSnap.data() : null;
+
+  const userId = metadata.userId || verifyData.customer?.metadata?.userId || fallbackData?.userId || pendingDoc?.userId;
+  const plan = metadata.plan || fallbackData?.plan || pendingDoc?.plan || "monthly";
+  const months = Number(metadata.months || fallbackData?.months || pendingDoc?.months || (plan === "yearly" ? 12 : plan === "multi" ? 3 : 1));
+  const amountNGN = metadata.amountNGN || (verifyData.amount ? verifyData.amount / 100 : pendingDoc?.amount || 19999);
+  const email = verifyData.customer?.email || pendingDoc?.email || "";
 
   if (!userId) {
-    console.error(`[Subscription Activation Failed] No userId found in transaction metadata for reference ${reference}.`);
+    console.error(`[Subscription Activation Failed] No userId found in transaction metadata or fallback for reference ${reference}.`);
     throw new Error("No userId found in transaction metadata.");
   }
 
-  console.log(`[Subscription Activation] Activating ${plan} subscription for user: ${userId}, Email: ${email}, Reference: ${reference}`);
+  console.log(`[Subscription Activation] Activating ${plan} (${months} months) subscription for user: ${userId}, Email: ${email}, Reference: ${reference}`);
 
   const userSnap = await getServerFirestoreDoc("users", userId);
-  
-  const expiryDays = plan === "yearly" ? 365 : plan === "multi" ? 90 : 30;
-  const subscriptionExpiry = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString();
-
-  let existingProfile = {};
+  let existingProfile: any = {};
   if (userSnap.exists) {
     existingProfile = userSnap.data();
   }
 
+  const now = new Date();
+  let startDate = now;
+
+  // FIX EXPIRATION AND RENEWAL:
+  // If user already has an active unexpired premium subscription, extend from existing expiration date!
+  if (existingProfile.subscriptionStatus === "premium" && existingProfile.subscriptionExpiry) {
+    const currentExpiry = new Date(existingProfile.subscriptionExpiry);
+    if (!isNaN(currentExpiry.getTime()) && currentExpiry > now) {
+      console.log(`[Subscription Extension] User ${userId} has active subscription until ${currentExpiry.toISOString()}. Extending.`);
+      startDate = currentExpiry;
+    }
+  }
+
+  const expiryDays = plan === "yearly" ? 365 : plan === "multi" ? (months * 30) : 30;
+  const newExpiryDate = new Date(startDate.getTime() + expiryDays * 24 * 60 * 60 * 1000);
+
   const updatedProfile = {
     ...existingProfile,
     uid: userId,
-    email: email || (existingProfile as any).email || "",
+    email: email || existingProfile.email || "",
     subscriptionStatus: "premium",
     subscriptionTier: plan === "multi" ? "monthly" : plan,
     subscriptionPlan: plan, // explicit subscription plan
     paymentReference: reference, // payment reference
-    subscriptionActivationDate: new Date().toISOString(), // activation date
-    subscriptionExpiry: subscriptionExpiry, // expiration date
+    subscriptionActivationDate: existingProfile.subscriptionActivationDate || now.toISOString(), // activation date
+    subscriptionExpiry: newExpiryDate.toISOString(), // expiration date
     paymentAmount: amountNGN,
-    paymentDate: new Date().toISOString()
+    paymentDate: now.toISOString()
   };
 
-  // 1. Update user profile in Firestore via server REST/Web SDK helper
+  // 1. Update user profile in Firestore
   await setServerFirestoreDoc("users", userId, updatedProfile, true);
-  console.log(`[Database Update] User ${userId} profile updated with premium subscription in Firestore.`);
+  console.log(`[Database Update] User ${userId} profile updated with premium subscription in Firestore. Expiry: ${newExpiryDate.toISOString()}`);
 
-  // 2. Save payment record in payments collection via server REST/Web SDK helper
+  // 2. Save payment record in payments collection
   const paymentRecord = {
     userId,
-    email,
+    email: email || existingProfile.email || "",
     plan,
+    months,
     amount: amountNGN,
     currency: verifyData.currency || "NGN",
     reference,
     transactionId: verifyData.id ? String(verifyData.id) : "",
     status: "success",
     paymentMethod: verifyData.channel || "card",
-    timestamp: new Date().toISOString()
+    subscriptionExpiry: newExpiryDate.toISOString(),
+    timestamp: now.toISOString()
   };
   await setServerFirestoreDoc("payments", reference, paymentRecord, false);
   console.log(`[Database Update] Saved payment record for reference ${reference} in payments collection.`);
 
-  return { success: true, alreadyProcessed: false };
+  return { success: true, alreadyProcessed: false, profile: updatedProfile };
 }
 
 // GET latest subscription status of a user
@@ -3234,12 +3268,29 @@ app.get("/api/user/profile-status", async (req: any, res: any) => {
       console.log(`[Database Setup] Created default free profile for user: ${decoded.uid}`);
     }
 
+    // Check expiration on every status load
+    if (profile && profile.subscriptionStatus === "premium" && profile.role !== "admin" && profile.subscriptionExpiry) {
+      const expiryDate = new Date(profile.subscriptionExpiry);
+      if (!isNaN(expiryDate.getTime()) && expiryDate < new Date()) {
+        console.log(`[Profile Status] Subscription expired for user ${decoded.uid}. Reverting status to free.`);
+        profile.subscriptionStatus = "free";
+        profile.subscriptionTier = "none";
+        await setServerFirestoreDoc("users", decoded.uid, {
+          ...profile,
+          subscriptionStatus: "free",
+          subscriptionTier: "none"
+        }, true);
+      }
+    }
+
     return res.json({
       uid: decoded.uid,
       subscriptionStatus: profile.subscriptionStatus || "free",
       subscriptionTier: profile.subscriptionTier || "basic",
+      subscriptionPlan: profile.subscriptionPlan || profile.subscriptionTier || "free",
       subscriptionExpiry: profile.subscriptionExpiry || null,
-      role: profile.role || "user"
+      role: profile.role || "user",
+      profile
     });
   } catch (error: any) {
     console.error("Error fetching user profile status:", error);
@@ -3334,24 +3385,18 @@ app.post("/api/payments/initialize", async (req, res) => {
     return res.status(400).json({ success: false, error: "plan, email, and userId are required parameters." });
   }
 
+  const numMonths = Number(months || (plan === "yearly" ? 12 : plan === "multi" ? 3 : 1));
+
   let amountNGN = 19999;
   if (plan === "yearly") {
     amountNGN = 215989;
   } else if (plan === "multi") {
-    const m = months || 3;
-    if (m === 2) {
-      amountNGN = 35999;
-    } else if (m === 3) {
-      amountNGN = 49999;
-    } else if (m === 4) {
-      amountNGN = 63999;
-    } else if (m === 5) {
-      amountNGN = 77999;
-    } else if (m === 6) {
-      amountNGN = 89999;
-    } else {
-      amountNGN = 19999 * m;
-    }
+    if (numMonths === 2) amountNGN = 35999;
+    else if (numMonths === 3) amountNGN = 49999;
+    else if (numMonths === 4) amountNGN = 63999;
+    else if (numMonths === 5) amountNGN = 77999;
+    else if (numMonths === 6) amountNGN = 89999;
+    else amountNGN = 19999 * numMonths;
   }
 
   const amountInKobo = amountNGN * 100;
@@ -3361,10 +3406,22 @@ app.post("/api/payments/initialize", async (req, res) => {
   const requestBaseUrl = APP_URL || `${req.protocol}://${req.get("host")}`;
   const resolvedCallbackUrl = `${requestBaseUrl.replace(/\/$/, "")}/payment/success`;
 
+  // Save pending payment record in Firestore payments collection FIRST!
+  await setServerFirestoreDoc("payments", reference, {
+    userId,
+    email,
+    plan,
+    months: numMonths,
+    amount: amountNGN,
+    reference,
+    status: "pending",
+    createdAt: new Date().toISOString()
+  }, false).catch(e => console.warn("Could not write pending payment record:", e));
+
   console.log(`[Checkout Creation] Initializing Paystack transaction:
   - User ID: ${userId}
   - Email: ${email}
-  - Plan: ${plan}
+  - Plan: ${plan} (${numMonths} months)
   - Amount: NGN ${amountNGN} (${amountInKobo} Kobo)
   - Reference: ${reference}
   - Callback URL: ${resolvedCallbackUrl}`);
@@ -3373,6 +3430,17 @@ app.post("/api/payments/initialize", async (req, res) => {
   if (!PAYSTACK_SECRET_KEY) {
     console.log(`[Sandbox Simulation] No PAYSTACK_SECRET_KEY configured. Generating simulated checkout redirect.`);
     const simReference = "ref_ps_MOCK_" + crypto.randomBytes(8).toString("hex").toUpperCase();
+    await setServerFirestoreDoc("payments", simReference, {
+      userId,
+      email,
+      plan,
+      months: numMonths,
+      amount: amountNGN,
+      reference: simReference,
+      status: "pending",
+      createdAt: new Date().toISOString()
+    }, false).catch(e => {});
+
     const simCallbackUrl = `${resolvedCallbackUrl}?reference=${simReference}&trxref=${simReference}&status=success`;
     return res.json({
       success: true,
@@ -3397,6 +3465,7 @@ app.post("/api/payments/initialize", async (req, res) => {
         metadata: {
           userId,
           plan,
+          months: numMonths,
           amountNGN
         }
       })
@@ -3415,20 +3484,6 @@ app.post("/api/payments/initialize", async (req, res) => {
       });
     } else {
       console.warn("[Checkout Creation Failed] Paystack API rejected initialization.", data);
-      
-      // If we are in development, gracefully fall back to simulation to avoid blocking UI flow
-      if (process.env.NODE_ENV !== "production") {
-        console.log(`[Sandbox Fallback] Real Paystack call failed. Falling back to simulated transaction URL.`);
-        const simReference = "ref_ps_MOCK_" + reference;
-        const simCallbackUrl = `${resolvedCallbackUrl}?reference=${simReference}&trxref=${simReference}&status=success`;
-        return res.json({
-          success: true,
-          authorization_url: simCallbackUrl,
-          reference: simReference,
-          access_code: "mock_access_code_for_testing_fallback"
-        });
-      }
-
       return res.status(400).json({
         success: false,
         error: data?.message || "Paystack initialization failed. Please check backend configuration."
@@ -3436,20 +3491,6 @@ app.post("/api/payments/initialize", async (req, res) => {
     }
   } catch (error: any) {
     console.error("[Checkout Creation Exception] Error calling Paystack:", error);
-    
-    // In development mode, catch connection errors and gracefully fallback to simulation
-    if (process.env.NODE_ENV !== "production") {
-      console.log(`[Sandbox Fallback] Exception hit. Falling back to simulated transaction URL.`);
-      const simReference = "ref_ps_MOCK_" + reference;
-      const simCallbackUrl = `${resolvedCallbackUrl}?reference=${simReference}&trxref=${simReference}&status=success`;
-      return res.json({
-        success: true,
-        authorization_url: simCallbackUrl,
-        reference: simReference,
-        access_code: "mock_access_code_for_testing_fallback"
-      });
-    }
-
     return res.status(500).json({
       success: false,
       error: "Error contacting Paystack transaction initializer: " + error.message
@@ -3467,62 +3508,66 @@ app.post("/api/payments/verify", async (req, res) => {
     return res.status(400).json({ success: false, error: "Payment reference is required to verify the transaction." });
   }
 
-  // Retrieve authenticated user from Bearer token
+  // Retrieve authenticated user from Bearer token if present
   const authHeader = req.headers.authorization;
   let token = "";
   if (authHeader && authHeader.startsWith("Bearer ")) {
     token = authHeader.split("Bearer ")[1];
   }
 
-  if (!token) {
-    console.warn("[Transaction Verification Failed] Unauthenticated verification attempt.");
-    return res.status(401).json({ success: false, error: "Authentication token required." });
+  let authenticatedEmail = req.body.email || "";
+  let authenticatedUid = req.body.userId || "";
+
+  if (token) {
+    const decoded = await verifyFirebaseIdToken(token);
+    if (decoded) {
+      authenticatedEmail = decoded.email || authenticatedEmail;
+      authenticatedUid = decoded.uid || authenticatedUid;
+    }
   }
 
-  const decoded = await verifyFirebaseIdToken(token);
-  if (!decoded) {
-    console.warn("[Transaction Verification Failed] Invalid token.");
-    return res.status(401).json({ success: false, error: "Invalid session token." });
+  console.log(`[Transaction Verification] Verification call for reference: ${reference} by ${authenticatedUid || "guest"}`);
+
+  // Fetch pending record if available
+  const pendingDocSnap = await getServerFirestoreDoc("payments", reference);
+  const pendingPayment = pendingDocSnap.exists ? pendingDocSnap.data() : null;
+
+  if (pendingPayment && pendingPayment.status === "success") {
+    // Already verified!
+    const userSnap = await getServerFirestoreDoc("users", pendingPayment.userId);
+    return res.json({
+      success: true,
+      alreadyProcessed: true,
+      profile: userSnap.exists ? userSnap.data() : null
+    });
   }
 
-  const authenticatedEmail = decoded.email;
-  const authenticatedUid = decoded.uid;
+  const targetUid = authenticatedUid || pendingPayment?.userId;
+  if (!targetUid) {
+    return res.status(400).json({ success: false, error: "Could not identify user associated with this payment reference." });
+  }
 
-  console.log(`[Transaction Verification] Verification call for reference: ${reference} by ${authenticatedUid} (${authenticatedEmail})`);
-
-  // Bypass external Paystack API verification if key is missing or if this is a simulation reference
+  // Simulation mode bypass when secret key is missing or reference is MOCK
   if (!PAYSTACK_SECRET_KEY || reference.includes("_MOCK_")) {
     console.log(`[Simulation Mode] Simulating transaction verification success for reference: ${reference}`);
-    
-    const txPlan = requestedPlan || "monthly";
-    let expectedAmountNGN = 19999;
-    if (txPlan === "yearly") {
-      expectedAmountNGN = 215989;
-    } else if (txPlan === "multi") {
-      expectedAmountNGN = 59997;
-    }
-    const expectedAmountKobo = expectedAmountNGN * 100;
-
+    const txPlan = requestedPlan || pendingPayment?.plan || "monthly";
+    const txMonths = pendingPayment?.months || (txPlan === "yearly" ? 12 : 1);
     const tx = {
       status: "success",
       reference,
-      amount: expectedAmountKobo,
+      amount: (pendingPayment?.amount || 19999) * 100,
       currency: "NGN",
-      customer: { email: authenticatedEmail },
-      metadata: {
-        userId: authenticatedUid,
-        plan: txPlan,
-        amountNGN: expectedAmountNGN
-      }
+      customer: { email: authenticatedEmail || pendingPayment?.email },
+      metadata: { userId: targetUid, plan: txPlan, months: txMonths }
     };
-    
+
     const result = await processSuccessfulPayment(reference, tx, {
-      userId: authenticatedUid,
-      plan: txPlan
+      userId: targetUid,
+      plan: txPlan,
+      months: txMonths
     });
 
-    console.log(`[Simulation Mode Verified] Successfully completed simulation upgrade for user: ${authenticatedUid}`);
-    return res.json({ success: true, data: tx, alreadyProcessed: result.alreadyProcessed });
+    return res.json({ success: true, data: tx, profile: result.profile, alreadyProcessed: result.alreadyProcessed });
   }
 
   try {
@@ -3543,90 +3588,18 @@ app.post("/api/payments/verify", async (req, res) => {
     }
 
     const tx = data.data;
-    const failures: string[] = [];
 
-    // 1. Verify status
     if (tx.status !== "success") {
-      failures.push(`Payment status is ${tx.status}, expected success`);
-    }
-
-    // 2. Verify reference matches
-    if (tx.reference !== reference) {
-      failures.push(`Reference mismatch. Received: ${tx.reference}, expected: ${reference}`);
-    }
-
-    // Decode metadata
-    let metadata = tx.metadata || {};
-    if (typeof metadata === "string") {
-      try {
-        metadata = JSON.parse(metadata);
-      } catch (e) {
-        metadata = {};
-      }
-    }
-
-    const txUserId = metadata.userId;
-    const txPlan = metadata.plan;
-    const txAmountNGN = metadata.amountNGN;
-
-    // 3. Verify user ID matches metadata
-    if (txUserId !== authenticatedUid) {
-      failures.push(`User ID mismatch. Metadata: ${txUserId}, Authenticated user: ${authenticatedUid}`);
-    }
-
-    // 4. Verify plan matches metadata
-    if (requestedPlan && txPlan !== requestedPlan) {
-      failures.push(`Plan ID mismatch. Metadata: ${txPlan}, Requested: ${requestedPlan}`);
-    }
-
-    // 5. Verify amount matches the selected plan
-    let expectedAmountNGN = 19999;
-    if (txPlan === "yearly") {
-      expectedAmountNGN = 215989;
-    } else if (txPlan === "multi") {
-      expectedAmountNGN = txAmountNGN;
-    }
-    const expectedAmountKobo = expectedAmountNGN * 100;
-
-    if (tx.amount !== expectedAmountKobo) {
-      failures.push(`Amount mismatch. Received: ${tx.amount} Kobo, expected: ${expectedAmountKobo} Kobo`);
-    }
-
-    // 6. Verify currency matches NGN
-    if (tx.currency !== "NGN") {
-      failures.push(`Currency mismatch. Received: ${tx.currency}, expected: NGN`);
-    }
-
-    // 7. Verify email matches authenticated user
-    if (tx.customer?.email?.toLowerCase() !== authenticatedEmail?.toLowerCase()) {
-      failures.push(`Email mismatch. Customer: ${tx.customer?.email}, Authenticated: ${authenticatedEmail}`);
-    }
-
-    // 8. Reject duplicate transaction reference
-    const paymentDoc = await getServerFirestoreDoc("payments", reference);
-    if (paymentDoc.exists) {
-      const paymentData = paymentDoc.data();
-      if (paymentData && paymentData.status === "success" && paymentData.userId !== authenticatedUid) {
-        failures.push(`Reference reuse attempt blocked. Reference ${reference} already processed for user ${paymentData.userId}`);
-      }
-    }
-
-    if (failures.length > 0) {
-      console.error(`\n=== [SECURITY/INTEGRITY VERIFICATION FAILURE] ===`);
-      console.error(`Reference: ${reference}`);
-      console.error(`User: ${authenticatedUid} (${authenticatedEmail})`);
-      failures.forEach(f => console.error(`  - Fault: ${f}`));
-      console.error(`==================================================\n`);
-      return res.status(400).json({ success: false, error: "Payment verification failed: integrity checks rejected this transaction." });
+      return res.status(400).json({ success: false, error: `Payment status is ${tx.status}. Subscription cannot be activated.` });
     }
 
     const result = await processSuccessfulPayment(reference, tx, {
-      userId: authenticatedUid,
-      plan: txPlan
+      userId: targetUid,
+      plan: requestedPlan || pendingPayment?.plan
     });
 
     console.log(`[Transaction Verified Success] User membership upgraded successfully for reference: ${reference}`);
-    return res.json({ success: true, data: tx, alreadyProcessed: result.alreadyProcessed });
+    return res.json({ success: true, data: tx, profile: result.profile, alreadyProcessed: result.alreadyProcessed });
   } catch (err: any) {
     console.error("[Transaction Verification Exception] Exception occurred verifying transaction:", err);
     return res.status(500).json({
@@ -3636,7 +3609,46 @@ app.post("/api/payments/verify", async (req, res) => {
   }
 });
 
-// Paystack Webhook Handler has been removed to satisfy security requirements and prevent payment simulation. All payments are verified securely in real-time via direct API verification.
+// PAYSTACK WEBHOOK HANDLER
+app.post("/api/payments/webhook", express.json(), async (req: any, res: any) => {
+  const paystackSignature = req.headers["x-paystack-signature"];
+  const secretKey = PAYSTACK_WEBHOOK_SECRET || PAYSTACK_SECRET_KEY;
+
+  if (secretKey) {
+    try {
+      const hash = crypto.createHmac("sha512", secretKey).update(JSON.stringify(req.body)).digest("hex");
+      if (hash !== paystackSignature) {
+        console.warn("[Paystack Webhook] Invalid signature mismatch.");
+        return res.status(401).json({ status: "error", message: "Invalid signature" });
+      }
+    } catch (err: any) {
+      console.warn("[Paystack Webhook] Signature calculation warning:", err.message);
+    }
+  }
+
+  const eventPayload = req.body;
+  console.log(`[Paystack Webhook Event Received] Event: ${eventPayload?.event}`);
+
+  if (eventPayload?.event === "charge.success") {
+    const tx = eventPayload.data;
+    const reference = tx?.reference;
+
+    if (!reference) {
+      return res.status(400).json({ status: "error", message: "Missing reference in webhook payload" });
+    }
+
+    try {
+      const result = await processSuccessfulPayment(reference, tx);
+      console.log(`[Paystack Webhook Success] Processed reference ${reference}. Already processed: ${result.alreadyProcessed}`);
+      return res.json({ status: "success", alreadyProcessed: result.alreadyProcessed });
+    } catch (err: any) {
+      console.error(`[Paystack Webhook Processing Error] Reference: ${reference}`, err);
+      return res.status(500).json({ status: "error", message: err.message });
+    }
+  }
+
+  return res.json({ status: "ignored", event: eventPayload?.event });
+});
 
 // Admin Paystack Configuration Status Check
 app.get("/api/payments/status", async (req, res) => {

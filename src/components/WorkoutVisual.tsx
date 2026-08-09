@@ -70,6 +70,12 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
     }
   };
 
+  const formatMediaSrc = (url: string, retry: number) => {
+    if (!url) return "";
+    if (url.startsWith("data:") || retry === 0) return url;
+    return url.includes("?") ? `${url}&retry=${retry}` : `${url}?retry=${retry}`;
+  };
+
   // Card Mode Layout Helper
   if (isCard) {
     return (
@@ -86,7 +92,7 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
               </div>
             )}
             <img 
-              src={resolvedMediaUrl + (retryCount > 0 ? `?retry=${retryCount}` : "")} 
+              src={formatMediaSrc(resolvedMediaUrl, retryCount)} 
               alt={exerciseName || "Exercise Preview"} 
               className={`w-full h-full object-cover transition-opacity duration-700 filter brightness-110 ${loading ? 'opacity-0' : 'opacity-100'}`} 
               referrerPolicy="no-referrer"
@@ -199,7 +205,7 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
             )}
             {resolvedMediaType === "video" || (resolvedMediaUrl && (resolvedMediaUrl.toLowerCase().endsWith(".mp4") || resolvedMediaUrl.toLowerCase().endsWith(".webm") || resolvedMediaUrl.toLowerCase().endsWith(".mov") || resolvedMediaUrl.startsWith("data:video/"))) ? (
               <video
-                src={resolvedMediaUrl + (retryCount > 0 ? `?retry=${retryCount}` : "")}
+                src={formatMediaSrc(resolvedMediaUrl, retryCount)}
                 autoPlay
                 loop
                 muted
@@ -210,7 +216,7 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
               />
             ) : (
               <img 
-                src={resolvedMediaUrl + (retryCount > 0 ? `?retry=${retryCount}` : "")} 
+                src={formatMediaSrc(resolvedMediaUrl, retryCount)} 
                 alt={exerciseName || "Exercise Demo GIF"} 
                 decoding="async"
                 className={`w-full h-full object-contain transition-all duration-700 ease-out ${loading ? 'opacity-0 filter blur-md scale-105' : 'opacity-100 filter-none scale-100'}`} 

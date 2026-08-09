@@ -42,23 +42,30 @@ export default function PaymentSuccessView() {
       return;
     }
 
+    let isMounted = true;
+
     const verifyPayment = async () => {
       try {
         console.log(`[PaymentSuccessView] Launching direct verification for reference: ${ref}`);
-        await upgradeWithPaystack(ref);
-        setStatus("success");
+        const resultUser = await upgradeWithPaystack(ref);
+        if (isMounted) {
+          setStatus("success");
+        }
       } catch (err: any) {
         console.error("[PaymentSuccessView Verification Error]", err);
-        setStatus("error");
-        setErrorMessage(err.message || "We were unable to verify your payment reference. Please contact support.");
+        if (isMounted) {
+          setStatus("error");
+          setErrorMessage(err.message || "We were unable to verify your payment reference. Please contact support.");
+        }
       }
     };
 
-    // Wait until user is fully loaded before launching verification
-    if (user) {
-      verifyPayment();
-    }
-  }, [user]);
+    verifyPayment();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Automated premium redirect to original requested page
   useEffect(() => {

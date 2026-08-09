@@ -14,6 +14,8 @@ import {
 import { doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs, query, where, deleteDoc, onSnapshot } from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
 import { auth, db, isMockFirebase, handleFirestoreError, OperationType } from "../lib/firebase";
+import { supabase } from "../utils/supabase/client";
+import { AssetManifestService } from "../services/AssetManifestService";
 import { 
   UserProfile, 
   SavedWorkout, 
@@ -30,6 +32,7 @@ import {
 } from "../types";
 import { EXERCISES, Exercise } from "../data/exercises";
 import { isExerciseMatch } from "../utils/exerciseMatching";
+import { fetchAllExerciseMediaFromDatabase } from "../utils/mediaStorageService";
 import { samplePopupTestimonials } from "../data/sampleTestimonials";
 import { queueWelcomeEmail, queueWorkoutSummaryEmail, queueBellyFatShredReminderEmail } from "../lib/mailTriggers";
 
@@ -73,7 +76,7 @@ interface AppContextType {
   updateWaterIntake: (amountMl: number) => Promise<void>;
   
   // Subscriptions & Payments
-  upgradeWithPaystack: (reference: string, plan?: "monthly" | "yearly" | "multi") => Promise<void>;
+  upgradeWithPaystack: (reference: string, plan?: "monthly" | "yearly" | "multi") => Promise<UserProfile | void>;
   cancelSubscription: () => Promise<void>;
   
   // AI Coach Chat
@@ -385,7 +388,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const apiData = await apiRes.json();
         const serverOverrides = apiData.success ? apiData.overrides : {};
         
-        // 2. Fetch from Cloud Firestore (primary cross-user database)
+        // 2. Fetch persistent exercise media records from Supabase DB and Cloud Firestore
+        const persistentMediaOverrides = await fetchAllExerciseMediaFromDatabase();
+
         let firestoreOverrides: Record<string, { customMediaUrl?: string; customMediaType?: "image" | "video" }> = {};
         if (!isMockFirebase) {
           try {
@@ -417,8 +422,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Merge sources (Firestore overrides take ultimate priority, server file is fallback/local server persistence)
-        const mergedOverrides = { ...serverOverrides, ...firestoreOverrides };
+        // Merge sources (Persistent Supabase/Firestore DB media overrides take ultimate priority)
+        const mergedOverrides = { ...serverOverrides, ...firestoreOverrides, ...persistentMediaOverrides };
 
         setExercisesState(prev => {
           const baseList = [...EXERCISES];
@@ -658,7 +663,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const processAuthSuccess = async (
     firebaseUser: any,
     additionalData?: { displayName?: string },
-    remember: boolean = true
+    remember: boolean = true,
+    isNewSignUp: boolean = false
   ): Promise<UserProfile> => {
     const uid = firebaseUser.uid;
     const email = firebaseUser.email || "";
@@ -685,6 +691,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Standardize default profile fields if none cached or if we need a base
+    // Returning logging-in users should default onboarded to true, while brand new sign ups default to false
     const baseProfile: UserProfile = {
       uid,
       email,
@@ -694,9 +701,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       subscriptionStatus: "free",
       subscriptionTier: "none",
       createdAt: new Date().toISOString(),
-      onboarded: false,
+      onboarded: isNewSignUp ? false : true,
       ...profile, // overlay cached attributes if any
     };
+
+    // If returning user, ensure onboarded is true
+    if (!isNewSignUp && baseProfile.onboarded !== false) {
+      baseProfile.onboarded = true;
+    }
 
     // Keep state updated immediately to trigger App.tsx redirect flow
     setUser(baseProfile);
@@ -706,7 +718,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const userDocRef = doc(db, "users", uid);
         const userSnap = await getDoc(userDocRef);
         if (userSnap.exists()) {
-          profile = { ...baseProfile, ...(userSnap.data() as UserProfile) };
+          const fetchedData = userSnap.data() as UserProfile;
+          profile = { 
+            ...baseProfile, 
+            ...fetchedData,
+            onboarded: fetchedData.onboarded !== undefined ? fetchedData.onboarded : (isNewSignUp ? false : true)
+          };
         } else {
           profile = baseProfile;
           await setDoc(userDocRef, profile);
@@ -833,11 +850,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               const userSnap = await getDoc(userDocRef);
               
               if (userSnap.exists()) {
-                profile = userSnap.data() as UserProfile;
+                const fetched = userSnap.data() as UserProfile;
+                profile = {
+                  ...fetched,
+                  onboarded: fetched.onboarded !== undefined ? fetched.onboarded : true
+                };
                 // Cache in local storage for subsequent offline loads
                 safeSetItem(`fit_user_${profile.uid}`, JSON.stringify(profile));
               } else {
-                // Build clean profile
+                // Build clean profile for existing session
                 profile = {
                   uid: firebaseUser.uid,
                   email: firebaseUser.email || "",
@@ -847,7 +868,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   subscriptionStatus: "free",
                   subscriptionTier: "none",
                   createdAt: new Date().toISOString(),
-                  onboarded: false,
+                  onboarded: true,
                 };
                 await setDoc(userDocRef, profile);
                 // Cache in local storage
@@ -1387,6 +1408,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           console.warn("Firestore background sync failed, relying on local state:", err);
         });
     }
+
+    // Permanent Dual Sync to Supabase profiles table
+    try {
+      supabase.from("profiles").upsert({
+        id: updated.uid,
+        uid: updated.uid,
+        email: updated.email,
+        display_name: updated.displayName,
+        photo_url: updated.photoURL || null,
+        role: updated.role,
+        subscription_status: updated.subscriptionStatus,
+        subscription_tier: updated.subscriptionTier,
+        subscription_plan: updated.subscriptionPlan || "none",
+        payment_reference: updated.paymentReference || null,
+        fitness_goals: updated.fitnessGoals || null,
+        weight: updated.weight || null,
+        height: updated.height || null,
+        gender: updated.gender || null,
+        onboarded: updated.onboarded || false,
+        updated_at: new Date().toISOString()
+      }).then(({ error }) => {
+        if (error) console.warn("Supabase profiles sync notice:", error.message);
+      });
+    } catch (sErr) {
+      console.warn("Supabase background sync exception:", sErr);
+    }
   };
 
   // --- AUTH SERVICES ---
@@ -1439,7 +1486,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       validateEmailAndPassword(email, pass, name, true);
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), pass);
-      await processAuthSuccess(cred.user, { displayName: name.trim() }, remember);
+      await processAuthSuccess(cred.user, { displayName: name.trim() }, remember, true);
     } catch (err: any) {
       throw handleAuthError(err);
     } finally {
@@ -1452,7 +1499,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       validateEmailAndPassword(email, pass);
       const cred = await signInWithEmailAndPassword(auth, email.trim(), pass);
-      await processAuthSuccess(cred.user, undefined, remember);
+      await processAuthSuccess(cred.user, undefined, remember, false);
     } catch (err: any) {
       throw handleAuthError(err);
     } finally {
@@ -1793,56 +1840,77 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
   // --- ACTIONS & PAYMENTS HANDLERS ---
 
   const upgradeWithPaystack = async (reference: string, plan?: "monthly" | "yearly" | "multi") => {
-    if (!user) return;
-    
     setLoading(true);
     try {
-      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      let token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      if (!token) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      }
+
+      const currentEmail = user?.email || auth.currentUser?.email || "";
+      const currentUid = user?.uid || auth.currentUser?.uid || "";
+
       const res = await fetch("/api/payments/verify", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ reference, email: user.email, plan, userId: user.uid })
+        body: JSON.stringify({ reference, email: currentEmail, plan, userId: currentUid })
       });
       const verifyRes = await res.json();
       
       if (verifyRes.success) {
-        // Retrieve plan from server response metadata to handle redirect flow seamlessly
-        let resolvedPlan: "monthly" | "yearly" | "multi" = plan || "monthly";
-        
-        let txMetadata = verifyRes.data?.metadata;
-        if (typeof txMetadata === "string") {
-          try {
-            txMetadata = JSON.parse(txMetadata);
-          } catch (e) {}
-        }
-        
-        if (txMetadata && txMetadata.plan) {
-          resolvedPlan = txMetadata.plan;
+        const verifiedProfile = verifyRes.profile;
+        let resolvedUser: UserProfile;
+
+        if (verifiedProfile) {
+          resolvedUser = verifiedProfile;
+        } else {
+          let resolvedPlan: "monthly" | "yearly" | "multi" = plan || "monthly";
+          let txMetadata = verifyRes.data?.metadata;
+          if (typeof txMetadata === "string") {
+            try { txMetadata = JSON.parse(txMetadata); } catch (e) {}
+          }
+          if (txMetadata && txMetadata.plan) {
+            resolvedPlan = txMetadata.plan;
+          }
+
+          const baseUser = user || {
+            uid: currentUid,
+            email: currentEmail,
+            displayName: currentEmail ? currentEmail.split("@")[0] : "Athlete",
+            role: "user"
+          };
+
+          resolvedUser = {
+            ...baseUser,
+            subscriptionStatus: "premium",
+            subscriptionTier: resolvedPlan === "multi" ? "monthly" : resolvedPlan,
+            subscriptionPlan: resolvedPlan,
+            paymentReference: reference,
+            subscriptionExpiry: verifyRes.data?.subscriptionExpiry || new Date(Date.now() + (resolvedPlan === "yearly" ? 365 : 30) * 86400000).toISOString()
+          } as UserProfile;
         }
 
-        const updated: UserProfile = {
-          ...user,
-          subscriptionStatus: "premium",
-          subscriptionTier: resolvedPlan === "multi" ? "monthly" : resolvedPlan,
-          subscriptionPlan: resolvedPlan,
-          subscriptionExpiry: new Date(Date.now() + (resolvedPlan === "yearly" ? 365 : resolvedPlan === "multi" ? 90 : 30) * 24 * 60 * 60 * 1000).toISOString()
-        };
-        await syncUserToStorageAndPlatform(updated);
+        await syncUserToStorageAndPlatform(resolvedUser);
         
+        const activePlan = (resolvedUser.subscriptionPlan && resolvedUser.subscriptionPlan !== "none" ? resolvedUser.subscriptionPlan : "monthly") as "monthly" | "yearly" | "multi";
         const transaction: PaystackTransaction = {
           id: reference,
           reference,
-          amount: resolvedPlan === "yearly" ? 215989 : resolvedPlan === "multi" ? 59997 : 19999,
-          plan: resolvedPlan,
+          amount: verifyRes.data?.amount ? (verifyRes.data.amount / 100) : (activePlan === "yearly" ? 215989 : 19999),
+          plan: activePlan,
           status: "success",
           paidAt: new Date().toISOString()
         };
         const nextTrans = [transaction, ...transactions];
         setTransactions(nextTrans);
-        safeSetItem(`fit_trans_${user.uid}`, JSON.stringify(nextTrans));
+        if (currentUid) {
+          safeSetItem(`fit_trans_${currentUid}`, JSON.stringify(nextTrans));
+        }
+        return resolvedUser;
       } else {
         throw new Error(verifyRes.error || "Payment verification declined.");
       }

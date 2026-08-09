@@ -135,6 +135,7 @@ function FitnessAppContent() {
     // Transition: Logged out -> Logged in
     if (currentUid && !previousUid) {
       if (user) {
+        setIsAuthOpen(false);
         if (user.onboarded === false) {
           console.log("[DevOps Auth Sync] Successfully authenticated. Redirecting brand new user to onboarding.");
           setView("onboarding");
@@ -153,6 +154,7 @@ function FitnessAppContent() {
     } else if (!currentUid && previousUid) {
       // Transition: Logged in -> Logged out
       console.log("[DevOps Auth Sync] Signed out. Redirecting to Home view.");
+      setIsAuthOpen(false);
       setView("home");
     }
   }, [user]);
@@ -162,12 +164,12 @@ function FitnessAppContent() {
     if (currentView === "login" || currentView === "signin") {
       if (user) {
         // Already logged in, redirect away from login screen immediately!
+        setIsAuthOpen(false);
         if (user.onboarded === false) {
           setView("onboarding");
         } else {
           setView("dashboard");
         }
-        setIsAuthOpen(false);
       } else {
         // Show Auth Modal when user navigates directly to /login or /signin
         setIsAuthOpen(true);
@@ -184,27 +186,20 @@ function FitnessAppContent() {
     }
   }, [currentView, user]);
 
-  // General Guard to catch any unauthorized entries to completely off-limit standalone premium features
+  // General Guard to catch any unauthorized entries to protected views for unauthenticated guests
   React.useEffect(() => {
     if (!loading) {
-      const loginRequiredViews = ["coach", "nutrition", "community", "challenges", "success-stories", "workout-generator", "daily-plan", "dashboard", "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", "handbook", "weight-trajectory", "library", "workout-videos", "saved-exercises", "belly-fat-shred"];
-      const standalonePremiumViews = ["library", "workout-generator", "workout-videos", "saved-exercises", "coach", "nutrition", "daily-plan", "challenges", "community", "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", "handbook", "weight-trajectory", "dashboard"];
+      const loginRequiredViews = [
+        "coach", "nutrition", "community", "challenges", "success-stories", 
+        "workout-generator", "daily-plan", "dashboard", "weekly-reports", 
+        "daily-habit-tracker", "daily-calibration-desk", "handbook", 
+        "weight-trajectory", "library", "workout-videos", "saved-exercises", "belly-fat-shred"
+      ];
 
       if (loginRequiredViews.includes(currentView) && !user) {
         console.log(`[DevOps Security] Unauthenticated user attempted to access protected view: ${currentView}. Redirecting to Home and opening auth.`);
         setView("home");
         setIsAuthOpen(true);
-      } else if (user && user.subscriptionStatus !== "premium" && user.role !== "admin") {
-        if (standalonePremiumViews.includes(currentView)) {
-          console.log(`[DevOps Security] Free user attempted to access standalone premium view: ${currentView}. Redirecting to Home pricing.`);
-          setView("home");
-          setTimeout(() => {
-            const el = document.getElementById("pricing");
-            if (el) {
-              el.scrollIntoView({ behavior: "smooth", block: "start" });
-            }
-          }, 150);
-        }
       }
     }
   }, [user, currentView, loading]);

@@ -34,6 +34,7 @@ import PageHero from "./PageHero";
 import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import PersistentDashboardTabs from "./PersistentDashboardTabs";
+import TodoRealtimeWidget from "./TodoRealtimeWidget";
 
 interface DashboardProps {
   activeView?: string;
@@ -155,6 +156,7 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
         { id: "calibration", label: "Calibration Desk", icon: Clock, desc: "Physiological Metrics" },
         { id: "trajectory", label: "Weight Trajectory", icon: Scale, desc: "Recomposition Slopes" },
         { id: "habits", label: "Habit Tracker", icon: CheckCircle, desc: "Routine Compliance" },
+        { id: "todos", label: "Realtime Todos", icon: CheckCircle2, desc: "Supabase & Firebase Sync" },
       ]
     },
     {
@@ -536,6 +538,21 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
 
                   {/* 12. Habit Tracker */}
                   {activeTab === "habits" && <HabitTrackerView />}
+
+                  {/* 12b. Realtime Todos */}
+                  {activeTab === "todos" && (
+                    <div className="space-y-6">
+                      <div>
+                        <h2 className="text-xl font-sans font-black uppercase tracking-tight text-slate-900">
+                          Realtime <span className="text-[#D32F2F]">Database Todos</span>
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Live, bidirectional task synchronization across Supabase Channel and Firebase Firestore.
+                        </p>
+                      </div>
+                      <TodoRealtimeWidget />
+                    </div>
+                  )}
 
                   {/* 13. Athlete Community */}
                   {activeTab === "community" && (

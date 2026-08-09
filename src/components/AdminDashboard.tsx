@@ -12,6 +12,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { PREMIUM_CHALLENGES } from "./Premium90DayChallenge";
 import UnifiedExerciseMedia from "./UnifiedExerciseMedia";
 import { AssetManifestService } from "../services/AssetManifestService";
+import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
 
 export default function AdminDashboard() {
   const { 
@@ -46,7 +47,7 @@ export default function AdminDashboard() {
   const [enrollStatus, setEnrollStatus] = useState("");
   const [enrollLoading, setEnrollLoading] = useState(false);
 
-  const handleFileUpload = (exerciseId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (exerciseId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -60,30 +61,24 @@ export default function AdminDashboard() {
 
     setUploadingId(exerciseId);
     const isVideo = file.type.startsWith("video/");
-    const reader = new FileReader();
 
-    reader.onload = async (event) => {
-      const base64Data = event.target?.result as string;
-      if (base64Data) {
-        try {
-          await uploadExerciseMedia(exerciseId, base64Data, isVideo ? "video" : "image");
-          AssetManifestService.recordUploadedAssetSignature(exerciseId, base64Data, isVideo ? "video" : "image");
-          setMediaUpdateSuccess(exerciseId);
-          setTimeout(() => setMediaUpdateSuccess(null), 3500);
-        } catch (err) {
-          console.error("Failed to upload media:", err);
-          alert("Failed to update media. Please try again.");
-        }
-      }
+    try {
+      // 1. Upload directly to cloud storage (Firebase / Supabase)
+      const finalCloudUrl = await uploadMediaToCloud(file, exerciseId, isVideo ? "video" : "image");
+      
+      // 2. Persist in Supabase DB + Cloud Firestore
+      await saveExerciseMediaToDatabase(exerciseId, finalCloudUrl, isVideo ? "video" : "image");
+      await uploadExerciseMedia(exerciseId, finalCloudUrl, isVideo ? "video" : "image");
+      AssetManifestService.recordUploadedAssetSignature(exerciseId, finalCloudUrl, isVideo ? "video" : "image");
+      
+      setMediaUpdateSuccess(exerciseId);
+      setTimeout(() => setMediaUpdateSuccess(null), 3500);
+    } catch (err) {
+      console.error("Failed to upload media:", err);
+      alert("Failed to update media. Please try again.");
+    } finally {
       setUploadingId(null);
-    };
-
-    reader.onerror = () => {
-      alert("Failed to read the file.");
-      setUploadingId(null);
-    };
-
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleUrlSubmit = async (exerciseId: string) => {
@@ -94,6 +89,7 @@ export default function AdminDashboard() {
     const isVideo = rawUrl.toLowerCase().endsWith(".mp4") || rawUrl.toLowerCase().endsWith(".webm");
 
     try {
+      await saveExerciseMediaToDatabase(exerciseId, rawUrl, isVideo ? "video" : "image");
       await uploadExerciseMedia(exerciseId, rawUrl, isVideo ? "video" : "image");
       AssetManifestService.recordUploadedAssetSignature(exerciseId, rawUrl, isVideo ? "video" : "image");
       setMediaUpdateSuccess(exerciseId);

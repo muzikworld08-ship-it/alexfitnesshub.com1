@@ -11,6 +11,7 @@ import {
 import UnifiedExerciseMedia from "./UnifiedExerciseMedia";
 import { Exercise } from "../data/exercises";
 import { AssetManifestService } from "../services/AssetManifestService";
+import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
 
 export const AdminAssetManager: React.FC = () => {
   const { user, uploadExerciseMedia } = useApp();
@@ -156,54 +157,28 @@ export const AdminAssetManager: React.FC = () => {
 
       if (selectedFile) {
         setUploadStatusPhase("Phase 1: Validating file integrity...");
-        await new Promise((r) => setTimeout(r, 300));
+        await new Promise((r) => setTimeout(r, 200));
 
-        // Direct Firebase Storage Upload if Storage SDK is initialized
-        if (storage) {
-          setUploadStatusPhase("Phase 2: Uploading directly to Firebase Storage...");
-          const storagePath = `exercises/${exerciseId}/${Date.now()}_${selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-          const storageRef = ref(storage, storagePath);
-
-          const uploadTask = uploadBytesResumable(storageRef, selectedFile);
-
-          finalMediaUrl = await new Promise<string>((resolve, reject) => {
-            uploadTask.on(
-              "state_changed",
-              (snapshot) => {
-                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                setUploadProgress(progress);
-                setUploadStatusPhase(`Phase 2: Uploading to Firebase Storage (${progress}%)...`);
-              },
-              (error) => {
-                console.warn("Firebase Storage upload task error:", error);
-                reject(error);
-              },
-              async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                resolve(downloadURL);
-              }
-            );
-          });
-        } else {
-          // Fallback: convert file to Base64 data URL
-          setUploadStatusPhase("Phase 2: Converting file to data URL stream...");
-          finalMediaUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target?.result as string);
-            reader.onerror = (e) => reject(e);
-            reader.readAsDataURL(selectedFile);
-          });
-          setUploadProgress(70);
-        }
+        // Upload to Firebase / Supabase persistent cloud storage
+        finalMediaUrl = await uploadMediaToCloud(
+          selectedFile, 
+          exerciseId, 
+          mediaType,
+          (pct, statusMsg) => {
+            setUploadProgress(pct);
+            setUploadStatusPhase(statusMsg);
+          }
+        );
       } else {
         finalMediaUrl = manualUrlInput.trim();
         setUploadProgress(50);
       }
 
-      // Phase 3: Sync Application Context, Server Files & Cloud Firestore
-      setUploadStatusPhase("Phase 3: Deploying asset & syncing application state...");
+      // Phase 3: Persist URL to Supabase DB + Cloud Firestore + App State
+      setUploadStatusPhase("Phase 3: Deploying asset & syncing database records...");
       setUploadProgress(85);
 
+      await saveExerciseMediaToDatabase(exerciseId, finalMediaUrl, mediaType);
       await uploadExerciseMedia(exerciseId, finalMediaUrl, mediaType);
       AssetManifestService.recordUploadedAssetSignature(exerciseId, finalMediaUrl, mediaType);
 
