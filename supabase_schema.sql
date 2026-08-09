@@ -9,7 +9,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- -------------------------------------------------------
 -- 1. PROFILES TABLE
--- Mirrors the AppContext UserProfile structure
+-- Synchronizes with the AppContext UserProfile structure
 -- -------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.profiles (
   id TEXT PRIMARY KEY,
@@ -22,18 +22,33 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   subscription_tier TEXT DEFAULT 'none' CHECK (subscription_tier IN ('monthly', 'yearly', 'none')),
   subscription_expiry TIMESTAMPTZ,
   subscription_plan TEXT DEFAULT 'none',
+  subscription_activation_date TIMESTAMPTZ,
   payment_reference TEXT,
   fitness_goals TEXT,
   weight NUMERIC,
   height NUMERIC,
+  target_weight NUMERIC,
   gender TEXT,
   onboarded BOOLEAN DEFAULT FALSE,
   age INTEGER,
   activity_level TEXT,
   workout_experience TEXT,
+  workout_preference TEXT,
+  dietary_preference TEXT,
+  available_days INTEGER,
   training_location TEXT,
+  available_equipment TEXT,
+  food_allergies TEXT,
+  health_restrictions TEXT,
+  daily_schedule TEXT,
+  wake_up_time TEXT,
+  bed_time TEXT,
+  country_region TEXT,
   water_goal INTEGER DEFAULT 2500,
   water_intake_today INTEGER DEFAULT 0,
+  water_last_logged TEXT,
+  status TEXT DEFAULT 'active',
+  is_blocked BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

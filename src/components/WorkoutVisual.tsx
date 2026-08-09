@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { findMatchingExercise } from "../utils/exerciseMatching";
+import { resolveAdminMediaUrl } from "../lib/mediaStorage";
+import { getExerciseGifUrl } from "../data/exercises";
 
 interface WorkoutVisualProps {
   exerciseId?: string;
@@ -45,28 +47,49 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
   const displayEquipment = exercise?.equipment || [];
   const displayDifficulty = exercise?.difficulty || "Beginner";
 
-  const resolvedMediaUrl = customMediaUrl || exercise?.customMediaUrl || exercise?.gifUrl;
-  const resolvedMediaType = customMediaType || exercise?.customMediaType || "image";
-
+  const defaultGifUrl = getExerciseGifUrl(exercise?.name || exerciseName || category || "");
+  const primaryRawUrl = customMediaUrl || exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl || defaultGifUrl;
+  
   // Performance & Robustness states
   const [loading, setLoading] = React.useState(true);
   const [hasError, setHasError] = React.useState(false);
   const [retryCount, setRetryCount] = React.useState(0);
+  const [activeMediaUrl, setActiveMediaUrl] = React.useState<string>("");
 
   React.useEffect(() => {
     setLoading(true);
     setHasError(false);
     setRetryCount(0);
-  }, [resolvedMediaUrl]);
+    setActiveMediaUrl(resolveAdminMediaUrl(primaryRawUrl) || defaultGifUrl);
+  }, [primaryRawUrl, defaultGifUrl]);
+
+  const resolvedMediaUrl = activeMediaUrl || resolveAdminMediaUrl(primaryRawUrl) || defaultGifUrl;
+  const resolvedMediaType = customMediaType || exercise?.customMediaType || "image";
 
   const handleMediaError = () => {
     if (retryCount < 2) {
       setTimeout(() => {
         setRetryCount(prev => prev + 1);
-      }, 1000);
+      }, 800);
     } else {
-      setHasError(true);
-      setLoading(false);
+      // Try falling back to default exercise gifUrl or imageUrl if customMediaUrl failed
+      const stdGif = exercise?.gifUrl ? resolveAdminMediaUrl(exercise.gifUrl) : "";
+      const stdImg = exercise?.imageUrl ? resolveAdminMediaUrl(exercise.imageUrl) : "";
+      const catGif = defaultGifUrl;
+
+      if (activeMediaUrl !== stdGif && stdGif && stdGif !== activeMediaUrl) {
+        setRetryCount(0);
+        setActiveMediaUrl(stdGif);
+      } else if (activeMediaUrl !== stdImg && stdImg && stdImg !== activeMediaUrl) {
+        setRetryCount(0);
+        setActiveMediaUrl(stdImg);
+      } else if (activeMediaUrl !== catGif && catGif && catGif !== activeMediaUrl) {
+        setRetryCount(0);
+        setActiveMediaUrl(catGif);
+      } else {
+        setHasError(true);
+        setLoading(false);
+      }
     }
   };
 

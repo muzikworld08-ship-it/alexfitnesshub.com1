@@ -13,6 +13,7 @@ import { PREMIUM_CHALLENGES } from "./Premium90DayChallenge";
 import UnifiedExerciseMedia from "./UnifiedExerciseMedia";
 import { AssetManifestService } from "../services/AssetManifestService";
 import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
+import { uploadAdminMedia, getAdminMediaUrl, resolveAdminMediaUrl } from "../lib/mediaStorage";
 
 export default function AdminDashboard() {
   const { 

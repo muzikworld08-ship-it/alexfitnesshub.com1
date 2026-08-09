@@ -25,11 +25,14 @@ export async function uploadAdminMedia(
 
   if (error) {
     console.warn(`[Supabase Storage] Upload error for path '${cleanPath}':`, error.message);
-    // If bucket doesn't exist yet or fails, fallback to getPublicUrl
+    throw new Error(`Supabase Storage upload error: ${error.message}`);
   }
 
   return getAdminMediaUrl(cleanPath);
 }
+
+/** Alias for uploadAdminMedia for generic usage */
+export const uploadMedia = uploadAdminMedia;
 
 /**
  * Retrieves the permanent public URL for a file stored in Supabase Storage.
@@ -42,6 +45,56 @@ export function getAdminMediaUrl(pathName: string): string {
     .getPublicUrl(cleanPath);
 
   return data.publicUrl;
+}
+
+/** Alias for getAdminMediaUrl for generic usage */
+export const getPublicMediaUrl = getAdminMediaUrl;
+
+/**
+ * Resolves any media reference (including local static server asset paths & data URLs)
+ * to a functional, stable display URL.
+ */
+export function resolveAdminMediaUrl(rawUrl?: string): string {
+  if (!rawUrl) return "";
+
+  const trimmed = rawUrl.trim();
+
+  // Return direct HTTPS, HTTP, Data URLs, Blob URLs, or local absolute paths (/assets/...) as-is
+  if (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("blob:") ||
+    trimmed.startsWith("/")
+  ) {
+    return trimmed;
+  }
+
+  // Prepend '/' if relative local path starts with 'assets/'
+  if (trimmed.startsWith("assets/")) {
+    return `/${trimmed}`;
+  }
+
+  // Retrieve public URL from Supabase Storage bucket if it's a relative storage path or key
+  return getAdminMediaUrl(trimmed);
+}
+
+/**
+ * Downloads a media file blob from Supabase Storage.
+ */
+export async function downloadMedia(pathName: string): Promise<Blob | null> {
+  const cleanPath = pathName.startsWith("/") ? pathName.slice(1) : pathName;
+
+  const { data, error } = await supabase.storage
+    .from(MEDIA_BUCKET_NAME)
+    .download(cleanPath);
+
+  if (error) {
+    console.warn(`[Supabase Storage] Download error for '${cleanPath}':`, error.message);
+    return null;
+  }
+
+  return data;
 }
 
 /**
@@ -60,6 +113,8 @@ export async function deleteAdminMedia(pathName: string): Promise<boolean> {
   }
   return true;
 }
+
+export const deleteMedia = deleteAdminMedia;
 
 /**
  * Lists stored media files in the bucket under a directory prefix.
@@ -81,10 +136,19 @@ export async function listAdminMedia(folder: string = ""): Promise<any[]> {
   return data || [];
 }
 
+export const listMedia = listAdminMedia;
+
 export default {
   uploadAdminMedia,
+  uploadMedia,
   getAdminMediaUrl,
+  getPublicMediaUrl,
+  resolveAdminMediaUrl,
+  downloadMedia,
   deleteAdminMedia,
+  deleteMedia,
   listAdminMedia,
+  listMedia,
   MEDIA_BUCKET_NAME
 };
+

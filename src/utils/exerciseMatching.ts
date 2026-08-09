@@ -59,5 +59,25 @@ export function findMatchingExercise<T extends { id: string; name: string }>(
     }
   }
 
+  // 4. Token overlap match (e.g., "Incline Dumbbell Press" vs "Incline Dumbbell Bench Press")
+  if (exerciseName) {
+    const targetWords = exerciseName.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 2);
+    if (targetWords.length > 0) {
+      let bestMatch: T | undefined = undefined;
+      let highestOverlap = 0;
+
+      for (const ex of exercises) {
+        const candWords = ex.name.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 2);
+        const overlap = targetWords.filter(w => candWords.includes(w)).length;
+        if (overlap > highestOverlap && overlap >= Math.min(2, targetWords.length)) {
+          highestOverlap = overlap;
+          bestMatch = ex;
+        }
+      }
+
+      if (bestMatch) return bestMatch;
+    }
+  }
+
   return undefined;
 }

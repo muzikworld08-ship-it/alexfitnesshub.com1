@@ -18,6 +18,7 @@ import PageHero from "./PageHero";
 import WorkoutPlayer from "./WorkoutPlayer";
 import { OptimizedImage } from "./OptimizedImage";
 import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
+import { resolveAdminMediaUrl } from "../lib/mediaStorage";
 
 const BODY_PARTS_DETAILS = [
   { name: "Chest", desc: "Build thick pectoralis major/minor fibers and front deltoid symmetry", img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7G_JEDmUiLxTLVwV35owlnJssH_3TLx1qdCmEWF9WOZ4WfE9mFQL1ZpQ&s=10" },
@@ -233,36 +234,43 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
   const setSearchQuery = (val: string | ((p: string) => string)) => {
     const nextVal = typeof val === "function" ? val(searchQuery) : val;
     setWorkoutFilters({ searchQuery: nextVal });
+    setCurrentPage(1);
   };
 
   const setSelectedCategory = (val: string | ((p: string) => string)) => {
     const nextVal = typeof val === "function" ? val(selectedCategory) : val;
-    setWorkoutFilters({ selectedCategory: nextVal });
+    setWorkoutFilters({ selectedCategory: nextVal, searchQuery: "" });
+    setCurrentPage(1);
   };
 
   const setSelectedDifficulty = (val: string | ((p: string) => string)) => {
     const nextVal = typeof val === "function" ? val(selectedDifficulty) : val;
     setWorkoutFilters({ selectedDifficulty: nextVal });
+    setCurrentPage(1);
   };
 
   const setSelectedMuscleGroup = (val: string | ((p: string) => string)) => {
     const nextVal = typeof val === "function" ? val(selectedMuscleGroup) : val;
-    setWorkoutFilters({ selectedMuscleGroup: nextVal });
+    setWorkoutFilters({ selectedMuscleGroup: nextVal, searchQuery: "" });
+    setCurrentPage(1);
   };
 
   const setSelectedEquipment = (val: string | ((p: string) => string)) => {
     const nextVal = typeof val === "function" ? val(selectedEquipment) : val;
     setWorkoutFilters({ selectedEquipment: nextVal });
+    setCurrentPage(1);
   };
 
   const setSelectedExerciseType = (val: string | ((p: string) => string)) => {
     const nextVal = typeof val === "function" ? val(selectedExerciseType) : val;
     setWorkoutFilters({ selectedExerciseType: nextVal });
+    setCurrentPage(1);
   };
 
   const setSelectedTrainingGoal = (val: string | ((p: string) => string)) => {
     const nextVal = typeof val === "function" ? val(selectedTrainingGoal) : val;
     setWorkoutFilters({ selectedTrainingGoal: nextVal });
+    setCurrentPage(1);
   };
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -277,10 +285,11 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
 
   const setActiveBrowseTab = (val: "bodyparts" | "cardio" | "mobility" | "programs" | "all" | ((p: typeof activeBrowseTab) => typeof activeBrowseTab)) => {
     const nextVal = typeof val === "function" ? val(activeBrowseTab) : val;
-    setWorkoutFilters({ activeBrowseTab: nextVal });
+    setWorkoutFilters({ activeBrowseTab: nextVal, searchQuery: "" });
     setSelectedWorkoutCategory(null);
     setActiveWorkout(null);
     setActiveExercise(null);
+    setCurrentPage(1);
   };
   const [activePlayerSession, setActivePlayerSession] = useState<{ exercises: Exercise[]; title: string } | null>(null);
   
@@ -1852,7 +1861,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             {/* Simple Hero Image */}
             <div className="w-full aspect-video sm:aspect-[16/8] rounded-2xl overflow-hidden border border-[#ECECEC] bg-white">
               <img
-                src={activeWorkout.imageUrl}
+                src={resolveAdminMediaUrl(activeWorkout.imageUrl)}
                 alt={activeWorkout.name}
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover"

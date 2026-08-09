@@ -180,7 +180,10 @@ export default function SavedExercisesView({ setView }: SavedExercisesViewProps)
             {categories.map((cat) => (
               <button
                 key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                onClick={() => {
+                  setSelectedCategory(cat);
+                  setSearchQuery("");
+                }}
                 className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all whitespace-nowrap cursor-pointer ${
                   selectedCategory === cat
                     ? "bg-[#C0392B] text-white shadow-xs"

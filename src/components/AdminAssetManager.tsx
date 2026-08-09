@@ -12,6 +12,7 @@ import UnifiedExerciseMedia from "./UnifiedExerciseMedia";
 import { Exercise } from "../data/exercises";
 import { AssetManifestService } from "../services/AssetManifestService";
 import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
+import { uploadAdminMedia, getAdminMediaUrl, resolveAdminMediaUrl } from "../lib/mediaStorage";
 
 export const AdminAssetManager: React.FC = () => {
   const { user, uploadExerciseMedia } = useApp();

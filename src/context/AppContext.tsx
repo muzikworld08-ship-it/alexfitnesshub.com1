@@ -655,6 +655,53 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const syncProfileToSupabase = async (p: UserProfile) => {
+    try {
+      const { error } = await supabase.from("profiles").upsert({
+        id: p.uid,
+        uid: p.uid,
+        email: p.email,
+        display_name: p.displayName,
+        photo_url: p.photoURL || null,
+        role: p.role,
+        subscription_status: p.subscriptionStatus,
+        subscription_tier: p.subscriptionTier,
+        subscription_plan: p.subscriptionPlan || "none",
+        subscription_activation_date: p.subscriptionActivationDate || null,
+        payment_reference: p.paymentReference || null,
+        fitness_goals: p.fitnessGoals || null,
+        weight: p.weight || null,
+        height: p.height || null,
+        target_weight: p.targetWeight || null,
+        gender: p.gender || null,
+        onboarded: p.onboarded !== undefined ? p.onboarded : false,
+        age: p.age || null,
+        activity_level: p.activityLevel || null,
+        workout_experience: p.workoutExperience || null,
+        workout_preference: p.workoutPreference || null,
+        dietary_preference: p.dietaryPreference || null,
+        available_days: p.availableDays || null,
+        training_location: p.trainingLocation || null,
+        available_equipment: p.availableEquipment || null,
+        food_allergies: p.foodAllergies || null,
+        health_restrictions: p.healthRestrictions || null,
+        daily_schedule: p.dailySchedule || null,
+        wake_up_time: p.wakeUpTime || null,
+        bed_time: p.bedTime || null,
+        country_region: p.countryRegion || null,
+        water_goal: p.waterGoal || 2500,
+        water_intake_today: p.waterIntakeToday || 0,
+        water_last_logged: p.waterLastLogged || null,
+        status: p.status || "active",
+        is_blocked: p.isBlocked || false,
+        updated_at: new Date().toISOString()
+      });
+      if (error) console.warn("[Supabase Profiles] Upsert notice:", error.message);
+    } catch (err) {
+      console.warn("[Supabase Profiles] Background sync error:", err);
+    }
+  };
+
   /**
    * Central Unified Auth Success Handler
    * Standardizes session persistence, Firestore synchronization, cached profiles,
@@ -725,7 +772,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             onboarded: fetchedData.onboarded !== undefined ? fetchedData.onboarded : (isNewSignUp ? false : true)
           };
         } else {
-          profile = baseProfile;
+          // Check Supabase profiles table as persistent backend database source
+          try {
+            const { data: sbProfile } = await supabase.from("profiles").select("*").eq("uid", uid).maybeSingle();
+            if (sbProfile) {
+              profile = {
+                ...baseProfile,
+                displayName: sbProfile.display_name || baseProfile.displayName,
+                photoURL: sbProfile.photo_url || baseProfile.photoURL,
+                role: sbProfile.role || baseProfile.role,
+                subscriptionStatus: sbProfile.subscription_status || baseProfile.subscriptionStatus,
+                subscriptionTier: sbProfile.subscription_tier || baseProfile.subscriptionTier,
+                subscriptionPlan: sbProfile.subscription_plan || baseProfile.subscriptionPlan,
+                fitnessGoals: sbProfile.fitness_goals || baseProfile.fitnessGoals,
+                weight: sbProfile.weight || baseProfile.weight,
+                height: sbProfile.height || baseProfile.height,
+                targetWeight: sbProfile.target_weight || baseProfile.targetWeight,
+                gender: sbProfile.gender || baseProfile.gender,
+                onboarded: sbProfile.onboarded !== undefined ? sbProfile.onboarded : (isNewSignUp ? false : true),
+                age: sbProfile.age || baseProfile.age,
+                activityLevel: sbProfile.activity_level || baseProfile.activityLevel,
+                workoutExperience: sbProfile.workout_experience || baseProfile.workoutExperience,
+                trainingLocation: sbProfile.training_location || baseProfile.trainingLocation,
+                waterGoal: sbProfile.water_goal || baseProfile.waterGoal,
+                waterIntakeToday: sbProfile.water_intake_today || baseProfile.waterIntakeToday
+              };
+            } else {
+              profile = baseProfile;
+            }
+          } catch (sErr) {
+            profile = baseProfile;
+          }
           await setDoc(userDocRef, profile);
         }
         
@@ -748,6 +825,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       safeSetItem(`fit_user_${uid}`, JSON.stringify(profile));
       setUser(profile);
       
+      // Dual sync to Supabase profiles
+      syncProfileToSupabase(profile);
+
       // Update admin analytics active users
       setAllSystemUsers(prev => {
         const filtered = prev.filter(u => u.uid !== uid);
@@ -1410,30 +1490,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Permanent Dual Sync to Supabase profiles table
-    try {
-      supabase.from("profiles").upsert({
-        id: updated.uid,
-        uid: updated.uid,
-        email: updated.email,
-        display_name: updated.displayName,
-        photo_url: updated.photoURL || null,
-        role: updated.role,
-        subscription_status: updated.subscriptionStatus,
-        subscription_tier: updated.subscriptionTier,
-        subscription_plan: updated.subscriptionPlan || "none",
-        payment_reference: updated.paymentReference || null,
-        fitness_goals: updated.fitnessGoals || null,
-        weight: updated.weight || null,
-        height: updated.height || null,
-        gender: updated.gender || null,
-        onboarded: updated.onboarded || false,
-        updated_at: new Date().toISOString()
-      }).then(({ error }) => {
-        if (error) console.warn("Supabase profiles sync notice:", error.message);
-      });
-    } catch (sErr) {
-      console.warn("Supabase background sync exception:", sErr);
-    }
+    syncProfileToSupabase(updated);
   };
 
   // --- AUTH SERVICES ---

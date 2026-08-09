@@ -18,6 +18,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   loading = "lazy",
   aspectRatio = "auto",
   blurDataURL,
+  onError: propsOnError,
   ...props
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -80,11 +81,14 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     setIsLoaded(true);
   };
 
-  const handleError = () => {
+  const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    if (propsOnError) {
+      propsOnError(e);
+    }
     if (retryCount < 2) {
       setTimeout(() => {
         setRetryCount(prev => prev + 1);
-      }, 1000);
+      }, 800);
     } else {
       setHasError(true);
     }

@@ -4,6 +4,8 @@ import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { OptimizedImage } from "./OptimizedImage";
 import { AssetManifestService } from "../services/AssetManifestService";
 import { findMatchingExercise } from "../utils/exerciseMatching";
+import { resolveAdminMediaUrl } from "../lib/mediaStorage";
+import { getExerciseGifUrl } from "../data/exercises";
 
 interface UnifiedExerciseMediaProps {
   exerciseId?: string;
@@ -27,7 +29,17 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
   // Search for the centralized exercise matching ID or Name cleanly
   const exercise = findMatchingExercise(exercises, exerciseId, exerciseName);
 
-  const resolvedMediaUrl = exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl;
+  const defaultFallbackUrl = getExerciseGifUrl(exerciseName || exerciseId || exercise?.name || "");
+  const rawMediaUrl = exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl || defaultFallbackUrl;
+  const [activeUrl, setActiveUrl] = useState<string>("");
+
+  useEffect(() => {
+    setIsLoaded(false);
+    setHasError(false);
+    setActiveUrl(resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl);
+  }, [rawMediaUrl, defaultFallbackUrl]);
+
+  const resolvedMediaUrl = activeUrl || resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl;
   const isVideoUrl = resolvedMediaUrl
     ? (resolvedMediaUrl.toLowerCase().endsWith(".mp4") ||
        resolvedMediaUrl.toLowerCase().endsWith(".webm") ||
@@ -35,6 +47,22 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
        resolvedMediaUrl.startsWith("data:video/"))
     : false;
   const resolvedMediaType = exercise?.customMediaType || (isVideoUrl ? "video" : "image");
+
+  const handleMediaError = () => {
+    const stdGif = exercise?.gifUrl ? resolveAdminMediaUrl(exercise.gifUrl) : "";
+    const stdImg = exercise?.imageUrl ? resolveAdminMediaUrl(exercise.imageUrl) : "";
+    const catGif = getExerciseGifUrl(exerciseName || exerciseId || exercise?.name || "");
+
+    if (activeUrl !== stdGif && stdGif && stdGif !== activeUrl) {
+      setActiveUrl(stdGif);
+    } else if (activeUrl !== stdImg && stdImg && stdImg !== activeUrl) {
+      setActiveUrl(stdImg);
+    } else if (activeUrl !== catGif && catGif) {
+      setActiveUrl(catGif);
+    } else {
+      setHasError(true);
+    }
+  };
 
   useEffect(() => {
     setIsLoaded(false);
@@ -80,7 +108,7 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
           playsInline
           className="w-full h-full object-cover"
           onCanPlay={() => setIsLoaded(true)}
-          onError={() => setHasError(true)}
+          onError={handleMediaError}
         />
         {!isLoaded && (
           <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center space-y-1.5 z-10 animate-pulse">
@@ -103,7 +131,7 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
         className="w-full h-full object-cover"
         fallbackType={fallbackType}
         aspectRatio={aspectRatio}
-        onError={() => setHasError(true)}
+        onError={handleMediaError}
       />
     </div>
   );
