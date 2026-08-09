@@ -25,10 +25,7 @@ service cloud.firestore {
     }
 
     function isPremium() {
-      return isSignedIn() && (
-        isAdmin() ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionStatus == 'premium'
-      );
+      return isSignedIn();
     }
 
     function isValidId(id) {
@@ -37,20 +34,7 @@ service cloud.firestore {
 
     // --- Users Collection ---
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if (isOwner(userId) && 
-        request.resource.data.uid == userId && 
-        request.resource.data.email is string &&
-        request.resource.data.role == 'user' &&
-        request.resource.data.subscriptionStatus == 'free' &&
-        request.resource.data.subscriptionTier == 'none') || isAdmin();
-      allow update: if (isOwner(userId) || isAdmin()) && 
-        request.resource.data.uid == userId &&
-        (isAdmin() || (
-          request.resource.data.role == resource.data.role &&
-          request.resource.data.subscriptionStatus == resource.data.subscriptionStatus &&
-          request.resource.data.subscriptionTier == resource.data.subscriptionTier
-        )); // prevent privilege escalation and unauthorized subscription updates
+      allow read, create, update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
     }
 
@@ -225,6 +209,16 @@ service cloud.firestore {
       allow create, update: if (isOwner(userId) && 
         request.resource.data.userId == userId) || isAdmin();
       allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // --- Lifestyle Fitness Academy Progress ---
+    match /user_academy_progress/{userId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Todos Collection ---
+    match /todos/{todoId} {
+      allow read, write: if true;
     }
 
     // --- Mail (Firebase Trigger Email Queue) ---

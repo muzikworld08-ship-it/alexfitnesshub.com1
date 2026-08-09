@@ -1,166 +1,135 @@
 import React, { useState, useEffect } from "react";
-import { Dumbbell } from "lucide-react";
+import { getSupabaseCdnUrl, getSupabaseSrcSet, SupabaseImageOptions } from "../utils/supabaseImage";
 
-interface OptimizedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
+export interface OptimizedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
   alt: string;
-  className?: string;
-  fallbackType?: "pulsing" | "dumbbell" | "none";
-  aspectRatio?: "16/9" | "4/3" | "1/1" | "auto" | string;
-  blurDataURL?: string;
+  width?: number;
+  height?: number;
+  quality?: number;
+  format?: "origin" | "webp" | "avif" | "jpeg" | "png";
+  resize?: "cover" | "contain" | "fill";
+  srcSetWidths?: number[];
+  fallbackSrc?: string;
+  fallbackType?: "none" | "dumbbell" | "pulsing";
+  showSkeleton?: boolean;
+  aspectRatio?: string; // e.g. "16/9", "4/3", "1/1"
 }
 
 export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   src,
   alt,
+  width,
+  height,
+  quality = 80,
+  format = "webp",
+  resize = "cover",
+  srcSetWidths,
+  fallbackSrc = "https://picsum.photos/seed/alexfitness/600/400",
+  fallbackType,
+  showSkeleton = true,
+  aspectRatio,
   className = "",
-  fallbackType = "pulsing",
+  style,
   loading = "lazy",
-  aspectRatio = "auto",
-  blurDataURL,
-  onError: propsOnError,
-  ...props
+  referrerPolicy = "no-referrer",
+  onError,
+  onLoad,
+  ...restProps
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
+  const [currentSrc, setCurrentSrc] = useState<string>("");
 
   useEffect(() => {
     setIsLoaded(false);
     setHasError(false);
-  }, [src]);
 
-  // Determine aspect ratio class / style
-  const getAspectRatioClass = () => {
-    if (aspectRatio === "16/9") return "aspect-video";
-    if (aspectRatio === "4/3") return "aspect-[4/3]";
-    if (aspectRatio === "1/1") return "aspect-square";
-    return "";
-  };
-
-  if (!src) {
-    return (
-      <div className={`relative overflow-hidden w-full h-full flex flex-col items-center justify-center bg-slate-900 border border-slate-800 rounded-xl p-4 text-center ${getAspectRatioClass()} ${className}`}>
-        <div className="flex flex-col items-center justify-center space-y-2 p-3 bg-slate-950/80 backdrop-blur-md rounded-xl border border-slate-800/80 text-slate-200">
-          <Dumbbell className="w-5 h-5 text-slate-400 animate-pulse" />
-          <span className="text-[9px] font-mono font-bold tracking-wider text-slate-400 uppercase">ALEX FITNESS</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Only generate AVIF/WebP picture sources for Unsplash CDN URLs that support auto-format
-  let avifSrc = "";
-  let webpSrc = "";
-  let fallbackSrc = src;
-
-  if (src.includes("unsplash.com")) {
-    avifSrc = `${src.split("?")[0]}?auto=format&fm=avif&q=70&w=1200`;
-    webpSrc = `${src.split("?")[0]}?auto=format&fm=webp&q=80&w=1200`;
-  }
-
-  // Create highly performing responsive srcsets for Unsplash
-  const generateSrcset = (baseSrc: string) => {
-    if (baseSrc && baseSrc.includes("unsplash.com")) {
-      const baseUrl = baseSrc.split("&w=")[0];
-      const fmParam = baseSrc.includes("fm=avif") ? "fm=avif" : baseSrc.includes("fm=webp") ? "fm=webp" : "fm=jpg";
-      return [
-        `${baseUrl}&auto=format&${fmParam}&q=70&w=480 480w`,
-        `${baseUrl}&auto=format&${fmParam}&q=70&w=768 768w`,
-        `${baseUrl}&auto=format&${fmParam}&q=80&w=1080 1080w`,
-        `${baseUrl}&auto=format&${fmParam}&q=80&w=1400 1400w`
-      ].join(", ");
-    }
-    return undefined;
-  };
-
-  const avifSrcset = generateSrcset(avifSrc);
-  const webpSrcset = generateSrcset(webpSrc);
-
-  const handleLoad = () => {
-    setIsLoaded(true);
-  };
-
-  const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    if (propsOnError) {
-      propsOnError(e);
-    }
-    if (retryCount < 2) {
-      setTimeout(() => {
-        setRetryCount(prev => prev + 1);
-      }, 800);
-    } else {
+    if (!src) {
       setHasError(true);
+      setCurrentSrc(fallbackSrc);
+      return;
+    }
+
+    const options: SupabaseImageOptions = {
+      width,
+      height,
+      quality,
+      format,
+      resize,
+    };
+
+    const cdnUrl = getSupabaseCdnUrl(src, options);
+    setCurrentSrc(cdnUrl);
+  }, [src, width, height, quality, format, resize, fallbackSrc]);
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    if (!hasError) {
+      setHasError(true);
+      if (fallbackSrc && currentSrc !== fallbackSrc) {
+        const fallbackOptions: SupabaseImageOptions = { width, height, quality, format: "webp" };
+        setCurrentSrc(getSupabaseCdnUrl(fallbackSrc, fallbackOptions));
+      }
+    }
+    if (onError) {
+      onError(e);
     }
   };
 
-  const isDataOrBlob = src.startsWith("data:") || src.startsWith("blob:");
-  const retryUrl = retryCount > 0 && !isDataOrBlob 
-    ? `${fallbackSrc}${fallbackSrc.includes("?") ? "&" : "?"}retry=${retryCount}` 
-    : fallbackSrc;
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    setIsLoaded(true);
+    if (onLoad) {
+      onLoad(e);
+    }
+  };
 
-  if (hasError) {
-    return (
-      <div className={`relative overflow-hidden w-full h-full flex flex-col items-center justify-center bg-slate-900 border border-slate-800 rounded-xl p-4 text-center ${getAspectRatioClass()} ${className}`}>
-        <div className="flex flex-col items-center justify-center space-y-2 p-3 bg-slate-950/80 backdrop-blur-md rounded-xl border border-slate-800/80 text-slate-200">
-          <Dumbbell className="w-5 h-5 text-amber-500 animate-pulse" />
-          <span className="text-[9px] font-mono font-bold tracking-wider text-slate-300 uppercase">ALEX FITNESS ASSET</span>
-        </div>
-      </div>
-    );
-  }
+  const options: SupabaseImageOptions = { quality, format, resize };
+  const computedSrcSet = srcSetWidths && srcSetWidths.length > 0 && !hasError
+    ? getSupabaseSrcSet(src, srcSetWidths, options)
+    : undefined;
+
+  const containerStyle: React.CSSProperties = {
+    position: "relative",
+    display: "inline-block",
+    overflow: "hidden",
+    ...(aspectRatio ? { aspectRatio } : {}),
+    ...style,
+  };
 
   return (
-    <div className={`relative overflow-hidden w-full h-full block ${getAspectRatioClass()}`}>
-      {/* Blur-up placeholder backdrop & skeleton loading animation */}
-      {!isLoaded && fallbackType !== "none" && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-md animate-pulse">
-          {/* Blur background image preview if blurDataURL or src exists */}
-          <div 
-            className="absolute inset-0 bg-cover bg-center filter blur-xl scale-110 opacity-30"
-            style={{ backgroundImage: `url(${blurDataURL || src})` }}
-          />
-          <div className="relative z-20 flex flex-col items-center justify-center space-y-1.5 p-2 bg-slate-950/80 backdrop-blur-md rounded-xl text-white border border-slate-800">
-            <Dumbbell className="w-4 h-4 text-amber-500 animate-spin" />
-            <span className="text-[8px] font-mono font-bold text-slate-200 tracking-wider">LOADING ASSET...</span>
-          </div>
+    <div className={`optimized-image-container ${className}`} style={containerStyle}>
+      {/* Loading Skeleton */}
+      {showSkeleton && !isLoaded && (
+        <div
+          className="absolute inset-0 bg-neutral-800/40 dark:bg-neutral-800/60 animate-pulse rounded-[inherit] z-10 flex items-center justify-center"
+          aria-hidden="true"
+        >
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin opacity-40" />
         </div>
       )}
 
-      <picture className="w-full h-full block">
-        {/* AVIF Optimized format */}
-        {avifSrc && (
-          <source
-            type="image/avif"
-            srcSet={avifSrcset || avifSrc}
-            sizes="(max-width: 640px) 480px, (max-width: 1024px) 768px, 1200px"
-          />
-        )}
-        {/* WebP Optimized format */}
-        {webpSrc && (
-          <source
-            type="image/webp"
-            srcSet={webpSrcset || webpSrc}
-            sizes="(max-width: 640px) 480px, (max-width: 1024px) 768px, 1200px"
-          />
-        )}
-        {/* Fallback image with blur-up animation and lazy decoding */}
-        <img
-          src={retryUrl}
-          alt={alt}
-          loading={loading}
-          decoding="async"
-          className={`${className} transition-all duration-700 ease-out ${
-            !isLoaded ? "opacity-0 filter blur-md scale-105" : "opacity-100 filter-none scale-100"
-          }`}
-          onLoad={handleLoad}
-          onError={handleError}
-          referrerPolicy="no-referrer"
-          {...props}
-        />
-      </picture>
+      {/* Rendered Image */}
+      <img
+        src={currentSrc}
+        srcSet={computedSrcSet}
+        alt={alt || "AlexFitness Media"}
+        width={width}
+        height={height}
+        loading={loading}
+        referrerPolicy={referrerPolicy}
+        onError={handleImageError}
+        onLoad={handleImageLoad}
+        className={`w-full h-full object-cover transition-opacity duration-300 ${
+          isLoaded ? "opacity-100" : "opacity-0"
+        }`}
+        {...restProps}
+      />
     </div>
   );
 };
+
+// Aliases for developer convenience & explicit naming requirements
+export const CdnImage = OptimizedImage;
+export const SupabaseImage = OptimizedImage;
 
 export default OptimizedImage;

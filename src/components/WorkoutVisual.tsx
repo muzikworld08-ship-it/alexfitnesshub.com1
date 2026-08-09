@@ -13,6 +13,7 @@ import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { findMatchingExercise } from "../utils/exerciseMatching";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
 import { getExerciseGifUrl } from "../data/exercises";
+import { getSupabaseCdnUrl } from "../utils/supabaseImage";
 
 interface WorkoutVisualProps {
   exerciseId?: string;
@@ -95,8 +96,13 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
 
   const formatMediaSrc = (url: string, retry: number) => {
     if (!url) return "";
-    if (url.startsWith("data:") || retry === 0) return url;
-    return url.includes("?") ? `${url}&retry=${retry}` : `${url}?retry=${retry}`;
+    const cdnOptimized = getSupabaseCdnUrl(url, {
+      width: isCard ? 500 : 900,
+      quality: 80,
+      format: "webp",
+    });
+    if (retry === 0) return cdnOptimized;
+    return cdnOptimized.includes("?") ? `${cdnOptimized}&retry=${retry}` : `${cdnOptimized}?retry=${retry}`;
   };
 
   // Card Mode Layout Helper

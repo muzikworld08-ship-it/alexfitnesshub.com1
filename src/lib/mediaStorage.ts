@@ -1,4 +1,5 @@
 import { supabase } from "../utils/supabase/client";
+import { getSupabaseCdnUrl, SupabaseImageOptions } from "../utils/supabaseImage";
 
 export const MEDIA_BUCKET_NAME = "exercise_media";
 
@@ -51,32 +52,43 @@ export function getAdminMediaUrl(pathName: string): string {
 export const getPublicMediaUrl = getAdminMediaUrl;
 
 /**
- * Resolves any media reference (including local static server asset paths & data URLs)
- * to a functional, stable display URL.
+ * Returns an optimized CDN URL with custom sizing and format parameters
  */
-export function resolveAdminMediaUrl(rawUrl?: string): string {
+export function getOptimizedMediaUrl(rawUrl?: string, options: SupabaseImageOptions = {}): string {
+  if (!rawUrl) return "";
+  const resolved = resolveAdminMediaUrl(rawUrl);
+  return getSupabaseCdnUrl(resolved, options);
+}
+
+/**
+ * Resolves any media reference (including local static server asset paths & data URLs)
+ * to a functional, stable display URL with CDN optimization support.
+ */
+export function resolveAdminMediaUrl(rawUrl?: string, options?: SupabaseImageOptions): string {
   if (!rawUrl) return "";
 
   const trimmed = rawUrl.trim();
+  let baseResolved = trimmed;
 
-  // Return direct HTTPS, HTTP, Data URLs, Blob URLs, or local absolute paths (/assets/...) as-is
   if (
-    trimmed.startsWith("http://") ||
-    trimmed.startsWith("https://") ||
-    trimmed.startsWith("data:") ||
-    trimmed.startsWith("blob:") ||
-    trimmed.startsWith("/")
+    !trimmed.startsWith("http://") &&
+    !trimmed.startsWith("https://") &&
+    !trimmed.startsWith("data:") &&
+    !trimmed.startsWith("blob:") &&
+    !trimmed.startsWith("/")
   ) {
-    return trimmed;
+    if (trimmed.startsWith("assets/")) {
+      baseResolved = `/${trimmed}`;
+    } else {
+      baseResolved = getAdminMediaUrl(trimmed);
+    }
   }
 
-  // Prepend '/' if relative local path starts with 'assets/'
-  if (trimmed.startsWith("assets/")) {
-    return `/${trimmed}`;
+  if (options && Object.keys(options).length > 0) {
+    return getSupabaseCdnUrl(baseResolved, options);
   }
 
-  // Retrieve public URL from Supabase Storage bucket if it's a relative storage path or key
-  return getAdminMediaUrl(trimmed);
+  return baseResolved;
 }
 
 /**

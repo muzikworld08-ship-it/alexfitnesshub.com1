@@ -931,26 +931,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               
               if (userSnap.exists()) {
                 const fetched = userSnap.data() as UserProfile;
+                const isAdmin = isEmailAdmin(firebaseUser.email || undefined);
                 profile = {
                   ...fetched,
+                  uid: firebaseUser.uid,
+                  email: firebaseUser.email || fetched.email || "",
+                  displayName: fetched.displayName || firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Athlete",
+                  photoURL: firebaseUser.photoURL || fetched.photoURL,
+                  role: isAdmin ? "admin" : (fetched.role || "user"),
+                  subscriptionStatus: isAdmin ? "premium" : (fetched.subscriptionStatus || "free"),
+                  subscriptionTier: isAdmin ? "yearly" : (fetched.subscriptionTier || "none"),
+                  accountType: fetched.accountType || (isAdmin || fetched.subscriptionStatus === "premium" ? "Premium Athlete" : "Free Trial"),
+                  badge: fetched.badge || (isAdmin || fetched.subscriptionStatus === "premium" ? "Premium Athlete" : "Free Trial"),
+                  isFreeTrial: fetched.isFreeTrial !== undefined ? fetched.isFreeTrial : (fetched.subscriptionStatus !== "premium" && !isAdmin),
+                  freeTrialStatus: fetched.freeTrialStatus || (fetched.subscriptionStatus === "premium" || isAdmin ? "none" : "active"),
+                  freeTrialDaysRemaining: fetched.freeTrialDaysRemaining !== undefined ? fetched.freeTrialDaysRemaining : (fetched.subscriptionStatus === "premium" || isAdmin ? 0 : 7),
                   onboarded: fetched.onboarded !== undefined ? fetched.onboarded : true
                 };
                 // Cache in local storage for subsequent offline loads
                 safeSetItem(`fit_user_${profile.uid}`, JSON.stringify(profile));
               } else {
-                // Build clean profile for existing session
-                profile = {
-                  uid: firebaseUser.uid,
-                  email: firebaseUser.email || "",
-                  displayName: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Athlete",
-                  photoURL: firebaseUser.photoURL || undefined,
-                  role: isEmailAdmin(firebaseUser.email || undefined) ? "admin" : "user",
-                  subscriptionStatus: "free",
-                  subscriptionTier: "none",
-                  createdAt: new Date().toISOString(),
-                  onboarded: true,
-                };
-                await setDoc(userDocRef, profile);
+                // Brand new user: Check local storage or build clean Free Trial profile with onboarded = false
+                const cachedStr = localStorage.getItem(`fit_user_${firebaseUser.uid}`);
+                if (cachedStr) {
+                  try {
+                    profile = JSON.parse(cachedStr);
+                  } catch (e) {}
+                }
+
+                if (!profile) {
+                  const pendingName = localStorage.getItem("fit_pending_name");
+                  localStorage.removeItem("fit_pending_name");
+                  const isAdmin = isEmailAdmin(firebaseUser.email || undefined);
+
+                  profile = {
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email || "",
+                    displayName: firebaseUser.displayName || pendingName || firebaseUser.email?.split("@")[0] || "Athlete",
+                    photoURL: firebaseUser.photoURL || undefined,
+                    role: isAdmin ? "admin" : "user",
+                    subscriptionStatus: isAdmin ? "premium" : "free",
+                    subscriptionTier: isAdmin ? "yearly" : "none",
+                    accountType: isAdmin ? "Admin Athlete" : "Free Trial",
+                    badge: isAdmin ? "Admin Athlete" : "Free Trial",
+                    isFreeTrial: isAdmin ? false : true,
+                    freeTrialStatus: isAdmin ? "none" : "active",
+                    freeTrialDaysRemaining: isAdmin ? 0 : 7,
+                    onboarded: false, // Brand new users must complete onboarding
+                    createdAt: new Date().toISOString(),
+                  };
+                  await setDoc(userDocRef, profile, { merge: true });
+                }
                 // Cache in local storage
                 safeSetItem(`fit_user_${profile.uid}`, JSON.stringify(profile));
               }

@@ -164,6 +164,70 @@ app.get("/assets/:filename", async (req, res, next) => {
 // Expose the assets directory so that local GIF/image/video overrides can be served seamlessly
 app.use("/assets", express.static(ASSETS_DIR));
 
+// --- SUPABASE CDN IMAGE PROXY & OPTIMIZATION ROUTE ---
+app.get(["/api/cdn-image", "/api/supabase-image-proxy"], async (req, res) => {
+  try {
+    const rawUrl = (req.query.url as string) || "";
+    const width = req.query.width ? parseInt(req.query.width as string, 10) : undefined;
+    const height = req.query.height ? parseInt(req.query.height as string, 10) : undefined;
+    const quality = req.query.quality ? parseInt(req.query.quality as string, 10) : 80;
+    const format = (req.query.format as string) || "webp";
+    const resize = (req.query.resize as string) || "cover";
+
+    if (!rawUrl) {
+      return res.status(400).json({ error: "Missing required 'url' parameter." });
+    }
+
+    const defaultSupabaseUrl = "https://ilfjiotgkdedgssachoe.supabase.co";
+
+    let targetCdnUrl = rawUrl;
+
+    // Check if URL is a Supabase Storage URL
+    if (rawUrl.includes("supabase.co/storage/") || rawUrl.includes("supabase.in/storage/")) {
+      if (rawUrl.includes("/storage/v1/object/public/")) {
+        targetCdnUrl = rawUrl.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
+      }
+      const queryParams = new URLSearchParams();
+      if (width && width > 0) queryParams.set("width", width.toString());
+      if (height && height > 0) queryParams.set("height", height.toString());
+      if (quality) queryParams.set("quality", quality.toString());
+      if (format && format !== "origin") queryParams.set("format", format);
+      if (resize) queryParams.set("resize", resize);
+
+      const queryString = queryParams.toString();
+      targetCdnUrl = queryString ? (targetCdnUrl.includes("?") ? `${targetCdnUrl}&${queryString}` : `${targetCdnUrl}?${queryString}`) : targetCdnUrl;
+
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      return res.redirect(302, targetCdnUrl);
+    }
+
+    // Handle relative Supabase bucket key paths
+    if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://") && !rawUrl.startsWith("/")) {
+      const bucket = rawUrl.startsWith("exercise_media/") ? "" : "exercise_media/";
+      targetCdnUrl = `${defaultSupabaseUrl}/storage/v1/render/image/public/${bucket}${rawUrl}`;
+      const queryParams = new URLSearchParams();
+      if (width && width > 0) queryParams.set("width", width.toString());
+      if (height && height > 0) queryParams.set("height", height.toString());
+      if (quality) queryParams.set("quality", quality.toString());
+      if (format && format !== "origin") queryParams.set("format", format);
+      if (resize) queryParams.set("resize", resize);
+
+      const queryString = queryParams.toString();
+      if (queryString) targetCdnUrl += `?${queryString}`;
+
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      return res.redirect(302, targetCdnUrl);
+    }
+
+    // For external image URLs, set caching headers and redirect
+    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+    return res.redirect(302, rawUrl);
+  } catch (err: any) {
+    console.warn("[CDN Image Proxy Error]:", err?.message || err);
+    return res.status(500).json({ error: "Failed to optimize image via CDN proxy." });
+  }
+});
+
 // Configure high payload limits to allow massive Base64 images/videos to save correctly
 app.use(express.json({
   limit: "50mb",
@@ -486,12 +550,20 @@ async function getServerFirestoreDoc(collectionName: string, docId: string, user
   }
 
   // 3. Fallback to standard Firebase Web SDK
-  const docRef = doc(db, collectionName, docId);
-  const snap = await getDoc(docRef);
-  return {
-    exists: snap.exists(),
-    data: () => snap.data()
-  };
+  try {
+    const docRef = doc(db, collectionName, docId);
+    const snap = await getDoc(docRef);
+    return {
+      exists: snap.exists(),
+      data: () => snap.data()
+    };
+  } catch (err: any) {
+    console.warn(`[Server Firestore Doc Read] Notice reading ${collectionName}/${docId}:`, err?.message || err);
+    return {
+      exists: false,
+      data: () => null
+    };
+  }
 }
 
 async function getServerFirestoreQuery(collectionName: string, fieldPath: string, op: string, value: any) {
@@ -569,14 +641,19 @@ async function getServerFirestoreQuery(collectionName: string, fieldPath: string
     }
   }
 
-  const q = query(collection(db, collectionName), where(fieldPath, op as any, value));
-  const snap = await getDocs(q);
-  return {
-    docs: snap.docs.map(d => ({
-      id: d.id,
-      data: () => d.data()
-    }))
-  };
+  try {
+    const q = query(collection(db, collectionName), where(fieldPath, op as any, value));
+    const snap = await getDocs(q);
+    return {
+      docs: snap.docs.map(d => ({
+        id: d.id,
+        data: () => d.data()
+      }))
+    };
+  } catch (err: any) {
+    console.warn(`[Server Firestore Query Read] Notice querying ${collectionName}:`, err?.message || err);
+    return { docs: [] };
+  }
 }
 
 // Convert native javascript object to Firestore REST API document fields format

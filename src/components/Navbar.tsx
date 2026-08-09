@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import Logo from "./Logo";
+import { OptimizedImage } from "./OptimizedImage";
 
 interface NavbarProps {
   currentView: string;
@@ -273,7 +274,15 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                   </button>
                 )}
                 {user.photoURL && user.photoURL.trim() !== "" ? (
-                  <img src={user.photoURL} alt={user.displayName || "User"} className="w-8 h-8 rounded-full object-cover border border-[#E8E8E8]" referrerPolicy="no-referrer" />
+                  <OptimizedImage
+                    src={user.photoURL}
+                    alt={user.displayName || "User"}
+                    width={64}
+                    height={64}
+                    quality={85}
+                    format="webp"
+                    className="w-8 h-8 rounded-full object-cover border border-[#E8E8E8]"
+                  />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-[#E53935] flex items-center justify-center text-white font-black text-xs uppercase shadow-sm">
                     {user.displayName ? user.displayName[0] : (user.email ? user.email[0] : "A")}

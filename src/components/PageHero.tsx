@@ -1,5 +1,6 @@
 import React from "react";
 import { Sparkles, Shield, ChevronRight } from "lucide-react";
+import { OptimizedImage } from "./OptimizedImage";
 
 interface PageHeroProps {
   title: string;
@@ -59,12 +60,14 @@ export default function PageHero({
 
       {/* Right side vertical full-height image column (No dark overlays, ultra-bright presentation) */}
       <div className="md:col-span-6 lg:col-span-5 relative h-[240px] sm:h-[320px] md:h-full overflow-hidden select-none bg-slate-50 border-t md:border-t-0 md:border-l border-slate-200 w-full">
-        <img
-          src={imageUrl || null}
+        <OptimizedImage
+          src={imageUrl}
           alt={title}
+          width={800}
+          height={600}
+          quality={85}
+          format="webp"
           className="w-full h-full object-cover object-center filter brightness-125 contrast-110 saturate-105"
-          referrerPolicy="no-referrer"
-          loading="lazy"
         />
         {/* Soft, clean exposure balancing overlay */}
         <div className="absolute inset-0 bg-white/5 pointer-events-none" />

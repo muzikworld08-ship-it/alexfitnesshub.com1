@@ -126,29 +126,35 @@ function FitnessAppContent() {
 
   // Refactored Auth Sync: Track previous uid to only trigger redirect ONCE on login/logout
   const prevUserUid = React.useRef<string | undefined>(undefined);
+  const isInitialMount = React.useRef<boolean>(true);
 
   React.useEffect(() => {
     const currentUid = user?.uid;
+
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      prevUserUid.current = currentUid;
+      return;
+    }
+
     const previousUid = prevUserUid.current;
     prevUserUid.current = currentUid;
 
     // Transition: Logged out -> Logged in
     if (currentUid && !previousUid) {
-      if (user) {
-        setIsAuthOpen(false);
-        if (user.onboarded === false) {
-          console.log("[DevOps Auth Sync] Successfully authenticated. Redirecting brand new user to onboarding.");
-          setView("onboarding");
-        } else {
-          const attempted = localStorage.getItem("fit_attempted_view");
-          if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin") {
-            localStorage.removeItem("fit_attempted_view");
-            console.log(`[DevOps Auth Sync] Redirecting to attempted view: ${attempted}`);
-            setView(attempted);
-          } else {
-            console.log("[DevOps Auth Sync] Successfully authenticated. Redirecting existing user to dashboard.");
-            setView("dashboard");
-          }
+      setIsAuthOpen(false);
+      if (user?.onboarded === false) {
+        console.log("[DevOps Auth Sync] Successfully authenticated. Redirecting brand new user to onboarding.");
+        setView("onboarding");
+      } else {
+        const attempted = localStorage.getItem("fit_attempted_view");
+        if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin") {
+          localStorage.removeItem("fit_attempted_view");
+          console.log(`[DevOps Auth Sync] Redirecting to attempted view: ${attempted}`);
+          setView(attempted);
+        } else if (currentView === "home" || currentView === "login" || currentView === "signin") {
+          console.log("[DevOps Auth Sync] Successfully authenticated. Redirecting existing user to dashboard.");
+          setView("dashboard");
         }
       }
     } else if (!currentUid && previousUid) {
@@ -161,6 +167,8 @@ function FitnessAppContent() {
 
   // Handle explicit /login, /signin, /onboarding routing triggers and redirect guards
   React.useEffect(() => {
+    if (loading) return;
+
     if (currentView === "login" || currentView === "signin") {
       if (user) {
         // Already logged in, redirect away from login screen immediately!
@@ -184,7 +192,7 @@ function FitnessAppContent() {
         setView("dashboard");
       }
     }
-  }, [currentView, user]);
+  }, [currentView, user, loading]);
 
   // General Guard to catch any unauthorized entries to protected views for unauthenticated guests
   React.useEffect(() => {
