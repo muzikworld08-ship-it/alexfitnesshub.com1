@@ -3189,6 +3189,11 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
     uid: userId,
     email: email || existingProfile.email || "",
     subscriptionStatus: "premium",
+    accountType: "Premium Athlete",
+    badge: "Premium Athlete",
+    isFreeTrial: false,
+    freeTrialDaysRemaining: 0,
+    freeTrialStatus: "expired",
     subscriptionTier: plan === "multi" ? "monthly" : plan,
     subscriptionPlan: plan, // explicit subscription plan
     paymentReference: reference, // payment reference
@@ -3200,7 +3205,7 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
 
   // 1. Update user profile in Firestore
   await setServerFirestoreDoc("users", userId, updatedProfile, true);
-  console.log(`[Database Update] User ${userId} profile updated with premium subscription in Firestore. Expiry: ${newExpiryDate.toISOString()}`);
+  console.log(`[Database Update] User ${userId} profile updated with Premium Athlete subscription in Firestore. Expiry: ${newExpiryDate.toISOString()}`);
 
   // 2. Save payment record in payments collection
   const paymentRecord = {
@@ -3223,7 +3228,7 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
   return { success: true, alreadyProcessed: false, profile: updatedProfile };
 }
 
-// GET latest subscription status of a user
+// GET latest subscription status of a user (with auto-healing for paid users)
 app.get("/api/user/profile-status", async (req: any, res: any) => {
   const authHeader = req.headers.authorization;
   let token = "";
@@ -3261,11 +3266,68 @@ app.get("/api/user/profile-status", async (req: any, res: any) => {
         displayName: decoded.email ? decoded.email.split("@")[0] : "Athlete",
         subscriptionStatus: "free",
         subscriptionTier: "basic",
+        accountType: "Free Trial",
+        badge: "Free Trial",
+        isFreeTrial: true,
+        freeTrialStatus: "active",
         role: "user",
         createdAt: new Date().toISOString()
       };
       await setServerFirestoreDoc("users", decoded.uid, profile, false);
-      console.log(`[Database Setup] Created default free profile for user: ${decoded.uid}`);
+      console.log(`[Database Setup] Created default profile for user: ${decoded.uid}`);
+    }
+
+    // Auto-healing: If user is not currently marked premium, check payments collection or Paystack API for existing successful payments
+    if (profile.subscriptionStatus !== "premium" && profile.role !== "admin") {
+      try {
+        const userEmail = decoded.email || profile.email;
+        // Check Firestore payments collection
+        const recentPaymentsSnap = await getServerFirestoreQuery("payments", "userId", "==", decoded.uid);
+        let validPayment = recentPaymentsSnap.docs.find((d: any) => {
+          const data = typeof d.data === "function" ? d.data() : d.data;
+          return data && data.status === "success";
+        });
+        if (!validPayment && userEmail) {
+          const emailPaymentsSnap = await getServerFirestoreQuery("payments", "email", "==", userEmail);
+          validPayment = emailPaymentsSnap.docs.find((d: any) => {
+            const data = typeof d.data === "function" ? d.data() : d.data;
+            return data && data.status === "success";
+          });
+        }
+
+        if (validPayment) {
+          const payData = typeof validPayment.data === "function" ? validPayment.data() : validPayment.data;
+          console.log(`[Auto-Healing Premium] Found successful payment doc ${payData.reference} for user ${decoded.uid}. Restoring Premium status.`);
+          const healResult = await processSuccessfulPayment(payData.reference, payData, {
+            userId: decoded.uid,
+            plan: payData.plan || "monthly"
+          });
+          profile = healResult.profile;
+        } else if (PAYSTACK_SECRET_KEY && userEmail) {
+          // Check Paystack transaction history directly for this customer email
+          try {
+            const paystackRes = await fetch(`https://api.paystack.co/transaction?customer=${encodeURIComponent(userEmail)}&status=success`, {
+              headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }
+            });
+            const paystackData = await paystackRes.json();
+            if (paystackData?.status && Array.isArray(paystackData.data) && paystackData.data.length > 0) {
+              const successfulTx = paystackData.data.find((tx: any) => tx.status === "success");
+              if (successfulTx) {
+                console.log(`[Auto-Healing Paystack API] Found confirmed Paystack transaction ${successfulTx.reference} for email ${userEmail}. Restoring Premium.`);
+                const healResult = await processSuccessfulPayment(successfulTx.reference, successfulTx, {
+                  userId: decoded.uid,
+                  plan: successfulTx.metadata?.plan || "monthly"
+                });
+                profile = healResult.profile;
+              }
+            }
+          } catch (paystackErr: any) {
+            console.warn(`[Auto-Healing Paystack API Warning] Failed to check Paystack history:`, paystackErr.message);
+          }
+        }
+      } catch (healErr: any) {
+        console.warn(`[Auto-Healing Exception] Warning checking payment history for ${decoded.uid}:`, healErr.message);
+      }
     }
 
     // Check expiration on every status load
@@ -3275,10 +3337,18 @@ app.get("/api/user/profile-status", async (req: any, res: any) => {
         console.log(`[Profile Status] Subscription expired for user ${decoded.uid}. Reverting status to free.`);
         profile.subscriptionStatus = "free";
         profile.subscriptionTier = "none";
+        profile.accountType = "Free Trial";
+        profile.badge = "Free Trial";
+        profile.isFreeTrial = false;
+        profile.freeTrialStatus = "expired";
         await setServerFirestoreDoc("users", decoded.uid, {
           ...profile,
           subscriptionStatus: "free",
-          subscriptionTier: "none"
+          subscriptionTier: "none",
+          accountType: "Free Trial",
+          badge: "Free Trial",
+          isFreeTrial: false,
+          freeTrialStatus: "expired"
         }, true);
       }
     }
@@ -3290,6 +3360,8 @@ app.get("/api/user/profile-status", async (req: any, res: any) => {
       subscriptionPlan: profile.subscriptionPlan || profile.subscriptionTier || "free",
       subscriptionExpiry: profile.subscriptionExpiry || null,
       role: profile.role || "user",
+      accountType: profile.accountType || (profile.subscriptionStatus === "premium" ? "Premium Athlete" : "Free Trial"),
+      badge: profile.badge || (profile.subscriptionStatus === "premium" ? "Premium Athlete" : "Free Trial"),
       profile
     });
   } catch (error: any) {

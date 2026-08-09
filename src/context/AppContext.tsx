@@ -1043,6 +1043,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           setUser(profile);
           
+          // Background verification with backend profile-status (triggers auto-healing for paid users)
+          firebaseUser.getIdToken().then(token => {
+            fetch("/api/user/profile-status", {
+              headers: { Authorization: `Bearer ${token}` }
+            })
+            .then(r => r.json())
+            .then(data => {
+              if (data && data.profile) {
+                console.log(`[Profile Status Sync] Backend returned profile status: ${data.profile.subscriptionStatus}`);
+                setUser(data.profile);
+                safeSetItem(`fit_user_${firebaseUser.uid}`, JSON.stringify(data.profile));
+              }
+            })
+            .catch(e => console.warn("Background profile status check failed:", e));
+          }).catch(() => {});
+
           // Load User metadata records (saved Workouts, logs)
           loadUserData(firebaseUser.uid);
           
@@ -1483,7 +1499,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     if (!isMockFirebase && auth.currentUser) {
       // Fire-and-forget background synchronization to prevent UI main-thread latency or blockage from TCP offline retries
-      updateDoc(doc(db, "users", updated.uid), { ...updated })
+      setDoc(doc(db, "users", updated.uid), { ...updated }, { merge: true })
         .catch(err => {
           console.warn("Firestore background sync failed, relying on local state:", err);
         });

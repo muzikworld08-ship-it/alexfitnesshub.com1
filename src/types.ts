@@ -10,6 +10,11 @@ export interface UserProfile {
   subscriptionPlan?: "monthly" | "yearly" | "multi" | "none";
   subscriptionActivationDate?: string;
   paymentReference?: string;
+  accountType?: string;
+  badge?: string;
+  isFreeTrial?: boolean;
+  freeTrialStatus?: "active" | "expired" | "none";
+  freeTrialDaysRemaining?: number;
   fitnessGoals?: string;
   weight?: number; // in kg
   height?: number; // in cm
