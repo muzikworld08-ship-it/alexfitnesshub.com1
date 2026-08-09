@@ -6,7 +6,7 @@ import firebaseConfig from "../../firebase-applet-config.json";
 
 // Silence benign internal gRPC idle stream cancellation messages
 try {
-  setLogLevel("error");
+  setLogLevel("silent");
 } catch (e) {
   // Ignore
 }
