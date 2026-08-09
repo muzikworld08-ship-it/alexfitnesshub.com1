@@ -10,7 +10,7 @@ import {
   Search, SlidersHorizontal, Lock, CheckCircle, PlusCircle, Sparkles, X, 
   ChevronRight, HelpCircle, AlertTriangle, Play, Shield, Calendar, Apple, Dumbbell, ArrowRight, Clipboard,
   Compass, CheckCircle2, UploadCloud, FileVideo, FileImage, Trash2, ArrowLeft, RotateCcw, Award, Activity,
-  Heart, Bookmark
+  Heart, Bookmark, Crown
 } from "lucide-react";
 import WorkoutVisual from "./WorkoutVisual";
 import MuscleAnatomyVisual from "./MuscleAnatomyVisual";
@@ -218,7 +218,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
     workoutFilters,
     setWorkoutFilters
   } = useApp();
-  const isUserPremium = user?.subscriptionStatus === "premium";
+  const isUserPremium = Boolean(user && (user.subscriptionStatus === "premium" || user.role === "admin"));
   
   const {
     searchQuery,
@@ -1001,6 +1001,48 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
       setActiveSearchTab("exercises");
     }
   };
+
+  if (!isUserPremium) {
+    return (
+      <div id="workout-library-gated" className="max-w-4xl mx-auto px-4 py-16 text-center">
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-12 shadow-xl text-center space-y-6">
+          <div className="mx-auto w-16 h-16 rounded-full bg-red-100 flex items-center justify-center text-[#D32F2F]">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#D32F2F]">
+              Premium Exclusive Portal
+            </span>
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+              Workout Library Locked
+            </h2>
+            <p className="text-slate-600 text-sm max-w-md mx-auto leading-relaxed">
+              The full 520+ Exercise & Drills Workout Library is reserved exclusively for AlexFitnessHub Premium Athletes. Upgrade your membership to unlock instant access.
+            </p>
+          </div>
+
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.setItem("fit_attempted_view", "library");
+                const el = document.getElementById("pricing");
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth" });
+                } else {
+                  setView("home");
+                }
+              }}
+              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-bold text-sm tracking-wide shadow-lg shadow-red-100 transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Crown className="w-4 h-4 text-amber-300" />
+              <span>Unlock Premium Membership</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (selectedExercise) {
     return (

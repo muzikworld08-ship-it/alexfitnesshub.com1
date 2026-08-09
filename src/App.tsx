@@ -208,6 +208,21 @@ function FitnessAppContent() {
         console.log(`[DevOps Security] Unauthenticated user attempted to access protected view: ${currentView}. Redirecting to Home and opening auth.`);
         setView("home");
         setIsAuthOpen(true);
+        return;
+      }
+
+      // Guard premium-restricted routes for logged-in non-premium users
+      const restrictedViews = [
+        "library", "coach", "nutrition", "workout-generator", "daily-plan", "dashboard", 
+        "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", 
+        "handbook", "weight-trajectory", "community", "challenges", "belly-fat-shred"
+      ];
+      if (user && restrictedViews.includes(currentView)) {
+        const isPremium = Boolean(user.subscriptionStatus === "premium" || user.role === "admin");
+        if (!isPremium) {
+          console.log(`[DevOps Security] Non-premium user attempted to access restricted view: ${currentView}. Redirecting to pricing section.`);
+          navigateToPricing();
+        }
       }
     }
   }, [user, currentView, loading]);
@@ -327,7 +342,13 @@ function FitnessAppContent() {
       return;
     }
 
+    let resolvedView = targetView;
+    if (targetView.startsWith("/")) {
+      resolvedView = PATH_TO_VIEW_MAP[targetView] || targetView.replace(/^\/premium\//, "").replace(/^\//, "");
+    }
+
     const FEATURE_NAMES: Record<string, string> = {
+      "library": "Workouts Library",
       "coach": "AI Kinesiology Coach",
       "nutrition": "Nutrition & Meal Matrix",
       "workout-generator": "AI Workout Generator",
@@ -344,22 +365,28 @@ function FitnessAppContent() {
     };
 
     const restrictedViews = [
-      "coach", "nutrition", "workout-generator", "daily-plan", "dashboard", 
+      "library", "coach", "nutrition", "workout-generator", "daily-plan", "dashboard", 
       "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", 
       "handbook", "weight-trajectory", "community", "challenges", "belly-fat-shred"
     ];
 
-    if (restrictedViews.includes(targetView)) {
-      const isPremium = user && (user.subscriptionStatus === "premium" || user.role === "admin");
+    const isRestricted = restrictedViews.includes(resolvedView) || 
+                        targetView.startsWith("/premium") || 
+                        targetView.startsWith("premium") || 
+                        (VIEW_TO_PATH_MAP[resolvedView] && VIEW_TO_PATH_MAP[resolvedView].startsWith("/premium"));
+
+    if (isRestricted) {
+      const isPremium = Boolean(user && (user.subscriptionStatus === "premium" || user.role === "admin"));
       if (!isPremium) {
-        localStorage.setItem("fit_attempted_view", targetView);
-        setPremiumModalFeatureName(FEATURE_NAMES[targetView] || "Premium Feature");
+        localStorage.setItem("fit_attempted_view", resolvedView);
+        setPremiumModalFeatureName(FEATURE_NAMES[resolvedView] || "Premium Feature");
         setIsPremiumModalOpen(true);
+        navigateToPricing();
         return;
       }
     }
 
-    setView(targetView);
+    setView(resolvedView);
   };
 
   if (loading) {

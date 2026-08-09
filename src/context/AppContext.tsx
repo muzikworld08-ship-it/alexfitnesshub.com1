@@ -932,6 +932,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               if (userSnap.exists()) {
                 const fetched = userSnap.data() as UserProfile;
                 const isAdmin = isEmailAdmin(firebaseUser.email || undefined);
+                const isPremium = isAdmin || fetched.subscriptionStatus === "premium";
                 profile = {
                   ...fetched,
                   uid: firebaseUser.uid,
@@ -939,13 +940,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   displayName: fetched.displayName || firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Athlete",
                   photoURL: firebaseUser.photoURL || fetched.photoURL,
                   role: isAdmin ? "admin" : (fetched.role || "user"),
-                  subscriptionStatus: isAdmin ? "premium" : (fetched.subscriptionStatus || "free"),
-                  subscriptionTier: isAdmin ? "yearly" : (fetched.subscriptionTier || "none"),
-                  accountType: fetched.accountType || (isAdmin || fetched.subscriptionStatus === "premium" ? "Premium Athlete" : "Free Trial"),
-                  badge: fetched.badge || (isAdmin || fetched.subscriptionStatus === "premium" ? "Premium Athlete" : "Free Trial"),
-                  isFreeTrial: fetched.isFreeTrial !== undefined ? fetched.isFreeTrial : (fetched.subscriptionStatus !== "premium" && !isAdmin),
-                  freeTrialStatus: fetched.freeTrialStatus || (fetched.subscriptionStatus === "premium" || isAdmin ? "none" : "active"),
-                  freeTrialDaysRemaining: fetched.freeTrialDaysRemaining !== undefined ? fetched.freeTrialDaysRemaining : (fetched.subscriptionStatus === "premium" || isAdmin ? 0 : 7),
+                  subscriptionStatus: isPremium ? "premium" : "free",
+                  subscriptionTier: isPremium ? (fetched.subscriptionTier === "none" || !fetched.subscriptionTier ? "monthly" : fetched.subscriptionTier) : "none",
+                  accountType: isPremium ? "Premium Athlete" : "Free Trial",
+                  badge: isPremium ? "Premium Athlete" : "Free Trial",
+                  isFreeTrial: !isPremium,
+                  freeTrialStatus: isPremium ? "none" : (fetched.freeTrialStatus || "active"),
+                  freeTrialDaysRemaining: isPremium ? 0 : (fetched.freeTrialDaysRemaining ?? 7),
                   onboarded: fetched.onboarded !== undefined ? fetched.onboarded : true
                 };
                 // Cache in local storage for subsequent offline loads
@@ -1518,7 +1519,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const syncUserToStorageAndPlatform = async (updated: UserProfile) => {
     setUser(updated);
-    safeSetItem(`fit_user_${updated.uid}`, JSON.stringify(updated));
+    if (updated.uid) {
+      safeSetItem(`fit_user_${updated.uid}`, JSON.stringify(updated));
+      safeSetItem("fit_active_user", JSON.stringify(updated));
+    }
     
     // Update admin analytics list
     setAllSystemUsers(prev => {
@@ -1528,7 +1532,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return nextList;
     });
 
-    if (!isMockFirebase && auth.currentUser) {
+    if (!isMockFirebase && updated.uid) {
       // Fire-and-forget background synchronization to prevent UI main-thread latency or blockage from TCP offline retries
       setDoc(doc(db, "users", updated.uid), { ...updated }, { merge: true })
         .catch(err => {
@@ -1997,6 +2001,18 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
             subscriptionExpiry: verifyRes.data?.subscriptionExpiry || new Date(Date.now() + (resolvedPlan === "yearly" ? 365 : 30) * 86400000).toISOString()
           } as UserProfile;
         }
+
+        // Guarantee premium normalization across all fields
+        resolvedUser = {
+          ...resolvedUser,
+          subscriptionStatus: "premium",
+          accountType: "Premium Athlete",
+          badge: "Premium Athlete",
+          isFreeTrial: false,
+          freeTrialStatus: "none",
+          freeTrialDaysRemaining: 0,
+          subscriptionTier: resolvedUser.subscriptionTier && resolvedUser.subscriptionTier !== "none" ? resolvedUser.subscriptionTier : "monthly"
+        };
 
         await syncUserToStorageAndPlatform(resolvedUser);
         
