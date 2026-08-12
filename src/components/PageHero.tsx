@@ -63,6 +63,9 @@ export default function PageHero({
         <OptimizedImage
           src={imageUrl}
           alt={title}
+          priority={true}
+          loading="eager"
+          fetchPriority="high"
           width={800}
           height={600}
           quality={85}

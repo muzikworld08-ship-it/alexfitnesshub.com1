@@ -2361,6 +2361,112 @@ app.get("/api/exercises/custom-media", (req, res) => {
   }
 });
 
+async function uploadFileToFirebaseStorageServer(
+  buffer: Buffer,
+  mimeType: string,
+  filename: string
+): Promise<string | null> {
+  const bucketName = firebaseConfig.storageBucket || "alex-project-777.firebasestorage.app";
+  
+  let token = "";
+  if (process.env.K_SERVICE) {
+    try {
+      const tokenRes = await fetch("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token", {
+        headers: { "Metadata-Flavor": "Google" }
+      });
+      if (tokenRes.ok) {
+        const tokenData: any = await tokenRes.json();
+        token = tokenData.access_token || "";
+      }
+    } catch (e) {
+      console.warn("[Server Storage Token Error]:", e);
+    }
+  }
+
+  const cleanFilename = filename.replace(/[^a-zA-Z0-9_.-]/g, "_");
+  const encodedName = encodeURIComponent(`uploads/${cleanFilename}`);
+  const uploadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o?name=${encodedName}&uploadType=media`;
+
+  try {
+    const headers: Record<string, string> = {
+      "Content-Type": mimeType
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const uploadRes = await fetch(uploadUrl, {
+      method: "POST",
+      headers,
+      body: buffer
+    });
+
+    if (uploadRes.ok) {
+      const data: any = await uploadRes.json();
+      const downloadToken = data.downloadTokens || data.token || "permanent";
+      const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedName}?alt=media&token=${downloadToken}`;
+      console.log(`[Server Cloud Storage OK] Uploaded permanent image URL: ${publicUrl}`);
+      return publicUrl;
+    } else {
+      const errText = await uploadRes.text();
+      console.warn(`[Server Cloud Storage REST Error] Status ${uploadRes.status}:`, errText);
+    }
+  } catch (err) {
+    console.error("[Server Cloud Storage Upload Exception]:", err);
+  }
+  return null;
+}
+
+// POST endpoint to handle base64 image uploads permanently to cloud storage
+app.post("/api/media/upload", async (req: any, res: any) => {
+  try {
+    const { fileData, filename = `upload_${Date.now()}`, mimeType = "image/png", exerciseId, userId } = req.body;
+    if (!fileData) {
+      return res.status(400).json({ success: false, error: "Missing required 'fileData' (base64 string or URL)." });
+    }
+
+    if (fileData.startsWith("http://") || fileData.startsWith("https://")) {
+      return res.json({ success: true, url: fileData });
+    }
+
+    const match = fileData.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) {
+      return res.status(400).json({ success: false, error: "Invalid base64 payload format." });
+    }
+
+    const detectedMime = match[1] || mimeType;
+    const base64Content = match[2];
+    const buffer = Buffer.from(base64Content, "base64");
+
+    let ext = "png";
+    if (detectedMime.includes("gif")) ext = "gif";
+    else if (detectedMime.includes("jpeg") || detectedMime.includes("jpg")) ext = "jpg";
+    else if (detectedMime.includes("mp4")) ext = "mp4";
+    else if (detectedMime.includes("webp")) ext = "webp";
+
+    const fullFilename = `${filename}_${Date.now()}.${ext}`;
+    const cloudUrl = await uploadFileToFirebaseStorageServer(buffer, detectedMime, fullFilename);
+
+    if (cloudUrl) {
+      if (exerciseId) {
+        await setServerFirestoreDoc("exercise_media", exerciseId, {
+          exerciseId,
+          customMediaUrl: cloudUrl,
+          customMediaType: detectedMime.includes("video") ? "video" : "image",
+          updatedAt: new Date().toISOString()
+        }, true).catch(() => {});
+      }
+      return res.json({ success: true, url: cloudUrl });
+    }
+
+    // Fallback: Return raw data URL if REST upload is unavailable
+    return res.json({ success: true, url: fileData });
+  } catch (err: any) {
+    console.error("Error in /api/media/upload:", err);
+    res.status(500).json({ success: false, error: err?.message || "Failed to upload image." });
+  }
+});
+
 // POST to save custom media override to local JSON file
 app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res: any) => {
   let { exerciseId, customMediaUrl, customMediaType } = req.body;
@@ -2396,11 +2502,11 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
 
     if (customMediaUrl === null) {
       delete overrides[exerciseId];
-      // Save empty/null record to Cloud Firestore backup collection 'exercise_media'
       try {
         await setServerFirestoreDoc("exercise_media", exerciseId, {
           exerciseId,
           originalUrlOrBase64: null,
+          customMediaUrl: null,
           customMediaType: customMediaType || "image",
           updatedAt: new Date().toISOString()
         }, false);
@@ -2417,53 +2523,54 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
         rawInputUrl.includes("supabase.in/storage")
       );
 
-      // Save raw input URL to Cloud Firestore backup collection 'exercise_media' FIRST
-      let mediaPayloadToStore = rawInputUrl;
-      if (mediaPayloadToStore && mediaPayloadToStore.startsWith("data:") && mediaPayloadToStore.length > 900000) {
-        // Safe cap for single Firestore document limit if raw base64 data URL is >900KB
-        mediaPayloadToStore = mediaPayloadToStore.slice(0, 900000);
-      }
-
-      try {
-        await setServerFirestoreDoc("exercise_media", exerciseId, {
-          exerciseId,
-          originalUrlOrBase64: mediaPayloadToStore,
-          customMediaType: customMediaType || "image",
-          updatedAt: new Date().toISOString()
-        }, false);
-        console.log(`[Firestore Media Backup OK] Saved raw media backup for exercise ID ${exerciseId} to Cloud Firestore.`);
-      } catch (dbErr) {
-        console.error("[Firestore Media Backup Error]:", dbErr);
-      }
-
       if (isCloudStorageUrl || (rawInputUrl && (rawInputUrl.startsWith("http://") || rawInputUrl.startsWith("https://")))) {
-        // PERMANENT CLOUD / HTTPS STORAGE URL:
-        // Do NOT overwrite with relative /assets/ path! Keep the permanent HTTPS Storage URL as-is.
-        console.log(`[Custom Media Upload] Preserving permanent Cloud Storage URL for exercise ${exerciseId}: ${rawInputUrl}`);
         customMediaUrl = rawInputUrl;
       } else if (rawInputUrl && rawInputUrl.startsWith("data:")) {
-        // 2. Decode and save physical bytes if payload is a Base64 dataURL
+        // Upload base64 payload to permanent cloud storage
         const match = rawInputUrl.match(/^data:([^;]+);base64,(.+)$/);
         if (match) {
           const mimeType = match[1];
           const base64Data = match[2];
-          let ext = "bin";
-          
+          const buffer = Buffer.from(base64Data, "base64");
+          let ext = "png";
           if (mimeType.includes("gif")) ext = "gif";
           else if (mimeType.includes("jpeg") || mimeType.includes("jpg")) ext = "jpg";
-          else if (mimeType.includes("png")) ext = "png";
           else if (mimeType.includes("mp4")) ext = "mp4";
-          else if (mimeType.includes("video/quicktime") || mimeType.includes("mov")) ext = "mov";
-          else if (mimeType.includes("svg")) ext = "svg";
           else if (mimeType.includes("webp")) ext = "webp";
 
-          const filename = `exercise_custom_${exerciseId}.${ext}`;
-          const filePath = path.join(ASSETS_DIR, filename);
-          fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
-          
-          // Use full data URL or static URL fallback
-          customMediaUrl = rawInputUrl;
+          const filename = `exercise_custom_${exerciseId}_${Date.now()}.${ext}`;
+          const cloudUploadedUrl = await uploadFileToFirebaseStorageServer(buffer, mimeType, filename);
+
+          if (cloudUploadedUrl) {
+            customMediaUrl = cloudUploadedUrl;
+          } else {
+            // Write to disk as fallback
+            const localFilename = `exercise_custom_${exerciseId}.${ext}`;
+            const filePath = path.join(ASSETS_DIR, localFilename);
+            fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+            customMediaUrl = rawInputUrl;
+          }
         }
+      }
+
+      // Save permanent HTTPS cloud URL to Firestore exercise_media backup
+      try {
+        await setServerFirestoreDoc("exercise_media", exerciseId, {
+          exerciseId,
+          customMediaUrl: customMediaUrl,
+          customMediaType: customMediaType || "image",
+          updatedAt: new Date().toISOString()
+        }, false);
+        
+        await setServerFirestoreDoc("exercises", exerciseId, {
+          id: exerciseId,
+          customMediaUrl: customMediaUrl,
+          customMediaType: customMediaType || "image",
+          updatedAt: new Date().toISOString()
+        }, true);
+        console.log(`[Firestore Media Backup OK] Saved permanent media URL for exercise ID ${exerciseId}: ${customMediaUrl}`);
+      } catch (dbErr) {
+        console.error("[Firestore Media Backup Error]:", dbErr);
       }
 
       overrides[exerciseId] = {
@@ -2477,6 +2584,7 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
     
     // Log admin activity on Firebase
     await logAdminActivityOnFirebase(
+      req.user?.email || "",
       req.user?.email || "",
       req.user?.uid || "",
       "CUSTOM_MEDIA_UPLOAD",
@@ -3226,15 +3334,32 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
   // Fallback to pending payment doc if available in Firestore
   const pendingDoc = paymentSnap.exists ? paymentSnap.data() : null;
 
-  const userId = metadata.userId || verifyData.customer?.metadata?.userId || fallbackData?.userId || pendingDoc?.userId;
+  let userId = metadata.userId || verifyData.customer?.metadata?.userId || fallbackData?.userId || pendingDoc?.userId;
   const plan = metadata.plan || fallbackData?.plan || pendingDoc?.plan || "monthly";
   const months = Number(metadata.months || fallbackData?.months || pendingDoc?.months || (plan === "yearly" ? 12 : plan === "multi" ? 3 : 1));
   const amountNGN = metadata.amountNGN || (verifyData.amount ? verifyData.amount / 100 : pendingDoc?.amount || 19999);
   const email = verifyData.customer?.email || pendingDoc?.email || "";
 
+  // If userId is missing, attempt email-based user lookup in Firestore
+  if (!userId && email) {
+    try {
+      const userQuerySnap = await getServerFirestoreQuery("users", "email", "==", email.toLowerCase().trim());
+      if (userQuerySnap && userQuerySnap.docs && userQuerySnap.docs.length > 0) {
+        const foundDoc = userQuerySnap.docs[0];
+        const data = typeof foundDoc.data === "function" ? foundDoc.data() : foundDoc.data;
+        if (data && (data.uid || foundDoc.id)) {
+          userId = data.uid || foundDoc.id;
+          console.log(`[Subscription Activation] Resolved userId ${userId} from email lookup for ${email}`);
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[Subscription Activation] Failed email lookup for ${email}:`, err.message);
+    }
+  }
+
   if (!userId) {
-    console.error(`[Subscription Activation Failed] No userId found in transaction metadata or fallback for reference ${reference}.`);
-    throw new Error("No userId found in transaction metadata.");
+    console.error(`[Subscription Activation Failed] No userId found in transaction metadata, fallback, or email lookup for reference ${reference}.`);
+    throw new Error("No user profile found associated with this payment reference or email.");
   }
 
   console.log(`[Subscription Activation] Activating ${plan} (${months} months) subscription for user: ${userId}, Email: ${email}, Reference: ${reference}`);
@@ -3266,23 +3391,30 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
     uid: userId,
     email: email || existingProfile.email || "",
     subscriptionStatus: "premium",
+    subscriptionPlan: plan,
+    subscriptionTier: plan === "multi" ? "monthly" : plan,
+    paymentStatus: "paid",
+    premiumAccess: true,
     accountType: "Premium Athlete",
     badge: "Premium Athlete",
     isFreeTrial: false,
     freeTrialDaysRemaining: 0,
-    freeTrialStatus: "expired",
-    subscriptionTier: plan === "multi" ? "monthly" : plan,
-    subscriptionPlan: plan, // explicit subscription plan
-    paymentReference: reference, // payment reference
-    subscriptionActivationDate: existingProfile.subscriptionActivationDate || now.toISOString(), // activation date
-    subscriptionExpiry: newExpiryDate.toISOString(), // expiration date
+    freeTrialStatus: "none",
+    paymentReference: reference,
+    subscriptionActivationDate: existingProfile.subscriptionActivationDate || now.toISOString(),
+    subscriptionExpiry: newExpiryDate.toISOString(),
     paymentAmount: amountNGN,
     paymentDate: now.toISOString()
   };
 
-  // 1. Update user profile in Firestore
-  await setServerFirestoreDoc("users", userId, updatedProfile, true);
-  console.log(`[Database Update] User ${userId} profile updated with Premium Athlete subscription in Firestore. Expiry: ${newExpiryDate.toISOString()}`);
+  // 1. Update user profile in Firestore (must happen before returning success)
+  try {
+    await setServerFirestoreDoc("users", userId, updatedProfile, true);
+    console.log(`[Database Update] User ${userId} profile updated with Premium Athlete subscription in Firestore. Expiry: ${newExpiryDate.toISOString()}`);
+  } catch (dbErr: any) {
+    console.error(`[Database Update Critical Failure] Failed to update user record for ${userId}:`, dbErr);
+    throw new Error(`Failed to update user subscription record in database: ${dbErr.message}`);
+  }
 
   // 2. Save payment record in payments collection
   const paymentRecord = {
@@ -3299,8 +3431,13 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
     subscriptionExpiry: newExpiryDate.toISOString(),
     timestamp: now.toISOString()
   };
-  await setServerFirestoreDoc("payments", reference, paymentRecord, false);
-  console.log(`[Database Update] Saved payment record for reference ${reference} in payments collection.`);
+
+  try {
+    await setServerFirestoreDoc("payments", reference, paymentRecord, false);
+    console.log(`[Database Update] Saved payment record for reference ${reference} in payments collection.`);
+  } catch (payRecordErr: any) {
+    console.warn(`[Payment Record Warning] Non-fatal issue writing payments record for ref ${reference}:`, payRecordErr.message);
+  }
 
   return { success: true, alreadyProcessed: false, profile: updatedProfile };
 }
@@ -3575,27 +3712,12 @@ app.post("/api/payments/initialize", async (req, res) => {
   - Reference: ${reference}
   - Callback URL: ${resolvedCallbackUrl}`);
 
-  // Sandbox/Simulation check: if secret key is missing, automatically redirect to mock checkout callback
+  // Require real Paystack secret key
   if (!PAYSTACK_SECRET_KEY) {
-    console.log(`[Sandbox Simulation] No PAYSTACK_SECRET_KEY configured. Generating simulated checkout redirect.`);
-    const simReference = "ref_ps_MOCK_" + crypto.randomBytes(8).toString("hex").toUpperCase();
-    await setServerFirestoreDoc("payments", simReference, {
-      userId,
-      email,
-      plan,
-      months: numMonths,
-      amount: amountNGN,
-      reference: simReference,
-      status: "pending",
-      createdAt: new Date().toISOString()
-    }, false).catch(e => {});
-
-    const simCallbackUrl = `${resolvedCallbackUrl}?reference=${simReference}&trxref=${simReference}&status=success`;
-    return res.json({
-      success: true,
-      authorization_url: simCallbackUrl,
-      reference: simReference,
-      access_code: "mock_access_code_for_testing"
+    console.warn(`[Checkout Creation Failed] PAYSTACK_SECRET_KEY environment variable is missing.`);
+    return res.status(400).json({
+      success: false,
+      error: "Paystack secret key is not configured on the server. Please set PAYSTACK_SECRET_KEY in Environment Settings."
     });
   }
 
@@ -3696,27 +3818,12 @@ app.post("/api/payments/verify", async (req, res) => {
     return res.status(400).json({ success: false, error: "Could not identify user associated with this payment reference." });
   }
 
-  // Simulation mode bypass when secret key is missing or reference is MOCK
-  if (!PAYSTACK_SECRET_KEY || reference.includes("_MOCK_")) {
-    console.log(`[Simulation Mode] Simulating transaction verification success for reference: ${reference}`);
-    const txPlan = requestedPlan || pendingPayment?.plan || "monthly";
-    const txMonths = pendingPayment?.months || (txPlan === "yearly" ? 12 : 1);
-    const tx = {
-      status: "success",
-      reference,
-      amount: (pendingPayment?.amount || 19999) * 100,
-      currency: "NGN",
-      customer: { email: authenticatedEmail || pendingPayment?.email },
-      metadata: { userId: targetUid, plan: txPlan, months: txMonths }
-    };
-
-    const result = await processSuccessfulPayment(reference, tx, {
-      userId: targetUid,
-      plan: txPlan,
-      months: txMonths
+  if (!PAYSTACK_SECRET_KEY) {
+    console.warn("[Transaction Verification Failed] PAYSTACK_SECRET_KEY environment variable is not configured.");
+    return res.status(400).json({
+      success: false,
+      error: "Paystack secret key is missing on backend. Unable to verify payment."
     });
-
-    return res.json({ success: true, data: tx, profile: result.profile, alreadyProcessed: result.alreadyProcessed });
   }
 
   try {

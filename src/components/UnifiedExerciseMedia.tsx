@@ -13,6 +13,7 @@ interface UnifiedExerciseMediaProps {
   className?: string;
   fallbackType?: "pulsing" | "dumbbell" | "none";
   aspectRatio?: "16/9" | "4/3" | "1/1" | "auto" | string;
+  priority?: boolean;
 }
 
 export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
@@ -21,6 +22,7 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
   className = "w-full h-full",
   fallbackType = "pulsing",
   aspectRatio = "auto",
+  priority = false,
 }) => {
   const { exercises, loading: hookLoading } = useCentralizedExercises();
   const [isLoaded, setIsLoaded] = useState(false);
@@ -131,6 +133,9 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
         className="w-full h-full object-cover"
         fallbackType={fallbackType}
         aspectRatio={aspectRatio}
+        priority={priority}
+        loading={priority ? "eager" : "lazy"}
+        fetchPriority={priority ? "high" : "auto"}
         onError={handleMediaError}
       />
     </div>

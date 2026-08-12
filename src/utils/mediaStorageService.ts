@@ -117,8 +117,40 @@ export async function uploadMediaToCloud(
     console.warn("[MediaStorage] Supabase Storage bucket upload skipped:", sbErr);
   }
 
-  // 3. Fallback: Convert to Data URL stream if direct cloud storage uploads are restricted
-  if (onProgress) onProgress(70, "Converting file to persistent data URL stream...");
+  // 3. Tertiary Attempt: Backend Server Cloud Storage REST Upload (/api/media/upload)
+  try {
+    if (onProgress) onProgress(60, "Uploading to permanent cloud storage via server...");
+    const reader = new FileReader();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(fileBlob as Blob);
+    });
+
+    const res = await fetch("/api/media/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileData: dataUrl,
+        filename: `media_${cleanId}`,
+        mimeType: fileBlob.type || (mediaType === "video" ? "video/mp4" : "image/png"),
+        exerciseId: cleanId
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.url && (data.url.startsWith("http://") || data.url.startsWith("https://"))) {
+        console.log(`[MediaStorage OK] Permanent Server Upload URL created: ${data.url}`);
+        return data.url;
+      }
+    }
+  } catch (srvErr) {
+    console.warn("[MediaStorage] Server cloud upload fallback warning:", srvErr);
+  }
+
+  // 4. Final Fallback: Convert to Data URL stream if network is completely offline
+  if (onProgress) onProgress(80, "Converting file to persistent data URL stream...");
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => resolve(e.target?.result as string);

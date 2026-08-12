@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
 import { PopupTestimonial } from "../types";
+import { uploadMediaToCloud } from "../utils/mediaStorageService";
 import { 
   Plus, Edit2, Trash2, Check, X, ShieldAlert, Calendar, Star, Search, RotateCcw, HelpCircle 
 } from "lucide-react";
@@ -38,49 +39,22 @@ export const TestimonialAdminManager: React.FC = () => {
     if (!file) return;
 
     setUploading(true);
-    setUploadProgress("Preparing upload...");
+    setUploadProgress("Uploading avatar to permanent cloud storage...");
 
     try {
-      const { ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
-      const { storage } = await import("../lib/firebase");
+      const downloadURL = await uploadMediaToCloud(file, `testimonial_${Date.now()}`, "image", (pct, status) => {
+        setUploadProgress(status);
+      });
       
-      if (storage) {
-        const fileRef = ref(storage, `testimonials/${Date.now()}_${file.name}`);
-        setUploadProgress("Uploading file...");
-        const snapshot = await uploadBytes(fileRef, file);
-        
-        setUploadProgress("Getting download URL...");
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        
+      if (downloadURL) {
         setAvatar(downloadURL);
         setUploadProgress("Upload successful!");
         setTimeout(() => setUploadProgress(""), 2000);
-        setUploading(false);
-        return;
       }
-    } catch (error: any) {
-      console.warn("Firebase Storage upload notice, using local data URL fallback:", error);
-    }
-
-    // Fallback: FileReader Base64 data URL
-    try {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        if (result) {
-          setAvatar(result);
-          setUploadProgress("Upload successful!");
-          setTimeout(() => setUploadProgress(""), 2000);
-        }
-        setUploading(false);
-      };
-      reader.onerror = () => {
-        setErrorMsg("Failed to read selected avatar file.");
-        setUploading(false);
-      };
-      reader.readAsDataURL(file);
     } catch (err) {
-      setErrorMsg("Failed to process image file.");
+      console.error("Failed to upload testimonial avatar:", err);
+      setErrorMsg("Failed to upload avatar image to cloud storage.");
+    } finally {
       setUploading(false);
     }
   };

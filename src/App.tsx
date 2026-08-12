@@ -378,11 +378,40 @@ function FitnessAppContent() {
     if (isRestricted) {
       const isPremium = Boolean(user && (user.subscriptionStatus === "premium" || user.role === "admin"));
       if (!isPremium) {
-        localStorage.setItem("fit_attempted_view", resolvedView);
-        setPremiumModalFeatureName(FEATURE_NAMES[resolvedView] || "Premium Feature");
-        setIsPremiumModalOpen(true);
-        navigateToPricing();
-        return;
+        if (user && auth.currentUser) {
+          // Attempt instant backend profile status auto-healing check before denying access
+          auth.currentUser.getIdToken().then(async (token) => {
+            try {
+              const res = await fetch("/api/user/profile-status", {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              const data = await res.json();
+              if (data && data.profile && (data.profile.subscriptionStatus === "premium" || data.profile.role === "admin")) {
+                console.log("[Auto-Healing Guard] Verified active Premium subscription in database. Granting access.");
+                setView(resolvedView);
+                return;
+              }
+            } catch (e) {
+              console.warn("Auto-healing guard check exception:", e);
+            }
+            localStorage.setItem("fit_attempted_view", resolvedView);
+            setPremiumModalFeatureName(FEATURE_NAMES[resolvedView] || "Premium Feature");
+            setIsPremiumModalOpen(true);
+            navigateToPricing();
+          }).catch(() => {
+            localStorage.setItem("fit_attempted_view", resolvedView);
+            setPremiumModalFeatureName(FEATURE_NAMES[resolvedView] || "Premium Feature");
+            setIsPremiumModalOpen(true);
+            navigateToPricing();
+          });
+          return;
+        } else {
+          localStorage.setItem("fit_attempted_view", resolvedView);
+          setPremiumModalFeatureName(FEATURE_NAMES[resolvedView] || "Premium Feature");
+          setIsPremiumModalOpen(true);
+          navigateToPricing();
+          return;
+        }
       }
     }
 

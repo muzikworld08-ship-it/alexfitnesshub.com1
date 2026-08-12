@@ -22,6 +22,8 @@ import {
   Legend
 } from "recharts";
 
+import { uploadMediaToCloud } from "../utils/mediaStorageService";
+
 // Import other workspace views
 import WorkoutLibrary from "./WorkoutLibrary";
 import WorkoutVideos from "./WorkoutVideos";
@@ -74,24 +76,22 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleProfilePicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfilePicUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 800000) {
-        alert("Image must be smaller than 800KB. Please compress your image first.");
+      if (file.size > 10000000) {
+        alert("Image must be smaller than 10MB.");
         return;
       }
-      const reader = new FileReader();
-      reader.onload = async () => {
-        if (typeof reader.result === "string") {
-          try {
-            await updateProfilePicture(reader.result);
-          } catch (err) {
-            console.error("Failed to update profile picture:", err);
-          }
+      try {
+        const permanentCloudUrl = await uploadMediaToCloud(file, `avatar_${user?.uid || "guest"}`, "image");
+        if (permanentCloudUrl) {
+          await updateProfilePicture(permanentCloudUrl);
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error("Failed to update profile picture to cloud storage:", err);
+        alert("Failed to upload image. Please try again.");
+      }
     }
   };
 

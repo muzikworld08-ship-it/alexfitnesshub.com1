@@ -25,6 +25,7 @@ interface WorkoutVisualProps {
   customMediaUrl?: string;
   customMediaType?: "image" | "video";
   isCard?: boolean;
+  priority?: boolean;
 }
 
 const WorkoutVisual = React.memo(function WorkoutVisual({ 
@@ -35,7 +36,8 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
   exerciseName = "",
   customMediaUrl,
   customMediaType,
-  isCard = false
+  isCard = false,
+  priority = true
 }: WorkoutVisualProps) {
 
   const { exercises } = useCentralizedExercises();
@@ -252,7 +254,8 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
                 decoding="async"
                 className={`w-full h-full object-contain transition-all duration-700 ease-out ${loading ? 'opacity-0 filter blur-md scale-105' : 'opacity-100 filter-none scale-100'}`} 
                 referrerPolicy="no-referrer"
-                loading="lazy"
+                loading={priority ? "eager" : "lazy"}
+                {...({ fetchPriority: priority ? "high" : "auto" } as any)}
                 onLoad={() => setLoading(false)}
                 onError={handleMediaError}
               />

@@ -277,6 +277,9 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                   <OptimizedImage
                     src={user.photoURL}
                     alt={user.displayName || "User"}
+                    priority={true}
+                    loading="eager"
+                    fetchPriority="high"
                     width={64}
                     height={64}
                     quality={85}
@@ -366,7 +369,16 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                   <div className="p-3.5 bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl text-white shadow-md flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       {user.photoURL && user.photoURL.trim() !== "" ? (
-                        <img src={user.photoURL} alt={user.displayName || "User"} className="w-10 h-10 rounded-full object-cover border-2 border-red-500" referrerPolicy="no-referrer" />
+                        <OptimizedImage 
+                          src={user.photoURL} 
+                          alt={user.displayName || "User"} 
+                          priority={true}
+                          loading="eager"
+                          fetchPriority="high"
+                          width={80}
+                          height={80}
+                          className="w-10 h-10 rounded-full object-cover border-2 border-red-500" 
+                        />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-[#E53935] text-white flex items-center justify-center font-black text-sm uppercase">
                           {user.displayName ? user.displayName[0] : (user.email ? user.email[0] : "A")}

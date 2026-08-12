@@ -93,8 +93,29 @@ export function getSupabaseCdnUrl(
     return appendParams(trimmed);
   }
 
-  // 7. External URLs (Unsplash, Picsum, Firebase Storage, etc.)
-  if (useProxyFallback) {
+  // 7. External CDN URLs (Unsplash, Firebase Storage, Cloud Storage, Picsum, etc.)
+  if (trimmed.includes("images.unsplash.com")) {
+    const unsplashUrl = new URL(trimmed);
+    if (width) unsplashUrl.searchParams.set("w", width.toString());
+    if (quality) unsplashUrl.searchParams.set("q", quality.toString());
+    unsplashUrl.searchParams.set("auto", "format");
+    unsplashUrl.searchParams.set("fit", "crop");
+    return unsplashUrl.toString();
+  }
+
+  if (
+    trimmed.includes("firebasestorage.googleapis.com") ||
+    trimmed.includes("storage.googleapis.com") ||
+    trimmed.includes("firebasestorage.app") ||
+    trimmed.includes("picsum.photos") ||
+    trimmed.includes("cloudinary.com") ||
+    trimmed.includes("cloudfront.net")
+  ) {
+    return trimmed;
+  }
+
+  // 8. Optional server proxy for unrecognized external URLs
+  if (options.useProxyFallback === true) {
     const proxyUrl = `/api/cdn-image?url=${encodeURIComponent(trimmed)}`;
     return appendParams(proxyUrl);
   }

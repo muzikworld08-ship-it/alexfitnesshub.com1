@@ -773,6 +773,8 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
           <img 
             src="https://github.com/muzikmail2-arch/Git/blob/main/ChatGPT%20Image%20Jul%2018,%202026,%2006_59_52%20PM.png?raw=true" 
             alt="Alex Fitness Hub Elite Training Facility"
+            loading="eager"
+            {...({ fetchPriority: "high" } as any)}
             className="w-full h-full object-cover object-center scale-100 filter brightness-125 contrast-110 saturate-105"
             referrerPolicy="no-referrer"
           />
@@ -805,6 +807,9 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
               <OptimizedImage 
                 src="https://github.com/muzikmail2-arch/Git/blob/main/ChatGPT%20Image%20Jul%2018,%202026,%2007_10_59%20PM.png?raw=true" 
                 alt="Lifestyle Fitness Academy Stretching & Mobility Coaching"
+                priority={true}
+                loading="eager"
+                fetchPriority="high"
                 aspectRatio="16/9"
                 className="w-full h-full object-cover object-center filter brightness-105 contrast-105"
               />

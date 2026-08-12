@@ -14,6 +14,8 @@ export interface OptimizedImageProps extends React.ImgHTMLAttributes<HTMLImageEl
   fallbackType?: "none" | "dumbbell" | "pulsing";
   showSkeleton?: boolean;
   aspectRatio?: string; // e.g. "16/9", "4/3", "1/1"
+  priority?: boolean;
+  fetchPriority?: "high" | "low" | "auto";
 }
 
 export const OptimizedImage: React.FC<OptimizedImageProps> = ({
@@ -29,14 +31,20 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   fallbackType,
   showSkeleton = true,
   aspectRatio,
+  priority = false,
+  fetchPriority,
   className = "",
   style,
-  loading = "lazy",
+  loading,
   referrerPolicy = "no-referrer",
   onError,
   onLoad,
   ...restProps
 }) => {
+  // If priority is true or loading is explicitly provided, use it. Default to "eager" when priority is true.
+  const effectiveLoading = loading || (priority ? "eager" : "lazy");
+  const effectiveFetchPriority = fetchPriority || (priority ? "high" : "auto");
+
   const computeInitialSrc = () => {
     if (src && src.trim() !== "") {
       return getSupabaseCdnUrl(src, { width, height, quality, format, resize });
@@ -94,8 +102,9 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   };
 
   const options: SupabaseImageOptions = { quality, format, resize };
-  const computedSrcSet = srcSetWidths && srcSetWidths.length > 0 && !hasError
-    ? getSupabaseSrcSet(src, srcSetWidths, options)
+  const targetWidths = srcSetWidths || (width ? [Math.round(width * 0.5), width, Math.round(width * 1.5), Math.round(width * 2)] : [380, 640, 960, 1280]);
+  const computedSrcSet = !hasError && src && !src.startsWith("data:") && !src.startsWith("blob:")
+    ? getSupabaseSrcSet(src, targetWidths, options)
     : undefined;
 
   const containerStyle: React.CSSProperties = {
@@ -111,10 +120,10 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       {/* Loading Skeleton */}
       {showSkeleton && !isLoaded && (
         <div
-          className="absolute inset-0 bg-neutral-800/40 dark:bg-neutral-800/60 animate-pulse rounded-[inherit] z-10 flex items-center justify-center"
+          className="absolute inset-0 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-[inherit] z-10 flex items-center justify-center transition-opacity duration-300"
           aria-hidden="true"
         >
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin opacity-40" />
+          <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin opacity-50" />
         </div>
       )}
 
@@ -126,7 +135,8 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           alt={alt || "AlexFitness Media"}
           width={width}
           height={height}
-          loading={loading}
+          loading={effectiveLoading}
+          {...({ fetchPriority: effectiveFetchPriority } as any)}
           referrerPolicy={referrerPolicy}
           onError={handleImageError}
           onLoad={handleImageLoad}

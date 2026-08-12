@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
 import PageHero from "./PageHero";
+import { uploadMediaToCloud } from "../utils/mediaStorageService";
 import { 
   MessageSquare, Heart, AlertTriangle, Send, ShieldAlert, Check,
-  Sparkles, Filter, PlusCircle, CheckCircle, Tag, Image, Trash 
+  Sparkles, Filter, PlusCircle, CheckCircle, Tag, Image, Trash, Upload, Loader2 
 } from "lucide-react";
 
 export default function CommunityView() {
@@ -23,10 +24,29 @@ export default function CommunityView() {
     "Progress Picture" | "Workout Result" | "Transformation Story" | "Achievement" | "General Discussion" | "Challenge"
   >("General Discussion");
   const [newPostImage, setNewPostImage] = useState("");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
 
   const [successToast, setSuccessToast] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+
+  const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    try {
+      const cloudUrl = await uploadMediaToCloud(file, `community_${user?.uid || "user"}_${Date.now()}`, "image");
+      if (cloudUrl) {
+        setNewPostImage(cloudUrl);
+      }
+    } catch (err) {
+      console.error("Failed to upload community post image:", err);
+      alert("Failed to upload image. Please try again.");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
   const categories = [
     "All", "Progress Picture", "Workout Result", "Transformation Story", "Achievement", "General Discussion", "Challenge"
@@ -134,14 +154,36 @@ export default function CommunityView() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-slate-405 uppercase mb-1.5">Attach Image URL (Optional)</label>
-              <input
-                type="url"
-                value={newPostImage}
-                onChange={(e) => setNewPostImage(e.target.value)}
-                placeholder="https://images.unsplash.com/your-athletic-photo"
-                className="w-full p-2.5 rounded-xl text-xs bg-slate-50 border border-slate-150 text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Attach Image File or URL (Optional)</label>
+              <div className="flex gap-2 items-center">
+                <label className="flex items-center gap-1.5 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition shrink-0 border border-slate-200">
+                  {isUploadingImage ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+                  ) : (
+                    <Upload className="w-4 h-4 text-emerald-500" />
+                  )}
+                  <span>{isUploadingImage ? "UPLOADING..." : "UPLOAD FILE"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageFileUpload}
+                    disabled={isUploadingImage}
+                    className="hidden"
+                  />
+                </label>
+                <input
+                  type="url"
+                  value={newPostImage}
+                  onChange={(e) => setNewPostImage(e.target.value)}
+                  placeholder="https://images.unsplash.com/your-athletic-photo"
+                  className="w-full p-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              {newPostImage && (
+                <p className="text-[10px] text-emerald-600 font-medium mt-1 truncate">
+                  Image attached: {newPostImage.substring(0, 50)}...
+                </p>
+              )}
             </div>
           </div>
 
