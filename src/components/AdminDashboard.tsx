@@ -3,10 +3,12 @@ import { useApp, isEmailAdmin } from "../context/AppContext";
 import { 
   Users, Sparkles, Dumbbell, ShieldCheck, UserCheck, Trash2, ArrowUpDown, Key, ToggleLeft, ToggleRight,
   Check, Copy, Link, Cpu, Globe, Activity, ChevronRight, AlertTriangle, Terminal, Settings, CreditCard, RefreshCw,
-  Upload, Image as ImageIcon, Video, Search, Filter, Play, RotateCcw, CheckCircle2
+  Upload, Image as ImageIcon, Video, Search, Filter, Play, RotateCcw, CheckCircle2, Trophy, Layers, Edit3
 } from "lucide-react";
 import { TestimonialAdminManager } from "./TestimonialAdminManager";
 import AdminAssetManager from "./AdminAssetManager";
+import AdminWorkoutEditor from "./admin/AdminWorkoutEditor";
+import AdminChallengeManager from "./admin/AdminChallengeManager";
 import { db } from "../lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { PREMIUM_CHALLENGES } from "./Premium90DayChallenge";
@@ -19,6 +21,7 @@ export default function AdminDashboard() {
   const { 
     user, 
     exercises, 
+    allChallenges,
     allSystemUsers, 
     adminTogglePremium, 
     adminUpdateUserTier, 
@@ -28,7 +31,8 @@ export default function AdminDashboard() {
   
   const [userQuery, setUserQuery] = useState("");
   const [exerciseQuery, setExerciseQuery] = useState("");
-  const [activeAdminTab, setActiveAdminTab] = useState<"media" | "directory" | "paystack">("media");
+  const [activeAdminTab, setActiveAdminTab] = useState<"workouts" | "challenges" | "media" | "directory" | "paystack">("workouts");
+
 
   // Media Manager Filters & Local Inputs
   const [mediaSearch, setMediaSearch] = useState("");
@@ -328,32 +332,56 @@ export default function AdminDashboard() {
       {/* TAB NAVIGATION SELECTOR */}
       <div className="flex border-b border-slate-200 overflow-x-auto gap-2">
         <button
+          onClick={() => setActiveAdminTab("workouts")}
+          className={`pb-3 px-5 text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            activeAdminTab === "workouts"
+              ? "border-red-600 text-red-600"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          <Dumbbell className="w-4 h-4" />
+          Workouts & Reps Manager ({exercises.length})
+        </button>
+
+        <button
+          onClick={() => setActiveAdminTab("challenges")}
+          className={`pb-3 px-5 text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            activeAdminTab === "challenges"
+              ? "border-red-600 text-red-600"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          <Trophy className="w-4 h-4" />
+          Challenges Engine ({allChallenges?.length || 7})
+        </button>
+
+        <button
           onClick={() => setActiveAdminTab("media")}
-          className={`pb-3 px-6 text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+          className={`pb-3 px-5 text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeAdminTab === "media"
               ? "border-red-600 text-red-600"
               : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >
           <Video className="w-4 h-4" />
-          All Workouts Media Manager ({exercises.length})
+          Media Hub & Asset Library
         </button>
 
         <button
           onClick={() => setActiveAdminTab("directory")}
-          className={`pb-3 px-6 text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+          className={`pb-3 px-5 text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeAdminTab === "directory"
               ? "border-red-600 text-red-600"
               : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >
           <Users className="w-4 h-4" />
-          Athletes & Premium Overrides
+          Athletes & Subscriptions
         </button>
 
         <button
           onClick={() => setActiveAdminTab("paystack")}
-          className={`pb-3 px-6 text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+          className={`pb-3 px-5 text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeAdminTab === "paystack"
               ? "border-red-600 text-red-600"
               : "border-transparent text-slate-500 hover:text-slate-800"
@@ -364,7 +392,21 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      {/* VIEW 1: WORKOUTS GIF & VIDEO MEDIA MANAGER */}
+      {/* VIEW: WORKOUTS MANAGER (Edit workout name, reps, sets, add workouts with images) */}
+      {activeAdminTab === "workouts" && (
+        <div className="space-y-6 animate-fade-in">
+          <AdminWorkoutEditor />
+        </div>
+      )}
+
+      {/* VIEW: CHALLENGES MANAGER (Create challenges with workout images, reps, sets) */}
+      {activeAdminTab === "challenges" && (
+        <div className="space-y-6 animate-fade-in">
+          <AdminChallengeManager />
+        </div>
+      )}
+
+      {/* VIEW: WORKOUTS GIF & VIDEO MEDIA MANAGER */}
       {activeAdminTab === "media" && (
         <div className="space-y-6 animate-fade-in">
           

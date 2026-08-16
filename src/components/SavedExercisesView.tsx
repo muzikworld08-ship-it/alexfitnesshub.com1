@@ -50,7 +50,7 @@ export default function SavedExercisesView({ setView }: SavedExercisesViewProps)
   const [loggedNotes, setLoggedNotes] = useState("");
   const [logSuccess, setLogSuccess] = useState(false);
 
-  const isUserPremium = user?.subscriptionStatus === "premium";
+  const isUserPremium = Boolean(user?.subscriptionStatus === "premium" || user?.role === "admin");
 
   // Filter bookmarked exercises
   const bookmarkedExercises = useMemo(() => {

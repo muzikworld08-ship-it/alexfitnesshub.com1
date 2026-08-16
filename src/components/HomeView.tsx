@@ -2834,7 +2834,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                   <span className="text-slate-500 text-[10px] ml-1">/ 1 Month</span>
                 </div>
                 <p className="text-[11px] text-slate-600 mt-3 leading-relaxed font-sans font-medium">
-                  Perfect entry-level plan to experience kinesiologist routines and baseline macro plans.
+                  Full 1-month Premium Athlete access with unhindered workouts, slow-mo guides, and AI coaching.
                 </p>
                 <div className="mt-4 border-t border-slate-100 pt-3 space-y-2 text-[10px] text-slate-700">
                   <div className="flex items-center gap-2">
@@ -2845,9 +2845,13 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                     <CheckCircle className="w-3.5 h-3.5 text-[#D32F2F] shrink-0" />
                     Interactive Calorie Calibrator
                   </div>
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <Lock className="w-3 h-3 shrink-0" />
-                    Slow-mo Biomechanics (Locked)
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-3.5 h-3.5 text-[#D32F2F] shrink-0" />
+                    HD Slow-Mo Biomechanics & Eccentrics
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-3.5 h-3.5 text-[#D32F2F] shrink-0" />
+                    Unlimited AI Coach Calibrations
                   </div>
                 </div>
               </div>

@@ -241,14 +241,18 @@ const PORT = 3000;
 
 // Custom exercise overrides local file path
 const OVERRIDES_FILE_PATH = path.join(process.cwd(), "src", "data", "custom_exercise_overrides.json");
+const CHALLENGES_FILE_PATH = path.join(process.cwd(), "src", "data", "custom_challenges.json");
 
-// Ensure the directory and base JSON file are created cleanly
+// Ensure the directory and base JSON files are created cleanly
 const overridesDir = path.dirname(OVERRIDES_FILE_PATH);
 if (!fs.existsSync(overridesDir)) {
   fs.mkdirSync(overridesDir, { recursive: true });
 }
 if (!fs.existsSync(OVERRIDES_FILE_PATH)) {
   fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify({}, null, 2), "utf-8");
+}
+if (!fs.existsSync(CHALLENGES_FILE_PATH)) {
+  fs.writeFileSync(CHALLENGES_FILE_PATH, JSON.stringify([], null, 2), "utf-8");
 }
 
 // Lazy initialization of Gemini API SDK
@@ -2585,7 +2589,6 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
     // Log admin activity on Firebase
     await logAdminActivityOnFirebase(
       req.user?.email || "",
-      req.user?.email || "",
       req.user?.uid || "",
       "CUSTOM_MEDIA_UPLOAD",
       `Uploaded custom demo GIF/media for exercise ${exerciseId}`,
@@ -2596,6 +2599,353 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
   } catch (error: any) {
     console.error("Failed to write custom exercise overrides file:", error);
     res.status(500).json({ success: false, error: "Failed to write override to file: " + error.message });
+  }
+});
+
+// POST update exercise details (Name, Sets, Reps, Category, Media, etc.)
+app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
+  const { exerciseId, updates } = req.body;
+  if (!exerciseId || !updates || typeof updates !== "object") {
+    return res.status(400).json({ success: false, error: "exerciseId and updates object are required." });
+  }
+
+  try {
+    let overrides: Record<string, any> = {};
+    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
+      try {
+        const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
+        if (raw) overrides = JSON.parse(raw);
+      } catch (err) {
+        console.error("Failed parsing overrides file, resetting:", err);
+      }
+    }
+
+    const cleanUpdates = {
+      ...updates,
+      updatedAt: new Date().toISOString(),
+      lastModifiedBy: req.user?.email || "admin"
+    };
+
+    overrides[exerciseId] = {
+      ...(overrides[exerciseId] || {}),
+      ...cleanUpdates
+    };
+
+    fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
+
+    // Sync to Firestore exercises collection
+    try {
+      await setServerFirestoreDoc("exercises", exerciseId, {
+        id: exerciseId,
+        ...overrides[exerciseId]
+      }, true);
+      console.log(`[Firestore OK] Updated exercise ${exerciseId} with new metadata.`);
+    } catch (dbErr) {
+      console.warn(`[Firestore Update Warning for exercise ${exerciseId}]:`, dbErr);
+    }
+
+    // Log admin activity
+    await logAdminActivityOnFirebase(
+      req.user?.email || "",
+      req.user?.uid || "",
+      "EXERCISE_UPDATE",
+      `Admin updated workout metadata for ${cleanUpdates.name || exerciseId} (Sets: ${cleanUpdates.recommendedSets || 'N/A'}, Reps: ${cleanUpdates.recommendedReps || 'N/A'})`,
+      { exerciseId, updates: cleanUpdates }
+    );
+
+    res.json({ success: true, message: "Exercise updated successfully.", exercise: overrides[exerciseId] });
+  } catch (error: any) {
+    console.error("Failed to update exercise:", error);
+    res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
+// POST create new workout
+app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
+  const { workout } = req.body;
+  if (!workout || !workout.name) {
+    return res.status(400).json({ success: false, error: "Workout data with name is required." });
+  }
+
+  try {
+    const newId = workout.id || `custom_ex_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const fullWorkout = {
+      ...workout,
+      id: newId,
+      createdAt: new Date().toISOString(),
+      createdBy: req.user?.email || "admin",
+      isCustom: true,
+      updatedAt: new Date().toISOString()
+    };
+
+    // Save to local overrides
+    let overrides: Record<string, any> = {};
+    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
+      try {
+        const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
+        if (raw) overrides = JSON.parse(raw);
+      } catch (err) {
+        console.error("Failed parsing overrides file:", err);
+      }
+    }
+
+    overrides[newId] = fullWorkout;
+    fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
+
+    // Save to Firestore collections
+    try {
+      await setServerFirestoreDoc("exercises", newId, fullWorkout, true);
+      await setServerFirestoreDoc("generated_exercises", newId, fullWorkout, true);
+      console.log(`[Firestore OK] Created new custom workout: ${fullWorkout.name} (${newId})`);
+    } catch (dbErr) {
+      console.warn(`[Firestore Create Warning for ${newId}]:`, dbErr);
+    }
+
+    // Log admin activity
+    await logAdminActivityOnFirebase(
+      req.user?.email || "",
+      req.user?.uid || "",
+      "WORKOUT_CREATE",
+      `Admin created new workout "${fullWorkout.name}" with Sets: ${fullWorkout.recommendedSets || '3'} and Reps: ${fullWorkout.recommendedReps || '10-12'}`,
+      { workoutId: newId, workout: fullWorkout }
+    );
+
+    res.json({ success: true, message: "Workout created successfully.", workout: fullWorkout });
+  } catch (error: any) {
+    console.error("Failed to create workout:", error);
+    res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
+// POST delete workout
+app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
+  const { exerciseId } = req.body;
+  if (!exerciseId) {
+    return res.status(400).json({ success: false, error: "exerciseId is required." });
+  }
+
+  try {
+    let overrides: Record<string, any> = {};
+    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
+      try {
+        const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
+        if (raw) overrides = JSON.parse(raw);
+      } catch (err) {
+        console.error("Failed parsing overrides file:", err);
+      }
+    }
+
+    if (overrides[exerciseId]) {
+      delete overrides[exerciseId];
+      fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
+    }
+
+    // Mark deleted in Firestore or remove
+    try {
+      await setServerFirestoreDoc("exercises", exerciseId, {
+        id: exerciseId,
+        isDeleted: true,
+        deletedAt: new Date().toISOString()
+      }, true);
+    } catch (dbErr) {
+      console.warn(`[Firestore Delete Warning for ${exerciseId}]:`, dbErr);
+    }
+
+    await logAdminActivityOnFirebase(
+      req.user?.email || "",
+      req.user?.uid || "",
+      "WORKOUT_DELETE",
+      `Admin deleted custom workout ${exerciseId}`,
+      { exerciseId }
+    );
+
+    res.json({ success: true, message: "Workout deleted successfully." });
+  } catch (error: any) {
+    console.error("Failed to delete workout:", error);
+    res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
+// --- CHALLENGES MANAGEMENT ENDPOINTS ---
+
+// GET all challenges (Flagship + Custom)
+app.get("/api/challenges", async (req, res) => {
+  try {
+    let customChallenges: any[] = [];
+    
+    // Read from local file
+    if (fs.existsSync(CHALLENGES_FILE_PATH)) {
+      try {
+        const raw = fs.readFileSync(CHALLENGES_FILE_PATH, "utf-8").trim();
+        if (raw) customChallenges = JSON.parse(raw);
+      } catch (err) {
+        console.error("Failed reading custom challenges file:", err);
+      }
+    }
+
+    // Try reading from Firestore challenges collection
+    try {
+      const dbUrl = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/challenges`;
+      const fsRes = await fetch(dbUrl);
+      if (fsRes.ok) {
+        const data: any = await fsRes.json();
+        if (data.documents && Array.isArray(data.documents)) {
+          const fsChallenges = data.documents.map((doc: any) => {
+            const rawFields = doc.fields || {};
+            const item: any = {};
+            for (const [key, val] of Object.entries<any>(rawFields)) {
+              if (val.stringValue !== undefined) item[key] = val.stringValue;
+              else if (val.integerValue !== undefined) item[key] = Number(val.integerValue);
+              else if (val.doubleValue !== undefined) item[key] = Number(val.doubleValue);
+              else if (val.booleanValue !== undefined) item[key] = val.booleanValue;
+              else if (val.arrayValue !== undefined) {
+                item[key] = (val.arrayValue.values || []).map((v: any) => {
+                  if (v.mapValue) {
+                    const obj: any = {};
+                    for (const [mk, mv] of Object.entries<any>(v.mapValue.fields || {})) {
+                      if (mv.stringValue !== undefined) obj[mk] = mv.stringValue;
+                      else if (mv.integerValue !== undefined) obj[mk] = Number(mv.integerValue);
+                      else if (mv.doubleValue !== undefined) obj[mk] = Number(mv.doubleValue);
+                      else if (mv.booleanValue !== undefined) obj[mk] = mv.booleanValue;
+                    }
+                    return obj;
+                  }
+                  return v.stringValue || v.integerValue || v;
+                });
+              }
+            }
+            return item;
+          });
+
+          // Merge by ID
+          const map = new Map<string, any>();
+          customChallenges.forEach(c => map.set(c.id, c));
+          fsChallenges.forEach((c: any) => {
+            if (c.id) map.set(c.id, { ...(map.get(c.id) || {}), ...c });
+          });
+          customChallenges = Array.from(map.values());
+        }
+      }
+    } catch (fsErr) {
+      console.warn("Could not fetch remote Firestore challenges, using local:", fsErr);
+    }
+
+    res.json({ success: true, challenges: customChallenges });
+  } catch (error: any) {
+    console.error("Failed to get challenges:", error);
+    res.status(500).json({ success: false, error: "Failed to get challenges." });
+  }
+});
+
+// POST save / create challenge
+app.post("/api/challenges/save", requireAdmin, async (req: any, res) => {
+  const { challenge } = req.body;
+  if (!challenge || !challenge.title) {
+    return res.status(400).json({ success: false, error: "Challenge title and data are required." });
+  }
+
+  try {
+    const challengeId = challenge.id || `custom_ch_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const fullChallenge = {
+      ...challenge,
+      id: challengeId,
+      durationDays: Number(challenge.durationDays) || 30,
+      isPremium: challenge.isPremium !== undefined ? Boolean(challenge.isPremium) : true,
+      workouts: Array.isArray(challenge.workouts) ? challenge.workouts : [],
+      createdAt: challenge.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: req.user?.email || "admin",
+      isCustom: true
+    };
+
+    // Save to local file
+    let challengesList: any[] = [];
+    if (fs.existsSync(CHALLENGES_FILE_PATH)) {
+      try {
+        const raw = fs.readFileSync(CHALLENGES_FILE_PATH, "utf-8").trim();
+        if (raw) challengesList = JSON.parse(raw);
+      } catch (e) {
+        console.error("Error parsing custom challenges file:", e);
+      }
+    }
+
+    const existingIdx = challengesList.findIndex(c => c.id === challengeId);
+    if (existingIdx >= 0) {
+      challengesList[existingIdx] = fullChallenge;
+    } else {
+      challengesList.unshift(fullChallenge);
+    }
+
+    fs.writeFileSync(CHALLENGES_FILE_PATH, JSON.stringify(challengesList, null, 2), "utf-8");
+
+    // Save to Firestore challenges collection
+    try {
+      await setServerFirestoreDoc("challenges", challengeId, fullChallenge, true);
+      console.log(`[Firestore OK] Saved custom challenge: ${fullChallenge.title} (${challengeId}) with ${fullChallenge.workouts.length} workouts.`);
+    } catch (dbErr) {
+      console.warn(`[Firestore Challenge Save Warning]:`, dbErr);
+    }
+
+    // Log admin activity
+    await logAdminActivityOnFirebase(
+      req.user?.email || "",
+      req.user?.uid || "",
+      "CHALLENGE_CREATE",
+      `Admin created/updated challenge "${fullChallenge.title}" with ${fullChallenge.workouts.length} workouts`,
+      { challengeId, challenge: fullChallenge }
+    );
+
+    res.json({ success: true, message: "Challenge saved successfully.", challenge: fullChallenge });
+  } catch (error: any) {
+    console.error("Failed to save challenge:", error);
+    res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
+// DELETE challenge
+app.delete("/api/challenges/:id", requireAdmin, async (req: any, res) => {
+  const challengeId = req.params.id;
+  if (!challengeId) {
+    return res.status(400).json({ success: false, error: "Challenge ID is required." });
+  }
+
+  try {
+    let challengesList: any[] = [];
+    if (fs.existsSync(CHALLENGES_FILE_PATH)) {
+      try {
+        const raw = fs.readFileSync(CHALLENGES_FILE_PATH, "utf-8").trim();
+        if (raw) challengesList = JSON.parse(raw);
+      } catch (e) {
+        console.error("Error reading custom challenges file:", e);
+      }
+    }
+
+    challengesList = challengesList.filter(c => c.id !== challengeId);
+    fs.writeFileSync(CHALLENGES_FILE_PATH, JSON.stringify(challengesList, null, 2), "utf-8");
+
+    // Delete or mark deleted in Firestore
+    try {
+      await setServerFirestoreDoc("challenges", challengeId, {
+        id: challengeId,
+        isDeleted: true,
+        deletedAt: new Date().toISOString()
+      }, true);
+    } catch (dbErr) {
+      console.warn(`[Firestore Challenge Delete Warning]:`, dbErr);
+    }
+
+    await logAdminActivityOnFirebase(
+      req.user?.email || "",
+      req.user?.uid || "",
+      "CHALLENGE_DELETE",
+      `Admin deleted challenge ${challengeId}`,
+      { challengeId }
+    );
+
+    res.json({ success: true, message: "Challenge deleted successfully." });
+  } catch (error: any) {
+    console.error("Failed to delete challenge:", error);
+    res.status(500).json({ success: false, error: "Internal server error: " + error.message });
   }
 });
 
@@ -3310,14 +3660,10 @@ Proper hydration is the foundation of peak performance. To maximize your results
   }
 });
 
-// Helper to process successful payment idempotently
+// Helper to process successful payment idempotently and guarantee Premium Athlete activation
 async function processSuccessfulPayment(reference: string, verifyData: any, fallbackData?: { userId?: string; plan?: string; months?: number }) {
   const paymentSnap = await getServerFirestoreDoc("payments", reference);
-  if (paymentSnap.exists && paymentSnap.data().status === "success") {
-    console.log(`[Idempotency Check] Reference ${reference} already processed. Skipping.`);
-    const existingUserSnap = paymentSnap.data().userId ? await getServerFirestoreDoc("users", paymentSnap.data().userId) : null;
-    return { success: true, alreadyProcessed: true, profile: existingUserSnap?.exists ? existingUserSnap.data() : null };
-  }
+  const pendingDoc = paymentSnap.exists ? paymentSnap.data() : null;
 
   // Handle Paystack returning metadata either as a parsed object or as a raw JSON string
   let metadata = verifyData.metadata || {};
@@ -3330,9 +3676,6 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
       metadata = {};
     }
   }
-
-  // Fallback to pending payment doc if available in Firestore
-  const pendingDoc = paymentSnap.exists ? paymentSnap.data() : null;
 
   let userId = metadata.userId || verifyData.customer?.metadata?.userId || fallbackData?.userId || pendingDoc?.userId;
   const plan = metadata.plan || fallbackData?.plan || pendingDoc?.plan || "monthly";
@@ -3362,6 +3705,19 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
     throw new Error("No user profile found associated with this payment reference or email.");
   }
 
+  // Check if reference is already processed and user profile is ALREADY properly marked as premium with future expiry
+  if (paymentSnap.exists && paymentSnap.data().status === "success") {
+    const existingUserSnap = await getServerFirestoreDoc("users", userId);
+    if (existingUserSnap.exists) {
+      const existingUserData = existingUserSnap.data();
+      const existingExpiry = existingUserData.subscriptionExpiry ? new Date(existingUserData.subscriptionExpiry) : null;
+      if (existingUserData.subscriptionStatus === "premium" && existingExpiry && !isNaN(existingExpiry.getTime()) && existingExpiry > new Date()) {
+        console.log(`[Idempotency Check] Reference ${reference} already processed and user ${userId} has active Premium status until ${existingExpiry.toISOString()}. Skipping duplicate write.`);
+        return { success: true, alreadyProcessed: true, profile: existingUserData };
+      }
+    }
+  }
+
   console.log(`[Subscription Activation] Activating ${plan} (${months} months) subscription for user: ${userId}, Email: ${email}, Reference: ${reference}`);
 
   const userSnap = await getServerFirestoreDoc("users", userId);
@@ -3383,16 +3739,18 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
     }
   }
 
-  const expiryDays = plan === "yearly" ? 365 : plan === "multi" ? (months * 30) : 30;
+  const expiryDays = plan === "yearly" ? 365 : plan === "multi" ? (months * 30) : (months && months > 1 ? months * 30 : 30);
   const newExpiryDate = new Date(startDate.getTime() + expiryDays * 24 * 60 * 60 * 1000);
 
   const updatedProfile = {
     ...existingProfile,
     uid: userId,
     email: email || existingProfile.email || "",
+    displayName: existingProfile.displayName || (email ? email.split("@")[0] : "Athlete"),
+    role: existingProfile.role || "user",
     subscriptionStatus: "premium",
     subscriptionPlan: plan,
-    subscriptionTier: plan === "multi" ? "monthly" : plan,
+    subscriptionTier: plan === "multi" || plan === "monthly" ? "monthly" : plan,
     paymentStatus: "paid",
     premiumAccess: true,
     accountType: "Premium Athlete",
@@ -3404,7 +3762,8 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
     subscriptionActivationDate: existingProfile.subscriptionActivationDate || now.toISOString(),
     subscriptionExpiry: newExpiryDate.toISOString(),
     paymentAmount: amountNGN,
-    paymentDate: now.toISOString()
+    paymentDate: now.toISOString(),
+    updatedAt: now.toISOString()
   };
 
   // 1. Update user profile in Firestore (must happen before returning success)
@@ -3804,13 +4163,19 @@ app.post("/api/payments/verify", async (req, res) => {
   const pendingPayment = pendingDocSnap.exists ? pendingDocSnap.data() : null;
 
   if (pendingPayment && pendingPayment.status === "success") {
-    // Already verified!
-    const userSnap = await getServerFirestoreDoc("users", pendingPayment.userId);
-    return res.json({
-      success: true,
-      alreadyProcessed: true,
-      profile: userSnap.exists ? userSnap.data() : null
-    });
+    const targetUserId = pendingPayment.userId || authenticatedUid;
+    const userSnap = targetUserId ? await getServerFirestoreDoc("users", targetUserId) : null;
+    const userProfile = userSnap?.exists ? userSnap.data() : null;
+    const expiry = pendingPayment.subscriptionExpiry ? new Date(pendingPayment.subscriptionExpiry) : null;
+    const isStillActive = expiry && !isNaN(expiry.getTime()) && expiry > new Date();
+
+    if (userProfile && userProfile.subscriptionStatus === "premium" && isStillActive) {
+      return res.json({
+        success: true,
+        alreadyProcessed: true,
+        profile: userProfile
+      });
+    }
   }
 
   const targetUid = authenticatedUid || pendingPayment?.userId;

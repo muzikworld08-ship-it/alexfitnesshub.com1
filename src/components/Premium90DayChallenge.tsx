@@ -9,13 +9,16 @@ import {
   ChevronRight, TrendingUp, Sparkles, Clock, Dumbbell, Droplet, 
   Info, Medal, RefreshCw, Crown, Shield, Eye, Heart, Camera, 
   Download, Share2, Clipboard, ChevronDown, Check, AlertTriangle, 
-  MessageSquare, UserCheck, ChevronLeft, Target, ArrowRight, ExternalLink
+  MessageSquare, UserCheck, ChevronLeft, Target, ArrowRight, ExternalLink,
+  Layers
 } from "lucide-react";
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, Legend 
 } from "recharts";
 import PersistentDashboardTabs from "./PersistentDashboardTabs";
+import { getChallengeWorkouts } from "../data/challenges";
+
 
 // 1. Definition of the 7 Flagship Premium Challenges
 export interface PremiumChallenge {
@@ -193,10 +196,12 @@ interface Premium90DayState {
 }
 
 export default function Premium90DayChallenge() {
-  const { user, exercises, theme, allSystemUsers, setView } = useApp();
+  const { user, exercises, allChallenges, theme, allSystemUsers, setView } = useApp();
   const isPremiumUser = user?.subscriptionStatus === "premium" || user?.role === "admin";
+  const effectiveChallenges = allChallenges && allChallenges.length > 0 ? allChallenges : PREMIUM_CHALLENGES;
 
   const [activeSubTab, setActiveSubTab] = useState<"workout" | "analytics" | "badges" | "measurements" | "certificate">("workout");
+
 
   // Keep scroll position on activeSubTab change
 

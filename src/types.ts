@@ -178,3 +178,36 @@ export interface WorkoutLibraryFilters {
   activeBrowseTab: "bodyparts" | "cardio" | "mobility" | "programs" | "all";
 }
 
+export interface ChallengeWorkout {
+  id: string;
+  name: string;
+  sets: string | number;
+  reps: string | number;
+  customMediaUrl?: string;
+  customMediaType?: "image" | "video";
+  gifUrl?: string;
+  imageUrl?: string;
+  category?: string;
+  muscleGroups?: string[];
+  restTime?: string;
+  notes?: string;
+}
+
+export interface ChallengeItem {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  goal: string;
+  image: string;
+  badgeId: string;
+  badgeName: string;
+  badgeColor: string;
+  durationDays: number;
+  isPremium: boolean;
+  workouts: ChallengeWorkout[];
+  createdAt?: string;
+  createdBy?: string;
+  isCustom?: boolean;
+}
+

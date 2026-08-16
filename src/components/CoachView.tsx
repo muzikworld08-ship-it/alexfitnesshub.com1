@@ -216,7 +216,7 @@ export default function CoachView() {
     }
   };
 
-  const isPremium = user?.subscriptionStatus === "premium";
+  const isPremium = Boolean(user?.subscriptionStatus === "premium" || user?.role === "admin");
 
   // 1. PREMIUM COACT PAYWALL BLOCK
   if (!isPremium) {

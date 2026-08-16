@@ -28,9 +28,12 @@ import {
   CustomProgram,
   PopupTestimonial,
   VitalsLog,
-  WorkoutLibraryFilters
+  WorkoutLibraryFilters,
+  ChallengeWorkout,
+  ChallengeItem
 } from "../types";
 import { EXERCISES, Exercise } from "../data/exercises";
+import { PremiumChallenge, FLAGSHIP_CHALLENGES, getChallengeWorkouts } from "../data/challenges";
 import { isExerciseMatch } from "../utils/exerciseMatching";
 import { fetchAllExerciseMediaFromDatabase } from "../utils/mediaStorageService";
 import { samplePopupTestimonials } from "../data/sampleTestimonials";
@@ -105,13 +108,23 @@ interface AppContextType {
   updatePopupTestimonial: (id: string, t: Partial<PopupTestimonial>) => Promise<void>;
   deletePopupTestimonial: (id: string) => Promise<void>;
   
-  // Admin Operations
+  // Admin Workout & Media Operations
   adminTogglePremium: (exerciseId: string) => void;
   adminUpdateUserTier: (uid: string, level: "free" | "premium", tier: "monthly" | "yearly" | "none") => void;
   adminModifySubscription: (uid: string, action: "activate" | "extend" | "suspend" | "cancel") => void;
   allSystemUsers: UserProfile[];
   uploadExerciseMedia: (exerciseId: string, mediaUrl: string | null, mediaType?: "image" | "video") => Promise<void>;
   addExerciseToLibrary: (workout: Exercise) => Promise<void>;
+  editExercise: (exerciseId: string, updates: Partial<Exercise>) => Promise<boolean>;
+  addWorkout: (workout: Partial<Exercise>) => Promise<Exercise>;
+  deleteWorkout: (exerciseId: string) => Promise<boolean>;
+
+  // Challenges Management
+  customChallenges: PremiumChallenge[];
+  allChallenges: PremiumChallenge[];
+  addCustomChallenge: (challenge: Partial<PremiumChallenge>) => Promise<PremiumChallenge>;
+  updateCustomChallenge: (challengeId: string, updates: Partial<PremiumChallenge>) => Promise<boolean>;
+  deleteCustomChallenge: (challengeId: string) => Promise<boolean>;
   
   // Weekly Reports
   weeklyReports: any[];
@@ -355,6 +368,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [popupTestimonials, setPopupTestimonials] = useState<PopupTestimonial[]>([]);
 
+  // Challenges state (7 Flagship + Admin Custom Created)
+  const [customChallenges, setCustomChallenges] = useState<PremiumChallenge[]>(() => {
+    try {
+      const stored = localStorage.getItem("fit_custom_challenges");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  const allChallenges = React.useMemo(() => {
+    const map = new Map<string, PremiumChallenge>();
+    FLAGSHIP_CHALLENGES.forEach(fc => map.set(fc.id, fc));
+    customChallenges.forEach(cc => {
+      if (cc && cc.id) {
+        map.set(cc.id, cc);
+      }
+    });
+    return Array.from(map.values());
+  }, [customChallenges]);
+
 
   // Apply visual theme to document body
   useEffect(() => {
@@ -481,51 +517,112 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     fetchCustomDatabaseOverrides();
   }, [isMockFirebase]);
 
-  // Real-time listener for Firestore custom exercise overrides
+  // Real-time listener for Firestore custom exercise overrides & challenges
   useEffect(() => {
+    // Initial fetch for challenges from server API
+    const fetchServerChallenges = async () => {
+      try {
+        const res = await fetch("/api/challenges");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.challenges) && data.challenges.length > 0) {
+            setCustomChallenges(data.challenges);
+            safeSetItem("fit_custom_challenges", JSON.stringify(data.challenges));
+          }
+        }
+      } catch (e) {
+        console.warn("Could not fetch server challenges:", e);
+      }
+    };
+    fetchServerChallenges();
+
     if (isMockFirebase) return;
 
     try {
+      // 1. Exercise collection listener
       const unsub = onSnapshot(collection(db, "exercises"), (snap) => {
         if (snap.empty) return;
-        const firestoreMap: Record<string, { customMediaUrl?: string; customMediaType?: "image" | "video" }> = {};
+        const firestoreMap: Record<string, Partial<Exercise>> = {};
+        const newExercises: Exercise[] = [];
+
         snap.docs.forEach(docSnap => {
-          const d = docSnap.data();
-          if (d.customMediaUrl) {
-            firestoreMap[docSnap.id] = {
-              customMediaUrl: d.customMediaUrl,
-              customMediaType: d.customMediaType || "image"
-            };
+          const d = docSnap.data() as any;
+          if (d) {
+            firestoreMap[docSnap.id] = d;
+            if (d.name && !EXERCISES.some(e => e.id === docSnap.id)) {
+              newExercises.push({
+                id: docSnap.id,
+                name: d.name,
+                muscleGroups: d.muscleGroups || [d.category || "Full Body"],
+                difficulty: d.difficulty || "Intermediate",
+                instructions: d.instructions || ["Perform with proper form."],
+                equipment: d.equipment || ["Bodyweight"],
+                category: d.category || "Gym Workouts",
+                categories: d.categories || [d.category || "Gym Workouts"],
+                commonMistakes: d.commonMistakes || [],
+                safetyTips: d.safetyTips || [],
+                alternativeExercises: d.alternativeExercises || [],
+                progressionVariations: d.progressionVariations || [],
+                isPremium: d.isPremium !== undefined ? Boolean(d.isPremium) : true,
+                startingPosition: d.startingPosition || "",
+                movementExecution: d.movementExecution || "",
+                finishingPosition: d.finishingPosition || "",
+                regressionVariations: d.regressionVariations || [],
+                musclesWorked: d.musclesWorked || [d.category || "Full Body"],
+                gifUrl: d.customMediaUrl || d.gifUrl || d.imageUrl || "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80",
+                imageUrl: d.customMediaUrl || d.imageUrl || d.gifUrl || "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80",
+                customMediaUrl: d.customMediaUrl,
+                customMediaType: d.customMediaType || "image",
+                description: d.description || "",
+                duration: d.duration || "45s",
+                recommendedSets: d.recommendedSets || "3",
+                recommendedReps: d.recommendedReps || "10-12",
+                recommendedSetsReps: d.recommendedSetsReps || `${d.recommendedSets || '3'} Sets x ${d.recommendedReps || '10-12'} Reps`,
+                restTime: d.restTime || "60s",
+                caloriesBurned: d.caloriesBurned || 110,
+                benefits: d.benefits || [],
+                trainerTips: d.trainerTips || "",
+                safetyNotes: d.safetyNotes || ""
+              });
+            }
           }
         });
 
-        if (Object.keys(firestoreMap).length > 0) {
-          setExercisesState(prev => {
-            let changed = false;
-            const updated = prev.map(ex => {
-              const override = firestoreMap[ex.id];
-              if (override && (ex.customMediaUrl !== override.customMediaUrl || ex.customMediaType !== override.customMediaType)) {
-                changed = true;
-                return {
-                  ...ex,
-                  customMediaUrl: override.customMediaUrl,
-                  customMediaType: override.customMediaType
-                };
-              }
-              return ex;
-            });
-            if (changed) {
-              safeSetItem("fit_exercises", JSON.stringify(updated));
-              return updated;
+        setExercisesState(prev => {
+          let changed = false;
+          const updated = prev.map(ex => {
+            const override = firestoreMap[ex.id];
+            if (override) {
+              changed = true;
+              return {
+                ...ex,
+                ...override,
+                recommendedSetsReps: override.recommendedSetsReps || 
+                  (override.recommendedSets || override.recommendedReps ? `${override.recommendedSets || ex.recommendedSets || '3'} Sets x ${override.recommendedReps || ex.recommendedReps || '10-12'} Reps` : ex.recommendedSetsReps)
+              };
             }
-            return prev;
+            return ex;
           });
-        }
+
+          // Add newly discovered exercises from Firestore
+          for (const newEx of newExercises) {
+            if (!updated.some(u => u.id === newEx.id)) {
+              updated.unshift(newEx);
+              changed = true;
+            }
+          }
+
+          if (changed) {
+            safeSetItem("fit_exercises", JSON.stringify(updated));
+            return updated;
+          }
+          return prev;
+        });
       }, (err) => {
         console.warn("Real-time Firestore exercise listener notice:", err?.message || err);
       });
 
-      // Real-time listener for 'assets_manifest' collection
+      // 2. Real-time listener for 'assets_manifest' collection
       const manifestUnsub = onSnapshot(collection(db, "assets_manifest"), (snap) => {
         if (snap.empty) return;
         AssetManifestService.syncAllManifestsWithFirestore();
@@ -569,12 +666,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.warn("Real-time Firestore assets_manifest listener notice:", err?.message || err);
       });
 
+      // 3. Real-time listener for 'challenges' collection
+      const challengesUnsub = onSnapshot(collection(db, "challenges"), (snap) => {
+        if (snap.empty) return;
+        const loaded: PremiumChallenge[] = [];
+        snap.docs.forEach(docSnap => {
+          const d = docSnap.data();
+          if (d && !d.isDeleted) {
+            loaded.push({
+              id: d.id || docSnap.id,
+              title: d.title || "Custom Challenge",
+              description: d.description || "",
+              category: d.category || "Hypertrophy",
+              goal: d.goal || d.description || "",
+              image: d.image || "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80",
+              badgeId: d.badgeId || `badge_${docSnap.id}`,
+              badgeName: d.badgeName || `${d.title} Champion`,
+              badgeColor: d.badgeColor || "from-red-500 to-amber-600",
+              durationDays: Number(d.durationDays) || 30,
+              isPremium: d.isPremium !== undefined ? Boolean(d.isPremium) : true,
+              workouts: Array.isArray(d.workouts) ? d.workouts : [],
+              createdAt: d.createdAt,
+              createdBy: d.createdBy,
+              isCustom: true
+            });
+          }
+        });
+        if (loaded.length > 0) {
+          setCustomChallenges(loaded);
+          safeSetItem("fit_custom_challenges", JSON.stringify(loaded));
+        }
+      }, (err) => {
+        console.warn("Real-time Firestore challenges listener notice:", err?.message || err);
+      });
+
       return () => {
         unsub();
         manifestUnsub();
+        challengesUnsub();
       };
     } catch (e) {
-      console.warn("Could not set up real-time exercise/asset listeners:", e);
+      console.warn("Could not set up real-time exercise/asset/challenge listeners:", e);
     }
   }, [isMockFirebase]);
 
@@ -932,7 +1064,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               if (userSnap.exists()) {
                 const fetched = userSnap.data() as UserProfile;
                 const isAdmin = isEmailAdmin(firebaseUser.email || undefined);
-                const isPremium = isAdmin || fetched.subscriptionStatus === "premium";
+                const hasActiveExpiry = fetched.subscriptionExpiry ? (new Date(fetched.subscriptionExpiry) > new Date()) : true;
+                const isPremium = isAdmin || (fetched.subscriptionStatus === "premium" && hasActiveExpiry);
                 profile = {
                   ...fetched,
                   uid: firebaseUser.uid,
@@ -942,11 +1075,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   role: isAdmin ? "admin" : (fetched.role || "user"),
                   subscriptionStatus: isPremium ? "premium" : "free",
                   subscriptionTier: isPremium ? (fetched.subscriptionTier === "none" || !fetched.subscriptionTier ? "monthly" : fetched.subscriptionTier) : "none",
-                  accountType: isPremium ? "Premium Athlete" : "Free Trial",
-                  badge: isPremium ? "Premium Athlete" : "Free Trial",
-                  isFreeTrial: !isPremium,
-                  freeTrialStatus: isPremium ? "none" : (fetched.freeTrialStatus || "active"),
-                  freeTrialDaysRemaining: isPremium ? 0 : (fetched.freeTrialDaysRemaining ?? 7),
+                  subscriptionPlan: isPremium ? (fetched.subscriptionPlan || "monthly") : "none",
+                  accountType: isPremium ? "Premium Athlete" : "Free Athlete",
+                  badge: isPremium ? "Premium Athlete" : "Free Athlete",
+                  isFreeTrial: false,
+                  freeTrialStatus: isPremium ? "none" : "expired",
+                  freeTrialDaysRemaining: 0,
                   onboarded: fetched.onboarded !== undefined ? fetched.onboarded : true
                 };
                 // Cache in local storage for subsequent offline loads
@@ -1154,6 +1288,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       unsubscribe();
     };
   }, []);
+
+  // Periodic and visibility-based subscription expiration monitor
+  useEffect(() => {
+    const checkExpiration = async () => {
+      if (!user || user.role === "admin" || user.subscriptionStatus !== "premium") return;
+      if (!user.subscriptionExpiry) return;
+
+      const expiryDate = new Date(user.subscriptionExpiry);
+      if (!isNaN(expiryDate.getTime()) && expiryDate < new Date()) {
+        console.log(`[Subscription Monitor] Premium subscription for ${user.uid} expired on ${user.subscriptionExpiry}. Transitioning to Free Athlete.`);
+        const expiredUser: UserProfile = {
+          ...user,
+          subscriptionStatus: "free",
+          subscriptionTier: "none",
+          subscriptionPlan: "none",
+          accountType: "Free Athlete",
+          badge: "Free Athlete",
+          isFreeTrial: false,
+          freeTrialStatus: "expired",
+          freeTrialDaysRemaining: 0
+        };
+        await syncUserToStorageAndPlatform(expiredUser);
+      }
+    };
+
+    const interval = setInterval(checkExpiration, 30000); // Check every 30 seconds
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        checkExpiration();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", checkExpiration);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", checkExpiration);
+    };
+  }, [user?.uid, user?.subscriptionStatus, user?.subscriptionExpiry, user?.role]);
 
   const saveWorkoutFiltersToFirebase = async (uid: string, filters: WorkoutLibraryFilters) => {
     if (isMockFirebase) return;
@@ -2848,6 +3022,278 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     }
   };
 
+  const editExercise = async (exerciseId: string, updates: Partial<Exercise>): Promise<boolean> => {
+    try {
+      const updatedExercises = exercises.map(ex => {
+        if (ex.id === exerciseId) {
+          const next = { ...ex, ...updates };
+          if (updates.recommendedSets || updates.recommendedReps) {
+            const nextSets = updates.recommendedSets || ex.recommendedSets || '3';
+            const nextReps = updates.recommendedReps || ex.recommendedReps || '10-12';
+            next.recommendedSets = nextSets;
+            next.recommendedReps = nextReps;
+            next.recommendedSetsReps = `${nextSets} Sets x ${nextReps} Reps`;
+          }
+          return next;
+        }
+        return ex;
+      });
+      setExercisesState(updatedExercises);
+      safeSetItem("fit_exercises", JSON.stringify(updatedExercises));
+
+      // Persist to server API
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        await fetch("/api/exercises/update", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ exerciseId, updates })
+        });
+      } catch (e) {
+        console.warn("Server exercise update notice:", e);
+      }
+
+      // Persist to Firestore
+      if (!isMockFirebase) {
+        try {
+          await setDoc(doc(db, "exercises", exerciseId), { id: exerciseId, ...updates }, { merge: true });
+        } catch (dbErr) {
+          console.warn("Firestore exercise update notice:", dbErr);
+        }
+      }
+
+      logAdminAction("EDIT_WORKOUT", `Edited workout ${exerciseId} (Name: ${updates.name || 'same'}, Sets: ${updates.recommendedSets || 'same'}, Reps: ${updates.recommendedReps || 'same'})`, { exerciseId, updates });
+      return true;
+    } catch (err) {
+      console.error("Failed to edit exercise:", err);
+      return false;
+    }
+  };
+
+  const addWorkout = async (workoutData: Partial<Exercise>): Promise<Exercise> => {
+    const newId = workoutData.id || `custom_ex_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const sets = workoutData.recommendedSets || "3";
+    const reps = workoutData.recommendedReps || "10-12";
+    const setsReps = workoutData.recommendedSetsReps || `${sets} Sets x ${reps} Reps`;
+
+    const fullExercise: Exercise = {
+      id: newId,
+      name: workoutData.name || "Custom Workout",
+      muscleGroups: workoutData.muscleGroups && workoutData.muscleGroups.length > 0 ? workoutData.muscleGroups : [workoutData.category || "Full Body"],
+      difficulty: workoutData.difficulty || "Intermediate",
+      instructions: workoutData.instructions && workoutData.instructions.length > 0 ? workoutData.instructions : [
+        `Set up your starting position and brace your core tightly.`,
+        `Execute ${workoutData.name || 'the exercise'} through the full range of motion.`,
+        `Hold contraction at peak for 1 second, then lower under control.`
+      ],
+      equipment: workoutData.equipment && workoutData.equipment.length > 0 ? workoutData.equipment : ["Bodyweight"],
+      category: workoutData.category || "Gym Workouts",
+      categories: workoutData.categories && workoutData.categories.length > 0 ? workoutData.categories : [workoutData.category || "Gym Workouts"],
+      commonMistakes: workoutData.commonMistakes || ["Rushing the movement or using excessive momentum."],
+      safetyTips: workoutData.safetyTips || ["Maintain a neutral spine and controlled breathing."],
+      alternativeExercises: workoutData.alternativeExercises || ["Standard Pushups"],
+      progressionVariations: workoutData.progressionVariations || ["Increase resistance or hold eccentric count for 3 seconds."],
+      isPremium: workoutData.isPremium !== undefined ? workoutData.isPremium : true,
+      startingPosition: workoutData.startingPosition || `Assume stable starting stance with core braced.`,
+      movementExecution: workoutData.movementExecution || `Execute deliberate contraction through target muscle group.`,
+      finishingPosition: workoutData.finishingPosition || `Return smoothly to starting position.`,
+      regressionVariations: workoutData.regressionVariations || ["Perform with lighter load or bodyweight assistance."],
+      musclesWorked: workoutData.musclesWorked || [workoutData.category || "Full Body"],
+      gifUrl: workoutData.customMediaUrl || workoutData.gifUrl || workoutData.imageUrl || "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80",
+      imageUrl: workoutData.customMediaUrl || workoutData.imageUrl || workoutData.gifUrl || "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80",
+      customMediaUrl: workoutData.customMediaUrl,
+      customMediaType: workoutData.customMediaType || "image",
+      description: workoutData.description || `${workoutData.name} targets key muscular chains to build strength and hypertrophy.`,
+      duration: workoutData.duration || "45s",
+      recommendedSets: sets,
+      recommendedReps: reps,
+      recommendedSetsReps: setsReps,
+      restTime: workoutData.restTime || "60s",
+      caloriesBurned: workoutData.caloriesBurned || 110,
+      benefits: workoutData.benefits || ["Increases functional power and muscular endurance."],
+      trainerTips: workoutData.trainerTips || "Focus on intense mind-muscle connection and controlled tempo.",
+      safetyNotes: workoutData.safetyNotes || "Warm up thoroughly before working sets.",
+      ...workoutData
+    };
+
+    setExercisesState(prev => {
+      const next = [fullExercise, ...prev.filter(e => e.id !== newId)];
+      safeSetItem("fit_exercises", JSON.stringify(next));
+      return next;
+    });
+
+    // Save to server
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      await fetch("/api/exercises/create", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ workout: fullExercise })
+      });
+    } catch (e) {
+      console.warn("Server workout creation notice:", e);
+    }
+
+    // Save to Firestore
+    if (!isMockFirebase) {
+      try {
+        await setDoc(doc(db, "exercises", newId), fullExercise);
+        await setDoc(doc(db, "generated_exercises", newId), fullExercise);
+      } catch (dbErr) {
+        console.warn("Firestore workout creation notice:", dbErr);
+      }
+    }
+
+    logAdminAction("ADD_WORKOUT", `Created new workout "${fullExercise.name}" with Sets: ${sets}, Reps: ${reps}`, { workout: fullExercise });
+    return fullExercise;
+  };
+
+  const deleteWorkout = async (exerciseId: string): Promise<boolean> => {
+    setExercisesState(prev => {
+      const next = prev.filter(e => e.id !== exerciseId);
+      safeSetItem("fit_exercises", JSON.stringify(next));
+      return next;
+    });
+
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      await fetch("/api/exercises/delete", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ exerciseId })
+      });
+    } catch (e) {}
+
+    if (!isMockFirebase) {
+      try {
+        await deleteDoc(doc(db, "exercises", exerciseId)).catch(() => {});
+        await deleteDoc(doc(db, "generated_exercises", exerciseId)).catch(() => {});
+      } catch (e) {}
+    }
+    return true;
+  };
+
+  // Challenges CRUD Operations
+  const addCustomChallenge = async (challengeData: Partial<PremiumChallenge>): Promise<PremiumChallenge> => {
+    const newId = challengeData.id || `chal_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const fullChallenge: PremiumChallenge = {
+      id: newId,
+      title: challengeData.title || "Elite Fitness Challenge",
+      description: challengeData.description || "Comprehensive multi-phase workout challenge designed for peak performance.",
+      category: challengeData.category || "Hypertrophy",
+      goal: challengeData.goal || challengeData.description || "Build strength and transform body composition.",
+      image: challengeData.image || "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80",
+      badgeId: challengeData.badgeId || `badge_${newId}`,
+      badgeName: challengeData.badgeName || `${challengeData.title || 'Challenge'} Champion`,
+      badgeColor: challengeData.badgeColor || "from-amber-500 to-red-600",
+      durationDays: Number(challengeData.durationDays) || 30,
+      isPremium: challengeData.isPremium !== undefined ? Boolean(challengeData.isPremium) : true,
+      workouts: Array.isArray(challengeData.workouts) ? challengeData.workouts : [],
+      createdAt: new Date().toISOString(),
+      createdBy: user?.email || "admin",
+      isCustom: true,
+      ...challengeData
+    };
+
+    setCustomChallenges(prev => {
+      const next = [fullChallenge, ...prev.filter(c => c.id !== newId)];
+      safeSetItem("fit_custom_challenges", JSON.stringify(next));
+      return next;
+    });
+
+    // Save to server
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      await fetch("/api/challenges/save", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ challenge: fullChallenge })
+      });
+    } catch (e) {
+      console.warn("Server challenge save notice:", e);
+    }
+
+    // Save to Firestore
+    if (!isMockFirebase) {
+      try {
+        await setDoc(doc(db, "challenges", newId), fullChallenge);
+      } catch (dbErr) {
+        console.warn("Firestore challenge save notice:", dbErr);
+      }
+    }
+
+    logAdminAction("CREATE_CHALLENGE", `Created challenge "${fullChallenge.title}" with ${fullChallenge.workouts?.length || 0} workouts`, { challenge: fullChallenge });
+    return fullChallenge;
+  };
+
+  const updateCustomChallenge = async (challengeId: string, updates: Partial<PremiumChallenge>): Promise<boolean> => {
+    let updatedObj: PremiumChallenge | null = null;
+    setCustomChallenges(prev => {
+      const next = prev.map(c => {
+        if (c.id === challengeId) {
+          updatedObj = { ...c, ...updates };
+          return updatedObj;
+        }
+        return c;
+      });
+      safeSetItem("fit_custom_challenges", JSON.stringify(next));
+      return next;
+    });
+
+    if (updatedObj) {
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        await fetch("/api/challenges/save", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ challenge: updatedObj })
+        });
+      } catch (e) {}
+
+      if (!isMockFirebase) {
+        try {
+          await setDoc(doc(db, "challenges", challengeId), updatedObj, { merge: true });
+        } catch (e) {}
+      }
+    }
+    return true;
+  };
+
+  const deleteCustomChallenge = async (challengeId: string): Promise<boolean> => {
+    setCustomChallenges(prev => {
+      const next = prev.filter(c => c.id !== challengeId);
+      safeSetItem("fit_custom_challenges", JSON.stringify(next));
+      return next;
+    });
+
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      await fetch(`/api/challenges/${challengeId}`, {
+        method: "DELETE",
+        headers
+      });
+    } catch (e) {}
+
+    if (!isMockFirebase) {
+      try {
+        await deleteDoc(doc(db, "challenges", challengeId));
+      } catch (e) {}
+    }
+    return true;
+  };
+
   return (
     <AppContext.Provider value={{
       user,
@@ -2918,6 +3364,15 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       allSystemUsers,
       uploadExerciseMedia,
       addExerciseToLibrary,
+      editExercise,
+      addWorkout,
+      deleteWorkout,
+
+      customChallenges,
+      allChallenges,
+      addCustomChallenge,
+      updateCustomChallenge,
+      deleteCustomChallenge,
       
       weeklyReports,
       loadWeeklyReports,
