@@ -1,8 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
+const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+const rawKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || "";
+
+export const isSupabaseConfigured = Boolean(
+  rawUrl &&
+  rawKey &&
+  (rawUrl.startsWith("http://") || rawUrl.startsWith("https://"))
+);
+
+const supabaseUrl = isSupabaseConfigured ? rawUrl : "https://placeholder-project.supabase.co";
+const supabaseKey = isSupabaseConfigured ? rawKey : "placeholder-public-key";
 
 export const createClient = (cookieStore?: any) => {
   if (cookieStore) {
@@ -25,9 +34,10 @@ export const createClient = (cookieStore?: any) => {
           }
         }
       });
-    } catch (e) {
+    } catch {
       // Fallback to standard client
     }
   }
   return createSupabaseClient(supabaseUrl, supabaseKey);
 };
+
