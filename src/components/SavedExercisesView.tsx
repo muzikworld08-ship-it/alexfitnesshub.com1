@@ -236,13 +236,13 @@ export default function SavedExercisesView({ setView }: SavedExercisesViewProps)
                 className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white border-2 border-red-100 hover:border-[#C0392B] hover:shadow-lg transition-all"
               >
                 {/* Visual Media Header Block */}
-                <div className="relative">
+                <div className="relative w-full">
                   <WorkoutVisual 
                     exerciseId={ex.id}
                     category={ex.category} 
                     muscleGroups={ex.muscleGroups} 
                     exerciseName={ex.name} 
-                    className="h-44 w-full" 
+                    className="w-full" 
                     customMediaUrl={ex.customMediaUrl}
                     customMediaType={ex.customMediaType}
                     isCard={true}
@@ -250,14 +250,14 @@ export default function SavedExercisesView({ setView }: SavedExercisesViewProps)
                   
                   {/* Premium Tag */}
                   {ex.isPremium && (
-                    <div className="absolute top-3 left-3 bg-[#C0392B] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded shadow-sm flex items-center gap-1">
+                    <div className="absolute top-3 left-3 bg-[#C0392B] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded shadow-sm flex items-center gap-1 z-20">
                       <Sparkles className="w-3 h-3 text-white fill-white" />
                       PREMIUM
                     </div>
                   )}
 
                   {/* Difficulty Tag */}
-                  <div className="absolute top-3 right-3 bg-[#C0392B] text-white text-[9px] font-sans font-bold uppercase px-2.5 py-1 rounded border border-white/20">
+                  <div className="absolute top-3 right-3 bg-[#C0392B] text-white text-[9px] font-sans font-bold uppercase px-2.5 py-1 rounded border border-white/20 z-20">
                     {ex.difficulty}
                   </div>
                 </div>

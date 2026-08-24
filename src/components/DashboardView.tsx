@@ -37,6 +37,7 @@ import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import PersistentDashboardTabs from "./PersistentDashboardTabs";
 import TodoRealtimeWidget from "./TodoRealtimeWidget";
+import ContinueProgramTracker from "./ContinueProgramTracker";
 
 interface DashboardProps {
   activeView?: string;
@@ -390,6 +391,9 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
               </div>
             </div>
           )}
+
+          {/* Active Programs - Continue Where You Stopped Widget */}
+          <ContinueProgramTracker onNavigate={setView} />
 
           {/* Persistent sub-navigation tabs */}
           <PersistentDashboardTabs 

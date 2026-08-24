@@ -11,6 +11,42 @@ try {
   // Ignore
 }
 
+if (typeof window !== "undefined") {
+  const isBenignFirestoreMessage = (msg: string) => {
+    return (
+      msg.includes("Disconnecting idle stream") ||
+      msg.includes("Timed out waiting for new targets") ||
+      (msg.includes("RPC 'Listen' stream") && msg.includes("CANCELLED")) ||
+      msg.includes("GrpcConnection RPC 'Listen'")
+    );
+  };
+
+  const origConsoleError = console.error;
+  console.error = function (...args: any[]) {
+    const text = args.map(a => (typeof a === "string" ? a : a?.message || JSON.stringify(a) || "")).join(" ");
+    if (isBenignFirestoreMessage(text)) {
+      // Benign idle stream cleanup by Firestore SDK, suppress from error logs
+      return;
+    }
+    origConsoleError.apply(console, args);
+  };
+
+  window.addEventListener("error", (event) => {
+    if (event.message && isBenignFirestoreMessage(event.message)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  });
+
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = event.reason?.message || String(event.reason || "");
+    if (isBenignFirestoreMessage(reason)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  });
+}
+
 let app;
 let db: any;
 let auth: any;

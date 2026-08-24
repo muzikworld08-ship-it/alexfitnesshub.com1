@@ -206,7 +206,7 @@ export const TestimonialPopup: React.FC = () => {
  
               {/* Action content & time */}
               <p className="text-[10px] text-slate-900 leading-snug">
-                {currentReview.name && !currentReview.action.includes(currentReview.name) && (
+                {currentReview.name && !currentReview.action?.includes(currentReview.name) && (
                   <span className="font-extrabold text-slate-950 mr-1">
                     {currentReview.name}
                   </span>

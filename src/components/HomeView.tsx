@@ -10,6 +10,7 @@ import { motion } from "motion/react";
 import { NewsletterSubscription } from "./NewsletterSubscription";
 import Logo from "./Logo";
 import { OptimizedImage } from "./OptimizedImage";
+import ContinueProgramTracker from "./ContinueProgramTracker";
 
 const workoutCategories = [
   {
@@ -789,6 +790,13 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
           <p className="text-[10px] font-mono font-black text-foreground tracking-widest uppercase">
             ALEX FIT CENTER • LIVE SESSION READY
           </p>
+        </div>
+      </section>
+
+      {/* CONTINUATION SECTION - RESUME WHERE YOU LEFT OFF */}
+      <section id="continue-program-section" className="py-6 sm:py-8 bg-background border-b border-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <ContinueProgramTracker onNavigate={setView} />
         </div>
       </section>
 

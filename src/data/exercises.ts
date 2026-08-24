@@ -48,32 +48,35 @@ export interface Exercise {
 export function getExerciseGifUrl(name: string, category: string = ""): string {
   const nameLower = name.toLowerCase();
   
-  if (nameLower.includes("bench press") || nameLower.includes("chest press") || nameLower.includes("push up") || nameLower.includes("pushup") || nameLower.includes("fly")) {
+  if (nameLower.includes("bench press") || nameLower.includes("chest press") || nameLower.includes("push up") || nameLower.includes("pushup") || nameLower.includes("fly") || nameLower.includes("crossover") || nameLower.includes("guillotine")) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h0YnpwM2wzdW9vdG9ndjY5NHdvdnBwdXB4Mm5qNXRpcG5xMDlxMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o84U6421O1IIXbowg/giphy.gif";
   }
-  if (nameLower.includes("squat") || nameLower.includes("leg press") || nameLower.includes("lunges") || nameLower.includes("lunge")) {
+  if (nameLower.includes("squat") || nameLower.includes("leg press") || nameLower.includes("lunges") || nameLower.includes("lunge") || nameLower.includes("step up") || nameLower.includes("sissy") || nameLower.includes("cyclist")) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2bzNyMTZ4ZHp0aXB6dnZzcDZrcTZhbmplbmF2MnpydzF1b3ByMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/u8946fAnhQ6cH9R16e/giphy.gif";
   }
-  if (nameLower.includes("plank") || nameLower.includes("crunch") || nameLower.includes("twist") || nameLower.includes("abdominal") || nameLower.includes("sit up") || nameLower.includes("situp")) {
+  if (nameLower.includes("plank") || nameLower.includes("crunch") || nameLower.includes("twist") || nameLower.includes("abdominal") || nameLower.includes("sit up") || nameLower.includes("situp") || nameLower.includes("dead bug") || nameLower.includes("vacuum") || nameLower.includes("pallof") || nameLower.includes("dragon flag") || nameLower.includes("wiper") || nameLower.includes("woodchopper")) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NiaXQxMGxkcTVwZGxhbjVvNnlvZDJ4bnB4ZGpwNnZxdThscDZ6eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT8qB7Sbwskk27Rdy8/giphy.gif";
   }
-  if (nameLower.includes("glute bridge") || nameLower.includes("hip thrust")) {
+  if (nameLower.includes("glute bridge") || nameLower.includes("hip thrust") || nameLower.includes("kickback") || nameLower.includes("glute") || nameLower.includes("frog pump") || nameLower.includes("pull-through") || nameLower.includes("kas")) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExOTVxbGRzNDVleW12ZTRsdXoxeDJmd2t2enN5YnYwdXhyeTV6ZW5xeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/v1F0A8f5Ff6hO/giphy.gif";
   }
-  if (nameLower.includes("mountain climber") || nameLower.includes("burpee") || nameLower.includes("jacks") || nameLower.includes("bike") || nameLower.includes("cycling") || nameLower.includes("run") || nameLower.includes("sprint") || nameLower.includes("walk")) {
+  if (nameLower.includes("mountain climber") || nameLower.includes("burpee") || nameLower.includes("jacks") || nameLower.includes("bike") || nameLower.includes("cycling") || nameLower.includes("run") || nameLower.includes("sprint") || nameLower.includes("walk") || nameLower.includes("devil press") || nameLower.includes("wall ball") || nameLower.includes("sled") || nameLower.includes("boxing")) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2bzNyMTZ4ZHp0aXB6dnZzcDZrcTZhbmplbmF2MnpydzF1b3ByMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/13sc1CHidbO6S4/giphy.gif";
   }
-  if (nameLower.includes("row") || nameLower.includes("pull-up") || nameLower.includes("pullup") || nameLower.includes("chin-up") || nameLower.includes("chinup") || nameLower.includes("deadlift")) {
+  if (nameLower.includes("row") || nameLower.includes("pull-up") || nameLower.includes("pullup") || nameLower.includes("chin-up") || nameLower.includes("chinup") || nameLower.includes("deadlift") || nameLower.includes("lat pulldown") || nameLower.includes("pullover") || nameLower.includes("meadows") || nameLower.includes("pendlay") || nameLower.includes("seal row")) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZW1sODNuY2Q3N29pd2VrdGkzbndpdTJ4cnFkM3pxOHdqN3huc2sybyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/duuVpx00In40Syc7m6/giphy.gif";
   }
-  if (nameLower.includes("curl") || nameLower.includes("biceps") || nameLower.includes("bicep")) {
+  if (nameLower.includes("curl") || nameLower.includes("biceps") || nameLower.includes("bicep") || nameLower.includes("zottman") || nameLower.includes("bayesian") || nameLower.includes("spider")) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NiaXQxMGxkcTVwZGxhbjVvNnlvZDJ4bnB4ZGpwNnZxdThscDZ6eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7qE1YN7aBOFPRw8E/giphy.gif";
   }
-  if (nameLower.includes("dip") || nameLower.includes("dips") || nameLower.includes("tricep") || nameLower.includes("triceps") || nameLower.includes("pushdown") || nameLower.includes("extension")) {
+  if (nameLower.includes("dip") || nameLower.includes("dips") || nameLower.includes("tricep") || nameLower.includes("triceps") || nameLower.includes("pushdown") || nameLower.includes("extension") || nameLower.includes("jm press") || nameLower.includes("tate press")) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExOTV4bHF2eXU4eWZsc29tZndyYWVtbjR6dWU3dGkwdHNyeTV6ZW5xeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o84U39K5Cj6D0v2w0/giphy.gif";
   }
-  if (nameLower.includes("press") || nameLower.includes("raise") || nameLower.includes("deltoid") || nameLower.includes("shoulders") || nameLower.includes("delts")) {
+  if (nameLower.includes("press") || nameLower.includes("raise") || nameLower.includes("deltoid") || nameLower.includes("shoulders") || nameLower.includes("delts") || nameLower.includes("face pull") || nameLower.includes("lu raise") || nameLower.includes("bradford") || nameLower.includes("snatch") || nameLower.includes("get-up")) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZHp5NDZocWlkNDNuN2psZHZpcXpnaXR2MXByajVwNG9tZG5reHR1NCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7qE6b39zV1LALZRe/giphy.gif";
+  }
+  if (nameLower.includes("stretch") || nameLower.includes("mobility") || nameLower.includes("pigeon") || nameLower.includes("scorpion") || nameLower.includes("couch") || nameLower.includes("shin box") || nameLower.includes("cat-cow")) {
+    return "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&auto=format&fit=crop&q=80";
   }
 
   return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2bzNyMTZ4ZHp0aXB6dnZzcDZrcTZhbmplbmF2MnpydzF1b3ByMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/u8946fAnhQ6cH9R16e/giphy.gif";
@@ -367,7 +370,110 @@ const RAW_EXERCISES_DATA: RawExerciseData[] = [
   { name: "Hanging Knee-to-Chest / Leg Raises", category: "Gym Workouts", sub: "Abs and Core", equipment: ["Pullup Bar"], primary: "Core", secondary: ["Abs"], diff: "Intermediate" },
   { name: "High-Intensity Dumbbell Thrusters", category: "Gym Workouts", sub: "Legs", equipment: ["Dumbbells"], primary: "Legs", secondary: ["Quads", "Shoulders"], diff: "Intermediate" },
   { name: "Dumbbell Renegade Rows with Push-Up", category: "Gym Workouts", sub: "Back", equipment: ["Dumbbells"], primary: "Back", secondary: ["Chest", "Core"], diff: "Intermediate" },
-  { name: "Explosive Hip-Hinge Kettlebell Swings", category: "Cardio Workouts", sub: "HIIT Cardio", equipment: ["Kettlebell"], primary: "Cardio", secondary: ["Hamstrings", "Core"], diff: "Intermediate" }
+  { name: "Explosive Hip-Hinge Kettlebell Swings", category: "Cardio Workouts", sub: "HIIT Cardio", equipment: ["Kettlebell"], primary: "Cardio", secondary: ["Hamstrings", "Core"], diff: "Intermediate" },
+
+  // ================= WOMEN CONFIDENCE PROGRAM EXERCISES =================
+  { name: "Glute Bridge & Isometric Hold", displayName: "Glute Bridge & Isometric Hold", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Bodyweight", "Dumbbell"], primary: "Glutes", secondary: ["Hamstrings", "Core"], diff: "Beginner" },
+  { name: "Tempo Goblet Squat", displayName: "Tempo Goblet Squat", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Dumbbell", "Kettlebell"], primary: "Quadriceps", secondary: ["Glutes", "Upper Back"], diff: "Beginner" },
+  { name: "Dumbbell Romanian Deadlift (RDL)", displayName: "Dumbbell Romanian Deadlift (RDL)", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Dumbbells"], primary: "Hamstrings", secondary: ["Glutes", "Lower Back"], diff: "Intermediate" },
+  { name: "Bulgarian Split Squat", displayName: "Bulgarian Split Squat", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Dumbbells", "Bench"], primary: "Glutes", secondary: ["Quadriceps", "Hamstrings"], diff: "Intermediate" },
+  { name: "Lateral Mini-Band Glute Walk", displayName: "Lateral Mini-Band Glute Walk", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Resistance Band"], primary: "Glutes", secondary: ["Hip Abductors"], diff: "Beginner" },
+  { name: "Single-Arm Supported Row", displayName: "Single-Arm Supported Row", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Dumbbell", "Bench"], primary: "Back", secondary: ["Biceps", "Rhomboids"], diff: "Beginner" },
+  { name: "Standing Dumbbell Overhead Shoulder Press", displayName: "Standing Dumbbell Overhead Shoulder Press", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Dumbbells"], primary: "Shoulders", secondary: ["Triceps", "Core"], diff: "Beginner" },
+  { name: "Contralateral Dead Bug", displayName: "Contralateral Dead Bug", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Bodyweight"], primary: "Core", secondary: ["Transverse Abdominis", "Hip Flexors"], diff: "Beginner" },
+  { name: "Side Plank with Glute Abduction", displayName: "Side Plank with Glute Abduction", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Bodyweight"], primary: "Obliques", secondary: ["Glutes", "Core"], diff: "Intermediate" },
+  { name: "Resistance Band Pull-Aparts & Posture Opener", displayName: "Resistance Band Pull-Aparts & Posture Opener", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Resistance Band"], primary: "Shoulders", secondary: ["Rear Delts", "Upper Back"], diff: "Beginner" },
+  { name: "Barbell Hip Thrust", displayName: "Barbell Hip Thrust", category: "Gym Workouts", sub: "Women Confidence Program", equipment: ["Barbell", "Bench"], primary: "Glutes", secondary: ["Hamstrings"], diff: "Intermediate" },
+  { name: "Cable Glute Kickbacks", displayName: "Cable Glute Kickbacks", category: "Gym Workouts", sub: "Women Confidence Program", equipment: ["Cable Machine"], primary: "Glutes", secondary: ["Hamstrings"], diff: "Beginner" },
+  { name: "Sumo Squat with Pulse", displayName: "Sumo Squat with Pulse", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Dumbbell", "Bodyweight"], primary: "Quadriceps", secondary: ["Glutes", "Adductors"], diff: "Beginner" },
+  { name: "Curtsy Lunges", displayName: "Curtsy Lunges", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Bodyweight", "Dumbbells"], primary: "Glutes", secondary: ["Quads", "Hamstrings"], diff: "Intermediate" },
+  { name: "Step Ups with Knee Drive", displayName: "Step Ups with Knee Drive", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Bench", "Dumbbells"], primary: "Glutes", secondary: ["Quads", "Calves"], diff: "Beginner" },
+  { name: "Incline Dumbbell Chest Press", displayName: "Incline Dumbbell Chest Press", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Dumbbells", "Bench"], primary: "Chest", secondary: ["Front Delts", "Triceps"], diff: "Intermediate" },
+  { name: "Lat Pulldown to Sternum", displayName: "Lat Pulldown to Sternum", category: "Gym Workouts", sub: "Women Confidence Program", equipment: ["Cable Machine"], primary: "Back", secondary: ["Biceps", "Lats"], diff: "Beginner" },
+  { name: "Dumbbell Lateral Raises", displayName: "Dumbbell Lateral Raises", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Dumbbells"], primary: "Shoulders", secondary: ["Traps"], diff: "Beginner" },
+  { name: "Overhead Triceps Rope Extension", displayName: "Overhead Triceps Rope Extension", category: "Gym Workouts", sub: "Women Confidence Program", equipment: ["Cable Machine"], primary: "Triceps", secondary: ["Forearms"], diff: "Beginner" },
+  { name: "Dumbbell Hammer Curls", displayName: "Dumbbell Hammer Curls", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Dumbbells"], primary: "Biceps", secondary: ["Forearms"], diff: "Beginner" },
+  { name: "Bird Dog Stability Hold", displayName: "Bird Dog Stability Hold", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Bodyweight"], primary: "Core", secondary: ["Glutes", "Lower Back"], diff: "Beginner" },
+  { name: "Plank Hip Dips", displayName: "Plank Hip Dips", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Bodyweight"], primary: "Obliques", secondary: ["Core"], diff: "Intermediate" },
+  { name: "Bicycle Crunches", displayName: "Bicycle Crunches", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Bodyweight"], primary: "Core", secondary: ["Abs", "Obliques"], diff: "Beginner" },
+  { name: "Stomach Vacuum & Core Bracing", displayName: "Stomach Vacuum & Core Bracing", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Bodyweight"], primary: "Core", secondary: ["Transverse Abdominis"], diff: "Beginner" },
+
+  // ================= 60 NEW EXPANSION EXERCISES ACROSS ALL CATEGORIES =================
+  // --- CHEST & UPPER BODY PRESSING ---
+  { name: "Landmine Chest Press", displayName: "Landmine Chest Press", category: "Gym Workouts", sub: "Chest", equipment: ["Landmine", "Barbell"], primary: "Chest", secondary: ["Triceps", "Front Delts"], diff: "Intermediate" },
+  { name: "Incline Cable Fly with Supination", displayName: "Incline Cable Fly with Supination", category: "Gym Workouts", sub: "Chest", equipment: ["Cable Machine", "Bench"], primary: "Chest", secondary: ["Front Delts", "Inner Chest"], diff: "Intermediate" },
+  { name: "Dumbbell Guillotine Press", displayName: "Dumbbell Guillotine Press", category: "Gym Workouts", sub: "Chest", equipment: ["Dumbbells", "Bench"], primary: "Chest", secondary: ["Front Delts", "Triceps"], diff: "Advanced" },
+  { name: "Deficit Push-Ups with Handles", displayName: "Deficit Push-Ups with Handles", category: "Calisthenics Workouts", sub: "Chest", equipment: ["Push Up Handles"], primary: "Chest", secondary: ["Triceps", "Core"], diff: "Intermediate" },
+  { name: "Standing Cable Crossover (Low to High)", displayName: "Standing Cable Crossover (Low to High)", category: "Gym Workouts", sub: "Chest", equipment: ["Cable Machine"], primary: "Chest", secondary: ["Front Delts"], diff: "Beginner" },
+
+  // --- SHOULDERS & SCAPULAR DYNAMICS ---
+  { name: "Landmine Overhead Shoulder Press", displayName: "Landmine Overhead Shoulder Press", category: "Gym Workouts", sub: "Shoulders", equipment: ["Landmine", "Barbell"], primary: "Shoulders", secondary: ["Triceps", "Core"], diff: "Intermediate" },
+  { name: "Cable Face Pull with External Rotation", displayName: "Cable Face Pull with External Rotation", category: "Gym Workouts", sub: "Shoulders", equipment: ["Cable Machine", "Rope"], primary: "Rear Delts", secondary: ["Rotator Cuff", "Rhomboids"], diff: "Beginner" },
+  { name: "Plate Front Raise to Overhead Lockout", displayName: "Plate Front Raise to Overhead Lockout", category: "Gym Workouts", sub: "Shoulders", equipment: ["Weight Plate"], primary: "Shoulders", secondary: ["Trapezius", "Core"], diff: "Beginner" },
+  { name: "Dumbbell Lu Raises", displayName: "Dumbbell Lu Raises", category: "Gym Workouts", sub: "Shoulders", equipment: ["Dumbbells"], primary: "Shoulders", secondary: ["Trapezius", "Upper Back"], diff: "Intermediate" },
+  { name: "Seated Bradford Shoulder Press", displayName: "Seated Bradford Shoulder Press", category: "Gym Workouts", sub: "Shoulders", equipment: ["Barbell", "Bench"], primary: "Shoulders", secondary: ["Triceps", "Traps"], diff: "Advanced" },
+  { name: "Incline Prone Rear Delt Dumbbell Fly", displayName: "Incline Prone Rear Delt Dumbbell Fly", category: "Gym Workouts", sub: "Shoulders", equipment: ["Dumbbells", "Bench"], primary: "Rear Delts", secondary: ["Rhomboids"], diff: "Beginner" },
+
+  // --- BACK, LATS & POSTURE ---
+  { name: "Meadows Row (Landmine Row)", displayName: "Meadows Row (Landmine Row)", category: "Gym Workouts", sub: "Back", equipment: ["Landmine", "Barbell"], primary: "Back", secondary: ["Biceps", "Lats"], diff: "Intermediate" },
+  { name: "Helms Dumbbell Chest-Supported Row", displayName: "Helms Dumbbell Chest-Supported Row", category: "Gym Workouts", sub: "Back", equipment: ["Dumbbells", "Incline Bench"], primary: "Back", secondary: ["Rhomboids", "Biceps"], diff: "Beginner" },
+  { name: "Neutral-Grip Lat Pulldown to Clavicle", displayName: "Neutral-Grip Lat Pulldown to Clavicle", category: "Gym Workouts", sub: "Back", equipment: ["Cable Machine", "V-Grip Bar"], primary: "Back", secondary: ["Biceps", "Lats"], diff: "Beginner" },
+  { name: "Single-Arm Lat Prayer (Cable Pullover)", displayName: "Single-Arm Lat Prayer (Cable Pullover)", category: "Gym Workouts", sub: "Back", equipment: ["Cable Machine", "D-Handle"], primary: "Back", secondary: ["Lats", "Triceps"], diff: "Intermediate" },
+  { name: "Pendlay Barbell Explosive Row", displayName: "Pendlay Barbell Explosive Row", category: "Gym Workouts", sub: "Back", equipment: ["Barbell"], primary: "Back", secondary: ["Lats", "Hamstrings", "Core"], diff: "Advanced" },
+  { name: "Inverted Bodyweight Row on Smith Machine", displayName: "Inverted Bodyweight Row on Smith Machine", category: "Calisthenics Workouts", sub: "Back", equipment: ["Smith Machine"], primary: "Back", secondary: ["Biceps", "Core"], diff: "Beginner" },
+  { name: "Dumbbell Seal Row on Flat Bench", displayName: "Dumbbell Seal Row on Flat Bench", category: "Gym Workouts", sub: "Back", equipment: ["Dumbbells", "Elevated Bench"], primary: "Back", secondary: ["Rhomboids", "Biceps"], diff: "Intermediate" },
+  { name: "Prone Trap-3 Scapular Raise", displayName: "Prone Trap-3 Scapular Raise", category: "Home Workouts", sub: "Back", equipment: ["Dumbbells", "Incline Bench"], primary: "Back", secondary: ["Trapezius", "Rotator Cuff"], diff: "Beginner" },
+
+  // --- ARMS (BICEPS, TRICEPS & FOREARMS) ---
+  { name: "Incline Spider Dumbbell Curl", displayName: "Incline Spider Dumbbell Curl", category: "Gym Workouts", sub: "Biceps", equipment: ["Dumbbells", "Incline Bench"], primary: "Biceps", secondary: ["Forearms"], diff: "Intermediate" },
+  { name: "Bayesian Cable Bicep Curl", displayName: "Bayesian Cable Bicep Curl", category: "Gym Workouts", sub: "Biceps", equipment: ["Cable Machine"], primary: "Biceps", secondary: ["Forearms"], diff: "Intermediate" },
+  { name: "Zottman Dumbbell Reverse Curls", displayName: "Zottman Dumbbell Reverse Curls", category: "Gym Workouts", sub: "Biceps", equipment: ["Dumbbells"], primary: "Biceps", secondary: ["Forearms", "Brachioradialis"], diff: "Beginner" },
+  { name: "Preacher Hammer Cable Curl", displayName: "Preacher Hammer Cable Curl", category: "Gym Workouts", sub: "Biceps", equipment: ["Cable Machine", "Preacher Bench"], primary: "Biceps", secondary: ["Forearms"], diff: "Intermediate" },
+  { name: "JM Press (Triceps Mass Builder)", displayName: "JM Press (Triceps Mass Builder)", category: "Gym Workouts", sub: "Triceps", equipment: ["Barbell", "Bench"], primary: "Triceps", secondary: ["Chest", "Front Delts"], diff: "Advanced" },
+  { name: "Overhead Cable Cross-Body Triceps Extension", displayName: "Overhead Cable Cross-Body Triceps Extension", category: "Gym Workouts", sub: "Triceps", equipment: ["Dual Cables"], primary: "Triceps", secondary: ["Shoulders"], diff: "Intermediate" },
+  { name: "Tate Press (Dumbbell Triceps Flush)", displayName: "Tate Press (Dumbbell Triceps Flush)", category: "Gym Workouts", sub: "Triceps", equipment: ["Dumbbells", "Flat Bench"], primary: "Triceps", secondary: ["Chest"], diff: "Intermediate" },
+  { name: "Single-Arm Cable Triceps Kickback", displayName: "Single-Arm Cable Triceps Kickback", category: "Gym Workouts", sub: "Triceps", equipment: ["Cable Machine"], primary: "Triceps", secondary: ["Rear Delts"], diff: "Beginner" },
+  { name: "Behind-the-Back Barbell Wrist Curl", displayName: "Behind-the-Back Barbell Wrist Curl", category: "Gym Workouts", sub: "Biceps", equipment: ["Barbell"], primary: "Forearms", secondary: ["Biceps", "Grip"], diff: "Beginner" },
+
+  // --- GLUTES, LEGS & POSTERIOR CHAIN ---
+  { name: "B-Stance Dumbbell Romanian Deadlift", displayName: "B-Stance Dumbbell Romanian Deadlift", category: "Home Workouts", sub: "Legs", equipment: ["Dumbbells"], primary: "Glutes", secondary: ["Hamstrings", "Core"], diff: "Intermediate" },
+  { name: "Deficit Reverse Lunge on Platform", displayName: "Deficit Reverse Lunge on Platform", category: "Gym Workouts", sub: "Legs", equipment: ["Dumbbells", "Step Platform"], primary: "Glutes", secondary: ["Quadriceps", "Hamstrings"], diff: "Intermediate" },
+  { name: "Kas Glute Bridge with Barbell", displayName: "Kas Glute Bridge with Barbell", category: "Gym Workouts", sub: "Legs", equipment: ["Barbell", "Bench"], primary: "Glutes", secondary: ["Hamstrings"], diff: "Intermediate" },
+  { name: "Cable Pull-Through for Posterior Chain", displayName: "Cable Pull-Through for Posterior Chain", category: "Gym Workouts", sub: "Legs", equipment: ["Cable Machine", "Rope"], primary: "Glutes", secondary: ["Hamstrings", "Lower Back"], diff: "Beginner" },
+  { name: "Frog Pump Glute Burner", displayName: "Frog Pump Glute Burner", category: "Home Workouts", sub: "Legs", equipment: ["Bodyweight", "Dumbbell"], primary: "Glutes", secondary: ["Core"], diff: "Beginner" },
+  { name: "Heels-Elevated Goblet Cyclist Squat", displayName: "Heels-Elevated Goblet Cyclist Squat", category: "Home Workouts", sub: "Legs", equipment: ["Dumbbell", "Wedge"], primary: "Quadriceps", secondary: ["Glutes", "Core"], diff: "Intermediate" },
+  { name: "Nordic Hamstring Curl", displayName: "Nordic Hamstring Curl", category: "Calisthenics Workouts", sub: "Legs", equipment: ["Bodyweight", "Ankle Anchor"], primary: "Hamstrings", secondary: ["Glutes", "Calves"], diff: "Advanced" },
+  { name: "Sissy Squat with Support", displayName: "Sissy Squat with Support", category: "Calisthenics Workouts", sub: "Legs", equipment: ["Bodyweight", "Support Bar"], primary: "Quadriceps", secondary: ["Core", "Hip Flexors"], diff: "Advanced" },
+  { name: "Copenhagen Adductor Side Plank", displayName: "Copenhagen Adductor Side Plank", category: "Home Workouts", sub: "Legs", equipment: ["Bench", "Mat"], primary: "Core", secondary: ["Obliques", "Glutes"], diff: "Intermediate" },
+  { name: "Tibialis Anterior Wall Raise", displayName: "Tibialis Anterior Wall Raise", category: "Home Workouts", sub: "Legs", equipment: ["Bodyweight", "Wall"], primary: "Calves", secondary: ["Ankles"], diff: "Beginner" },
+  { name: "Seated Soleus Calf Raise", displayName: "Seated Soleus Calf Raise", category: "Gym Workouts", sub: "Legs", equipment: ["Machine", "Dumbbells"], primary: "Calves", secondary: ["Ankles"], diff: "Beginner" },
+
+  // --- CORE, OBLIQUES & TRANSVERSE ABDOMINIS ---
+  { name: "Pallof Press with Isometric Hold", displayName: "Pallof Press with Isometric Hold", category: "Gym Workouts", sub: "Abs and Core", equipment: ["Cable Machine", "Resistance Band"], primary: "Core", secondary: ["Obliques", "Abs"], diff: "Beginner" },
+  { name: "Hanging Windshield Wipers", displayName: "Hanging Windshield Wipers", category: "Calisthenics Workouts", sub: "Abs and Core", equipment: ["Pullup Bar"], primary: "Core", secondary: ["Obliques", "Abs", "Lats"], diff: "Advanced" },
+  { name: "Captain's Chair Knee-to-Elbow Twist", displayName: "Captain's Chair Knee-to-Elbow Twist", category: "Gym Workouts", sub: "Abs and Core", equipment: ["Captain's Chair"], primary: "Core", secondary: ["Abs", "Obliques"], diff: "Intermediate" },
+  { name: "Dumbbell Suitcase Carry", displayName: "Dumbbell Suitcase Carry", category: "Home Workouts", sub: "Abs and Core", equipment: ["Dumbbell"], primary: "Core", secondary: ["Obliques", "Forearms"], diff: "Beginner" },
+  { name: "Dragon Flag Negative Lowering", displayName: "Dragon Flag Negative Lowering", category: "Calisthenics Workouts", sub: "Abs and Core", equipment: ["Bench"], primary: "Core", secondary: ["Abs", "Lats"], diff: "Advanced" },
+  { name: "Swiss Ball Pike to Push-Up", displayName: "Swiss Ball Pike to Push-Up", category: "Home Workouts", sub: "Abs and Core", equipment: ["Stability Ball"], primary: "Core", secondary: ["Chest", "Shoulders"], diff: "Intermediate" },
+  { name: "L-Sit Flutter Kicks on Parallettes", displayName: "L-Sit Flutter Kicks on Parallettes", category: "Calisthenics Workouts", sub: "Abs and Core", equipment: ["Parallettes"], primary: "Core", secondary: ["Abs", "Triceps"], diff: "Advanced" },
+  { name: "Cable Woodchopper High-to-Low", displayName: "Cable Woodchopper High-to-Low", category: "Gym Workouts", sub: "Abs and Core", equipment: ["Cable Machine"], primary: "Core", secondary: ["Obliques", "Shoulders"], diff: "Intermediate" },
+
+  // --- ATHLETIC CONDITIONING & HYBRID FUNCTIONAL FITNESS ---
+  { name: "Devil Press with Dual Dumbbells", displayName: "Devil Press with Dual Dumbbells", category: "Cardio Workouts", sub: "HIIT Cardio", equipment: ["Dumbbells"], primary: "Full Body", secondary: ["Chest", "Hamstrings", "Shoulders"], diff: "Advanced" },
+  { name: "Sled / Prowler Push & Pull Sprint", displayName: "Sled / Prowler Push & Pull Sprint", category: "Gym Workouts", sub: "Military Fitness", equipment: ["Sled", "Weight Plates"], primary: "Full Body", secondary: ["Legs", "Calves", "Core"], diff: "Intermediate" },
+  { name: "Wall Balls (Thruster into High Target)", displayName: "Wall Balls (Thruster into High Target)", category: "Cardio Workouts", sub: "HIIT Cardio", equipment: ["Medicine Ball", "Wall Target"], primary: "Full Body", secondary: ["Quadriceps", "Shoulders", "Cardio"], diff: "Intermediate" },
+  { name: "Barbell Clean and Press", displayName: "Barbell Clean and Press", category: "Gym Workouts", sub: "Military Fitness", equipment: ["Barbell"], primary: "Full Body", secondary: ["Shoulders", "Hamstrings", "Back"], diff: "Advanced" },
+  { name: "Dumbbell Snatch (Alternating Single-Arm)", displayName: "Dumbbell Snatch (Alternating Single-Arm)", category: "Gym Workouts", sub: "HIIT Cardio", equipment: ["Dumbbell"], primary: "Full Body", secondary: ["Glutes", "Shoulders"], diff: "Intermediate" },
+  { name: "Turkish Get-Up with Kettlebell", displayName: "Turkish Get-Up with Kettlebell", category: "Gym Workouts", sub: "Military Fitness", equipment: ["Kettlebell"], primary: "Full Body", secondary: ["Shoulders", "Core", "Glutes"], diff: "Advanced" },
+  { name: "Shadow Boxing with Light Dumbbells", displayName: "Shadow Boxing with Light Dumbbells", category: "Cardio Workouts", sub: "Fat Burning Cardio", equipment: ["Light Dumbbells"], primary: "Cardio", secondary: ["Shoulders", "Core"], diff: "Beginner" },
+  { name: "Sandbag Ground-to-Shoulder Carry", displayName: "Sandbag Ground-to-Shoulder Carry", category: "Military Style Fitness", sub: "Military Fitness", equipment: ["Heavy Sandbag"], primary: "Full Body", secondary: ["Back", "Legs", "Core"], diff: "Advanced" },
+
+  // --- MOBILITY, FLEXIBILITY & JOINT LONGEVITY ---
+  { name: "World's Greatest Stretch Complex", displayName: "World's Greatest Stretch Complex", category: "Home Workouts", sub: "Warm-up", equipment: ["Bodyweight"], primary: "Mobility", secondary: ["Hamstrings", "Shoulders", "Glutes"], diff: "Beginner" },
+  { name: "Scorpion Stretch for Spinal Rotation", displayName: "Scorpion Stretch for Spinal Rotation", category: "Home Workouts", sub: "Stretching", equipment: ["Bodyweight"], primary: "Mobility", secondary: ["Lower Back", "Chest"], diff: "Beginner" },
+  { name: "Couch Stretch for Tight Hip Flexors", displayName: "Couch Stretch for Tight Hip Flexors", category: "Home Workouts", sub: "Stretching", equipment: ["Wall / Couch", "Mat"], primary: "Mobility", secondary: ["Quadriceps", "Glutes"], diff: "Beginner" },
+  { name: "Pigeon Pose with Active Thoracic Reach", displayName: "Pigeon Pose with Active Thoracic Reach", category: "Home Workouts", sub: "Stretching", equipment: ["Mat"], primary: "Mobility", secondary: ["Glutes", "Lower Back"], diff: "Beginner" },
+  { name: "Shin Box Hip Internal-External Rotations", displayName: "Shin Box Hip Internal-External Rotations", category: "Home Workouts", sub: "Warm-up", equipment: ["Mat"], primary: "Mobility", secondary: ["Glutes", "Lower Back"], diff: "Beginner" }
 ];
 
 export function determineCategories(
@@ -493,6 +599,36 @@ export function determineCategories(
   // Add difficulty
   cats.push(difficulty);
 
+  // Women Confidence Program classification
+  if (
+    originalCategories.some(c => c.toLowerCase().includes("women")) ||
+    nameL.includes("glute bridge") ||
+    nameL.includes("goblet squat") ||
+    nameL.includes("romanian deadlift") ||
+    nameL.includes("bulgarian split squat") ||
+    nameL.includes("mini-band") ||
+    nameL.includes("supported row") ||
+    nameL.includes("overhead shoulder press") ||
+    nameL.includes("dead bug") ||
+    nameL.includes("glute abduction") ||
+    nameL.includes("pull-aparts") ||
+    nameL.includes("glute kickback") ||
+    nameL.includes("sumo squat") ||
+    nameL.includes("curtsy lunge") ||
+    nameL.includes("step ups with knee drive") ||
+    nameL.includes("incline dumbbell chest press") ||
+    nameL.includes("lat pulldown to sternum") ||
+    nameL.includes("lateral raises") ||
+    nameL.includes("triceps rope extension") ||
+    nameL.includes("bird dog") ||
+    nameL.includes("plank hip dips") ||
+    nameL.includes("bicycle crunches") ||
+    nameL.includes("stomach vacuum")
+  ) {
+    cats.push("Women Confidence Program");
+    cats.push("Women's Programs");
+  }
+
   // Maintain compatibility with original category names
   originalCategories.forEach(c => {
     if (c === "Gym Workouts" && !cats.includes("Gym Workouts")) cats.push("Gym Workouts");
@@ -500,6 +636,10 @@ export function determineCategories(
     if (c === "Cardio Workouts" && !cats.includes("Cardio Workouts")) cats.push("Cardio Workouts");
     if (c === "Calisthenics Workouts" && !cats.includes("Calisthenics Workouts")) cats.push("Calisthenics Workouts");
     if (c === "Military Style Fitness" && !cats.includes("Military Style Fitness")) cats.push("Military Style Fitness");
+    if (c.includes("Women") && !cats.includes("Women Confidence Program")) {
+      cats.push("Women Confidence Program");
+      cats.push("Women's Programs");
+    }
   });
 
   return Array.from(new Set(cats));
@@ -864,13 +1004,59 @@ export const PROGRAMS: Program[] = [
       { day: "Day 1-3 Focus", focus: "Anaerobic Energy Bursts", exercises: ["Explosive Hip-Hinge Kettlebell Swings", "Burpees", "Side Plank"] },
       { day: "Day 4-7 Focus", focus: "Full-Body Density", exercises: ["Dumbbell Renegade Rows with Push-Up", "High-Intensity Dumbbell Thrusters", "Dead Bug"] }
     ]
+  },
+  {
+    id: "women-confidence-180",
+    name: "180-Day Women's Confidence & Posture Program",
+    category: "Women's Programs",
+    description: "6 progressive phases targeting glute shaping, sculpted posture, deep core stability, and athletic confidence across 180 transformational days.",
+    duration: "26 Weeks",
+    difficulty: "Beginner",
+    searchTags: ["women confidence", "180 days", "glutes", "posture", "toning"],
+    imageUrl: REAL_EXERCISE_MEDIA.legs,
+    isPremium: true,
+    schedule: [
+      { day: "Phase 1 - Glute Activation & Base", focus: "Glute Hypertrophy & Transverse Core", exercises: ["Glute Bridge & Isometric Hold", "Tempo Goblet Squat", "Contralateral Dead Bug", "Resistance Band Pull-Aparts & Posture Opener"] },
+      { day: "Phase 2 - Curves & Sculpting", focus: "Posterior Chain & Shoulder V-Taper", exercises: ["Bulgarian Split Squat", "Dumbbell Romanian Deadlift (RDL)", "Single-Arm Supported Row", "Standing Dumbbell Overhead Shoulder Press"] },
+      { day: "Phase 3 - Dynamic Power", focus: "Compound Glute Power & Definition", exercises: ["Barbell Hip Thrust", "Curtsy Lunges", "Sumo Squat with Pulse", "Plank Hip Dips"] }
+    ]
+  },
+  {
+    id: "athletic-conditioning-hybrid",
+    name: "Hybrid Athletic Conditioning & Power",
+    category: "Training Styles",
+    description: "Build explosive functional athleticism, rotational torque, and unbreakable work capacity with kettlebells, sleds, and high-velocity dumbbells.",
+    duration: "8 Weeks",
+    difficulty: "Advanced",
+    searchTags: ["hybrid", "athletic", "crossfit", "power", "conditioning"],
+    imageUrl: REAL_EXERCISE_MEDIA.shoulders,
+    isPremium: true,
+    schedule: [
+      { day: "Day 1", focus: "Explosive Full Body Power", exercises: ["Devil Press with Dual Dumbbells", "Barbell Clean and Press", "Wall Balls (Thruster into High Target)"] },
+      { day: "Day 2", focus: "Tactical Stamina & Carries", exercises: ["Sled / Prowler Push & Pull Sprint", "Dumbbell Suitcase Carry", "Turkish Get-Up with Kettlebell"] }
+    ]
+  },
+  {
+    id: "functional-mobility-longevity",
+    name: "Functional Mobility & Joint Longevity",
+    category: "Home Workout Programs",
+    description: "Restore hip flexibility, thoracic rotation, and spinal resilience to eliminate tightness and move pain-free for life.",
+    duration: "4 Weeks",
+    difficulty: "Beginner",
+    searchTags: ["mobility", "longevity", "flexibility", "stretching", "recovery"],
+    imageUrl: REAL_EXERCISE_MEDIA.mobility,
+    isPremium: false,
+    schedule: [
+      { day: "Day 1", focus: "Hip & Pelvic Decoupling", exercises: ["World's Greatest Stretch Complex", "Couch Stretch for Tight Hip Flexors", "Shin Box Hip Internal-External Rotations"] },
+      { day: "Day 2", focus: "Thoracic & Spine Relief", exercises: ["Scorpion Stretch for Spinal Rotation", "Pigeon Pose with Active Thoracic Reach", "Pallof Press with Isometric Hold"] }
+    ]
   }
 ];
 
 export const MUSCLE_GROUPS = [
-  "Chest", "Back", "Shoulders", "Biceps", "Triceps", "Legs", "Calves", "Core", "Abs", "Cardio", "Full Body"
+  "Chest", "Back", "Shoulders", "Biceps", "Triceps", "Forearms", "Legs", "Quadriceps", "Hamstrings", "Glutes", "Calves", "Core", "Abs", "Obliques", "Cardio", "Full Body", "Mobility"
 ];
 
 export const WORKOUT_CATEGORIES = [
-  "Gym Workouts", "Home Workouts", "Cardio Workouts", "Calisthenics Workouts", "Military Style Fitness"
+  "Gym Workouts", "Home Workouts", "Cardio Workouts", "Calisthenics Workouts", "Military Style Fitness", "Women Confidence Program", "Women's Programs"
 ];

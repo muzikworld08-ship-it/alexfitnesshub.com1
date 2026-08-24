@@ -101,14 +101,14 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
 
   if (resolvedMediaType === "video") {
     return (
-      <div className={`relative overflow-hidden ${className} bg-slate-950 flex items-center justify-center rounded-xl`}>
+      <div className={`relative ${className} bg-slate-950 flex items-center justify-center rounded-xl`}>
         <video
           src={resolvedMediaUrl}
           autoPlay
           loop
           muted
           playsInline
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
           onCanPlay={() => setIsLoaded(true)}
           onError={handleMediaError}
         />
@@ -130,7 +130,7 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
       <OptimizedImage
         src={resolvedMediaUrl}
         alt={exercise?.name || exerciseName || "Exercise Media"}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-contain"
         fallbackType={fallbackType}
         aspectRatio={aspectRatio}
         priority={priority}

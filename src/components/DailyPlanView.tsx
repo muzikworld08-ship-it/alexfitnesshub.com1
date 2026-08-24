@@ -91,6 +91,95 @@ export default function DailyPlanView() {
     if (!user) return;
     setLoading(true);
     const mode = intensityOverride || scaleDaysState;
+
+    const buildClientFallbackPlan = (): DailyPlanSchema => {
+      const age = Number(user.age) || 25;
+      const weight = Number(user.weight) || 70;
+      const height = Number(user.height) || 170;
+      const gender = user.gender || "Female";
+      const goal = user.fitnessGoals || "Weight Loss";
+      const activity = user.activityLevel || "Moderately Active";
+      const preference = user.dietaryPreference || "Nigerian/African";
+      const restrictions = user.healthRestrictions || "None";
+      const wakeUp = user.wakeUpTime || "06:00 AM";
+      const bed = user.bedTime || "10:00 PM";
+      const exp = user.workoutExperience || "Beginner";
+
+      let bmr = 10 * weight + 6.25 * height - 5 * age;
+      if (gender === "Male") bmr += 5;
+      else bmr -= 161;
+
+      let multiplier = 1.375;
+      if (activity.toLowerCase().includes("sedentary")) multiplier = 1.2;
+      else if (activity.toLowerCase().includes("moderat")) multiplier = 1.55;
+      else if (activity.toLowerCase().includes("very")) multiplier = 1.725;
+
+      let calories = bmr * multiplier;
+      if (goal.includes("Loss") || goal.includes("Fat")) calories -= 450;
+      else if (goal.includes("Gain") || goal.includes("Muscle")) calories += 350;
+
+      if (mode === "Easier Alternative") calories += 150;
+      else if (mode === "Intensify Training") calories -= 80;
+
+      calories = Math.max(1200, Math.round(calories));
+      const protein = Math.round(weight * 1.8);
+      const fat = Math.round((calories * 0.25) / 9);
+      const carbs = Math.round(Math.max(70, (calories - (protein * 4) - (fat * 9)) / 4));
+      const fiber = Math.round(weight * 0.35);
+      const waterMl = Math.round(weight * 35 + 500);
+
+      let breakfast = "Oatmeal with protein isolate & seeds";
+      let lunch = "Grilled chicken breast with brown rice & steamed greens";
+      let snack = "Greek yogurt with mixed berries & sliced almonds";
+      let dinner = "Baked fish fillet with sweet potato & steamed asparagus";
+      let veggies = ["Spinach", "Broccoli", "Bell Peppers"];
+      let fruits = ["Apple", "Blueberries", "Banana"];
+
+      if (preference.includes("Nigerian") || preference.includes("African")) {
+        breakfast = "Steamed Moi Moi bean pudding with warm light custard or oat porridge (26g protein)";
+        lunch = "Jollof brown rice paired with oven-baked spiced chicken breast and fresh garden salad";
+        snack = "A portion of roasted cashew nuts with sliced cucumber";
+        dinner = "Nutrient-dense Efo Riro vegetable soup cooked with lean beef and flaked fish";
+        veggies = ["Ugwu (Pumpkin leaves)", "Waterleaf", "Garden Egg", "Shoko"];
+        fruits = ["Papaya", "Watermelon", "Mango", "Banana"];
+      }
+
+      return {
+        wakeUpTime: wakeUp,
+        bedTime: bed,
+        morningRoutine: "500ml water upon waking followed by 10 minutes of active dynamic joint mobility.",
+        breakfastRecommendation: breakfast,
+        waterIntakeSchedule: "500ml upon waking, 500ml with lunch, 500ml pre-workout, 500ml with dinner, 500ml evening.",
+        workoutRecommendation: `Today's customized workout session: ${exp} ${goal} protocol (Duration: 45 mins)`,
+        lunchRecommendation: lunch,
+        snackRecommendation: snack,
+        dinnerRecommendation: dinner,
+        eveningRoutine: "Limit screen exposure 30 minutes before sleep. Practice slow nasal breathing.",
+        sleepReminder: "Aim for 7-8 hours of continuous sleep to support metabolic recovery and tissue repair.",
+        dailyCalories: calories,
+        proteinTarget: protein,
+        carbohydrateTarget: carbs,
+        fatTarget: fat,
+        fiberTarget: fiber,
+        waterTargetMl: waterMl,
+        recommendedFruits: fruits,
+        recommendedVegetables: veggies,
+        cardioRecommendation: "20-30 minutes brisk walking or moderate cardio",
+        injuryRestoration: restrictions !== "None" ? `Injury precaution: Avoid overloading joints affected by ${restrictions}. Focus on controlled tempo.` : "Engage core and stabilize joints through warm-up mobility sets.",
+        workoutExercises: [
+          { name: "Goblet Squats", sets: 3, reps: 12, rest: 60, desc: "Keep chest tall, push knees out, descend with control" },
+          { name: "Incline Push-ups / Dumbbell Press", sets: 3, reps: 10, rest: 60, desc: "Engage core, keep elbows tucked at 45 degrees" },
+          { name: "Dumbbell Romanian Deadlifts", sets: 3, reps: 12, rest: 60, desc: "Hinge at the hips, keep spine flat, feel hamstring stretch" },
+          { name: "Plank Hold", sets: 3, reps: 45, rest: 45, desc: "Brace abdominal core, squeeze glutes and maintain flat back" }
+        ],
+        workoutDurationMinutes: 45,
+        dailyStepGoal: goal.includes("Loss") ? 10000 : 8000,
+        recoveryActivities: "Foam rolling, gentle hip openers, and hamstring stretches.",
+        weeklyGoal: `Hit ${calories} daily calories target and complete planned training days.`,
+        monthlyGoal: `Progress consistently toward target weight of ${user.targetWeight || 65} kg.`
+      };
+    };
+
     try {
       const token = auth.currentUser 
         ? await auth.currentUser.getIdToken() 
@@ -106,16 +195,30 @@ export default function DailyPlanView() {
           scaleDaysState: mode
         })
       });
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        console.error("[DailyPlan AI Generation Failed] API returned status:", response.status, "Error payload:", data);
+
+      const responseText = await response.text();
+      let data: any = null;
+      if (responseText && responseText.trim().length > 0) {
+        try {
+          data = JSON.parse(responseText);
+        } catch (jsonErr) {
+          console.warn("[DailyPlan] Non-JSON API response received:", responseText.slice(0, 100));
+        }
       }
-      if (data.success && data.plan) {
+
+      if (data && data.success && data.plan) {
         setPlan(data.plan);
-        setMethod(data.method);
+        setMethod(data.method || "Dynamic AI Engine");
+      } else {
+        const clientPlan = buildClientFallbackPlan();
+        setPlan(clientPlan);
+        setMethod("Personalized Biometric Baseline");
       }
     } catch (err) {
-      console.error("[DailyPlan Error] Plan retrieval broke, falling back to client logic:", err);
+      console.warn("[DailyPlan] Using client-calculated biometric plan fallback:", err);
+      const clientPlan = buildClientFallbackPlan();
+      setPlan(clientPlan);
+      setMethod("Personalized Biometric Baseline");
     } finally {
       setLoading(false);
     }

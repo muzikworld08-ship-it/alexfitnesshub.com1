@@ -466,12 +466,12 @@ export default function CoachView() {
                   <h4 className="text-sm font-black text-black uppercase tracking-tight">Hanging Knee-to-Chest / Leg Raises</h4>
                   
                   {/* CENTRALIZED EXERCISE MEDIA */}
-                  <div className="w-full aspect-video rounded-2xl overflow-hidden border border-slate-150 relative bg-slate-900 shadow-xs">
+                  <div className="w-full rounded-2xl border border-slate-150 relative bg-slate-900 shadow-xs">
                     <WorkoutVisual 
                       exerciseId={ex1?.id} 
                       exerciseName="Hanging Knee-to-Chest / Leg Raises" 
                       isCard={true} 
-                      className="w-full h-full"
+                      className="w-full"
                     />
                   </div>
                   
@@ -496,12 +496,12 @@ export default function CoachView() {
                   <h4 className="text-sm font-black text-black uppercase tracking-tight">High-Intensity Dumbbell Thrusters</h4>
                   
                   {/* CENTRALIZED EXERCISE MEDIA */}
-                  <div className="w-full aspect-video rounded-2xl overflow-hidden border border-slate-150 relative bg-slate-900 shadow-xs">
+                  <div className="w-full rounded-2xl border border-slate-150 relative bg-slate-900 shadow-xs">
                     <WorkoutVisual 
                       exerciseId={ex2?.id} 
                       exerciseName="High-Intensity Dumbbell Thrusters" 
                       isCard={true} 
-                      className="w-full h-full"
+                      className="w-full"
                     />
                   </div>
                   
@@ -526,12 +526,12 @@ export default function CoachView() {
                   <h4 className="text-sm font-black text-black uppercase tracking-tight">Dumbbell Renegade Rows with Push-Up</h4>
                   
                   {/* CENTRALIZED EXERCISE MEDIA */}
-                  <div className="w-full aspect-video rounded-2xl overflow-hidden border border-slate-150 relative bg-slate-900 shadow-xs">
+                  <div className="w-full rounded-2xl border border-slate-150 relative bg-slate-900 shadow-xs">
                     <WorkoutVisual 
                       exerciseId={ex3?.id} 
                       exerciseName="Dumbbell Renegade Rows with Push-Up" 
                       isCard={true} 
-                      className="w-full h-full"
+                      className="w-full"
                     />
                   </div>
                   
@@ -556,12 +556,12 @@ export default function CoachView() {
                   <h4 className="text-sm font-black text-black uppercase tracking-tight">Explosive Hip-Hinge Kettlebell Swings</h4>
                   
                   {/* CENTRALIZED EXERCISE MEDIA */}
-                  <div className="w-full aspect-video rounded-2xl overflow-hidden border border-slate-150 relative bg-slate-900 shadow-xs">
+                  <div className="w-full rounded-2xl border border-slate-150 relative bg-slate-900 shadow-xs">
                     <WorkoutVisual 
                       exerciseId={ex4?.id} 
                       exerciseName="Explosive Hip-Hinge Kettlebell Swings" 
                       isCard={true} 
-                      className="w-full h-full"
+                      className="w-full"
                     />
                   </div>
                   

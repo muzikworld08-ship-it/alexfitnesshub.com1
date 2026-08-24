@@ -4,7 +4,10 @@ export interface UserProfile {
   displayName: string;
   photoURL?: string;
   role: "user" | "admin";
+  subscription?: "free" | "premium" | "none";
   subscriptionStatus: "free" | "premium";
+  isPremium?: boolean;
+  premiumAccess?: boolean;
   subscriptionTier: "monthly" | "yearly" | "none";
   subscriptionExpiry?: string | null;
   subscriptionPlan?: "monthly" | "yearly" | "multi" | "none";
@@ -191,6 +194,31 @@ export interface ChallengeWorkout {
   muscleGroups?: string[];
   restTime?: string;
   notes?: string;
+}
+
+export interface ProgramProgressItem {
+  programId: string;
+  programTitle: string;
+  category?: string;
+  imageUrl?: string;
+  viewName?: string; // view to navigate to e.g. "90-day-challenge", "belly-fat-shred", "academy", etc.
+  enrolled: boolean;
+  enrolledAt: string;
+  currentDay: number;
+  currentWeek?: number;
+  currentWorkoutIndex: number;
+  lastStoppedWorkoutName: string;
+  lastStoppedWorkoutId?: string;
+  lastStoppedAt: string; // ISO date
+  completedWorkoutIds: string[];
+  totalWorkouts: number;
+  progressPercent: number; // 0 - 100
+  notes?: string;
+  challengeId?: string | number;
+  challengeTitle?: string;
+  completedCount?: number;
+  metadata?: Record<string, any>;
+  [key: string]: any;
 }
 
 export interface ChallengeItem {

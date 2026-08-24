@@ -196,7 +196,16 @@ interface Premium90DayState {
 }
 
 export default function Premium90DayChallenge() {
-  const { user, exercises, allChallenges, theme, allSystemUsers, setView } = useApp();
+  const { 
+    user, 
+    exercises, 
+    allChallenges, 
+    theme, 
+    allSystemUsers, 
+    setView,
+    recordProgramStopPoint,
+    markProgramWorkoutComplete
+  } = useApp();
   const isPremiumUser = user?.subscriptionStatus === "premium" || user?.role === "admin";
   const effectiveChallenges = allChallenges && allChallenges.length > 0 ? allChallenges : PREMIUM_CHALLENGES;
 
@@ -475,17 +484,21 @@ export default function Premium90DayChallenge() {
       return matchCat && matchFocus;
     });
 
-    // Fallbacks if nothing found
-    let matchedExercises = filtered.slice(0, 7);
-    if (matchedExercises.length < 5) {
+    // Select 8 to 10 exercises for this day's routine
+    let matchedExercises = filtered.slice(0, 9);
+    if (matchedExercises.length < 8) {
       // fill up with general exercise matching category
-      const extras = exercises.filter(ex => ex.category === targetCategory).slice(0, 6);
-      matchedExercises = [...matchedExercises, ...extras].slice(0, 7);
+      const extras = exercises.filter(ex => 
+        (ex.category === targetCategory || ex.categories?.includes(targetCategory)) && 
+        !matchedExercises.some(m => m.id === ex.id)
+      ).slice(0, 10 - matchedExercises.length);
+      matchedExercises = [...matchedExercises, ...extras];
     }
 
-    // Ensure we always have at least a few exercises
-    if (matchedExercises.length === 0) {
-      matchedExercises = exercises.slice(0, 6);
+    // Ensure we always have at least 8 to 10 exercises
+    if (matchedExercises.length < 8) {
+      const remaining = exercises.filter(ex => !matchedExercises.some(m => m.id === ex.id)).slice(0, 8 - matchedExercises.length);
+      matchedExercises = [...matchedExercises, ...remaining];
     }
 
     // Construct exercises details list
@@ -545,6 +558,26 @@ export default function Premium90DayChallenge() {
       ]
     };
   };
+
+  // Sync stop point to central AppContext whenever currentDay or challengeId updates
+  useEffect(() => {
+    if (dbState && recordProgramStopPoint) {
+      const workoutDetail = getDailyWorkoutDetail(dbState.currentDay, dbState.challengeId);
+      const challengeInfo = effectiveChallenges.find(c => c.id === dbState.challengeId);
+      recordProgramStopPoint(
+        "90_day_immortal",
+        `Day ${dbState.currentDay}: ${workoutDetail.focus}`,
+        `90day-d${dbState.currentDay}`,
+        dbState.currentDay,
+        workoutDetail.weekNum,
+        {
+          challengeId: dbState.challengeId,
+          challengeTitle: challengeInfo?.title || "90 Day Immortal Challenge",
+          completedDaysCount: dbState.completedDays.length
+        }
+      );
+    }
+  }, [dbState?.currentDay, dbState?.challengeId, dbState?.completedDays?.length, recordProgramStopPoint]);
 
   // Mark Today's Workout completed
   const handleCompleteWorkout = async () => {
@@ -632,6 +665,15 @@ export default function Premium90DayChallenge() {
     try {
       await saveChallengeData(user.uid, updatedState);
       setDbState(updatedState);
+      if (markProgramWorkoutComplete) {
+        markProgramWorkoutComplete(
+          "90_day_immortal",
+          `90day-d${currentDay}`,
+          currentDay,
+          currentDay,
+          Math.ceil(currentDay / 7)
+        );
+      }
     } catch (err) {
       console.error("Error logging workout completion:", err);
     } finally {
@@ -1242,12 +1284,12 @@ export default function Premium90DayChallenge() {
                                 </div>
 
                                 {/* HD Giphy loop representation */}
-                                <div className="relative aspect-video max-h-[300px] w-full rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-200 shadow-xs">
+                                <div className="relative w-full rounded-xl bg-slate-950 flex items-center justify-center border border-slate-200 shadow-xs">
                                   <WorkoutVisual 
                                     exerciseId={ex.id} 
                                     exerciseName={ex.name} 
                                     isCard={true} 
-                                    className="w-full h-full"
+                                    className="w-full"
                                   />
                                 </div>
 

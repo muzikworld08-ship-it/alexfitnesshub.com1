@@ -173,16 +173,16 @@ const getWorkoutForWeekAndDay = (week: number, dayNum: number) => {
   
   if (dayNum === 1) {
     title = `HIIT Intervals & Midsection Stability`;
-    exercises = ["High Knees", "Plank", "Russian Twist", "Mountain Climbers", "Bicycle Crunch"];
+    exercises = ["High Knees", "Plank", "Russian Twist", "Mountain Climbers", "Bicycle Crunch", "Flutter Kicks", "Jumping Jacks", "Dead Bug", "Push-ups"];
   } else if (dayNum === 2) {
     title = `Compound Calorie Crusher & Legs`;
-    exercises = ["Squats", "Burpees", "Lunges", "12-3-30 Treadmill Walk", "Dead Bug"];
+    exercises = ["Squats", "Burpees", "Lunges", "12-3-30 Treadmill Walk", "Dead Bug", "Glute Bridges", "Jump Squats", "Bear Crawl", "Side Plank"];
   } else if (dayNum === 3) {
     title = `Upper Body Sculpt & Metabolic Circuit`;
-    exercises = ["Push-ups", "Jumping Jacks", "Side Plank", "Bear Crawl", "Reverse Crunch"];
+    exercises = ["Push-ups", "Jumping Jacks", "Side Plank", "Bear Crawl", "Reverse Crunch", "Mountain Climbers", "Arm Circles", "Plank", "High Knees"];
   } else {
     title = `Elite Midsection Melt & Endurance`;
-    exercises = ["Rope Jump", "Russian Twist", "Plank", "Mountain Climbers", "Squats"];
+    exercises = ["Rope Jump", "Russian Twist", "Plank", "Mountain Climbers", "Squats", "Burpees", "Bicycle Crunch", "Flutter Kicks", "Lunges"];
   }
 
   return {
@@ -231,7 +231,7 @@ const getWorkoutForWeekAndDay = (week: number, dayNum: number) => {
 };
 
 export default function BellyFatShredView() {
-  const { user, setView, theme } = useApp();
+  const { user, setView, theme, recordProgramStopPoint, markProgramWorkoutComplete } = useApp();
   const { exercises: centralizedExercises } = useCentralizedExercises();
   const [activeTab, setActiveTab] = useState<"dashboard" | "workouts" | "home-workouts" | "running" | "nutrition" | "analytics" | "coaching">("dashboard");
   const [isPlayingHomeWorkout, setIsPlayingHomeWorkout] = useState(false);
@@ -469,6 +469,26 @@ export default function BellyFatShredView() {
     setLoadingDb(false);
   };
 
+  // Sync stop point to central AppContext whenever week/day updates
+  useEffect(() => {
+    if (progress && recordProgramStopPoint) {
+      const workoutName = `Week ${progress.currentWeek} Day ${progress.currentDay}: Core & Metabolic Shred`;
+      const workoutId = `bf-w${progress.currentWeek}-d${progress.currentDay}`;
+      recordProgramStopPoint(
+        "belly_fat_shred",
+        workoutName,
+        workoutId,
+        progress.currentDay,
+        progress.currentWeek,
+        {
+          currentWeek: progress.currentWeek,
+          currentDay: progress.currentDay,
+          completedCount: progress.completedWorkouts.length
+        }
+      );
+    }
+  }, [progress?.currentWeek, progress?.currentDay, progress?.completedWorkouts?.length, recordProgramStopPoint]);
+
   const syncProgress = async (updated: BellyFatShredProgress) => {
     if (!user) return;
     setProgress(updated);
@@ -663,6 +683,17 @@ export default function BellyFatShredView() {
     };
     updated.achievements = checkStreaksAndUnlock(updated);
     syncProgress(updated);
+
+    if (isCompleted && markProgramWorkoutComplete) {
+      const daySeq = (progress.currentWeek - 1) * 7 + progress.currentDay;
+      markProgramWorkoutComplete(
+        "belly_fat_shred",
+        wKey,
+        daySeq,
+        progress.currentDay,
+        progress.currentWeek
+      );
+    }
   };
 
   // Run Completion
@@ -2568,12 +2599,12 @@ export default function BellyFatShredView() {
                         </div>
 
                         {/* Interactive Visual Media */}
-                        <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 h-44 flex items-center justify-center relative">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-900 w-full flex items-center justify-center relative">
                           <UnifiedExerciseMedia 
                             exerciseName={exercise.name} 
-                            className="w-full h-full object-cover"
+                            className="w-full h-auto object-contain"
                           />
-                          <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 rounded-lg text-[9px] font-mono text-slate-300">
+                          <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 rounded-lg text-[9px] font-mono text-slate-300 z-10">
                             🔥 {exercise.caloriesEst}
                           </div>
                         </div>

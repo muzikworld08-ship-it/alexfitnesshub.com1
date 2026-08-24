@@ -5,7 +5,9 @@ import UnifiedExerciseMedia from "../UnifiedExerciseMedia";
 import { 
   Plus, Edit3, Trash2, Search, Filter, Check, X, Dumbbell, 
   Sparkles, Image as ImageIcon, Save, RefreshCw, AlertCircle, 
-  CheckCircle2, Layers, Flame, ArrowUpDown, ChevronRight, Eye
+  CheckCircle2, Layers, Flame, ArrowUpDown, ChevronRight, Eye,
+  LayoutGrid, Table as TableIcon, CheckSquare, ShieldCheck, Video,
+  SlidersHorizontal, Upload, ExternalLink, RotateCcw
 } from "lucide-react";
 import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../../utils/mediaStorageService";
 import { AssetManifestService } from "../../services/AssetManifestService";
@@ -35,6 +37,9 @@ export default function AdminWorkoutEditor() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedDifficulty, setSelectedDifficulty] = useState("All");
   const [premiumFilter, setPremiumFilter] = useState<"All" | "Premium" | "Free">("All");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [sortBy, setSortBy] = useState<"name" | "category" | "difficulty" | "customMedia">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   // Add Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -72,13 +77,15 @@ export default function AdminWorkoutEditor() {
   const [quickName, setQuickName] = useState("");
   const [isSavingQuick, setIsSavingQuick] = useState(false);
 
-  // Filtered exercises
+  // Filtered and Sorted Exercises
   const filteredExercises = useMemo(() => {
-    return exercises.filter((ex) => {
-      const matchesSearch = 
-        ex.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ex.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ex.muscleGroups?.some(m => m.toLowerCase().includes(searchQuery.toLowerCase()));
+    const list = exercises.filter((ex) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch = !q || 
+        ex.name.toLowerCase().includes(q) ||
+        ex.id.toLowerCase().includes(q) ||
+        ex.category.toLowerCase().includes(q) ||
+        ex.muscleGroups?.some(m => m.toLowerCase().includes(q));
 
       const matchesCat = selectedCategory === "All" || 
         ex.category.toLowerCase().includes(selectedCategory.toLowerCase()) ||
@@ -94,21 +101,37 @@ export default function AdminWorkoutEditor() {
 
       return matchesSearch && matchesCat && matchesDiff && matchesPrem;
     });
-  }, [exercises, searchQuery, selectedCategory, selectedDifficulty, premiumFilter]);
+
+    return list.sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === "name") {
+        comparison = a.name.localeCompare(b.name);
+      } else if (sortBy === "category") {
+        comparison = a.category.localeCompare(b.category);
+      } else if (sortBy === "difficulty") {
+        comparison = (a.difficulty || "").localeCompare(b.difficulty || "");
+      } else if (sortBy === "customMedia") {
+        const aHasMedia = a.customMediaUrl ? 1 : 0;
+        const bHasMedia = b.customMediaUrl ? 1 : 0;
+        comparison = bHasMedia - aHasMedia;
+      }
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+  }, [exercises, searchQuery, selectedCategory, selectedDifficulty, premiumFilter, sortBy, sortOrder]);
 
   // Open Edit Modal
   const handleOpenEdit = (ex: Exercise) => {
     setEditingExercise(ex);
     setEditForm({
       name: ex.name,
-      recommendedSets: ex.recommendedSets || "3",
+      recommendedSets: ex.recommendedSets || "3-4",
       recommendedReps: ex.recommendedReps || "10-12",
       category: ex.category,
-      difficulty: ex.difficulty,
+      difficulty: ex.difficulty || "Intermediate",
       muscleGroups: ex.muscleGroups || [ex.category],
-      equipment: ex.equipment || ["Bodyweight"],
-      isPremium: ex.isPremium,
-      customMediaUrl: ex.customMediaUrl || ex.gifUrl || ex.imageUrl,
+      equipment: ex.equipment || ["Dumbbells"],
+      isPremium: ex.isPremium !== undefined ? ex.isPremium : true,
+      customMediaUrl: ex.customMediaUrl || ex.gifUrl || ex.imageUrl || "",
       customMediaType: ex.customMediaType || "image",
       instructions: ex.instructions && ex.instructions.length > 0 ? ex.instructions : ["Perform movement with strict technique."],
       safetyTips: ex.safetyTips && ex.safetyTips.length > 0 ? ex.safetyTips : ["Maintain neutral spine."]
@@ -131,7 +154,7 @@ export default function AdminWorkoutEditor() {
       setTimeout(() => {
         setEditingExercise(null);
         setEditSuccessMsg("");
-      }, 1200);
+      }, 1000);
     } catch (err) {
       console.error(err);
       alert("Failed to save changes. Please try again.");
@@ -144,7 +167,7 @@ export default function AdminWorkoutEditor() {
   const handleStartQuickEdit = (ex: Exercise) => {
     setQuickEditId(ex.id);
     setQuickName(ex.name);
-    setQuickSets(ex.recommendedSets || "3");
+    setQuickSets(ex.recommendedSets || "3-4");
     setQuickReps(ex.recommendedReps || "10-12");
   };
 
@@ -236,56 +259,59 @@ export default function AdminWorkoutEditor() {
   return (
     <div id="admin_workout_editor_root" className="space-y-6">
       
-      {/* Top Action Header */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="bg-red-100 text-red-700 text-[10px] font-mono font-black uppercase px-2.5 py-1 rounded-full">
-              Workout Command
+      {/* Command Control Header - Athlete Performance Desk Design System */}
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 text-[10px] font-mono font-black uppercase px-2.5 py-1 rounded-full border border-red-200">
+              <Dumbbell className="w-3 h-3 text-red-600" />
+              Workout Management Desk
             </span>
-            <span className="text-xs font-bold text-slate-500">
-              {exercises.length} Total Exercises in Library
+            <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+              {exercises.length} Exercises Loaded
             </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mt-1">
-            Workout & Exercise Manager
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight font-sans">
+            Exercise Catalog & Prescription Desk
           </h2>
-          <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-            Edit existing workout names, sets, reps, and image media. Add brand new custom exercises with photos/GIFs to immediately update user routines and challenges.
+          <p className="text-xs text-slate-500 max-w-2xl font-medium leading-relaxed">
+            Configure authoritative workout targets, progressive overload prescriptions (sets × reps), difficulty ratings, and visual GIF demonstration media.
           </p>
         </div>
 
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-wider text-xs px-5 py-3.5 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center gap-2 cursor-pointer whitespace-nowrap"
-        >
-          <Plus className="w-4 h-4" />
-          Add New Workout
-        </button>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white font-sans font-black uppercase tracking-wider text-xs px-5 py-3 rounded-2xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Exercise</span>
+          </button>
+        </div>
       </div>
 
-      {/* Filter and Search Controls */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Filter and View Layout Controls */}
+      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
           
           {/* Search Box */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="relative sm:col-span-2 lg:col-span-4">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search exercise name or muscle..."
+              placeholder="Search by exercise name, target muscle, or ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-red-500 transition-all"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-red-600 transition-all"
             />
           </div>
 
           {/* Category Filter */}
-          <div>
+          <div className="lg:col-span-3">
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-red-500 cursor-pointer"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
             >
               {CATEGORIES.map(cat => (
                 <option key={cat} value={cat}>Category: {cat}</option>
@@ -294,11 +320,11 @@ export default function AdminWorkoutEditor() {
           </div>
 
           {/* Difficulty Filter */}
-          <div>
+          <div className="lg:col-span-2">
             <select
               value={selectedDifficulty}
               onChange={(e) => setSelectedDifficulty(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-red-500 cursor-pointer"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
             >
               {DIFFICULTIES.map(diff => (
                 <option key={diff} value={diff}>Difficulty: {diff}</option>
@@ -306,194 +332,462 @@ export default function AdminWorkoutEditor() {
             </select>
           </div>
 
-          {/* Premium Filter */}
-          <div>
+          {/* Tier Filter */}
+          <div className="lg:col-span-3">
             <select
               value={premiumFilter}
               onChange={(e) => setPremiumFilter(e.target.value as any)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-red-500 cursor-pointer"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
             >
-              <option value="All">Tier: All Workouts</option>
-              <option value="Premium">Tier: Premium Only</option>
-              <option value="Free">Tier: Free Workouts</option>
+              <option value="All">Tier: All Workouts ({exercises.length})</option>
+              <option value="Premium">Tier: Premium Only ({exercises.filter(e => e.isPremium).length})</option>
+              <option value="Free">Tier: Free Workouts ({exercises.filter(e => !e.isPremium).length})</option>
             </select>
           </div>
+
         </div>
 
-        <div className="flex justify-between items-center text-xs font-bold text-slate-500 px-1">
-          <span>Showing <strong className="text-slate-900">{filteredExercises.length}</strong> of {exercises.length} workouts</span>
-          {searchQuery && (
-            <button 
-              onClick={() => setSearchQuery("")} 
-              className="text-red-600 hover:underline cursor-pointer"
-            >
-              Clear search
-            </button>
-          )}
+        {/* View Switcher & Result Stats Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs">
+          <div className="flex items-center gap-3">
+            <span className="text-slate-500 font-medium">
+              Showing <strong className="text-slate-900 font-bold">{filteredExercises.length}</strong> of {exercises.length} workouts
+            </span>
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery("")} 
+                className="text-red-600 hover:underline font-bold cursor-pointer"
+              >
+                Reset filter
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {/* Sort Dropdown */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700">
+              <span className="text-[10px] font-mono uppercase text-slate-400">Sort:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="bg-transparent border-none text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+              >
+                <option value="name">Name (A-Z)</option>
+                <option value="category">Category</option>
+                <option value="difficulty">Difficulty</option>
+                <option value="customMedia">Custom Media First</option>
+              </select>
+              <button
+                onClick={() => setSortOrder(prev => prev === "asc" ? "desc" : "asc")}
+                className="p-1 text-slate-500 hover:text-slate-900 cursor-pointer"
+                title={`Toggle sort order (Currently ${sortOrder.toUpperCase()})`}
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Layout Mode Toggle */}
+            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <button
+                onClick={() => setViewMode("table")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  viewMode === "table"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+                title="Table Layout"
+              >
+                <TableIcon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Table</span>
+              </button>
+
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  viewMode === "grid"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+                title="Grid Layout"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Grid</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Workouts Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-        {filteredExercises.map((exercise) => {
-          const isQuickEditing = quickEditId === exercise.id;
+      {/* =========================================================================
+          TABLE VIEW: Consistent with Athlete Performance Desk Data System
+          ========================================================================= */}
+      {viewMode === "table" && (
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="overflow-x-auto max-h-[750px] scrollbar-thin">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead className="bg-slate-50 text-[10px] uppercase font-mono tracking-wider text-slate-500 border-b border-slate-200 sticky top-0 z-10">
+                <tr>
+                  <th className="py-3.5 px-4 font-bold">#</th>
+                  <th className="py-3.5 px-4 font-bold">Exercise & Media</th>
+                  <th className="py-3.5 px-4 font-bold">Category & Muscle</th>
+                  <th className="py-3.5 px-4 font-bold">Prescription (Sets × Reps)</th>
+                  <th className="py-3.5 px-4 font-bold">Difficulty & Tier</th>
+                  <th className="py-3.5 px-4 font-bold">Media Status</th>
+                  <th className="py-3.5 px-4 font-bold text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredExercises.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-16 text-center text-slate-500">
+                      <Dumbbell className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="font-bold text-slate-700 text-sm">No exercises matched your query.</p>
+                      <p className="text-xs text-slate-400 mt-1">Try clearing filters or search keywords.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredExercises.map((exercise, index) => {
+                    const isQuickEditing = quickEditId === exercise.id;
 
-          return (
-            <div
-              key={exercise.id}
-              className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
-            >
-              {/* Card Header & Visual Media */}
-              <div>
-                <div className="relative h-48 bg-slate-900 overflow-hidden group">
-                  <UnifiedExerciseMedia
-                    exerciseId={exercise.id}
-                    exerciseName={exercise.name}
-                    defaultGifUrl={exercise.gifUrl || exercise.imageUrl}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
-                    <span className="bg-slate-950/80 backdrop-blur-sm text-white font-mono text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
-                      {exercise.category}
-                    </span>
-                    {exercise.isPremium ? (
-                      <span className="bg-amber-500/90 text-slate-950 font-black text-[9px] uppercase px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
-                        <Sparkles className="w-2.5 h-2.5" /> Premium
-                      </span>
-                    ) : (
-                      <span className="bg-emerald-600/90 text-white font-bold text-[9px] uppercase px-2 py-0.5 rounded-md">
-                        Free
-                      </span>
-                    )}
-                  </div>
-                  <div className="absolute top-3 right-3 bg-slate-950/80 text-slate-200 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md">
-                    {exercise.difficulty}
-                  </div>
-                </div>
+                    return (
+                      <tr 
+                        key={exercise.id} 
+                        className={`hover:bg-slate-50/70 transition-colors ${
+                          isQuickEditing ? "bg-red-50/30" : ""
+                        }`}
+                      >
+                        {/* Index */}
+                        <td className="py-3 px-4 font-mono text-[11px] text-slate-400">
+                          {index + 1}
+                        </td>
 
-                {/* Card Body */}
-                <div className="p-4 space-y-3">
-                  {isQuickEditing ? (
-                    <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-red-200">
-                      <div>
-                        <label className="block text-[10px] font-black uppercase text-slate-500">Workout Name</label>
-                        <input
-                          type="text"
-                          value={quickName}
-                          onChange={(e) => setQuickName(e.target.value)}
-                          className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-slate-500">Sets</label>
-                          <input
-                            type="text"
-                            value={quickSets}
-                            onChange={(e) => setQuickSets(e.target.value)}
-                            placeholder="e.g. 3-4"
-                            className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-slate-500">Reps</label>
-                          <input
-                            type="text"
-                            value={quickReps}
-                            onChange={(e) => setQuickReps(e.target.value)}
-                            placeholder="e.g. 10-12"
-                            className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          onClick={() => handleSaveQuickEdit(exercise.id)}
-                          disabled={isSavingQuick}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] py-1.5 rounded-lg flex items-center justify-center gap-1 cursor-pointer"
-                        >
-                          <Save className="w-3.5 h-3.5" /> Save
-                        </button>
-                        <button
-                          onClick={() => setQuickEditId(null)}
-                          className="px-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-[11px] py-1.5 rounded-lg cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                        {/* Exercise & Thumbnail */}
+                        <td className="py-3 px-4 min-w-[240px]">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-900 shrink-0 border border-slate-200 relative group shadow-xs">
+                              <UnifiedExerciseMedia
+                                exerciseId={exercise.id}
+                                exerciseName={exercise.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            
+                            <div className="min-w-0">
+                              {isQuickEditing ? (
+                                <input
+                                  type="text"
+                                  value={quickName}
+                                  onChange={(e) => setQuickName(e.target.value)}
+                                  className="w-full bg-white border border-red-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-red-500"
+                                />
+                              ) : (
+                                <>
+                                  <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 truncate leading-snug">
+                                    {exercise.name}
+                                  </h4>
+                                  <span className="text-[10px] font-mono text-slate-400 truncate block">
+                                    ID: {exercise.id}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Category & Muscle */}
+                        <td className="py-3 px-4 min-w-[150px]">
+                          <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px]">
+                            {exercise.category}
+                          </span>
+                          <div className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
+                            {exercise.muscleGroups?.slice(0, 2).join(", ") || exercise.bodyPart || "Core"}
+                          </div>
+                        </td>
+
+                        {/* Prescription (Sets × Reps) */}
+                        <td className="py-3 px-4 min-w-[180px]">
+                          {isQuickEditing ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={quickSets}
+                                onChange={(e) => setQuickSets(e.target.value)}
+                                placeholder="Sets"
+                                className="w-16 bg-white border border-red-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none"
+                              />
+                              <span className="text-slate-400">×</span>
+                              <input
+                                type="text"
+                                value={quickReps}
+                                onChange={(e) => setQuickReps(e.target.value)}
+                                placeholder="Reps"
+                                className="w-20 bg-white border border-red-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-1 rounded-lg bg-slate-100 text-slate-800 font-black text-[11px] font-mono">
+                                {exercise.recommendedSets || "3-4"} Sets
+                              </span>
+                              <span className="text-slate-400 font-mono text-xs">×</span>
+                              <span className="px-2 py-1 rounded-lg bg-red-50 text-red-700 font-black text-[11px] font-mono">
+                                {exercise.recommendedReps || "10-12"} Reps
+                              </span>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Difficulty & Tier */}
+                        <td className="py-3 px-4 min-w-[140px]">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-mono font-bold">
+                              {exercise.difficulty || "Intermediate"}
+                            </span>
+                            {exercise.isPremium ? (
+                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-black uppercase">
+                                <Sparkles className="w-2.5 h-2.5" /> Premium
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold uppercase">
+                                Free
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Media Status */}
+                        <td className="py-3 px-4 min-w-[120px]">
+                          {exercise.customMediaUrl ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Custom
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                              Standard
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3 px-4 text-right whitespace-nowrap min-w-[150px]">
+                          {isQuickEditing ? (
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleSaveQuickEdit(exercise.id)}
+                                disabled={isSavingQuick}
+                                className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-[11px] flex items-center gap-1 cursor-pointer transition shadow-xs"
+                              >
+                                <Save className="w-3 h-3" /> Save
+                              </button>
+                              <button
+                                onClick={() => setQuickEditId(null)}
+                                className="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-bold text-[11px] cursor-pointer transition"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => handleStartQuickEdit(exercise)}
+                                className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                                title="Quick Edit Sets & Reps"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleOpenEdit(exercise)}
+                                className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-xl transition cursor-pointer"
+                                title="Full Workout Configuration"
+                              >
+                                Edit All
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Are you sure you want to delete "${exercise.name}"?`)) {
+                                    deleteWorkout(exercise.id);
+                                  }
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                                title="Delete Exercise"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          GRID VIEW: Responsive Card Grid Layout
+          ========================================================================= */}
+      {viewMode === "grid" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {filteredExercises.map((exercise) => {
+            const isQuickEditing = quickEditId === exercise.id;
+
+            return (
+              <div
+                key={exercise.id}
+                className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+              >
+                {/* Media Header */}
+                <div>
+                  <div className="relative h-44 bg-slate-900 overflow-hidden group">
+                    <UnifiedExerciseMedia
+                      exerciseId={exercise.id}
+                      exerciseName={exercise.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute top-2.5 left-2.5 flex gap-1.5 flex-wrap">
+                      <span className="bg-slate-950/80 backdrop-blur-xs text-white font-mono text-[9px] font-black uppercase px-2 py-0.5 rounded-md">
+                        {exercise.category}
+                      </span>
+                      {exercise.isPremium ? (
+                        <span className="bg-amber-500/90 text-slate-950 font-black text-[9px] uppercase px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                          <Sparkles className="w-2.5 h-2.5" /> Premium
+                        </span>
+                      ) : (
+                        <span className="bg-emerald-600/90 text-white font-bold text-[9px] uppercase px-2 py-0.5 rounded-md">
+                          Free
+                        </span>
+                      )}
                     </div>
-                  ) : (
-                    <div>
-                      <div className="flex justify-between items-start gap-2">
-                        <h3 className="font-black text-sm sm:text-base text-slate-900 leading-tight">
+                    <div className="absolute top-2.5 right-2.5 bg-slate-950/80 text-slate-200 text-[9px] font-mono font-bold px-2 py-0.5 rounded-md">
+                      {exercise.difficulty || "Intermediate"}
+                    </div>
+                  </div>
+
+                  {/* Body Details */}
+                  <div className="p-4 space-y-3">
+                    {isQuickEditing ? (
+                      <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-red-200">
+                        <div>
+                          <label className="block text-[9px] font-black uppercase text-slate-500">Exercise Name</label>
+                          <input
+                            type="text"
+                            value={quickName}
+                            onChange={(e) => setQuickName(e.target.value)}
+                            className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[9px] font-black uppercase text-slate-500">Sets</label>
+                            <input
+                              type="text"
+                              value={quickSets}
+                              onChange={(e) => setQuickSets(e.target.value)}
+                              placeholder="e.g. 3-4"
+                              className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-black uppercase text-slate-500">Reps</label>
+                            <input
+                              type="text"
+                              value={quickReps}
+                              onChange={(e) => setQuickReps(e.target.value)}
+                              placeholder="e.g. 10-12"
+                              className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={() => handleSaveQuickEdit(exercise.id)}
+                            disabled={isSavingQuick}
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] py-1.5 rounded-lg flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <Save className="w-3.5 h-3.5" /> Save
+                          </button>
+                          <button
+                            onClick={() => setQuickEditId(null)}
+                            className="px-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-[11px] py-1.5 rounded-lg cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <h3 className="font-black text-sm text-slate-900 leading-snug line-clamp-1">
                           {exercise.name}
                         </h3>
-                      </div>
 
-                      {/* Reps & Sets Highlights */}
-                      <div className="mt-2.5 grid grid-cols-2 gap-2 text-center">
-                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                          <span className="block text-[9px] font-mono uppercase font-bold text-slate-400">Target Sets</span>
-                          <span className="block text-xs font-black text-slate-800">{exercise.recommendedSets || "3-4"} Sets</span>
+                        {/* Prescriptions Tiles */}
+                        <div className="mt-2.5 grid grid-cols-2 gap-2 text-center">
+                          <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                            <span className="block text-[8px] font-mono uppercase font-bold text-slate-400">Target Sets</span>
+                            <span className="block text-xs font-black text-slate-800">{exercise.recommendedSets || "3-4"} Sets</span>
+                          </div>
+                          <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                            <span className="block text-[8px] font-mono uppercase font-bold text-slate-400">Target Reps</span>
+                            <span className="block text-xs font-black text-red-600">{exercise.recommendedReps || "10-12"} Reps</span>
+                          </div>
                         </div>
-                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                          <span className="block text-[9px] font-mono uppercase font-bold text-slate-400">Target Reps</span>
-                          <span className="block text-xs font-black text-red-600">{exercise.recommendedReps || "10-12"} Reps</span>
-                        </div>
-                      </div>
 
-                      {/* Muscle Groups */}
-                      <div className="mt-2.5 flex flex-wrap gap-1">
-                        {exercise.muscleGroups?.slice(0, 3).map((m, i) => (
-                          <span key={i} className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                            {m}
-                          </span>
-                        ))}
+                        {/* Target Muscles */}
+                        <div className="mt-2.5 flex flex-wrap gap-1">
+                          {exercise.muscleGroups?.slice(0, 2).map((m, i) => (
+                            <span key={i} className="text-[9px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                              {m}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer Controls */}
+                <div className="p-3.5 pt-0 border-t border-slate-100 flex items-center justify-between gap-2 mt-2">
+                  <button
+                    onClick={() => handleStartQuickEdit(exercise)}
+                    className="text-[11px] font-bold text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition cursor-pointer"
+                  >
+                    <Edit3 className="w-3 h-3" /> Quick Edit
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleOpenEdit(exercise)}
+                      className="bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 transition cursor-pointer"
+                    >
+                      Edit All
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to delete "${exercise.name}"?`)) {
+                          deleteWorkout(exercise.id);
+                        }
+                      }}
+                      className="text-slate-400 hover:text-red-600 p-1.5 rounded-xl hover:bg-red-50 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              {/* Card Footer Actions */}
-              <div className="p-4 pt-0 border-t border-slate-100 flex items-center justify-between gap-2 mt-2">
-                <button
-                  onClick={() => handleStartQuickEdit(exercise)}
-                  className="text-xs font-bold text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <Edit3 className="w-3.5 h-3.5" /> Quick Sets/Reps
-                </button>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleOpenEdit(exercise)}
-                    className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1 transition-all cursor-pointer"
-                    title="Full Workout Settings"
-                  >
-                    Edit All
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm(`Are you sure you want to delete "${exercise.name}"?`)) {
-                        deleteWorkout(exercise.id);
-                      }
-                    }}
-                    className="text-slate-400 hover:text-red-600 p-2 rounded-xl hover:bg-red-50 transition-all cursor-pointer"
-                    title="Delete Workout"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* FULL EDIT WORKOUT MODAL */}
+      {/* =========================================================================
+          FULL EDIT MODAL
+          ========================================================================= */}
       {editingExercise && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto text-left">
             
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">
               <div>
@@ -514,7 +808,7 @@ export default function AdminWorkoutEditor() {
               </div>
             )}
 
-            <div className="space-y-4 text-left">
+            <div className="space-y-4">
               {/* Workout Name */}
               <div>
                 <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Workout Name *</label>
@@ -523,7 +817,7 @@ export default function AdminWorkoutEditor() {
                   value={editForm.name || ""}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                   placeholder="e.g., Incline Dumbbell Press"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-600"
                 />
               </div>
 
@@ -536,7 +830,7 @@ export default function AdminWorkoutEditor() {
                     value={editForm.recommendedSets || ""}
                     onChange={(e) => setEditForm({ ...editForm, recommendedSets: e.target.value })}
                     placeholder="e.g., 3-4 Sets"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-600"
                   />
                 </div>
                 <div>
@@ -546,7 +840,7 @@ export default function AdminWorkoutEditor() {
                     value={editForm.recommendedReps || ""}
                     onChange={(e) => setEditForm({ ...editForm, recommendedReps: e.target.value })}
                     placeholder="e.g., 8-12 Reps or 45s"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-600"
                   />
                 </div>
               </div>
@@ -558,7 +852,7 @@ export default function AdminWorkoutEditor() {
                   <select
                     value={editForm.category || "Gym Workouts"}
                     onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500 cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
                   >
                     {CATEGORIES.filter(c => c !== "All").map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -570,7 +864,7 @@ export default function AdminWorkoutEditor() {
                   <select
                     value={editForm.difficulty || "Intermediate"}
                     onChange={(e) => setEditForm({ ...editForm, difficulty: e.target.value as any })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500 cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
                   >
                     <option value="Beginner">Beginner</option>
                     <option value="Intermediate">Intermediate</option>
@@ -579,12 +873,12 @@ export default function AdminWorkoutEditor() {
                 </div>
               </div>
 
-              {/* Media Image / GIF / Video Preview & Upload */}
+              {/* Media Preview & Upload */}
               <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <label className="block text-xs font-black uppercase text-slate-700">Workout Image / Video</label>
                 
                 <div className="flex items-center gap-4">
-                  <div className="w-24 h-24 rounded-xl bg-slate-900 overflow-hidden flex-shrink-0 relative border border-slate-200">
+                  <div className="w-24 h-24 rounded-2xl bg-slate-900 overflow-hidden shrink-0 relative border border-slate-200">
                     <img 
                       src={editForm.customMediaUrl || "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80"} 
                       alt="Preview" 
@@ -596,13 +890,13 @@ export default function AdminWorkoutEditor() {
                   <div className="space-y-2 flex-1">
                     <input
                       type="text"
-                      placeholder="Paste Image/GIF/Video URL (e.g. https://...)"
+                      placeholder="Paste Image/GIF/Video URL"
                       value={editForm.customMediaUrl || ""}
                       onChange={(e) => setEditForm({ ...editForm, customMediaUrl: e.target.value })}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600"
                     />
                     
-                    <label className="inline-flex items-center gap-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all">
+                    <label className="inline-flex items-center gap-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl cursor-pointer transition">
                       <ImageIcon className="w-3.5 h-3.5" />
                       Upload from Device
                       <input 
@@ -657,10 +951,12 @@ export default function AdminWorkoutEditor() {
         </div>
       )}
 
-      {/* ADD NEW WORKOUT MODAL */}
+      {/* =========================================================================
+          ADD NEW WORKOUT MODAL
+          ========================================================================= */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto text-left">
             
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">
               <div>
@@ -675,7 +971,7 @@ export default function AdminWorkoutEditor() {
               </button>
             </div>
 
-            <div className="space-y-4 text-left">
+            <div className="space-y-4">
               {/* Workout Name */}
               <div>
                 <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Workout Name *</label>
@@ -684,7 +980,7 @@ export default function AdminWorkoutEditor() {
                   value={newWorkout.name || ""}
                   onChange={(e) => setNewWorkout({ ...newWorkout, name: e.target.value })}
                   placeholder="e.g., Bulgarian Split Squats"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-600"
                 />
               </div>
 
@@ -697,7 +993,7 @@ export default function AdminWorkoutEditor() {
                     value={newWorkout.recommendedSets || "3-4"}
                     onChange={(e) => setNewWorkout({ ...newWorkout, recommendedSets: e.target.value })}
                     placeholder="e.g., 3-4 Sets"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-600"
                   />
                 </div>
                 <div>
@@ -707,7 +1003,7 @@ export default function AdminWorkoutEditor() {
                     value={newWorkout.recommendedReps || "10-12"}
                     onChange={(e) => setNewWorkout({ ...newWorkout, recommendedReps: e.target.value })}
                     placeholder="e.g., 10-12 Reps"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-600"
                   />
                 </div>
               </div>
@@ -719,7 +1015,7 @@ export default function AdminWorkoutEditor() {
                   <select
                     value={newWorkout.category || "Gym Workouts"}
                     onChange={(e) => setNewWorkout({ ...newWorkout, category: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500 cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
                   >
                     {CATEGORIES.filter(c => c !== "All").map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -731,7 +1027,7 @@ export default function AdminWorkoutEditor() {
                   <select
                     value={newWorkout.difficulty || "Intermediate"}
                     onChange={(e) => setNewWorkout({ ...newWorkout, difficulty: e.target.value as any })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500 cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
                   >
                     <option value="Beginner">Beginner</option>
                     <option value="Intermediate">Intermediate</option>
@@ -745,7 +1041,7 @@ export default function AdminWorkoutEditor() {
                 <label className="block text-xs font-black uppercase text-slate-700">Workout Image / GIF URL</label>
                 
                 <div className="flex items-center gap-4">
-                  <div className="w-24 h-24 rounded-xl bg-slate-900 overflow-hidden flex-shrink-0 relative border border-slate-200">
+                  <div className="w-24 h-24 rounded-2xl bg-slate-900 overflow-hidden shrink-0 relative border border-slate-200">
                     <img 
                       src={newMediaInput || newWorkout.customMediaUrl || "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80"} 
                       alt="New Workout Preview" 
@@ -760,10 +1056,10 @@ export default function AdminWorkoutEditor() {
                       placeholder="Paste Image or GIF URL"
                       value={newMediaInput}
                       onChange={(e) => setNewMediaInput(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600"
                     />
                     
-                    <label className="inline-flex items-center gap-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all">
+                    <label className="inline-flex items-center gap-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl cursor-pointer transition">
                       <ImageIcon className="w-3.5 h-3.5" />
                       Upload from Device
                       <input 

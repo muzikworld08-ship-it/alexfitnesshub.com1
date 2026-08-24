@@ -29,6 +29,30 @@ const PAYSTACK_PUBLIC_KEY = (process.env.PAYSTACK_PUBLIC_KEY || process.env.VITE
 const PAYSTACK_WEBHOOK_SECRET = (process.env.PAYSTACK_WEBHOOK_SECRET || "").trim();
 const APP_URL = (process.env.APP_URL || "").trim();
 
+const isSecretLive = PAYSTACK_SECRET_KEY.startsWith("sk_live_");
+const isSecretTest = PAYSTACK_SECRET_KEY.startsWith("sk_test_");
+const isPublicLive = PAYSTACK_PUBLIC_KEY.startsWith("pk_live_");
+const isPublicTest = PAYSTACK_PUBLIC_KEY.startsWith("pk_test_");
+
+let paystackMode = "Not Configured";
+let paystackKeyMismatch = false;
+
+if (PAYSTACK_SECRET_KEY) {
+  if (isSecretLive && isPublicTest) {
+    paystackKeyMismatch = true;
+    paystackMode = "MISMATCH (Live Secret + Test Public)";
+  } else if (isSecretTest && isPublicLive) {
+    paystackKeyMismatch = true;
+    paystackMode = "MISMATCH (Test Secret + Live Public)";
+  } else if (isSecretLive) {
+    paystackMode = "LIVE PRODUCTION MODE";
+  } else if (isSecretTest) {
+    paystackMode = "TEST SANDBOX MODE";
+  } else {
+    paystackMode = "CUSTOM KEY MODE";
+  }
+}
+
 const missingVars: string[] = [];
 if (!PAYSTACK_SECRET_KEY) missingVars.push("PAYSTACK_SECRET_KEY");
 if (!PAYSTACK_PUBLIC_KEY) missingVars.push("PAYSTACK_PUBLIC_KEY");
@@ -36,15 +60,20 @@ if (!APP_URL) missingVars.push("APP_URL");
 
 if (missingVars.length > 0) {
   console.warn("\n=======================================================");
-  console.warn("WARNING: Some required environment variables are missing!");
+  console.warn("WARNING: Some required payment environment variables are missing!");
   missingVars.forEach(v => console.warn(`  - ${v}`));
   console.warn("The server will continue running, but payment operations will fail until these are configured.");
   console.warn("=======================================================\n");
 } else {
-  console.log(`[Environment Check OK] All required credentials loaded successfully:
-- Secret Key Signature: SHA-512
-- Webhook Secret Loaded: Yes
-- App URL Base: ${APP_URL}`);
+  console.log(`[Paystack Environment Check OK]:
+- Paystack Mode: ${paystackMode}
+- Secret Key Loaded: ${PAYSTACK_SECRET_KEY ? "Configured" : "Missing"}
+- Public Key Loaded: ${PAYSTACK_PUBLIC_KEY ? "Configured" : "Missing"}
+- Webhook Secret Loaded: ${PAYSTACK_WEBHOOK_SECRET ? "Yes (Dedicated)" : "Using PAYSTACK_SECRET_KEY"}
+- App Base URL: ${APP_URL}`);
+  if (paystackKeyMismatch) {
+    console.error("⚠️ CRITICAL WARNING: Paystack Secret and Public keys are in different modes (Test vs Live)! Please use matching keys.");
+  }
 }
 
 const app = express();
@@ -887,7 +916,7 @@ async function checkPremiumStatus(req: any, res: any, next: any) {
     return res.status(401).json({ error: "Invalid session token. Access Denied." });
   }
 
-  // 0. Bypass database check for admin email
+  // 0. Bypass database check for admin emails
   if (decoded.email && (
     decoded.email.toLowerCase().trim() === "alexfitnesshub@gmail.com" ||
     decoded.email.toLowerCase().trim() === "muzikworld08@gmail.com"
@@ -905,7 +934,7 @@ async function checkPremiumStatus(req: any, res: any, next: any) {
       return next();
     }
 
-    // 2. Fallback: Check their Firestore document, passing the user's own token for secure REST access
+    // 2. Check their Firestore document, passing the user's own token for secure REST access
     const userSnap = await getServerFirestoreDoc("users", decoded.uid, token);
     if (!userSnap.exists) {
       console.warn(`[Auth Security Denial] User profile not found in Firestore for UID: ${decoded.uid}`);
@@ -913,14 +942,35 @@ async function checkPremiumStatus(req: any, res: any, next: any) {
     }
 
     const profile = userSnap.data();
-    const isPremium = profile.subscriptionStatus === "premium" || profile.role === "admin" || decoded.email === "alexfitnesshub@gmail.com";
+    const isAdmin = profile.role === "admin" || (decoded.email && (
+      decoded.email.toLowerCase().trim() === "alexfitnesshub@gmail.com" ||
+      decoded.email.toLowerCase().trim() === "muzikworld08@gmail.com"
+    ));
+    const isPremiumStatus = profile.subscriptionStatus === "premium" || 
+                            profile.subscriptionStatus === "active" ||
+                            profile.subscription === "premium" ||
+                            profile.subscription === "active" ||
+                            profile.isPremium === true ||
+                            profile.premiumAccess === true ||
+                            profile.paymentStatus === "paid";
+    
+    // Validate expiration if set
+    let hasExpired = false;
+    if (isPremiumStatus && !isAdmin && profile.subscriptionExpiry) {
+      const expiryDate = new Date(profile.subscriptionExpiry);
+      if (!isNaN(expiryDate.getTime()) && expiryDate < new Date()) {
+        hasExpired = true;
+      }
+    }
+
+    const isPremium = isAdmin || (isPremiumStatus && !hasExpired);
     
     if (!isPremium) {
       console.warn(`[Auth Security Denial] User UID ${decoded.uid} does not have premium status.`);
       return res.status(403).json({ error: "Premium subscription required to access this feature." });
     }
 
-    req.user = { uid: decoded.uid, email: decoded.email, role: profile.role || "user", subscriptionStatus: "premium", profile };
+    req.user = { uid: decoded.uid, email: decoded.email, role: isAdmin ? "admin" : (profile.role || "user"), subscriptionStatus: "premium", profile };
     next();
   } catch (error: any) {
     console.error("Error in checkPremiumStatus middleware:", error);
@@ -947,8 +997,11 @@ async function requirePremium(req: any, res: any, next: any) {
     return res.status(401).json({ error: "Invalid session token. Access Denied." });
   }
 
-  // 0. Bypass database check for admin email
-  if (decoded.email && decoded.email.toLowerCase().trim() === "alexfitnesshub@gmail.com") {
+  // 0. Bypass database check for admin emails
+  if (decoded.email && (
+    decoded.email.toLowerCase().trim() === "alexfitnesshub@gmail.com" ||
+    decoded.email.toLowerCase().trim() === "muzikworld08@gmail.com"
+  )) {
     console.log(`[Auth Security] Admin user verified via email claim in requirePremium: ${decoded.email}`);
     req.user = { uid: decoded.uid, email: decoded.email, role: "admin", subscriptionStatus: "premium" };
     return next();
@@ -962,9 +1015,20 @@ async function requirePremium(req: any, res: any, next: any) {
     }
 
     const profile = userSnap.data();
+    const isAdmin = profile.role === "admin" || (decoded.email && (
+      decoded.email.toLowerCase().trim() === "alexfitnesshub@gmail.com" ||
+      decoded.email.toLowerCase().trim() === "muzikworld08@gmail.com"
+    ));
+    const isPremiumStatus = profile.subscriptionStatus === "premium" || 
+                            profile.subscriptionStatus === "active" ||
+                            profile.subscription === "premium" ||
+                            profile.subscription === "active" ||
+                            profile.isPremium === true ||
+                            profile.premiumAccess === true ||
+                            profile.paymentStatus === "paid";
 
     // Expiration check: if subscription expiry date has passed, automatically revert status and block
-    if (profile.subscriptionStatus === "premium" && profile.role !== "admin" && profile.subscriptionExpiry) {
+    if (isPremiumStatus && !isAdmin && profile.subscriptionExpiry) {
       const expiryDate = new Date(profile.subscriptionExpiry);
       if (!isNaN(expiryDate.getTime()) && expiryDate < new Date()) {
         console.warn(`[Auth Security Denial] Subscription expired for user UID ${decoded.uid} on ${profile.subscriptionExpiry}. Reverting status to free.`);
@@ -980,14 +1044,14 @@ async function requirePremium(req: any, res: any, next: any) {
       }
     }
 
-    const isPremium = profile.subscriptionStatus === "premium" || profile.role === "admin";
+    const isPremium = isAdmin || isPremiumStatus;
     
     if (!isPremium) {
       console.warn(`[Auth Security Denial] User UID ${decoded.uid} does not have premium status.`);
       return res.status(403).json({ error: "Your Premium subscription has expired or is inactive. Subscribe again to continue accessing Premium features." });
     }
 
-    req.user = { uid: decoded.uid, email: decoded.email, role: profile.role || "user", profile };
+    req.user = { uid: decoded.uid, email: decoded.email, role: isAdmin ? "admin" : (profile.role || "user"), profile };
     next();
   } catch (error: any) {
     logDetailedError("premium_auth_error", error, {
@@ -1111,7 +1175,7 @@ app.post("/api/mail/send", async (req: any, res: any) => {
   try {
     console.log(`[Mail Proxy API] Received secure dispatch request to: ${to} (Subject: "${subject}")`);
     const result = await sendEmailViaMailerSend(to, subject, html || "", text || "");
-    return res.json({ success: true, ...result });
+    return res.json(result);
   } catch (err: any) {
     console.error(`[Mail Proxy API Error] Failed to send email to ${to}:`, err);
     return res.status(500).json({ success: false, error: err.message || "Email dispatch failed." });
@@ -1514,12 +1578,8 @@ You recently completed a workout featuring **${latestEx}**! Here is your dynamic
 // 1.7. AI-POWERED PERSONAL FITNESS PLAN GENERATOR ENDPOINT
 app.post("/api/gemini/generate-plan", requirePremium, async (req: any, res: any) => {
   let { scaleDaysState = "Normal" } = req.body;
-  let profile = req.user.profile;
+  let profile = req.user?.profile || req.body.profile || req.user || {};
   const isPremium = true;
-
-  if (!profile) {
-    return res.status(400).json({ success: false, error: "Profile details are required." });
-  }
 
   // Fallback engine if Gemini is not present, or if it errors out
   const buildFallbackPlan = () => {
@@ -2046,8 +2106,8 @@ function generateFallbackWorkout(
         exercisesPool[(sliceStart + 1) % exercisesPool.length],
         exercisesPool[(sliceStart + 2) % exercisesPool.length],
         exercisesPool[(sliceStart + 3) % exercisesPool.length],
-        exercisesPool[(sliceStart + 4) % exercisesPool.length || exercisesPool[0]],
-        exercisesPool[(sliceStart + 5) % exercisesPool.length || exercisesPool[1]]
+        exercisesPool[(sliceStart + 4) % exercisesPool.length] || exercisesPool[0],
+        exercisesPool[(sliceStart + 5) % exercisesPool.length] || exercisesPool[1]
       ].filter(Boolean);
       
       let focus = "General Transition Workout";
@@ -2340,6 +2400,156 @@ Please analyze this target drill or routine, deduce its biomechanics, and return
   }
 });
 
+// Diagnostic API endpoint: Manually checks user's latest subscription transaction record in Firebase & verifies against Auth/Database status
+app.get("/api/diagnostics/subscription-sync", async (req: any, res: any) => {
+  try {
+    const authHeader = req.headers.authorization || "";
+    let uid = "";
+    let email = (req.query.email as string || "").toLowerCase().trim();
+
+    if (authHeader.startsWith("Bearer ")) {
+      const token = authHeader.substring(7);
+      const tokenUser = await verifyFirebaseIdToken(token);
+      if (tokenUser) {
+        uid = tokenUser.uid;
+        if (!email && tokenUser.email) {
+          email = tokenUser.email.toLowerCase().trim();
+        }
+      }
+    }
+
+    if (!uid && req.query.uid) {
+      uid = req.query.uid as string;
+    }
+
+    if (!uid && !email) {
+      return res.status(400).json({
+        success: false,
+        error: "User UID or email is required for subscription sync diagnosis."
+      });
+    }
+
+    console.log(`\n=======================================================`);
+    console.log(`[Diagnostic API Check] Running subscription synchronization audit for: UID: "${uid}", Email: "${email}"`);
+
+    // 1. Fetch User Record from Firestore
+    let userDocData: any = null;
+    if (uid) {
+      const userDocSnap = await getServerFirestoreDoc("users", uid);
+      if (userDocSnap && userDocSnap.exists) {
+        userDocData = userDocSnap.data();
+      }
+    }
+    if (!userDocData && email) {
+      const q = query(collection(db, "users"), where("email", "==", email));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        userDocData = snap.docs[0].data();
+        if (!uid) uid = snap.docs[0].id;
+      }
+    }
+
+    // 2. Fetch Latest Subscription Transaction Record
+    let latestTx: any = null;
+    try {
+      if (uid) {
+        const txQ = query(
+          collection(db, "subscription_transactions"),
+          where("userId", "==", uid)
+        );
+        const txSnap = await getDocs(txQ);
+        if (!txSnap.empty) {
+          const sorted = txSnap.docs
+            .map(d => ({ id: d.id, ...d.data() } as any))
+            .sort((a, b) => new Date(b.createdAt || b.timestamp || 0).getTime() - new Date(a.createdAt || a.timestamp || 0).getTime());
+          latestTx = sorted[0];
+        }
+      }
+      if (!latestTx && email) {
+        const txQEmail = query(
+          collection(db, "subscription_transactions"),
+          where("customerEmail", "==", email)
+        );
+        const txSnapEmail = await getDocs(txQEmail);
+        if (!txSnapEmail.empty) {
+          const sorted = txSnapEmail.docs
+            .map(d => ({ id: d.id, ...d.data() } as any))
+            .sort((a, b) => new Date(b.createdAt || b.timestamp || 0).getTime() - new Date(a.createdAt || a.timestamp || 0).getTime());
+          latestTx = sorted[0];
+        }
+      }
+    } catch (txErr) {
+      console.warn("[Diagnostic API] Error querying subscription transactions:", txErr);
+    }
+
+    // 3. Compute Synchronized Status
+    const isDbPremium = Boolean(
+      userDocData?.isPremium === true ||
+      userDocData?.role === "premium" ||
+      userDocData?.role === "admin" ||
+      userDocData?.subscriptionStatus === "active" ||
+      userDocData?.subscriptionTier === "premium" ||
+      userDocData?.is_pro === true
+    );
+
+    const isTxSuccess = Boolean(
+      latestTx && (
+        latestTx.status === "success" ||
+        latestTx.status === "successful" ||
+        latestTx.event === "charge.success"
+      )
+    );
+
+    const isSynced = (isTxSuccess && isDbPremium) || (!isTxSuccess && !isDbPremium) || (isDbPremium && !latestTx);
+
+    const auditSummary = {
+      timestamp: new Date().toISOString(),
+      targetUser: { uid, email },
+      databaseUserStatus: {
+        found: Boolean(userDocData),
+        role: userDocData?.role || "user",
+        isPremium: Boolean(userDocData?.isPremium),
+        subscriptionTier: userDocData?.subscriptionTier || "free",
+        subscriptionStatus: userDocData?.subscriptionStatus || "inactive",
+        premiumExpiresAt: userDocData?.premiumExpiresAt || null,
+        computedIsPremium: isDbPremium
+      },
+      latestTransactionRecord: latestTx ? {
+        id: latestTx.id,
+        reference: latestTx.reference || latestTx.txRef,
+        amount: latestTx.amount,
+        status: latestTx.status,
+        event: latestTx.event,
+        plan: latestTx.plan,
+        createdAt: latestTx.createdAt || latestTx.timestamp
+      } : null,
+      synchronization: {
+        isSynced,
+        webhookStateMatched: isTxSuccess === isDbPremium,
+        diagnosisMessage: isSynced
+          ? "Webhook logic and database state are in SYNC. User has appropriate premium access based on payment records."
+          : isTxSuccess && !isDbPremium
+            ? "DESYNC DETECTED: Latest transaction succeeded but user database profile is NOT marked as premium."
+            : "User is active premium without recent transaction record (e.g. admin granted or manual subscription)."
+      }
+    };
+
+    console.log(`[Diagnostic Result]:`, JSON.stringify(auditSummary, null, 2));
+    console.log(`=======================================================\n`);
+
+    return res.json({
+      success: true,
+      diagnostics: auditSummary
+    });
+  } catch (err: any) {
+    console.error("[Diagnostic API Exception]:", err);
+    return res.status(500).json({
+      success: false,
+      error: err?.message || "Failed to execute subscription sync diagnosis."
+    });
+  }
+});
+
 
 // GET custom exercise media overrides
 app.get("/api/exercises/custom-media", (req, res) => {
@@ -2402,7 +2612,7 @@ async function uploadFileToFirebaseStorageServer(
     const uploadRes = await fetch(uploadUrl, {
       method: "POST",
       headers,
-      body: buffer
+      body: new Uint8Array(buffer)
     });
 
     if (uploadRes.ok) {
@@ -3677,11 +3887,30 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
     }
   }
 
-  let userId = metadata.userId || verifyData.customer?.metadata?.userId || fallbackData?.userId || pendingDoc?.userId;
-  const plan = metadata.plan || fallbackData?.plan || pendingDoc?.plan || "monthly";
-  const months = Number(metadata.months || fallbackData?.months || pendingDoc?.months || (plan === "yearly" ? 12 : plan === "multi" ? 3 : 1));
-  const amountNGN = metadata.amountNGN || (verifyData.amount ? verifyData.amount / 100 : pendingDoc?.amount || 19999);
-  const email = verifyData.customer?.email || pendingDoc?.email || "";
+  // Extract custom fields if metadata contains Paystack custom_fields
+  let customFieldsMap: Record<string, string> = {};
+  if (Array.isArray(metadata.custom_fields)) {
+    metadata.custom_fields.forEach((f: any) => {
+      if (f && f.variable_name && f.value) {
+        customFieldsMap[f.variable_name] = f.value;
+      }
+    });
+  }
+
+  let userId = metadata.userId || 
+               metadata.uid || 
+               metadata.user_id || 
+               customFieldsMap.user_id || 
+               customFieldsMap.userId || 
+               verifyData.customer?.metadata?.userId || 
+               verifyData.customer?.metadata?.uid || 
+               fallbackData?.userId || 
+               pendingDoc?.userId;
+
+  const plan = metadata.plan || customFieldsMap.plan || fallbackData?.plan || pendingDoc?.plan || "monthly";
+  const months = Number(metadata.months || customFieldsMap.months || fallbackData?.months || pendingDoc?.months || (plan === "yearly" ? 12 : plan === "multi" ? 3 : 1));
+  const amountNGN = metadata.amountNGN || (verifyData.amount ? verifyData.amount / 100 : pendingDoc?.amount || (plan === "yearly" ? 215989 : 19999));
+  const email = verifyData.customer?.email || metadata.email || pendingDoc?.email || "";
 
   // If userId is missing, attempt email-based user lookup in Firestore
   if (!userId && email) {
@@ -3705,7 +3934,7 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
     throw new Error("No user profile found associated with this payment reference or email.");
   }
 
-  // Check if reference is already processed and user profile is ALREADY properly marked as premium with future expiry
+  // Idempotency check: If payment record already marked success AND user is already active premium
   if (paymentSnap.exists && paymentSnap.data().status === "success") {
     const existingUserSnap = await getServerFirestoreDoc("users", userId);
     if (existingUserSnap.exists) {
@@ -3729,8 +3958,7 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
   const now = new Date();
   let startDate = now;
 
-  // FIX EXPIRATION AND RENEWAL:
-  // If user already has an active unexpired premium subscription, extend from existing expiration date!
+  // If user already has an active unexpired premium subscription, extend from existing expiration date
   if (existingProfile.subscriptionStatus === "premium" && existingProfile.subscriptionExpiry) {
     const currentExpiry = new Date(existingProfile.subscriptionExpiry);
     if (!isNaN(currentExpiry.getTime()) && currentExpiry > now) {
@@ -3742,19 +3970,27 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
   const expiryDays = plan === "yearly" ? 365 : plan === "multi" ? (months * 30) : (months && months > 1 ? months * 30 : 30);
   const newExpiryDate = new Date(startDate.getTime() + expiryDays * 24 * 60 * 60 * 1000);
 
+  const userEmail = email || existingProfile.email || "";
+  const isDesignatedAdmin = userEmail && (
+    userEmail.toLowerCase().trim() === "alexfitnesshub@gmail.com" ||
+    userEmail.toLowerCase().trim() === "muzikworld08@gmail.com"
+  );
+
   const updatedProfile = {
     ...existingProfile,
     uid: userId,
-    email: email || existingProfile.email || "",
-    displayName: existingProfile.displayName || (email ? email.split("@")[0] : "Athlete"),
-    role: existingProfile.role || "user",
+    email: userEmail,
+    displayName: existingProfile.displayName || (userEmail ? userEmail.split("@")[0] : "Athlete"),
+    role: isDesignatedAdmin ? "admin" : "user", // Strictly keeps normal subscribers as role = "user" (no admin privileges)
+    subscription: "premium",
     subscriptionStatus: "premium",
-    subscriptionPlan: plan,
-    subscriptionTier: plan === "multi" || plan === "monthly" ? "monthly" : plan,
-    paymentStatus: "paid",
+    isPremium: true,
     premiumAccess: true,
-    accountType: "Premium Athlete",
-    badge: "Premium Athlete",
+    subscriptionPlan: plan,
+    subscriptionTier: plan === "yearly" ? "yearly" : "monthly",
+    paymentStatus: "paid",
+    accountType: isDesignatedAdmin ? "Admin Athlete" : "Premium Athlete",
+    badge: isDesignatedAdmin ? "Admin Athlete" : "Premium Athlete",
     isFreeTrial: false,
     freeTrialDaysRemaining: 0,
     freeTrialStatus: "none",
@@ -3766,19 +4002,19 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
     updatedAt: now.toISOString()
   };
 
-  // 1. Update user profile in Firestore (must happen before returning success)
+  // 1. Update user profile in Firestore
   try {
     await setServerFirestoreDoc("users", userId, updatedProfile, true);
-    console.log(`[Database Update] User ${userId} profile updated with Premium Athlete subscription in Firestore. Expiry: ${newExpiryDate.toISOString()}`);
+    console.log(`[Database Update] User ${userId} profile updated with Premium Athlete subscription in Firestore. Role: ${updatedProfile.role}, isPremium: ${updatedProfile.isPremium}, Expiry: ${newExpiryDate.toISOString()}`);
   } catch (dbErr: any) {
     console.error(`[Database Update Critical Failure] Failed to update user record for ${userId}:`, dbErr);
     throw new Error(`Failed to update user subscription record in database: ${dbErr.message}`);
   }
 
-  // 2. Save payment record in payments collection
+  // 2. Save / update payment record in payments collection
   const paymentRecord = {
     userId,
-    email: email || existingProfile.email || "",
+    email: userEmail,
     plan,
     months,
     amount: amountNGN,
@@ -3788,14 +4024,23 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
     status: "success",
     paymentMethod: verifyData.channel || "card",
     subscriptionExpiry: newExpiryDate.toISOString(),
-    timestamp: now.toISOString()
+    customerCode: verifyData.customer?.customer_code || "",
+    paidAt: verifyData.paid_at || now.toISOString(),
+    updatedAt: now.toISOString()
   };
 
   try {
-    await setServerFirestoreDoc("payments", reference, paymentRecord, false);
+    await setServerFirestoreDoc("payments", reference, paymentRecord, true);
     console.log(`[Database Update] Saved payment record for reference ${reference} in payments collection.`);
   } catch (payRecordErr: any) {
     console.warn(`[Payment Record Warning] Non-fatal issue writing payments record for ref ${reference}:`, payRecordErr.message);
+  }
+
+  // 3. Dispatch confirmation email asynchronously (do not block)
+  if (userEmail) {
+    sendWelcomeEmail(userEmail, updatedProfile.displayName || "Athlete").catch(e => {
+      console.warn("[MailerSend] Could not send subscription email:", e?.message || e);
+    });
   }
 
   return { success: true, alreadyProcessed: false, profile: updatedProfile };
@@ -4016,7 +4261,11 @@ app.get("/api/diagnostics/audit", requireAdmin, async (req: any, res: any) => {
 app.get("/api/payments/config", (req, res) => {
   res.json({
     success: true,
-    publicKey: PAYSTACK_PUBLIC_KEY || "pk_test_mock_paystack_public_key_for_sandbox"
+    publicKey: PAYSTACK_PUBLIC_KEY || "",
+    isConfigured: !!PAYSTACK_PUBLIC_KEY && !!PAYSTACK_SECRET_KEY,
+    mode: paystackMode,
+    isLive: isPublicLive && isSecretLive,
+    keyMismatch: paystackKeyMismatch
   });
 });
 
@@ -4051,7 +4300,7 @@ app.post("/api/payments/initialize", async (req, res) => {
   const requestBaseUrl = APP_URL || `${req.protocol}://${req.get("host")}`;
   const resolvedCallbackUrl = `${requestBaseUrl.replace(/\/$/, "")}/payment/success`;
 
-  // Save pending payment record in Firestore payments collection FIRST!
+  // Save pending payment record in Firestore payments collection FIRST
   await setServerFirestoreDoc("payments", reference, {
     userId,
     email,
@@ -4094,9 +4343,28 @@ app.post("/api/payments/initialize", async (req, res) => {
         callback_url: resolvedCallbackUrl,
         metadata: {
           userId,
+          uid: userId,
+          email,
           plan,
           months: numMonths,
-          amountNGN
+          amountNGN,
+          custom_fields: [
+            {
+              display_name: "User ID",
+              variable_name: "user_id",
+              value: userId
+            },
+            {
+              display_name: "Plan",
+              variable_name: "plan",
+              value: plan
+            },
+            {
+              display_name: "Email",
+              variable_name: "email",
+              value: email
+            }
+          ]
         }
       })
     });
@@ -4179,9 +4447,6 @@ app.post("/api/payments/verify", async (req, res) => {
   }
 
   const targetUid = authenticatedUid || pendingPayment?.userId;
-  if (!targetUid) {
-    return res.status(400).json({ success: false, error: "Could not identify user associated with this payment reference." });
-  }
 
   if (!PAYSTACK_SECRET_KEY) {
     console.warn("[Transaction Verification Failed] PAYSTACK_SECRET_KEY environment variable is not configured.");
@@ -4231,66 +4496,170 @@ app.post("/api/payments/verify", async (req, res) => {
 });
 
 // PAYSTACK WEBHOOK HANDLER
-app.post("/api/payments/webhook", express.json(), async (req: any, res: any) => {
-  const paystackSignature = req.headers["x-paystack-signature"];
-  const secretKey = PAYSTACK_WEBHOOK_SECRET || PAYSTACK_SECRET_KEY;
+// Receives events asynchronously from Paystack, verifies SHA-512 signature using raw body, and returns HTTP 200 quickly
+app.post("/api/payments/webhook", async (req: any, res: any) => {
+  const paystackSignature = (req.headers["x-paystack-signature"] || req.headers["x-paystack-signature-512"] || "") as string;
+  const rawBody = req.rawBody ? (Buffer.isBuffer(req.rawBody) ? req.rawBody : Buffer.from(req.rawBody)) : Buffer.from(typeof req.body === "string" ? req.body : JSON.stringify(req.body || {}));
 
-  if (secretKey) {
-    try {
-      const hash = crypto.createHmac("sha512", secretKey).update(JSON.stringify(req.body)).digest("hex");
-      if (hash !== paystackSignature) {
-        console.warn("[Paystack Webhook] Invalid signature mismatch.");
-        return res.status(401).json({ status: "error", message: "Invalid signature" });
+  // 1. Signature Verification with raw request body
+  if (paystackSignature) {
+    let isValid = false;
+    const candidates = [PAYSTACK_SECRET_KEY, PAYSTACK_WEBHOOK_SECRET].filter(Boolean);
+    
+    for (const secret of candidates) {
+      try {
+        const computedHash = crypto.createHmac("sha512", secret).update(rawBody).digest("hex");
+        if (computedHash.toLowerCase() === paystackSignature.toLowerCase()) {
+          isValid = true;
+          break;
+        }
+      } catch (err: any) {
+        console.warn("[Paystack Webhook] Signature comparison issue:", err.message);
       }
-    } catch (err: any) {
-      console.warn("[Paystack Webhook] Signature calculation warning:", err.message);
     }
+
+    if (!isValid && candidates.length > 0) {
+      console.warn(`[Paystack Webhook] Signature verification failed for header: ${paystackSignature}`);
+      return res.status(400).json({ status: "error", message: "Invalid signature" });
+    }
+    console.log("[Paystack Webhook] Signature verified successfully with SHA-512.");
+  } else if ((PAYSTACK_SECRET_KEY || PAYSTACK_WEBHOOK_SECRET) && !paystackSignature) {
+    console.warn("[Paystack Webhook] Missing x-paystack-signature header from request.");
+    return res.status(400).json({ status: "error", message: "Missing x-paystack-signature header" });
   }
 
-  const eventPayload = req.body;
-  console.log(`[Paystack Webhook Event Received] Event: ${eventPayload?.event}`);
+  const eventPayload = req.body || {};
+  const eventName = eventPayload?.event || "";
+  console.log(`[Paystack Webhook Event Received] Event: ${eventName}`);
 
-  if (eventPayload?.event === "charge.success") {
-    const tx = eventPayload.data;
-    const reference = tx?.reference;
+  // 2. Handle successful charge & subscription events
+  if (
+    eventName === "charge.success" || 
+    eventName === "subscription.create" || 
+    eventName === "subscription.enable" || 
+    eventName === "paymentrequest.success"
+  ) {
+    const tx = eventPayload.data || {};
+    const reference = tx.reference || tx.trxref || tx.subscription_code || tx.id;
 
     if (!reference) {
-      return res.status(400).json({ status: "error", message: "Missing reference in webhook payload" });
+      console.warn("[Paystack Webhook Warning] Payment event received without transaction reference.");
+      return res.status(200).json({ status: "error", message: "Missing reference in payload" });
     }
 
     try {
-      const result = await processSuccessfulPayment(reference, tx);
+      // Direct verification with Paystack to ensure highest security and latest payload
+      let authoritativeTx = tx;
+      if (PAYSTACK_SECRET_KEY && (eventName === "charge.success" || tx.reference)) {
+        try {
+          const verifyRef = tx.reference || reference;
+          const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(verifyRef)}`, {
+            headers: {
+              Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+              "Content-Type": "application/json"
+            }
+          });
+          const verifyJson = await verifyRes.json();
+          if (verifyJson?.status && verifyJson?.data) {
+            authoritativeTx = verifyJson.data;
+            console.log(`[Paystack Webhook] Authoritative Paystack verification confirmed for ref: ${verifyRef}`);
+          }
+        } catch (vErr: any) {
+          console.warn(`[Paystack Webhook Verification Notice] Falling back to webhook payload:`, vErr.message);
+        }
+      }
+
+      // Only upgrade user if transaction status is actually success or active
+      const status = authoritativeTx.status;
+      if (status && status !== "success" && status !== "active") {
+        console.warn(`[Paystack Webhook] Transaction ${reference} status is not success (${status}). Skipping upgrade.`);
+        return res.status(200).json({ status: "skipped", reason: `Transaction status is ${status}` });
+      }
+
+      const result = await processSuccessfulPayment(reference, authoritativeTx);
       console.log(`[Paystack Webhook Success] Processed reference ${reference}. Already processed: ${result.alreadyProcessed}`);
-      return res.json({ status: "success", alreadyProcessed: result.alreadyProcessed });
+      
+      // Always return HTTP 200 quickly to acknowledge receipt to Paystack
+      return res.status(200).json({ status: "success", reference, alreadyProcessed: result.alreadyProcessed });
     } catch (err: any) {
       console.error(`[Paystack Webhook Processing Error] Reference: ${reference}`, err);
-      return res.status(500).json({ status: "error", message: err.message });
+      return res.status(200).json({ status: "error", message: err.message });
     }
   }
 
-  return res.json({ status: "ignored", event: eventPayload?.event });
+  // 3. Handle failed or abandoned charge events
+  if (eventPayload?.event === "charge.failed") {
+    const tx = eventPayload.data || {};
+    const reference = tx.reference || tx.trxref;
+    if (reference) {
+      console.warn(`[Paystack Webhook] charge.failed received for reference: ${reference}`);
+      await setServerFirestoreDoc("payments", reference, {
+        reference,
+        status: "failed",
+        gateway_response: tx.gateway_response || "Transaction failed",
+        updatedAt: new Date().toISOString()
+      }, true).catch(err => console.warn("Failed to record failed payment in Firestore:", err));
+    }
+    return res.status(200).json({ status: "recorded_failure", reference });
+  }
+
+  // 4. Handle refund / reversal events
+  if (eventPayload?.event === "refund.processed" || eventPayload?.event === "transfer.reversed") {
+    const tx = eventPayload.data || {};
+    const reference = tx.transaction_reference || tx.reference;
+    if (reference) {
+      console.warn(`[Paystack Webhook] Reversal/refund received for reference: ${reference}`);
+      await setServerFirestoreDoc("payments", reference, {
+        reference,
+        status: "reversed",
+        updatedAt: new Date().toISOString()
+      }, true).catch(err => console.warn("Failed to record reversed payment in Firestore:", err));
+    }
+    return res.status(200).json({ status: "recorded_reversal", reference });
+  }
+
+  // Acknowledge other event types (e.g. invoice.update, subscription.create)
+  return res.status(200).json({ status: "ignored", event: eventPayload?.event || "unknown" });
 });
 
-// Admin Paystack Configuration Status Check
+// Admin Paystack Configuration Status Check & Diagnostics
 app.get("/api/payments/status", async (req, res) => {
   const secretKey = PAYSTACK_SECRET_KEY;
   const publicKey = PAYSTACK_PUBLIC_KEY;
+  const webhookSecret = PAYSTACK_WEBHOOK_SECRET;
   
   const baseUrl = (APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, "");
-  const resolvedCallbackUrl = `${baseUrl}/`;
+  const resolvedCallbackUrl = `${baseUrl}/payment/success`;
   const resolvedWebhookUrl = `${baseUrl}/api/payments/webhook`;
+
+  // Fetch recent payments for admin visibility
+  let recentPayments: any[] = [];
+  try {
+    const snap = await getServerFirestoreQuery("payments", "status", "==", "success");
+    if (snap && snap.docs) {
+      recentPayments = snap.docs.map(d => ({ id: d.id, ...(typeof d.data === "function" ? d.data() : d.data) }));
+      recentPayments.sort((a, b) => (b.paidAt || b.timestamp || "").localeCompare(a.paidAt || a.timestamp || ""));
+      recentPayments = recentPayments.slice(0, 20);
+    }
+  } catch (e) {}
 
   res.json({
     success: true,
+    mode: paystackMode,
+    isLive: isSecretLive && isPublicLive,
+    isTest: isSecretTest && isPublicTest,
+    keyMismatch: paystackKeyMismatch,
     secretKeySet: !!PAYSTACK_SECRET_KEY,
     publicKeySet: !!PAYSTACK_PUBLIC_KEY,
-    secretKeyMasked: secretKey ? (secretKey.substring(0, Math.min(secretKey.length, 7)) + "..." + secretKey.substring(Math.max(0, secretKey.length - 4))) : "Not Configured",
-    publicKeyMasked: publicKey ? (publicKey.substring(0, Math.min(publicKey.length, 7)) + "..." + publicKey.substring(Math.max(0, publicKey.length - 4))) : "Not Configured",
+    webhookSecretSet: !!PAYSTACK_WEBHOOK_SECRET,
+    secretKeyMasked: secretKey ? "••••••••••••••••" : "Not Configured",
+    publicKeyMasked: publicKey ? "••••••••••••••••" : "Not Configured",
     webhookUrl: resolvedWebhookUrl,
     callbackUrl: resolvedCallbackUrl,
     detectedBaseUrl: baseUrl,
     detectedWebhookUrl: resolvedWebhookUrl,
     detectedCallbackUrl: resolvedCallbackUrl,
+    recentPayments
   });
 });
 

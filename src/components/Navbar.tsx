@@ -36,7 +36,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     setIsDropdownOpen(false);
     
     // Check if view requires login for guests
-    const guestRestrictedViews = ["daily-plan", "coach", "dashboard", "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", "handbook", "weight-trajectory", "challenges", "belly-fat-shred"];
+    const guestRestrictedViews = ["daily-plan", "coach", "dashboard", "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", "handbook", "weight-trajectory", "challenges", "belly-fat-shred", "women-confidence"];
     if (guestRestrictedViews.includes(targetView) && !user) {
       onOpenAuth();
       return;
@@ -87,6 +87,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
 
   const topMenuItems = [
     { id: "home", label: "HOME", action: () => handleCustomNav("home") },
+    { id: "women-confidence", label: "WOMEN CONFIDENCE", action: () => handleCustomNav("women-confidence") },
     { id: "lifestyle-academy", label: "PROGRAMS", action: () => handleCustomNav("lifestyle-academy") },
     { id: "library", label: "WORKOUTS", action: () => handleCustomNav("library") },
     { id: "workout-videos", label: "EXERCISES", action: () => handleCustomNav("workout-videos") },
@@ -99,6 +100,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
       label: "PREMIUM HUB",
       isDropdown: true,
       subItems: [
+        { id: "women-confidence", label: "Women Confidence Program", desc: "180-Day strength, fitness & confidence", icon: Heart },
         { id: "daily-plan", label: "My Daily Plan", desc: "Tailored training & meal schedule", icon: Calendar },
         { id: "challenges", label: "Monthly Challenges", desc: "90-day physical competitions", icon: Award },
         { id: "belly-fat-shred", label: "Belly Fat Shred", desc: "Accelerated direct core fat loss", icon: Flame },
@@ -113,6 +115,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
       title: "CORE APPLICATION PAGES",
       items: [
         { id: "home", label: "Home Page", desc: "Main portal, features & workout search", icon: Dumbbell, color: "text-red-500 bg-red-50" },
+        { id: "women-confidence", label: "Women Confidence Program", desc: "180-Day strength & mindset transformation", icon: Heart, color: "text-rose-600 bg-rose-50" },
         { id: "lifestyle-academy", label: "Programs & Academy", desc: "12-Week structured physique splits", icon: BookOpen, color: "text-blue-500 bg-blue-50" },
         { id: "library", label: "Workout Library & Drills", desc: "Full exercise directory with kinetic specs", icon: Activity, color: "text-emerald-500 bg-emerald-50" },
         { id: "workout-videos", label: "Exercise Video Vault", desc: "HD form demonstrations & workouts", icon: Video, color: "text-purple-500 bg-purple-50" },
@@ -125,6 +128,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     {
       title: "PREMIUM ATHLETE HUB",
       items: [
+        { id: "women-confidence", label: "Women Confidence Program (180 Days)", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-100/70" },
         { id: "daily-plan", label: "My Daily Plan", desc: "Personalized daily schedule & drills", icon: Calendar, color: "text-red-600 bg-red-100/60" },
         { id: "challenges", label: "Monthly 90-Day Challenges", desc: "Physical transformation competition", icon: Award, color: "text-amber-600 bg-amber-100/60" },
         { id: "belly-fat-shred", label: "Belly Fat Shred System", desc: "Direct core & abdominal fat burning", icon: Flame, color: "text-orange-600 bg-orange-100/60" },

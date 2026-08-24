@@ -1,55 +1,45 @@
 {
-  "name": "react-example",
+  "name": "alex-fitness-hub",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "author": "muzikworld08@gmail.com",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/muzikmail2-arch/AlexFitnessHub-Premium-Membership"
-  },
-  "bugs": {
-    "url": "https://github.com/muzikmail2-arch/AlexFitnessHub-Premium-Membership/issues"
-  },
-  "homepage": "https://github.com/muzikmail2-arch/AlexFitnessHub-Premium-Membership#readme",
   "scripts": {
-    "dev": "tsx server.ts",
-    "build": "npm run clean && vite build && node ./scripts/generate-build-metadata.cjs && esbuild server.ts --bundle --platform=node --format=esm --packages=external --sourcemap --outfile=dist/index.js",
-    "start": "node dist/index.js",
-    "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit",
-    "postinstall": "npm run build"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
+    "@google/genai": "^2.17.1",
     "@supabase/ssr": "^0.12.4",
-    "@supabase/supabase-js": "^2.112.2",
-    "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
+    "@supabase/supabase-js": "^2.112.3",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "canvas-confetti": "^1.9.4",
+    "clsx": "^2.1.1",
     "cors": "^2.8.6",
-    "dotenv": "^17.2.3",
-    "express": "^4.21.2",
-    "express-rate-limit": "^8.5.2",
-    "firebase": "^12.14.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.6.2",
+    "firebase": "^12.17.1",
     "helmet": "^8.3.0",
-    "lucide-react": "^0.546.0",
-    "mailersend": "^3.1.0",
-    "motion": "^12.23.24",
-    "react": "^19.0.1",
-    "react-dom": "^19.0.1",
-    "recharts": "^3.9.2"
+    "lucide-react": "^1.33.0",
+    "mailersend": "^3.2.0",
+    "motion": "^13.1.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "recharts": "^3.10.1",
+    "stripe": "^22.5.0",
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^4.17.21",
-    "@types/node": "^22.14.0",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "autoprefixer": "^10.4.21",
-    "esbuild": "^0.25.0",
-    "tailwindcss": "^4.1.14",
-    "tsx": "^4.21.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1"
   }
 }

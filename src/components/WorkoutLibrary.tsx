@@ -1030,7 +1030,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 if (el) {
                   el.scrollIntoView({ behavior: "smooth" });
                 } else {
-                  setView("home");
+                  setView?.("home");
                 }
               }}
               className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-bold text-sm tracking-wide shadow-lg shadow-red-100 transition-all cursor-pointer flex items-center justify-center gap-2"
@@ -1110,103 +1110,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
           <div className="absolute right-0 bottom-0 top-0 w-1/3 bg-radial-gradient from-blue-500/5 to-transparent pointer-events-none opacity-50" />
         </div>
 
-        {false ? (
-          <div className="space-y-6">
-            {/* Visual Media Block (Blurred / Locked overlay) */}
-            <div className="relative rounded-3xl overflow-hidden border border-slate-200 h-64 bg-slate-950">
-              <WorkoutVisual 
-                category={selectedExercise.category} 
-                muscleGroups={selectedExercise.muscleGroups} 
-                exerciseName={selectedExercise.name} 
-                className="h-full w-full filter blur-lg opacity-30" 
-                customMediaUrl={selectedExercise.customMediaUrl}
-                customMediaType={selectedExercise.customMediaType}
-                isCard={true}
-              />
-              <div className="absolute inset-0 bg-slate-950/70 flex flex-col justify-center items-center text-center p-6">
-                <div className="h-12 w-12 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full flex items-center justify-center mb-3">
-                  <Lock className="w-6 h-6 animate-pulse" />
-                </div>
-                <span className="text-sm font-bold font-mono text-emerald-400 uppercase tracking-widest">BIOMECHANICAL DEMO LOCKED</span>
-                <span className="text-xs text-slate-400 mt-2 max-w-sm">HD video loop and kinesis align-track restricted to Premium members</span>
-              </div>
-            </div>
-
-            {/* Locked Parameter Indicators Checklist */}
-            <div className="p-6 sm:p-8 rounded-3xl border border-slate-200 bg-white shadow-sm">
-              <h4 className="text-base font-black text-slate-900 uppercase mb-4 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-emerald-400 fill-emerald-400 animate-pulse" />
-                Locked Kinesiology Parameters
-              </h4>
-              <p className="text-xs text-slate-500 mb-6 leading-relaxed">
-                Your current free-tier account is restricted from reading the 11 key training parameters for **{selectedExercise.name}**:
-              </p>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { num: "01", name: "HD Demonstration Loop", desc: "Interactive full range of motion." },
-                  { num: "02", name: "Starting Alignment Position", desc: "Skeletal setups and joint angles." },
-                  { num: "03", name: "Concentric Execution", desc: "Optimal force speed and direction." },
-                  { num: "04", name: "Peak Finishing Squeeze", desc: "Holding concentric active tension." },
-                  { num: "05", name: "Target Muscle Groups", desc: "Deep anatomical muscle breakdowns." },
-                  { num: "06", name: "Form Warning Mistakes", desc: "Safety callouts protecting tendons." },
-                  { num: "07", name: "Progression Variations", desc: "Complex muscular loading styles." },
-                  { num: "08", name: "Alternative Exercises", desc: "Sub-swaps for versatile equipment." }
-                ].map((item) => (
-                  <div key={item.num} className="p-4 rounded-2xl border border-slate-205 bg-slate-50 text-xs flex gap-3 shadow-xs">
-                    <span className="font-mono text-emerald-500 font-extrabold text-[12px] mt-0.5">{item.num}</span>
-                    <div>
-                      <p className="font-extrabold text-slate-800 leading-tight uppercase text-[9px] font-mono">{item.name}</p>
-                      <p className="text-[9px] text-slate-450 leading-snug mt-1">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Premium Benefits Box */}
-            <div className="p-6 rounded-3xl border border-emerald-500/10 bg-emerald-500/5 text-xs sm:text-sm">
-              <h5 className="font-extrabold uppercase font-mono text-[9px] tracking-widest text-emerald-600 mb-3 flex items-center gap-2">
-                <Shield className="w-4 h-4 text-emerald-500" />
-                AlexFitnessHub Premium Benefits
-              </h5>
-              <ul className="space-y-2 font-sans leading-relaxed text-slate-705 text-xs">
-                <li className="flex items-start gap-2">
-                  <span className="text-emerald-500 font-extrabold">&#10004;</span> Full access to <strong>1,200+ clinical exercises</strong> with biomechanical details.
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-emerald-500 font-extrabold">&#10004;</span> Dedicated <strong>AI Fitness Coach</strong> for 24/7 posture checks.
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-emerald-500 font-extrabold">&#10004;</span> Special <strong>Celebrity & Military Training Programs</strong> guides.
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-emerald-500 font-extrabold">&#10004;</span> <strong>African & Global Meal Generators</strong> with regional macro-tailored options.
-                </li>
-              </ul>
-            </div>
-
-            {/* Secure Checkout CTA */}
-            <div className="p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
-              <div>
-                <h4 className="text-sm font-black uppercase tracking-wider font-mono text-[#D32F2F]">Unlock Master kinesis library</h4>
-                <p className="text-xs text-slate-500 mt-1 lines-snug">
-                  Activate your premium features securely. Cancel anytime.
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setSelectedExerciseId(null);
-                  setView?.("pricing");
-                }}
-                className="w-full sm:w-auto px-6 py-3 bg-[#D32F2F] hover:bg-[#B71C1C] text-white text-xs font-black uppercase rounded-xl tracking-wider shadow hover:shadow-lg transition-all shrink-0 cursor-pointer"
-              >
-                Upgrade Now
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
             {/* Left Column: Visual Media & Logger */}
             <div className="lg:col-span-5 space-y-6">
@@ -1590,7 +1494,6 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             </div>
 
           </div>
-        )}
 
       </div>
     );
@@ -2894,13 +2797,13 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                               className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all"
                             >
                             {/* Visual Media Block */}
-                            <div className="relative">
+                            <div className="relative w-full">
                               <WorkoutVisual 
                                 exerciseId={ex.id}
                                 category={ex.category} 
                                 muscleGroups={ex.muscleGroups} 
                                 exerciseName={ex.name} 
-                                className="h-44 w-full" 
+                                className="w-full" 
                                 customMediaUrl={ex.customMediaUrl}
                                 customMediaType={ex.customMediaType}
                                 isCard={true}
@@ -2908,14 +2811,14 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                               
                               {/* Premium Badge */}
                               {ex.isPremium && (
-                                <div className="absolute top-3 left-3 bg-[#C0392B] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded shadow-sm flex items-center gap-1">
+                                <div className="absolute top-3 left-3 bg-[#C0392B] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded shadow-sm flex items-center gap-1 z-20">
                                   <Sparkles className="w-3 h-3 text-white fill-white" />
                                   PREMIUM
                                 </div>
                               )}
 
                               {/* Difficulty Label */}
-                              <div className="absolute top-3 right-3 bg-[#C0392B] text-white text-[9px] font-sans font-bold uppercase px-2.5 py-1 rounded border border-white/20 z-10">
+                              <div className="absolute top-3 right-3 bg-[#C0392B] text-white text-[9px] font-sans font-bold uppercase px-2.5 py-1 rounded border border-white/20 z-20">
                                 {ex.difficulty}
                               </div>
                             </div>
@@ -3050,13 +2953,13 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                         className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all"
                       >
                       {/* Visual Media Block */}
-                      <div className="relative">
+                      <div className="relative w-full">
                         <WorkoutVisual 
                           exerciseId={ex.id}
                           category={ex.category} 
                           muscleGroups={ex.muscleGroups} 
                           exerciseName={ex.name} 
-                          className="h-44 w-full" 
+                          className="w-full" 
                           customMediaUrl={ex.customMediaUrl}
                           customMediaType={ex.customMediaType}
                           isCard={true}
@@ -3064,14 +2967,14 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                         
                         {/* Premium Badge */}
                         {ex.isPremium && (
-                          <div className="absolute top-3 left-3 bg-[#C0392B] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded shadow-sm flex items-center gap-1">
+                          <div className="absolute top-3 left-3 bg-[#C0392B] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded shadow-sm flex items-center gap-1 z-20">
                             <Sparkles className="w-3 h-3 text-white fill-white" />
                             PREMIUM
                           </div>
                         )}
 
                         {/* Difficulty Label */}
-                        <div className="absolute top-3 right-3 bg-[#C0392B] text-white text-[9px] font-sans font-bold uppercase px-2.5 py-1 rounded border border-white/20 z-10">
+                        <div className="absolute top-3 right-3 bg-[#C0392B] text-white text-[9px] font-sans font-bold uppercase px-2.5 py-1 rounded border border-white/20 z-20">
                           {ex.difficulty}
                         </div>
                       </div>
@@ -3253,426 +3156,6 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-       {/* 8. COMPLETE KINESIOLOGY EXERCISE CABINET DETAILS (SPLIT DRUMS) */}
-       {selectedExercise && (
-        <div 
-          id="exercise-cabinet-drawer" 
-          onClick={(e) => { if (e.target === e.currentTarget) setSelectedExerciseId(null); }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm cursor-pointer animate-fade-in p-2 sm:p-4"
-        >
-          <div className="w-full max-w-3xl max-h-[92vh] sm:max-h-[88vh] bg-white border border-slate-200 shadow-2xl flex flex-col rounded-3xl relative cursor-default animate-slide-down">
-            
-            {/* Header section with category and meta details */}
-            <div className="flex items-center justify-between p-5 bg-slate-50 border-b border-slate-200 flex-shrink-0">
-              <div>
-                <span className="text-[10px] font-mono font-extrabold uppercase bg-emerald-500/10 text-emerald-500 py-0.5 px-2.5 border border-emerald-500/20 rounded-full">
-                  {selectedExercise.category}
-                </span>
-                <h3 className="text-xl font-black text-slate-950 mt-1.5 leading-none">
-                  {selectedExercise.name}
-                </h3>
-              </div>
-              
-              <button 
-                type="button"
-                onClick={() => setSelectedExerciseId(null)}
-                className="p-1.5 rounded-full text-slate-400 hover:text-slate-600:text-white hover:bg-slate-200:bg-slate-800 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Core content with ALL 11 required parameters */}
-            <div id="drawer-scroll-container" className="p-6 space-y-6 text-slate-850 overflow-y-auto flex-1">
-              
-              {false ? (
-                <div className="space-y-6">
-                  {/* Visual Media Block (Blurred / Locked overlay) */}
-                  <div className="relative rounded-2xl overflow-hidden border border-slate-200 h-48 bg-slate-950">
-                    <WorkoutVisual 
-                      category={selectedExercise.category} 
-                      muscleGroups={selectedExercise.muscleGroups} 
-                      exerciseName={selectedExercise.name} 
-                      className="h-full w-full filter blur-lg opacity-30" 
-                      customMediaUrl={selectedExercise.customMediaUrl}
-                      customMediaType={selectedExercise.customMediaType}
-                      isCard={true}
-                    />
-                    <div className="absolute inset-0 bg-slate-950/70 flex flex-col justify-center items-center text-center p-4">
-                      <div className="h-10 w-10 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full flex items-center justify-center mb-2">
-                        <Lock className="w-5 h-5 animate-bounce" />
-                      </div>
-                      <span className="text-xs font-bold font-mono text-emerald-400 uppercase tracking-widest">BIOMECHANICAL DEMO LOCKED</span>
-                      <span className="text-[10px] text-slate-450 mt-1">HD video loop and kinesis align-track restricted to Premium members</span>
-                    </div>
-                  </div>
-
-                  {/* Locked Parameter Indicators Checklist */}
-                  <div className="p-5 rounded-xl border border-slate-200 bg-slate-50">
-                    <h4 className="text-xs font-black text-slate-900 uppercase mb-2.5 flex items-center gap-1.5 leading-none">
-                      <Sparkles className="w-4 h-4 text-emerald-400 fill-emerald-400" />
-                      Locked Kinesiology Parameters
-                    </h4>
-                    <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                      Your current free-tier account is restricted from reading the 11 key training parameters for **{selectedExercise.name}**:
-                    </p>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {[
-                        { num: "01", name: "HD Demonstration Loop", desc: "Interactive full range of motion." },
-                        { num: "02", name: "Starting Alignment Position", desc: "Skeletal setups and joint angles." },
-                        { num: "03", name: "Concentric Execution", desc: "Optimal force speed and direction." },
-                        { num: "04", name: "Peak Finishing Squeeze", desc: "Holding concentric active tension." },
-                        { num: "05", name: "Target Muscle Groups", desc: "Deep anatomical muscle breakdowns." },
-                        { num: "06", name: "Form Warning Mistakes", desc: "Safety callouts protecting tendons." },
-                        { num: "07", name: "Progression Variations", desc: "Complex muscular loading styles." },
-                        { num: "08", name: "Alternative Exercises", desc: "Sub-swaps for versatile equipment." }
-                      ].map((item) => (
-                        <div key={item.num} className="p-3 rounded-xl border border-slate-205 bg-white text-xs flex gap-2 shadow-xs">
-                          <span className="font-mono text-emerald-500 font-extrabold text-[10px]">{item.num}</span>
-                          <div>
-                            <p className="font-bold text-slate-800 leading-tight uppercase text-[9px]">{item.name}</p>
-                            <p className="text-[8px] text-slate-450 leading-none mt-0.5">{item.desc}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Premium Benefits Box */}
-                  <div className="p-5 rounded-xl border border-emerald-500/10 bg-emerald-500/5 text-xs">
-                    <h5 className="font-extrabold uppercase font-mono text-[9px] tracking-widest text-emerald-500 mb-2 leading-none flex items-center gap-1.5">
-                      <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                      👑 AlexFitnessHub Premium Benefits
-                    </h5>
-                    <ul className="space-y-1.5 font-sans leading-relaxed text-slate-650 text-[10.5px]">
-                      <li className="flex items-start gap-1">
-                        <span className="text-emerald-500 font-bold">&#10004;</span> Full access to **1,200+ clinical exercises** with biomechanical details.
-                      </li>
-                      <li className="flex items-start gap-1">
-                        <span className="text-emerald-500 font-bold">&#10004;</span> Dedicated **AI Fitness Coach** for 24/7 posture checks.
-                      </li>
-                      <li className="flex items-start gap-1">
-                        <span className="text-emerald-500 font-bold">&#10004;</span> Special **Celebrity & Military Training Programs** guides.
-                      </li>
-                      <li className="flex items-start gap-1">
-                        <span className="text-emerald-500 font-bold">&#10004;</span> **African & Global Meal Generators** with regional macro-tailored options.
-                      </li>
-                      <li className="flex items-start gap-1">
-                        <span className="text-emerald-500 font-bold">&#10004;</span> Interactive weight tracking charts and daily consistency logs.
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Secure Checkout CTA */}
-                  <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div>
-                      <h4 className="text-xs font-black uppercase tracking-wider font-mono text-emerald-400">Unlock Master kinesis library</h4>
-                      <p className="text-[10px] text-slate-400 mt-1 leading-snug">
-                        Activate your premium features securely. Cancel anytime.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setSelectedExerciseId(null);
-                        setView?.("pricing");
-                      }}
-                      className="w-full sm:w-auto px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[10px] font-black uppercase rounded-lg tracking-wider shadow transition-all shrink-0"
-                    >
-                      Upgrade Now
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                   {/* EXERCISE SPECIFICATIONS */}
-                  <div id="instruction-param-demo" className="space-y-4">
-                    <div>
-                      <h4 className="text-xs font-extrabold tracking-wider text-slate-500 uppercase mb-2 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-[#C0392B]" />
-                        Exercise Details
-                      </h4>
-                      <WorkoutVisual 
-                        exerciseId={selectedExercise.id}
-                        category={selectedExercise.category} 
-                        muscleGroups={selectedExercise.muscleGroups} 
-                        exerciseName={selectedExercise.name} 
-                        className="w-full" 
-                        customMediaUrl={selectedExercise.customMediaUrl}
-                        customMediaType={selectedExercise.customMediaType}
-                      />
-                    </div>
-
-                    {/* Manually upload custom demonstration GIF */}
-                    {user && (user.role === "admin" || isEmailAdmin(user.email)) && (
-                      <CustomPerformanceUpload 
-                        exercise={selectedExercise} 
-                        uploadExerciseMedia={uploadExerciseMedia} 
-                      />
-                    )}
-                  </div>
-
-                  {/* HOW TO PERFORM & TARGET MUSCLES */}
-                  <div id="instruction-param-biomechanics" className="p-5 rounded-2xl border border-slate-200 bg-slate-50 space-y-4">
-                    <h4 className="text-xs font-extrabold text-blue-600 uppercase tracking-wide border-b border-slate-200 pb-2 flex items-center gap-1.5">
-                      <Compass className="w-4 h-4" />
-                      How To Perform
-                    </h4>
-
-                    <div className="space-y-3.5 text-xs leading-relaxed">
-                      {/* Starting Position */}
-                      <div>
-                        <span className="font-extrabold text-blue-650 block uppercase text-[10px]">Starting Setup:</span>
-                        <p className="text-slate-600 mt-0.5">{selectedExercise.startingPosition}</p>
-                      </div>
-
-                      {/* Movement Execution */}
-                      <div>
-                        <span className="font-extrabold text-orange-600 block uppercase text-[10px]">Execution Guide:</span>
-                        <p className="text-slate-600 mt-0.5">{selectedExercise.movementExecution}</p>
-                      </div>
-
-                      {/* Finishing Position */}
-                      <div>
-                        <span className="font-extrabold text-purple-650 block uppercase text-[10px]">Finishing Lock & Squeeze:</span>
-                        <p className="text-slate-600 mt-0.5">{selectedExercise.finishingPosition}</p>
-                      </div>
-
-                      {/* Step-by-Step Instructions list */}
-                      {selectedExercise.instructions && selectedExercise.instructions.length > 0 && (
-                        <div className="p-3.5 bg-white border border-slate-150 rounded-xl space-y-2.5">
-                          <span className="font-extrabold text-slate-800 block uppercase text-[10px] font-mono tracking-wider">Step-by-Step Technique Instructions:</span>
-                          <ol className="space-y-2">
-                            {selectedExercise.instructions.map((inst, index) => (
-                              <li key={index} className="flex gap-2 text-xs text-slate-655 leading-relaxed">
-                                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono font-bold text-emerald-500 shrink-0">
-                                  {index + 1}
-                                </span>
-                                <span>{inst}</span>
-                              </li>
-                            ))}
-                          </ol>
-                        </div>
-                      )}
-
-                      {/* Dynamic Coaching Parameter Cards (Breathing & Target Recommendations) */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {/* Breathing instructions */}
-                        {selectedExercise.breathingInstructions && (
-                          <div className="p-3 bg-blue-500/5 rounded-xl border border-blue-500/10 space-y-1">
-                            <span className="font-extrabold text-blue-600 block uppercase text-[10px] font-mono tracking-wider">
-                              Breathing Control
-                            </span>
-                            <p className="text-xs text-slate-700 leading-relaxed font-sans">
-                              {selectedExercise.breathingInstructions}
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Recommended Sets & Reps */}
-                        {selectedExercise.recommendedSetsReps && (
-                          <div className="p-3 bg-emerald-500/5 rounded-xl border border-emerald-500/10 space-y-1">
-                            <span className="font-extrabold text-emerald-600 block uppercase text-[10px] font-mono tracking-wider">
-                              Training Metrics
-                            </span>
-                            <p className="text-xs text-slate-700 leading-relaxed font-sans font-bold">
-                              {selectedExercise.recommendedSetsReps}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Exercise Benefits */}
-                      {selectedExercise.benefits && selectedExercise.benefits.length > 0 && (
-                        <div className="p-3.5 bg-white border border-slate-150 rounded-xl space-y-1.5">
-                          <span className="font-extrabold text-slate-500 block uppercase text-[10px]">Biomechanical Benefits:</span>
-                          <ul className="space-y-1">
-                            {selectedExercise.benefits.map((benefit, idx) => (
-                              <li key={idx} className="flex items-start gap-1.5 text-xs text-slate-755 leading-relaxed">
-                                <span className="text-emerald-500 font-extrabold">&#10004;</span>
-                                <span>{benefit}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Training Recommendations */}
-                      {selectedExercise.trainingRecommendations && (
-                        <div className="p-3 bg-white border border-slate-150 rounded-xl space-y-1">
-                          <span className="font-extrabold text-slate-500 block uppercase text-[10px]">Coach Tips:</span>
-                          <p className="text-xs text-slate-705 leading-relaxed font-sans">
-                            {selectedExercise.trainingRecommendations}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Muscles Worked */}
-                      <div>
-                        <span className="font-extrabold text-emerald-605 block uppercase text-[10px]">Muscles Worked:</span>
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          {selectedExercise.musclesWorked.map((muscle) => (
-                            <span key={muscle} className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] font-semibold px-2.5 py-1 rounded uppercase">
-                              {muscle}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* EQUIPMENT CHECKLIST */}
-                  <div id="instruction-param-equip">
-                    <h4 className="text-xs font-extrabold tracking-wider text-slate-500 uppercase mb-2">
-                      Equipment Needed
-                    </h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {selectedExercise.equipment.map((eq) => (
-                        <div key={eq} className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                          <div>
-                            <p className="font-bold text-slate-900 uppercase text-[10px] leading-none">{eq}</p>
-                            <p className="text-[8px] text-slate-500 leading-none mt-0.5">Verified functional gear</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* COMMON MISTAKES & SAFETY TIPS */}
-                  <div id="instruction-param-safety" className="grid md:grid-cols-2 gap-4">
-                    
-                    {/* Common Mistakes */}
-                    <div className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/15">
-                      <h5 className="text-xs font-bold text-rose-600 uppercase tracking-wide flex items-center gap-1.5 mb-2">
-                        <AlertTriangle className="w-4 h-4" />
-                        Common Mistakes
-                      </h5>
-                      <ul className="space-y-1.5 text-xs text-slate-650 leading-relaxed">
-                        {selectedExercise.commonMistakes.map((mistake, idx) => (
-                          <li key={idx} className="flex items-start gap-1">
-                            <span className="shrink-0 text-rose-500 font-bold">&#10006;</span>
-                            {mistake}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Safety Tips */}
-                    <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/15">
-                      <h5 className="text-xs font-bold text-amber-600 uppercase tracking-wide flex items-center gap-1.5 mb-2">
-                        <Shield className="w-4 h-4" />
-                        Safety & Protection Tips
-                      </h5>
-                      <ul className="space-y-1.5 text-xs text-slate-650 leading-relaxed">
-                        {selectedExercise.safetyTips.map((tip, idx) => (
-                          <li key={idx} className="flex items-start gap-1">
-                            <span className="shrink-0 text-amber-600 font-bold">&#10004;</span>
-                            {tip}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                  </div>
-
-                  {/* EXERCISE VARIATIONS */}
-                  <div id="instruction-param-variations" className="p-4 rounded-xl border border-slate-200 space-y-3.5 text-xs bg-slate-50/50">
-                    <h5 className="text-xs font-black text-slate-500 uppercase tracking-wider border-b border-slate-200 pb-1.5">
-                      Exercise Variations
-                    </h5>
-
-                    {/* Alternatives, Progression & Regression */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div>
-                        <span className="block text-[8px] font-bold uppercase text-slate-450">Alternative Swaps</span>
-                        <p className="text-slate-800 font-bold mt-0.5 leading-snug">
-                          {selectedExercise.alternativeExercises.join(" / ") || "Standard swaps applies"}
-                        </p>
-                      </div>
-
-                      {/* Progression */}
-                      <div>
-                        <span className="block text-[8px] font-bold uppercase text-slate-450">Advanced Progression</span>
-                        <p className="text-slate-800 font-bold mt-0.5 leading-snug">
-                          {selectedExercise.progressionVariations.join(" / ") || "High density loads"}
-                        </p>
-                      </div>
-
-                      {/* Regression */}
-                      <div>
-                        <span className="block text-[8px] font-bold uppercase text-slate-450">Regression Options</span>
-                        <p className="text-slate-800 font-bold mt-0.5 leading-snug">
-                          {selectedExercise.regressionVariations.join(" / ") || "Knee assisted splits"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* LOG COMPLETION STATE CONFORM LOGIC */}
-                  {user ? (
-                    <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50">
-                      <h4 className="text-xs font-bold text-slate-650 uppercase mb-3">
-                        Log Workout Performance
-                      </h4>
-
-                      {logSuccess ? (
-                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-lg text-xs text-emerald-400 flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4" />
-                          Form submission recorded cleanly. Sync completed with user dashboard index!
-                        </div>
-                      ) : (
-                        <form onSubmit={handleLogCompletion} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div>
-                            <label className="block text-[9px] font-bold text-slate-400 uppercase font-mono mb-1">Target Reps</label>
-                            <input
-                              type="number"
-                              value={loggedReps}
-                              onChange={(e) => setLoggedReps(e.target.value)}
-                              className="w-full text-xs p-2.5 bg-white border border-slate-200 text-slate-950 rounded focus:outline-none"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[9px] font-bold text-slate-400 uppercase font-mono mb-1">Target Load (KG)</label>
-                            <input
-                              type="number"
-                              value={loggedWeight}
-                              onChange={(e) => setLoggedWeight(e.target.value)}
-                              className="w-full text-xs p-2.5 bg-white border border-slate-200 text-slate-950 rounded focus:outline-none"
-                            />
-                          </div>
-                          <div className="sm:col-span-3">
-                            <label className="block text-[9px] font-bold text-slate-400 uppercase font-mono mb-1">Coaching notes and performance index</label>
-                            <input
-                              type="text"
-                              placeholder="Felt excellent contraction. Joint movement felt completely stable."
-                              value={loggedNotes}
-                              onChange={(e) => setLoggedNotes(e.target.value)}
-                              className="w-full text-xs p-2.5 bg-white border border-slate-200 text-slate-950 rounded focus:outline-none"
-                            />
-                          </div>
-                          <button
-                            type="submit"
-                            className="sm:col-span-3 py-3 bg-[#1E3A8A] hover:bg-[#1E40AF]:bg-emerald-700 text-white rounded-lg text-xs font-bold uppercase tracking-widest font-mono flex items-center justify-center gap-1.5 shadow-sm hover:shadow transition-all"
-                          >
-                            <PlusCircle className="w-4 h-4" />
-                            Log Workout Set
-                          </button>
-                        </form>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="p-4 text-center rounded-xl bg-slate-50 text-xs text-slate-500 border border-dashed border-slate-200">
-                      Please sign-in to enroll, save routines, track sets, and compile dynamic history charts.
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
           </div>
         </div>
       )}

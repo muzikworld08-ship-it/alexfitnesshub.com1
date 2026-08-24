@@ -3,7 +3,8 @@ import { useApp, isEmailAdmin } from "../context/AppContext";
 import { 
   Users, Sparkles, Dumbbell, ShieldCheck, UserCheck, Trash2, ArrowUpDown, Key, ToggleLeft, ToggleRight,
   Check, Copy, Link, Cpu, Globe, Activity, ChevronRight, AlertTriangle, Terminal, Settings, CreditCard, RefreshCw,
-  Upload, Image as ImageIcon, Video, Search, Filter, Play, RotateCcw, CheckCircle2, Trophy, Layers, Edit3
+  Upload, Image as ImageIcon, Video, Search, Filter, Play, RotateCcw, CheckCircle2, Trophy, Layers, Edit3,
+  SlidersHorizontal, CheckSquare, Eye, ExternalLink
 } from "lucide-react";
 import { TestimonialAdminManager } from "./TestimonialAdminManager";
 import AdminAssetManager from "./AdminAssetManager";
@@ -33,7 +34,6 @@ export default function AdminDashboard() {
   const [exerciseQuery, setExerciseQuery] = useState("");
   const [activeAdminTab, setActiveAdminTab] = useState<"workouts" | "challenges" | "media" | "directory" | "paystack">("workouts");
 
-
   // Media Manager Filters & Local Inputs
   const [mediaSearch, setMediaSearch] = useState("");
   const [mediaCategoryFilter, setMediaCategoryFilter] = useState("all");
@@ -56,7 +56,6 @@ export default function AdminDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Reset value so choosing the same file again triggers onChange
     e.target.value = "";
 
     if (file.size > 20 * 1024 * 1024) {
@@ -68,10 +67,7 @@ export default function AdminDashboard() {
     const isVideo = file.type.startsWith("video/");
 
     try {
-      // 1. Upload directly to cloud storage (Firebase / Supabase)
       const finalCloudUrl = await uploadMediaToCloud(file, exerciseId, isVideo ? "video" : "image");
-      
-      // 2. Persist in Supabase DB + Cloud Firestore
       await saveExerciseMediaToDatabase(exerciseId, finalCloudUrl, isVideo ? "video" : "image");
       await uploadExerciseMedia(exerciseId, finalCloudUrl, isVideo ? "video" : "image");
       AssetManifestService.recordUploadedAssetSignature(exerciseId, finalCloudUrl, isVideo ? "video" : "image");
@@ -125,7 +121,7 @@ export default function AdminDashboard() {
 
   const handleManualEnroll = async () => {
     if (!enrollUserUid) {
-      setEnrollStatus("Please select a user to enroll.");
+      setEnrollStatus("Please select an athlete to enroll.");
       return;
     }
     setEnrollLoading(true);
@@ -191,8 +187,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Keep current scroll position on admin tab switch
-
   const [paystackStatus, setPaystackStatus] = useState<any>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -239,7 +233,7 @@ export default function AdminDashboard() {
           </div>
           <h4 className="text-sm font-extrabold uppercase tracking-wider font-mono text-rose-600">Access Restricted</h4>
           <p className="text-xs text-slate-600 leading-relaxed">
-            This module represents the primary administrative dashboard, accessible strictly to <code className="bg-slate-100 px-1.5 py-0.5 rounded font-bold text-slate-900 border border-slate-200">alexfitnesshub@gmail.com</code>.
+            This module represents the primary administrative dashboard, accessible strictly to verified administrators (<code className="bg-slate-100 px-1.5 py-0.5 rounded font-bold text-slate-900 border border-slate-200">alexfitnesshub@gmail.com</code>).
           </p>
         </div>
       </div>
@@ -249,10 +243,8 @@ export default function AdminDashboard() {
   // Aggregate stats
   const totalUsers = allSystemUsers.length;
   const premiumCount = allSystemUsers.filter(u => u.subscriptionStatus === "premium").length;
-  const estimatedMonthlyRevenue = premiumCount * 19999;
   const totalCustomMedia = exercises.filter(e => !!e.customMediaUrl).length;
 
-  // Filtered exercises for Media Manager Tab
   const categoriesList = Array.from(new Set(exercises.map(e => e.category))).filter(Boolean);
 
   const filteredMediaExercises = exercises.filter(e => {
@@ -280,133 +272,161 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 bg-slate-50 min-h-screen text-slate-900">
+    <div id="admin_dashboard_root" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 bg-slate-50 min-h-screen text-slate-900">
       
-      {/* Admin Title Panel */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 text-slate-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+      {/* Admin Title Panel - Athlete Performance Desk Header Style */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 text-slate-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
         <div>
-          <span className="text-[10px] font-extrabold uppercase font-mono tracking-widest text-red-600">System Admin Control Center</span>
-          <h2 className="text-2xl sm:text-3xl font-black tracking-tight mt-1 font-sans text-slate-900">
-            AlexFitnessHub Admin Dashboard
-          </h2>
-          <p className="text-xs text-slate-600 max-w-xl mt-1 leading-relaxed font-medium">
-            Manage exercise GIF/video media across the entire website, update athlete accounts, and oversee Paystack webhook connections.
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 text-[10px] font-mono font-black uppercase px-2.5 py-1 rounded-full border border-red-200">
+              <ShieldCheck className="w-3.5 h-3.5 text-red-600" />
+              Executive Admin Control
+            </span>
+            <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+              Live Gateway Active
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight font-sans text-slate-900">
+            AlexFitnessHub Administrative Operations
+          </h1>
+          <p className="text-xs text-slate-500 max-w-2xl mt-1 leading-relaxed font-medium">
+            Centralized management console for workout prescriptions, challenge programs, athlete subscriptions, and Paystack live transaction monitoring.
           </p>
         </div>
         
-        <div className="flex items-center gap-2 px-3.5 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-full text-xs font-mono font-bold uppercase shrink-0">
-          <ShieldCheck className="w-4 h-4 text-red-600" />
-          alexfitnesshub@gmail.com Active
+        <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-100 text-slate-800 border border-slate-200 rounded-2xl text-xs font-mono font-bold shrink-0">
+          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-slate-900">{user?.email || "alexfitnesshub@gmail.com"}</span>
         </div>
       </div>
 
-      {/* CORE STATS GRID */}
+      {/* CORE STATS GRID - 4 Column Layout */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full">
         
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-          <Dumbbell className="w-5 h-5 text-red-600 mb-2" />
-          <span className="text-[10px] text-slate-500 uppercase font-mono font-bold tracking-wider">Total Workouts</span>
-          <h4 className="text-2xl font-black text-slate-900 mt-1">{exercises.length}</h4>
+        <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">Total Workouts</span>
+            <h3 className="text-2xl sm:text-3xl font-black text-slate-900">{exercises.length}</h3>
+            <span className="text-[10px] text-slate-500 font-mono">Catalog database</span>
+          </div>
+          <div className="h-12 w-12 rounded-2xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center shrink-0">
+            <Dumbbell className="w-6 h-6" />
+          </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-          <ImageIcon className="w-5 h-5 text-emerald-600 mb-2" />
-          <span className="text-[10px] text-slate-500 uppercase font-mono font-bold tracking-wider">Custom Media Uploaded</span>
-          <h4 className="text-2xl font-black text-emerald-600 mt-1">{totalCustomMedia}</h4>
+        <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">Custom Media Uploads</span>
+            <h3 className="text-2xl sm:text-3xl font-black text-emerald-600">{totalCustomMedia}</h3>
+            <span className="text-[10px] text-slate-500 font-mono">GIF & Video assets</span>
+          </div>
+          <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+            <ImageIcon className="w-6 h-6" />
+          </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-          <Users className="w-5 h-5 text-blue-600 mb-2" />
-          <span className="text-[10px] text-slate-500 uppercase font-mono font-bold tracking-wider">Total Active Athletes</span>
-          <h4 className="text-2xl font-black text-slate-900 mt-1">{totalUsers}</h4>
+        <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">Active Athletes</span>
+            <h3 className="text-2xl sm:text-3xl font-black text-blue-600">{totalUsers}</h3>
+            <span className="text-[10px] text-slate-500 font-mono">Registered accounts</span>
+          </div>
+          <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+            <Users className="w-6 h-6" />
+          </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-          <Sparkles className="w-5 h-5 text-amber-500 mb-2" />
-          <span className="text-[10px] text-slate-500 uppercase font-mono font-bold tracking-wider">Premium Athletes</span>
-          <h4 className="text-2xl font-black text-amber-600 mt-1">{premiumCount}</h4>
+        <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">Premium Subscribers</span>
+            <h3 className="text-2xl sm:text-3xl font-black text-amber-600">{premiumCount}</h3>
+            <span className="text-[10px] text-slate-500 font-mono">Verified members</span>
+          </div>
+          <div className="h-12 w-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+            <Sparkles className="w-6 h-6" />
+          </div>
         </div>
 
       </div>
 
-      {/* TAB NAVIGATION SELECTOR */}
-      <div className="flex border-b border-slate-200 overflow-x-auto gap-2">
+      {/* TAB NAVIGATION SELECTOR - Athlete Performance Desk Pill Strip */}
+      <div className="flex bg-slate-200/80 p-1.5 rounded-2xl overflow-x-auto gap-1 border border-slate-200 scrollbar-none">
         <button
           onClick={() => setActiveAdminTab("workouts")}
-          className={`pb-3 px-5 text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+          className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeAdminTab === "workouts"
-              ? "border-red-600 text-red-600"
-              : "border-transparent text-slate-500 hover:text-slate-800"
+              ? "bg-white text-slate-900 shadow-xs"
+              : "text-slate-600 hover:text-slate-900"
           }`}
         >
-          <Dumbbell className="w-4 h-4" />
+          <Dumbbell className="w-4 h-4 text-red-600" />
           Workouts & Reps Manager ({exercises.length})
         </button>
 
         <button
           onClick={() => setActiveAdminTab("challenges")}
-          className={`pb-3 px-5 text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+          className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeAdminTab === "challenges"
-              ? "border-red-600 text-red-600"
-              : "border-transparent text-slate-500 hover:text-slate-800"
+              ? "bg-white text-slate-900 shadow-xs"
+              : "text-slate-600 hover:text-slate-900"
           }`}
         >
-          <Trophy className="w-4 h-4" />
+          <Trophy className="w-4 h-4 text-amber-500" />
           Challenges Engine ({allChallenges?.length || 7})
         </button>
 
         <button
           onClick={() => setActiveAdminTab("media")}
-          className={`pb-3 px-5 text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+          className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeAdminTab === "media"
-              ? "border-red-600 text-red-600"
-              : "border-transparent text-slate-500 hover:text-slate-800"
+              ? "bg-white text-slate-900 shadow-xs"
+              : "text-slate-600 hover:text-slate-900"
           }`}
         >
-          <Video className="w-4 h-4" />
+          <Video className="w-4 h-4 text-emerald-600" />
           Media Hub & Asset Library
         </button>
 
         <button
           onClick={() => setActiveAdminTab("directory")}
-          className={`pb-3 px-5 text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+          className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeAdminTab === "directory"
-              ? "border-red-600 text-red-600"
-              : "border-transparent text-slate-500 hover:text-slate-800"
+              ? "bg-white text-slate-900 shadow-xs"
+              : "text-slate-600 hover:text-slate-900"
           }`}
         >
-          <Users className="w-4 h-4" />
-          Athletes & Subscriptions
+          <Users className="w-4 h-4 text-blue-600" />
+          Athletes & Subscriptions ({totalUsers})
         </button>
 
         <button
           onClick={() => setActiveAdminTab("paystack")}
-          className={`pb-3 px-5 text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+          className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeAdminTab === "paystack"
-              ? "border-red-600 text-red-600"
-              : "border-transparent text-slate-500 hover:text-slate-800"
+              ? "bg-white text-slate-900 shadow-xs"
+              : "text-slate-600 hover:text-slate-900"
           }`}
         >
-          <CreditCard className="w-4 h-4" />
-          Paystack Webhooks & Live Setup
+          <CreditCard className="w-4 h-4 text-indigo-600" />
+          Paystack Live Setup
         </button>
       </div>
 
-      {/* VIEW: WORKOUTS MANAGER (Edit workout name, reps, sets, add workouts with images) */}
+      {/* VIEW 1: WORKOUTS MANAGER */}
       {activeAdminTab === "workouts" && (
         <div className="space-y-6 animate-fade-in">
           <AdminWorkoutEditor />
         </div>
       )}
 
-      {/* VIEW: CHALLENGES MANAGER (Create challenges with workout images, reps, sets) */}
+      {/* VIEW 2: CHALLENGES MANAGER */}
       {activeAdminTab === "challenges" && (
         <div className="space-y-6 animate-fade-in">
           <AdminChallengeManager />
         </div>
       )}
 
-      {/* VIEW: WORKOUTS GIF & VIDEO MEDIA MANAGER */}
+      {/* VIEW 3: WORKOUTS GIF & VIDEO MEDIA MANAGER */}
       {activeAdminTab === "media" && (
         <div className="space-y-6 animate-fade-in">
           
@@ -414,21 +434,21 @@ export default function AdminDashboard() {
           <AdminAssetManager />
           
           {/* Overview & Instructions Header */}
-          <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
                   <Upload className="w-5 h-5 text-red-600" />
                   Global Workout Image & GIF Demonstrator
                 </h3>
-                <p className="text-xs text-slate-600 mt-1 leading-relaxed max-w-2xl font-medium">
-                  Upload an image, animated GIF, or MP4 video for any workout below. With 1-click, your media will instantly broadcast live across every program, library, daily plan, and challenge on this entire website!
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-2xl font-medium">
+                  Upload an image, animated GIF, or MP4 video for any workout below. Updates broadcast live across every program, library, and 90-day challenge split immediately.
                 </p>
               </div>
 
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 shrink-0">
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-2xl text-xs font-bold flex items-center gap-2 shrink-0">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Instant 1-Click Site-Wide Live Broadcast</span>
+                <span>Instant Site-Wide Live Broadcast</span>
               </div>
             </div>
 
@@ -599,24 +619,26 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* VIEW 2: ATHLETES DIRECTORY & PREMIUM OVERRIDES */}
+      {/* VIEW 4: ATHLETES DIRECTORY & SUBSCRIPTION CONTROLS */}
       {activeAdminTab === "directory" && (
-        <div className="grid lg:grid-cols-12 gap-8 animate-fade-in">
+        <div className="space-y-8 animate-fade-in">
+          
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            {/* LEFT COLUMN: ACTIVE USER DIRECTORY OVERRIDES */}
-            <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 space-y-4 shadow-sm">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+            {/* LEFT COLUMN: ATHLETE USER ACCOUNTS */}
+            <div className="lg:col-span-7 bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 space-y-4 shadow-xs">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-100 pb-4">
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 tracking-tight">Active Athlete Profiles</h3>
-                  <p className="text-[11px] text-slate-500 leading-normal">Database student record catalog with direct account upgrade override toggles.</p>
+                  <h3 className="text-base font-black text-slate-900 tracking-tight uppercase">Active Athlete Accounts</h3>
+                  <p className="text-xs text-slate-500">Database user directory with direct subscription overrides.</p>
                 </div>
                 
                 <input
                   type="text"
-                  placeholder="Filter email / names..."
+                  placeholder="Filter athletes..."
                   value={userQuery}
                   onChange={(e) => setUserQuery(e.target.value)}
-                  className="text-xs p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-red-600 max-w-[200px]"
+                  className="text-xs p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-red-600 max-w-[200px]"
                 />
               </div>
 
@@ -627,21 +649,21 @@ export default function AdminDashboard() {
                   filteredUsers.map((userProfile) => {
                     const isUserPremium = userProfile.subscriptionStatus === "premium";
                     return (
-                      <div key={userProfile.uid} className="p-3.5 border border-slate-200 rounded-xl bg-slate-50/60 flex justify-between items-center gap-4 hover:border-slate-300 transition">
+                      <div key={userProfile.uid} className="p-3.5 border border-slate-200 rounded-2xl bg-slate-50/70 flex justify-between items-center gap-4 hover:border-slate-300 transition">
                         <div>
                           <h5 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                             {userProfile.displayName || "Athlete"}
                             {userProfile.role === "admin" && (
-                              <span className="text-[8px] font-bold bg-blue-500/10 text-blue-600 px-1.5 py-0.2 rounded uppercase font-mono">ROOT ADMIN</span>
+                              <span className="text-[8px] font-bold bg-red-100 text-red-700 px-1.5 py-0.5 rounded uppercase font-mono">ADMIN</span>
                             )}
                           </h5>
                           <span className="text-[10px] text-slate-500 font-mono tracking-wide">{userProfile.email}</span>
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <span className={`text-[9px] font-mono uppercase font-bold py-0.5 px-1.5 rounded ${
+                          <span className={`text-[9px] font-mono uppercase font-bold py-0.5 px-2 rounded-md ${
                             isUserPremium 
-                              ? "bg-emerald-500/15 text-emerald-600" 
+                              ? "bg-emerald-500/15 text-emerald-700 border border-emerald-200" 
                               : "bg-slate-200 text-slate-600"
                           }`}>
                             {userProfile.subscriptionStatus || "free"}
@@ -653,14 +675,14 @@ export default function AdminDashboard() {
                               <button
                                 onClick={() => adminModifySubscription(userProfile.uid, "activate")}
                                 title="Activate Premium (30 days)"
-                                className="px-2 py-1 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-600 hover:text-white text-[9px] font-black uppercase rounded transition-all cursor-pointer"
+                                className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white text-[9px] font-black uppercase rounded-lg border border-emerald-200 transition-all cursor-pointer"
                               >
                                 Activate
                               </button>
                               <button
                                 onClick={() => adminModifySubscription(userProfile.uid, "extend")}
                                 title="Extend subscription (+30 days)"
-                                className="px-2 py-1 bg-blue-500/10 text-blue-700 hover:bg-blue-600 hover:text-white text-[9px] font-black uppercase rounded transition-all cursor-pointer"
+                                className="px-2 py-1 bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white text-[9px] font-black uppercase rounded-lg border border-blue-200 transition-all cursor-pointer"
                               >
                                 Extend
                               </button>
@@ -668,7 +690,7 @@ export default function AdminDashboard() {
                                 <button
                                   onClick={() => adminModifySubscription(userProfile.uid, "suspend")}
                                   title="Suspend Premium access immediately"
-                                  className="px-2 py-1 bg-amber-500/10 text-amber-700 hover:bg-amber-600 hover:text-white text-[9px] font-black uppercase rounded transition-all cursor-pointer"
+                                  className="px-2 py-1 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white text-[9px] font-black uppercase rounded-lg border border-amber-200 transition-all cursor-pointer"
                                 >
                                   Suspend
                                 </button>
@@ -676,7 +698,7 @@ export default function AdminDashboard() {
                                 <button
                                   onClick={() => adminModifySubscription(userProfile.uid, "cancel")}
                                   title="Cancel Premium subscription completely"
-                                  className="px-2 py-1 bg-rose-500/10 text-rose-700 hover:bg-rose-600 hover:text-white text-[9px] font-black uppercase rounded transition-all cursor-pointer"
+                                  className="px-2 py-1 bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white text-[9px] font-black uppercase rounded-lg border border-rose-200 transition-all cursor-pointer"
                                 >
                                   Cancel
                                 </button>
@@ -692,28 +714,28 @@ export default function AdminDashboard() {
             </div>
 
             {/* RIGHT COLUMN: ROUTINE LOCK AND RELEASE OVERRIDES */}
-            <div className="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-4 shadow-sm">
-              <div className="flex items-center justify-between">
+            <div className="lg:col-span-5 bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 space-y-4 shadow-xs">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 tracking-tight">Database Exercises</h3>
-                  <p className="text-[11px] text-slate-500 leading-normal">Toggle exercises as standard Free or locked under Premium.</p>
+                  <h3 className="text-base font-black text-slate-900 tracking-tight uppercase">Exercise Tier Locks</h3>
+                  <p className="text-xs text-slate-500">Toggle exercises between Free and Premium.</p>
                 </div>
                 
                 <input
                   type="text"
-                  placeholder="Filter names..."
+                  placeholder="Filter exercises..."
                   value={exerciseQuery}
                   onChange={(e) => setExerciseQuery(e.target.value)}
-                  className="text-xs p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-red-600 max-w-[150px]"
+                  className="text-xs p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-red-600 max-w-[140px]"
                 />
               </div>
 
               <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
                 {filteredExercises.map((ex) => (
-                  <div key={ex.id} className="p-2.5 border border-slate-200 rounded-lg flex items-center justify-between text-xs hover:bg-slate-50 transition">
-                    <div className="truncate max-w-[200px]">
-                      <h5 className="font-semibold text-slate-900 truncate">{ex.name}</h5>
-                      <span className="text-[9px] text-slate-500 font-mono italic">{ex.category}</span>
+                  <div key={ex.id} className="p-2.5 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-50 transition">
+                    <div className="truncate max-w-[180px]">
+                      <h5 className="font-bold text-slate-900 truncate">{ex.name}</h5>
+                      <span className="text-[9px] text-slate-500 font-mono">{ex.category}</span>
                     </div>
 
                     <button
@@ -729,7 +751,7 @@ export default function AdminDashboard() {
                       ) : (
                         <span className="flex items-center gap-1 text-slate-400 font-mono text-[10px]">
                           <ToggleLeft className="w-6 h-6" />
-                          Standard Lite
+                          Free Tier
                         </span>
                       )}
                     </button>
@@ -739,17 +761,17 @@ export default function AdminDashboard() {
             </div>
 
             {/* MANUAL CHALLENGE ENROLLMENT & OVERRIDE CARD */}
-            <div className="lg:col-span-12 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 space-y-6 shadow-sm text-left">
+            <div className="lg:col-span-12 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 space-y-6 shadow-xs text-left">
               <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                <div className="h-10 w-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                <div className="h-10 w-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-100">
                   <ShieldCheck className="w-5 h-5 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                  <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">
                     Manual 90-Day Challenge Enrollment & Overrides
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Instantly enroll any premium athlete into a customized flagship challenge, assign their head coach, and override standard onboarding questions.
+                    Directly enroll any athlete into a customized flagship challenge, assign their coach, and initialize custom split days.
                   </p>
                 </div>
               </div>
@@ -810,17 +832,17 @@ export default function AdminDashboard() {
                     onChange={(e) => setEnrollCoach(e.target.value)}
                     className="w-full text-xs font-bold p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-red-600"
                   >
-                    <option value="Coach Marcus">Coach Marcus (Default)</option>
+                    <option value="Coach Marcus">Coach Marcus (Head Coach)</option>
                     <option value="Coach Stephanie">Coach Stephanie (Physiotherapist)</option>
-                    <option value="Coach Sarah">Coach Sarah (Nutritional Kinesiologist)</option>
+                    <option value="Coach Sarah">Coach Sarah (Nutritional Lead)</option>
                     <option value="Coach Alex">Coach Alex (Strength Specialist)</option>
-                    <option value="Coach David">Coach David (Cardiorespiratory Lead)</option>
+                    <option value="Coach David">Coach David (Cardio & Conditioning)</option>
                   </select>
                 </div>
 
                 {/* Fitness Level */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-extrabold uppercase font-mono tracking-wider text-slate-500">Overridden Fitness Level</label>
+                  <label className="text-[10px] font-extrabold uppercase font-mono tracking-wider text-slate-500">Fitness Level</label>
                   <select
                     value={enrollFitnessLevel}
                     onChange={(e) => setEnrollFitnessLevel(e.target.value as any)}
@@ -834,7 +856,7 @@ export default function AdminDashboard() {
 
                 {/* Location */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-extrabold uppercase font-mono tracking-wider text-slate-500">Overridden Location Setup</label>
+                  <label className="text-[10px] font-extrabold uppercase font-mono tracking-wider text-slate-500">Training Facility</label>
                   <select
                     value={enrollGymOrHome}
                     onChange={(e) => setEnrollGymOrHome(e.target.value as any)}
@@ -851,9 +873,9 @@ export default function AdminDashboard() {
                 <button
                   onClick={handleManualEnroll}
                   disabled={enrollLoading}
-                  className="w-full sm:w-auto px-8 py-4 bg-red-600 text-white hover:bg-red-700 disabled:bg-slate-300 font-sans font-extrabold text-xs uppercase rounded-xl shadow-md transition duration-150 cursor-pointer text-center inline-flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-6 py-3 bg-red-600 text-white hover:bg-red-700 disabled:bg-slate-300 font-sans font-extrabold text-xs uppercase rounded-xl shadow-xs transition duration-150 cursor-pointer text-center inline-flex items-center justify-center gap-2"
                 >
-                  {enrollLoading ? "Enrolling Athlete..." : "FORCE MANUAL ENROLLMENT OVERRIDE"}
+                  {enrollLoading ? "Enrolling Athlete..." : "Save Athlete Challenge Blueprint"}
                 </button>
 
                 {enrollStatus && (
@@ -866,59 +888,115 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+          </div>
+
         </div>
       )}
 
-      {/* VIEW 3: PAYSTACK GATEWAY & WEBHOOKS */}
+      {/* VIEW 5: PAYSTACK GATEWAY & WEBHOOKS */}
       {activeAdminTab === "paystack" && (
-        <div className="max-w-3xl mx-auto animate-fade-in space-y-8">
+        <div className="max-w-4xl mx-auto animate-fade-in space-y-8">
           
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 space-y-6 shadow-sm">
+          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 space-y-6 shadow-xs">
             
-            <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Globe className="w-5 h-5 text-red-600" />
-                Paystack Gateway Connection Status
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Your application communicates directly with Paystack’s payment core. Configure these values inside your Paystack Merchant account to activate live or test flows.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              <div>
+                <h3 className="text-base font-black text-slate-900 uppercase flex items-center gap-2">
+                  <Globe className="w-5 h-5 text-red-600" />
+                  Paystack Payment Gateway Status
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  AlexFitnessHub uses server-side Paystack webhooks and REST verification as the source of truth for Premium Athlete subscriptions.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={fetchPaystackStatus}
+                  disabled={loadingStatus}
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingStatus ? "animate-spin" : ""}`} />
+                  Refresh Gateway
+                </button>
+              </div>
             </div>
+
+            {/* MODE ALERT */}
+            {paystackStatus?.keyMismatch ? (
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <span className="font-bold">Key Mode Mismatch Detected:</span>
+                  <p>Your Paystack Secret Key and Public Key are in different modes (one is Test, one is Live). Please ensure both keys in your environment settings are in the same mode.</p>
+                </div>
+              </div>
+            ) : (
+              <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+                paystackStatus?.isLive 
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                  : paystackStatus?.isTest
+                  ? "bg-blue-50 border-blue-200 text-blue-900"
+                  : "bg-slate-50 border-slate-200 text-slate-700"
+              }`}>
+                <div className="flex items-center gap-3">
+                  <span className={`h-3 w-3 rounded-full shrink-0 ${
+                    paystackStatus?.isLive ? "bg-emerald-500 animate-pulse" : paystackStatus?.isTest ? "bg-blue-500" : "bg-slate-400"
+                  }`} />
+                  <div>
+                    <div className="text-xs font-bold uppercase tracking-wider font-mono">
+                      {paystackStatus?.mode || "Configuration Status"}
+                    </div>
+                    <p className="text-[11px] opacity-80">
+                      {paystackStatus?.isLive
+                        ? "Live production gateway active. Real payments from athletes are verified securely on the backend."
+                        : paystackStatus?.isTest
+                        ? "Test sandbox keys active. Payments use test card numbers for staging verification."
+                        : "Keys configured securely in backend environment variables."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* STATUS CARDS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
                 <span className="text-[10px] text-slate-500 uppercase font-mono font-bold tracking-wider">Secret Key (`PAYSTACK_SECRET_KEY`)</span>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono font-bold text-slate-800">
-                    {paystackStatus?.secretKeySet ? "Loaded ✓" : "Fallback Key"}
+                    {paystackStatus?.secretKeySet ? "Securely Stored ✓" : "Not Configured"}
                   </span>
-                  <span className={`h-2.5 w-2.5 rounded-full ${paystackStatus?.secretKeySet ? "bg-emerald-500 animate-pulse" : "bg-amber-400"}`} />
+                  <span className={`h-2.5 w-2.5 rounded-full ${paystackStatus?.secretKeySet ? "bg-emerald-500" : "bg-amber-400"}`} />
                 </div>
                 <p className="text-[9px] text-slate-500 font-mono">
-                  Active key: <code className="text-slate-700 font-bold">{paystackStatus?.secretKeyMasked}</code>
+                  Environment: <code className="text-slate-700 font-bold">{paystackStatus?.secretKeySet ? "Server-side Secret (Invisible)" : "Pending Configuration"}</code>
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                <span className="text-[10px] text-slate-500 uppercase font-mono font-bold tracking-wider">Public Key (`VITE_PAYSTACK_PUBLIC_KEY`)</span>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <span className="text-[10px] text-slate-500 uppercase font-mono font-bold tracking-wider">Public Key (`PAYSTACK_PUBLIC_KEY`)</span>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono font-bold text-slate-800">
-                    {paystackStatus?.publicKeySet ? "Loaded ✓" : "Fallback Key"}
+                    {paystackStatus?.publicKeySet ? "Securely Stored ✓" : "Standard"}
                   </span>
-                  <span className={`h-2.5 w-2.5 rounded-full ${paystackStatus?.publicKeySet ? "bg-emerald-500 animate-pulse" : "bg-amber-400"}`} />
+                  <span className={`h-2.5 w-2.5 rounded-full ${paystackStatus?.publicKeySet ? "bg-emerald-500" : "bg-blue-400"}`} />
                 </div>
                 <p className="text-[9px] text-slate-500 font-mono">
-                  Active key: <code className="text-slate-700 font-bold">{paystackStatus?.publicKeyMasked}</code>
+                  Environment: <code className="text-slate-700 font-bold">{paystackStatus?.publicKeySet ? "Active on Gateway" : "Standard"}</code>
                 </p>
               </div>
             </div>
 
-            {/* INTEGRATION TARGETS */}
+            {/* INTEGRATION TARGETS & SETUP GUIDE */}
             <div className="space-y-4 pt-2">
               
               <div className="space-y-1.5">
-                <label className="text-[10px] font-extrabold uppercase font-mono tracking-wider text-slate-500">Required Paystack Webhook URL</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-extrabold uppercase font-mono tracking-wider text-slate-500">
+                    Live Webhook URL (Paste into Paystack Dashboard Settings → API Keys & Webhooks)
+                  </label>
+                </div>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -928,15 +1006,21 @@ export default function AdminDashboard() {
                   />
                   <button
                     onClick={() => copyToClipboard(paystackStatus?.detectedWebhookUrl || "", "webhook")}
-                    className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 transition flex items-center justify-center text-xs text-slate-700 font-bold cursor-pointer shrink-0"
+                    className="px-3.5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 transition flex items-center justify-center text-xs text-slate-700 font-bold cursor-pointer shrink-0 gap-1.5 shadow-xs"
                   >
                     {copiedField === "webhook" ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                    <span>Copy</span>
                   </button>
                 </div>
+                <p className="text-[11px] text-slate-500">
+                  Paystack delivers asynchronous `charge.success` notifications to this endpoint. The server validates HMAC SHA-512 signatures and immediately upgrades the athlete.
+                </p>
               </div>
 
               <div className="space-y-1.5 pt-2">
-                <label className="text-[10px] font-extrabold uppercase font-mono tracking-wider text-slate-500">Required Callback / Redirect URL</label>
+                <label className="text-[10px] font-extrabold uppercase font-mono tracking-wider text-slate-500">
+                  Callback / Redirect URL (Optional fallback in Paystack Dashboard)
+                </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -946,13 +1030,61 @@ export default function AdminDashboard() {
                   />
                   <button
                     onClick={() => copyToClipboard(paystackStatus?.detectedCallbackUrl || "", "callback")}
-                    className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 transition flex items-center justify-center text-xs text-slate-700 font-bold cursor-pointer shrink-0"
+                    className="px-3.5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 transition flex items-center justify-center text-xs text-slate-700 font-bold cursor-pointer shrink-0 gap-1.5 shadow-xs"
                   >
                     {copiedField === "callback" ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                    <span>Copy</span>
                   </button>
                 </div>
               </div>
 
+            </div>
+
+            {/* RECENT PAYMENTS LOG */}
+            <div className="pt-6 border-t border-slate-100 space-y-3">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider font-mono text-slate-700 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                Recent Verified Paystack Payments ({paystackStatus?.recentPayments?.length || 0})
+              </h4>
+              
+              {paystackStatus?.recentPayments && paystackStatus.recentPayments.length > 0 ? (
+                <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-[10px] uppercase font-mono text-slate-500 border-b border-slate-200">
+                      <tr>
+                        <th className="p-3">Reference</th>
+                        <th className="p-3">User Email</th>
+                        <th className="p-3">Plan</th>
+                        <th className="p-3">Amount</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {paystackStatus.recentPayments.map((p: any) => (
+                        <tr key={p.id || p.reference} className="hover:bg-slate-50/50">
+                          <td className="p-3 font-mono font-bold text-slate-800">{p.reference}</td>
+                          <td className="p-3 text-slate-600">{p.email || p.userId || "—"}</td>
+                          <td className="p-3 capitalize font-semibold text-slate-700">{p.plan || "Monthly"}</td>
+                          <td className="p-3 font-bold text-emerald-600">NGN {p.amount ? p.amount.toLocaleString() : "19,999"}</td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                              {p.status || "success"}
+                            </span>
+                          </td>
+                          <td className="p-3 text-slate-400 font-mono text-[11px]">
+                            {p.paidAt || p.timestamp ? new Date(p.paidAt || p.timestamp).toLocaleDateString() : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="p-6 text-center rounded-2xl bg-slate-50 border border-slate-200 text-slate-500 text-xs">
+                  No verified payments recorded in database yet. Payments will automatically appear here as athletes upgrade.
+                </div>
+              )}
             </div>
 
           </div>

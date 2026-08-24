@@ -2,31 +2,30 @@ import React, { useState } from "react";
 import { MessageSquare } from "lucide-react";
 import { auth } from "./lib/firebase";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { AppProvider, useApp } from "./context/AppContext";
+import { AppProvider, useApp, checkIsUserPremium } from "./context/AppContext";
 import { motion, AnimatePresence } from "motion/react";
 import Navbar from "./components/Navbar";
 import HomeView from "./components/HomeView";
-
-// Dynamically split routes into individual lazy-loaded chunks
-const WorkoutLibrary = React.lazy(() => import("./components/WorkoutLibrary"));
-const WorkoutGeneratorView = React.lazy(() => import("./components/WorkoutGeneratorView"));
-const CoachView = React.lazy(() => import("./components/CoachView"));
-const AdminDashboard = React.lazy(() => import("./components/AdminDashboard"));
-const OnboardingWizard = React.lazy(() => import("./components/OnboardingWizard"));
-const AuthModal = React.lazy(() => import("./components/AuthModal"));
-const NutritionView = React.lazy(() => import("./components/NutritionView"));
-const CommunityView = React.lazy(() => import("./components/CommunityView"));
-const SuccessView = React.lazy(() => import("./components/SuccessView"));
-const SavedExercisesView = React.lazy(() => import("./components/SavedExercisesView"));
-const WorkoutVideos = React.lazy(() => import("./components/WorkoutVideos"));
-const DailyPlanView = React.lazy(() => import("./components/DailyPlanView"));
-const DashboardView = React.lazy(() => import("./components/DashboardView"));
+import WorkoutLibrary from "./components/WorkoutLibrary";
+import WorkoutGeneratorView from "./components/WorkoutGeneratorView";
+import CoachView from "./components/CoachView";
+import AdminDashboard from "./components/AdminDashboard";
+import OnboardingWizard from "./components/OnboardingWizard";
+import AuthModal from "./components/AuthModal";
+import NutritionView from "./components/NutritionView";
+import CommunityView from "./components/CommunityView";
+import SuccessView from "./components/SuccessView";
+import SavedExercisesView from "./components/SavedExercisesView";
+import WorkoutVideos from "./components/WorkoutVideos";
+import DailyPlanView from "./components/DailyPlanView";
+import DashboardView from "./components/DashboardView";
+import PaymentSuccessView from "./components/PaymentSuccessView";
+import FitnessChallenges from "./components/FitnessChallenges";
+import BellyFatShredView from "./components/BellyFatShredView";
+import LifestyleFitnessAcademy from "./components/LifestyleFitnessAcademy";
+import WomenConfidenceProgram from "./components/WomenConfidenceProgram";
 import { TestimonialPopup } from "./components/TestimonialPopup";
 import DailyNotificationController from "./components/DailyNotificationController";
-const PaymentSuccessView = React.lazy(() => import("./components/PaymentSuccessView"));
-const FitnessChallenges = React.lazy(() => import("./components/FitnessChallenges"));
-const BellyFatShredView = React.lazy(() => import("./components/BellyFatShredView"));
-const LifestyleFitnessAcademy = React.lazy(() => import("./components/LifestyleFitnessAcademy"));
 import GlobalSkeletonLoader, { DashboardSkeleton, CardGridSkeleton, ListSkeleton } from "./components/SkeletonLoader";
 import GlobalTransitionOverlay from "./components/GlobalTransitionOverlay";
 import PremiumUpgradeModal from "./components/PremiumUpgradeModal";
@@ -54,9 +53,13 @@ const PATH_TO_VIEW_MAP: Record<string, string> = {
   "/dashboard": "dashboard",
   "/premium/belly-fat-shred": "belly-fat-shred",
   "/lifestyle-academy": "lifestyle-academy",
+  "/women-confidence": "women-confidence",
+  "/premium/women-confidence": "women-confidence",
   "/onboarding": "onboarding",
   "/login": "login",
   "/signin": "signin",
+  "/admin": "admin",
+  "/premium/admin": "admin",
 };
 
 const VIEW_TO_PATH_MAP: Record<string, string> = Object.fromEntries(
@@ -213,12 +216,12 @@ function FitnessAppContent() {
 
       // Guard premium-restricted routes for logged-in non-premium users
       const restrictedViews = [
-        "library", "coach", "nutrition", "workout-generator", "daily-plan", "dashboard", 
+        "coach", "nutrition", "workout-generator", "daily-plan", "dashboard", 
         "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", 
         "handbook", "weight-trajectory", "community", "challenges", "belly-fat-shred"
       ];
       if (user && restrictedViews.includes(currentView)) {
-        const isPremium = Boolean(user.subscriptionStatus === "premium" || user.role === "admin");
+        const isPremium = checkIsUserPremium(user);
         if (!isPremium) {
           console.log(`[DevOps Security] Non-premium user attempted to access restricted view: ${currentView}. Redirecting to pricing section.`);
           navigateToPricing();
@@ -355,6 +358,7 @@ function FitnessAppContent() {
       "daily-plan": "My Daily Plan",
       "challenges": "90-Day Transformation Challenge",
       "belly-fat-shred": "Belly Fat Shred System",
+      "women-confidence": "Women Confidence Program (180 Days)",
       "dashboard": "Athlete Performance Desk",
       "weekly-reports": "Weekly Progress Reports",
       "daily-habit-tracker": "Daily Habit Tracker",
@@ -365,9 +369,9 @@ function FitnessAppContent() {
     };
 
     const restrictedViews = [
-      "library", "coach", "nutrition", "workout-generator", "daily-plan", "dashboard", 
+      "coach", "nutrition", "workout-generator", "daily-plan", "dashboard", 
       "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", 
-      "handbook", "weight-trajectory", "community", "challenges", "belly-fat-shred"
+      "handbook", "weight-trajectory", "community", "challenges", "belly-fat-shred", "women-confidence"
     ];
 
     const isRestricted = restrictedViews.includes(resolvedView) || 
@@ -376,17 +380,17 @@ function FitnessAppContent() {
                         (VIEW_TO_PATH_MAP[resolvedView] && VIEW_TO_PATH_MAP[resolvedView].startsWith("/premium"));
 
     if (isRestricted) {
-      const isPremium = Boolean(user && (user.subscriptionStatus === "premium" || user.role === "admin"));
+      const isPremium = checkIsUserPremium(user);
       if (!isPremium) {
         if (user && auth.currentUser) {
           // Attempt instant backend profile status auto-healing check before denying access
-          auth.currentUser.getIdToken().then(async (token) => {
+          auth.currentUser.getIdToken().then(async (token: string) => {
             try {
               const res = await fetch("/api/user/profile-status", {
                 headers: { Authorization: `Bearer ${token}` }
               });
               const data = await res.json();
-              if (data && data.profile && (data.profile.subscriptionStatus === "premium" || data.profile.role === "admin")) {
+              if (data && data.profile && checkIsUserPremium(data.profile)) {
                 console.log("[Auto-Healing Guard] Verified active Premium subscription in database. Granting access.");
                 setView(resolvedView);
                 return;
@@ -658,11 +662,14 @@ function FitnessAppContent() {
               {currentView === "belly-fat-shred" && (
                 <BellyFatShredView />
               )}
+              {currentView === "women-confidence" && (
+                <WomenConfidenceProgram />
+              )}
               {currentView === "lifestyle-academy" && (
                 <LifestyleFitnessAcademy />
               )}
 
-              {currentView === "admin" && user && user.role === "admin" && (
+              {currentView === "admin" && (
                 <AdminDashboard />
               )}
             </React.Suspense>

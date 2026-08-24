@@ -30,7 +30,8 @@ import {
   VitalsLog,
   WorkoutLibraryFilters,
   ChallengeWorkout,
-  ChallengeItem
+  ChallengeItem,
+  ProgramProgressItem
 } from "../types";
 import { EXERCISES, Exercise } from "../data/exercises";
 import { PremiumChallenge, FLAGSHIP_CHALLENGES, getChallengeWorkouts } from "../data/challenges";
@@ -38,6 +39,81 @@ import { isExerciseMatch } from "../utils/exerciseMatching";
 import { fetchAllExerciseMediaFromDatabase } from "../utils/mediaStorageService";
 import { samplePopupTestimonials } from "../data/sampleTestimonials";
 import { queueWelcomeEmail, queueWorkoutSummaryEmail, queueBellyFatShredReminderEmail } from "../lib/mailTriggers";
+
+export const DEFAULT_PROGRAM_PROGRESS: Record<string, ProgramProgressItem> = {
+  "90_day_immortal": {
+    programId: "90_day_immortal",
+    programTitle: "90 Days Immortal Challenge",
+    category: "Elite Transformation",
+    imageUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80",
+    viewName: "challenges",
+    enrolled: true,
+    enrolledAt: new Date().toISOString(),
+    currentDay: 1,
+    currentWeek: 1,
+    currentWorkoutIndex: 0,
+    lastStoppedWorkoutName: "Day 1: Upper Body Power Split",
+    lastStoppedWorkoutId: "90day-d1-ex1",
+    lastStoppedAt: new Date().toISOString(),
+    completedWorkoutIds: [],
+    totalWorkouts: 90,
+    progressPercent: 0
+  },
+  "belly_fat_shred": {
+    programId: "belly_fat_shred",
+    programTitle: "Belly Fat Shred Transformation",
+    category: "Fat Loss & Midsection",
+    imageUrl: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&auto=format&fit=crop&q=80",
+    viewName: "belly-fat-shred",
+    enrolled: true,
+    enrolledAt: new Date().toISOString(),
+    currentDay: 1,
+    currentWeek: 1,
+    currentWorkoutIndex: 0,
+    lastStoppedWorkoutName: "Week 1 Day 1: HIIT Intervals & Midsection Stability",
+    lastStoppedWorkoutId: "bf-w1-d1-ex1",
+    lastStoppedAt: new Date().toISOString(),
+    completedWorkoutIds: [],
+    totalWorkouts: 20,
+    progressPercent: 0
+  },
+  "lifestyle_academy": {
+    programId: "lifestyle_academy",
+    programTitle: "Lifestyle Fitness Academy",
+    category: "Athletic Longevity & Posture",
+    imageUrl: "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&auto=format&fit=crop&q=80",
+    viewName: "lifestyle-academy",
+    enrolled: true,
+    enrolledAt: new Date().toISOString(),
+    currentDay: 1,
+    currentWeek: 1,
+    currentWorkoutIndex: 0,
+    lastStoppedWorkoutName: "Day 1: Posterior Chain & Back Restoration",
+    lastStoppedWorkoutId: "lfa-d1-ex1",
+    lastStoppedAt: new Date().toISOString(),
+    completedWorkoutIds: [],
+    totalWorkouts: 12,
+    progressPercent: 0
+  },
+  "women_confidence": {
+    programId: "women_confidence",
+    programTitle: "Women Confidence Program",
+    category: "180-Day Transformation & Strength",
+    imageUrl: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&auto=format&fit=crop&q=80",
+    viewName: "women-confidence",
+    enrolled: true,
+    enrolledAt: new Date().toISOString(),
+    currentDay: 1,
+    currentWeek: 1,
+    currentWorkoutIndex: 0,
+    lastStoppedWorkoutName: "Day 1: Glute & Posterior Kinetic Awakening",
+    lastStoppedWorkoutId: "wc-d1-ex1",
+    lastStoppedAt: new Date().toISOString(),
+    completedWorkoutIds: [],
+    totalWorkouts: 180,
+    progressPercent: 0
+  }
+};
 
 interface AppContextType {
   user: UserProfile | null;
@@ -136,6 +212,15 @@ interface AppContextType {
   addVitalsLogAction: (restingHeartRate: number, sleepDuration: number, date?: string) => Promise<void>;
   updateProfilePicture: (photoURL: string) => Promise<void>;
 
+  // Program Progress & Resume Tracking
+  programProgress: Record<string, ProgramProgressItem>;
+  enrollProgram: (programId: string, details?: Partial<ProgramProgressItem>) => Promise<void>;
+  updateProgramProgress: (programId: string, updates: Partial<ProgramProgressItem>) => Promise<void>;
+  recordProgramStopPoint: (programId: string, workoutName: string, workoutId?: string, day?: number, week?: number, extra?: Partial<ProgramProgressItem>) => Promise<void>;
+  markProgramWorkoutComplete: (programId: string, workoutId: string, nextWorkoutNameOrDay?: string | number, day?: number, week?: number) => Promise<void>;
+  resumeProgram: (programId: string) => void;
+  getActiveEnrolledPrograms: () => ProgramProgressItem[];
+
   // Navigation / Switchboard State
   currentView: string;
   setView: (view: string) => void;
@@ -173,6 +258,30 @@ export const isEmailAdmin = (email?: string) => {
   if (!email) return false;
   const clean = email.toLowerCase().trim();
   return ADMIN_EMAILS.includes(clean);
+};
+
+export const checkIsUserPremium = (u?: UserProfile | null): boolean => {
+  if (!u) return false;
+  if (u.role === "admin" || (u.email && isEmailAdmin(u.email))) return true;
+  const isPremStatus = 
+    u.subscriptionStatus === "premium" || 
+    (u.subscriptionStatus as string) === "active" || 
+    u.subscription === "premium" || 
+    (u.subscription as string) === "active" || 
+    u.isPremium === true || 
+    u.premiumAccess === true || 
+    (u as any).paymentStatus === "paid";
+  
+  if (!isPremStatus) return false;
+  
+  // If subscriptionExpiry is present, ensure it hasn't expired
+  if (u.subscriptionExpiry) {
+    const expiryDate = new Date(u.subscriptionExpiry);
+    if (!isNaN(expiryDate.getTime()) && expiryDate < new Date()) {
+      return false; // Subscription has reached end of term
+    }
+  }
+  return true;
 };
 
 export const normalizeExerciseId = (id: string): string => {
@@ -269,13 +378,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const applyAdminOverride = (profile: UserProfile | null): UserProfile | null => {
       if (!profile) return null;
       const isAdmin = isEmailAdmin(profile.email);
+      const isPremium = isAdmin || checkIsUserPremium(profile);
       return {
         ...profile,
-        role: isAdmin ? "admin" : (profile.role || "user"),
-        subscriptionStatus: isAdmin ? "premium" : (profile.subscriptionStatus || "free"),
+        role: isAdmin ? "admin" : (profile.role === "admin" && !isAdmin ? "user" : (profile.role || "user")),
+        subscription: isPremium ? "premium" : "free",
+        subscriptionStatus: isPremium ? "premium" : "free",
+        isPremium: isPremium,
+        premiumAccess: isPremium,
+        accountType: isPremium ? (isAdmin ? "Admin Athlete" : "Premium Athlete") : (profile.accountType || "Free Athlete"),
+        badge: isPremium ? (isAdmin ? "Admin Athlete" : "Premium Athlete") : (profile.badge || "Free Athlete"),
         subscriptionTier: isAdmin 
           ? "yearly" 
-          : (profile.subscriptionTier === "none" || !profile.subscriptionTier ? "none" : profile.subscriptionTier)
+          : (profile.subscriptionTier === "none" || !profile.subscriptionTier ? (isPremium ? "monthly" : "none") : profile.subscriptionTier),
+        subscriptionPlan: isPremium ? (profile.subscriptionPlan && profile.subscriptionPlan !== "none" ? profile.subscriptionPlan : "monthly") : "none"
       };
     };
 
@@ -380,6 +496,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return [];
   });
 
+  // Program Progress & Resume Tracking state
+  const [programProgress, setProgramProgressState] = useState<Record<string, ProgramProgressItem>>(() => {
+    try {
+      const activeUid = localStorage.getItem("fit_active_uid");
+      const key = activeUid ? `fit_program_progress_${activeUid}` : "fit_program_progress_guest";
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === "object") {
+          return { ...DEFAULT_PROGRAM_PROGRESS, ...parsed };
+        }
+      }
+    } catch (e) {}
+    return DEFAULT_PROGRAM_PROGRESS;
+  });
+
   const allChallenges = React.useMemo(() => {
     const map = new Map<string, PremiumChallenge>();
     FLAGSHIP_CHALLENGES.forEach(fc => map.set(fc.id, fc));
@@ -407,9 +539,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const storedExercises = localStorage.getItem("fit_exercises");
     if (storedExercises) {
       try {
-        setExercisesState(JSON.parse(storedExercises));
+        const parsed = JSON.parse(storedExercises) as Exercise[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // If stored exercises is stale (e.g. fewer items than authoritative EXERCISES), merge cleanly
+          const map = new Map<string, Exercise>();
+          EXERCISES.forEach(e => map.set(e.id, e));
+          
+          // Preserve any custom user-added exercises (gen_ or cust_)
+          parsed.forEach(p => {
+            if (p.id.startsWith("gen_") || p.id.startsWith("cust_")) {
+              map.set(p.id, p);
+            } else if (map.has(p.id)) {
+              // Apply any locally saved custom media/sets/reps overrides
+              const existing = map.get(p.id)!;
+              map.set(p.id, {
+                ...existing,
+                customMediaUrl: p.customMediaUrl || existing.customMediaUrl,
+                customMediaType: p.customMediaType || existing.customMediaType,
+                recommendedSets: p.recommendedSets || existing.recommendedSets,
+                recommendedReps: p.recommendedReps || existing.recommendedReps
+              });
+            }
+          });
+
+          const merged = Array.from(map.values());
+          setExercisesState(merged);
+          localStorage.setItem("fit_exercises", JSON.stringify(merged));
+          return;
+        }
       } catch (e) {}
     }
+    localStorage.setItem("fit_exercises", JSON.stringify(EXERCISES));
   }, []);
 
   // Fetch and sync custom exercise overrides from Firestore and local Express server JSON file
@@ -898,9 +1058,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const userSnap = await getDoc(userDocRef);
         if (userSnap.exists()) {
           const fetchedData = userSnap.data() as UserProfile;
+          const isAdmin = isEmailAdmin(email);
+          const hasActiveExpiry = fetchedData.subscriptionExpiry ? (new Date(fetchedData.subscriptionExpiry) > new Date()) : true;
+          const isUserPremium = isAdmin || ((fetchedData.subscriptionStatus === "premium" || fetchedData.subscription === "premium" || fetchedData.isPremium === true) && hasActiveExpiry);
+          
           profile = { 
             ...baseProfile, 
             ...fetchedData,
+            role: isAdmin ? "admin" : "user", // Normal subscribers always role = "user"
+            subscription: isUserPremium ? "premium" : "free",
+            subscriptionStatus: isUserPremium ? "premium" : "free",
+            isPremium: isUserPremium,
+            premiumAccess: isUserPremium,
+            accountType: isUserPremium ? (isAdmin ? "Admin Athlete" : "Premium Athlete") : "Free Athlete",
+            badge: isUserPremium ? (isAdmin ? "Admin Athlete" : "Premium Athlete") : "Free Athlete",
             onboarded: fetchedData.onboarded !== undefined ? fetchedData.onboarded : (isNewSignUp ? false : true)
           };
         } else {
@@ -908,12 +1079,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           try {
             const { data: sbProfile } = await supabase.from("profiles").select("*").eq("uid", uid).maybeSingle();
             if (sbProfile) {
+              const isAdmin = isEmailAdmin(email);
+              const isUserPremium = isAdmin || (sbProfile.subscription_status === "premium" || sbProfile.subscription === "premium");
               profile = {
                 ...baseProfile,
                 displayName: sbProfile.display_name || baseProfile.displayName,
                 photoURL: sbProfile.photo_url || baseProfile.photoURL,
-                role: sbProfile.role || baseProfile.role,
-                subscriptionStatus: sbProfile.subscription_status || baseProfile.subscriptionStatus,
+                role: isAdmin ? "admin" : "user",
+                subscription: isUserPremium ? "premium" : "free",
+                subscriptionStatus: isUserPremium ? "premium" : "free",
+                isPremium: isUserPremium,
+                premiumAccess: isUserPremium,
                 subscriptionTier: sbProfile.subscription_tier || baseProfile.subscriptionTier,
                 subscriptionPlan: sbProfile.subscription_plan || baseProfile.subscriptionPlan,
                 fitnessGoals: sbProfile.fitness_goals || baseProfile.fitnessGoals,
@@ -1065,19 +1241,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 const fetched = userSnap.data() as UserProfile;
                 const isAdmin = isEmailAdmin(firebaseUser.email || undefined);
                 const hasActiveExpiry = fetched.subscriptionExpiry ? (new Date(fetched.subscriptionExpiry) > new Date()) : true;
-                const isPremium = isAdmin || (fetched.subscriptionStatus === "premium" && hasActiveExpiry);
+                const isPremium = isAdmin || ((fetched.subscriptionStatus === "premium" || fetched.subscription === "premium" || fetched.isPremium === true) && hasActiveExpiry);
                 profile = {
                   ...fetched,
                   uid: firebaseUser.uid,
                   email: firebaseUser.email || fetched.email || "",
                   displayName: fetched.displayName || firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Athlete",
                   photoURL: firebaseUser.photoURL || fetched.photoURL,
-                  role: isAdmin ? "admin" : (fetched.role || "user"),
+                  role: isAdmin ? "admin" : (fetched.role === "admin" && !isAdmin ? "user" : (fetched.role || "user")),
+                  subscription: isPremium ? "premium" : "free",
                   subscriptionStatus: isPremium ? "premium" : "free",
+                  isPremium: isPremium,
+                  premiumAccess: isPremium,
                   subscriptionTier: isPremium ? (fetched.subscriptionTier === "none" || !fetched.subscriptionTier ? "monthly" : fetched.subscriptionTier) : "none",
                   subscriptionPlan: isPremium ? (fetched.subscriptionPlan || "monthly") : "none",
-                  accountType: isPremium ? "Premium Athlete" : "Free Athlete",
-                  badge: isPremium ? "Premium Athlete" : "Free Athlete",
+                  accountType: isPremium ? (isAdmin ? "Admin Athlete" : "Premium Athlete") : "Free Athlete",
+                  badge: isPremium ? (isAdmin ? "Admin Athlete" : "Premium Athlete") : "Free Athlete",
                   isFreeTrial: false,
                   freeTrialStatus: isPremium ? "none" : "expired",
                   freeTrialDaysRemaining: 0,
@@ -1397,6 +1576,237 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const saveProgramProgressToFirebase = async (uid: string, progress: Record<string, ProgramProgressItem>) => {
+    if (isMockFirebase) return;
+    try {
+      await setDoc(doc(db, "user_program_progress", uid), {
+        userId: uid,
+        progress,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (error) {
+      console.warn("Error saving program progress to Firestore:", error);
+    }
+  };
+
+  const loadProgramProgress = async (uid: string) => {
+    const key = `fit_program_progress_${uid}`;
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === "object") {
+          setProgramProgressState(prev => ({ ...DEFAULT_PROGRAM_PROGRESS, ...prev, ...parsed }));
+        }
+      } catch (e) {}
+    }
+    if (!isMockFirebase) {
+      try {
+        const snap = await getDoc(doc(db, "user_program_progress", uid));
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && data.progress && typeof data.progress === "object") {
+            setProgramProgressState(prev => {
+              const merged = { ...DEFAULT_PROGRAM_PROGRESS, ...prev, ...data.progress };
+              safeSetItem(key, JSON.stringify(merged));
+              return merged;
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch program progress from Firestore:", err);
+      }
+    }
+  };
+
+  const enrollProgram = async (programId: string, details?: Partial<ProgramProgressItem>) => {
+    const now = new Date().toISOString();
+    setProgramProgressState(prev => {
+      const existing = prev[programId] || DEFAULT_PROGRAM_PROGRESS[programId] || {
+        programId,
+        programTitle: details?.programTitle || programId.replace(/_/g, " ").toUpperCase(),
+        category: details?.category || "Fitness Program",
+        imageUrl: details?.imageUrl || "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80",
+        viewName: details?.viewName || "challenges",
+        enrolled: true,
+        enrolledAt: now,
+        currentDay: 1,
+        currentWeek: 1,
+        currentWorkoutIndex: 0,
+        lastStoppedWorkoutName: details?.lastStoppedWorkoutName || "Day 1 Workout",
+        lastStoppedWorkoutId: details?.lastStoppedWorkoutId || `${programId}_d1_w0`,
+        lastStoppedAt: now,
+        completedWorkoutIds: [],
+        totalWorkouts: details?.totalWorkouts || 10,
+        progressPercent: 0
+      };
+
+      const updated: ProgramProgressItem = {
+        ...existing,
+        ...details,
+        enrolled: true,
+        enrolledAt: existing.enrolled ? existing.enrolledAt : now,
+        lastStoppedAt: now
+      };
+
+      const next = { ...prev, [programId]: updated };
+      try {
+        const uid = auth.currentUser?.uid || user?.uid;
+        safeSetItem("fit_program_progress_guest", JSON.stringify(next));
+        if (uid) {
+          safeSetItem(`fit_program_progress_${uid}`, JSON.stringify(next));
+          saveProgramProgressToFirebase(uid, next);
+        }
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const updateProgramProgress = async (programId: string, updates: Partial<ProgramProgressItem>) => {
+    setProgramProgressState(prev => {
+      const existing = prev[programId] || DEFAULT_PROGRAM_PROGRESS[programId];
+      if (!existing) return prev;
+
+      const updated: ProgramProgressItem = {
+        ...existing,
+        ...updates,
+        lastStoppedAt: updates.lastStoppedAt || new Date().toISOString()
+      };
+
+      const next = { ...prev, [programId]: updated };
+      try {
+        const uid = auth.currentUser?.uid || user?.uid;
+        safeSetItem("fit_program_progress_guest", JSON.stringify(next));
+        if (uid) {
+          safeSetItem(`fit_program_progress_${uid}`, JSON.stringify(next));
+          saveProgramProgressToFirebase(uid, next);
+        }
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const recordProgramStopPoint = async (
+    programId: string,
+    workoutName: string,
+    workoutId?: string,
+    day?: number,
+    week?: number,
+    extra?: Partial<ProgramProgressItem>
+  ) => {
+    const now = new Date().toISOString();
+    setProgramProgressState(prev => {
+      const existing = prev[programId] || DEFAULT_PROGRAM_PROGRESS[programId] || {
+        programId,
+        programTitle: extra?.programTitle || programId.replace(/_/g, " ").toUpperCase(),
+        category: extra?.category || "Fitness Program",
+        imageUrl: extra?.imageUrl || "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80",
+        viewName: extra?.viewName || "challenges",
+        enrolled: true,
+        enrolledAt: now,
+        currentDay: day || 1,
+        currentWeek: week || 1,
+        currentWorkoutIndex: 0,
+        lastStoppedWorkoutName: workoutName,
+        lastStoppedWorkoutId: workoutId,
+        lastStoppedAt: now,
+        completedWorkoutIds: [],
+        totalWorkouts: extra?.totalWorkouts || 10,
+        progressPercent: 0
+      };
+
+      const updated: ProgramProgressItem = {
+        ...existing,
+        ...extra,
+        enrolled: true,
+        currentDay: day !== undefined ? day : existing.currentDay,
+        currentWeek: week !== undefined ? week : existing.currentWeek,
+        lastStoppedWorkoutName: workoutName,
+        lastStoppedWorkoutId: workoutId || existing.lastStoppedWorkoutId,
+        lastStoppedAt: now
+      };
+
+      const next = { ...prev, [programId]: updated };
+      try {
+        const uid = auth.currentUser?.uid || user?.uid;
+        safeSetItem("fit_program_progress_guest", JSON.stringify(next));
+        if (uid) {
+          safeSetItem(`fit_program_progress_${uid}`, JSON.stringify(next));
+          saveProgramProgressToFirebase(uid, next);
+        }
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const markProgramWorkoutComplete = async (
+    programId: string,
+    workoutId: string,
+    nextWorkoutNameOrDay?: string | number,
+    day?: number,
+    week?: number
+  ) => {
+    const now = new Date().toISOString();
+    setProgramProgressState(prev => {
+      const existing = prev[programId] || DEFAULT_PROGRAM_PROGRESS[programId];
+      if (!existing) return prev;
+
+      const completed = Array.from(new Set([...(existing.completedWorkoutIds || []), workoutId]));
+      const total = existing.totalWorkouts || 10;
+      const progressPercent = Math.min(100, Math.round((completed.length / total) * 100));
+
+      const nextName = typeof nextWorkoutNameOrDay === "string" ? nextWorkoutNameOrDay : existing.lastStoppedWorkoutName;
+      const resolvedDay = day !== undefined ? day : (typeof nextWorkoutNameOrDay === "number" ? nextWorkoutNameOrDay : existing.currentDay);
+
+      const updated: ProgramProgressItem = {
+        ...existing,
+        completedWorkoutIds: completed,
+        progressPercent,
+        currentDay: resolvedDay,
+        currentWeek: week !== undefined ? week : existing.currentWeek,
+        lastStoppedWorkoutName: nextName,
+        lastStoppedWorkoutId: workoutId,
+        lastStoppedAt: now
+      };
+
+      const next = { ...prev, [programId]: updated };
+      try {
+        const uid = auth.currentUser?.uid || user?.uid;
+        safeSetItem("fit_program_progress_guest", JSON.stringify(next));
+        if (uid) {
+          safeSetItem(`fit_program_progress_${uid}`, JSON.stringify(next));
+          saveProgramProgressToFirebase(uid, next);
+        }
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const resumeProgram = (programId: string) => {
+    const item = programProgress[programId] || DEFAULT_PROGRAM_PROGRESS[programId];
+    if (!item) {
+      setView("challenges");
+      return;
+    }
+    if (item.viewName) {
+      setView(item.viewName);
+    } else if (programId === "90_day_immortal") {
+      setView("challenges");
+    } else if (programId === "belly_fat_shred") {
+      setView("belly-fat-shred");
+    } else if (programId === "lifestyle_academy") {
+      setView("lifestyle-academy");
+    } else {
+      setView("challenges");
+    }
+  };
+
+  const getActiveEnrolledPrograms = (): ProgramProgressItem[] => {
+    return Object.values(programProgress)
+      .filter(p => p.enrolled)
+      .sort((a, b) => new Date(b.lastStoppedAt || 0).getTime() - new Date(a.lastStoppedAt || 0).getTime());
+  };
+
   const setWorkoutFilters = (filters: Partial<WorkoutLibraryFilters>) => {
     setWorkoutFiltersState(prev => {
       const updated = { ...prev, ...filters };
@@ -1415,6 +1825,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadUserData = (uid: string) => {
     // Load Workout Library Search and Filters from local/cloud
     loadWorkoutFilters(uid);
+    loadProgramProgress(uid);
 
     // Custom programs loading
     const pCustomProgs = localStorage.getItem(`fit_custom_programs_${uid}`);
@@ -2177,11 +2588,16 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         }
 
         // Guarantee premium normalization across all fields
+        const isAdmin = isEmailAdmin(resolvedUser.email);
         resolvedUser = {
           ...resolvedUser,
+          role: isAdmin ? "admin" : "user", // Normal subscribers never receive admin role
+          subscription: "premium",
           subscriptionStatus: "premium",
-          accountType: "Premium Athlete",
-          badge: "Premium Athlete",
+          isPremium: true,
+          premiumAccess: true,
+          accountType: isAdmin ? "Admin Athlete" : "Premium Athlete",
+          badge: isAdmin ? "Admin Athlete" : "Premium Athlete",
           isFreeTrial: false,
           freeTrialStatus: "none",
           freeTrialDaysRemaining: 0,
@@ -2435,15 +2851,30 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     }
   };
 
-  const adminUpdateUserTier = (uid: string, level: "free" | "premium", tier: "monthly" | "yearly" | "none") => {
+  const adminUpdateUserTier = async (uid: string, level: "free" | "premium", tier: "monthly" | "yearly" | "none") => {
     const editIndex = allSystemUsers.findIndex(u => u.uid === uid);
     if (editIndex !== -1) {
       const list = [...allSystemUsers];
-      list[editIndex] = {
-        ...list[editIndex],
+      const targetUser = list[editIndex];
+      const isAdmin = isEmailAdmin(targetUser.email);
+      const isPrem = level === "premium";
+      const now = new Date();
+      const updatedUser: UserProfile = {
+        ...targetUser,
         subscriptionStatus: level,
-        subscriptionTier: tier
+        subscription: level,
+        subscriptionTier: tier,
+        subscriptionPlan: tier,
+        isPremium: isPrem,
+        premiumAccess: isPrem,
+        accountType: isAdmin ? "Admin Athlete" : (isPrem ? "Premium Athlete" : "Free Athlete"),
+        badge: isAdmin ? "Admin Athlete" : (isPrem ? "Premium Athlete" : "Free Athlete"),
+        isFreeTrial: false,
+        freeTrialStatus: isPrem ? "none" : "expired",
+        freeTrialDaysRemaining: 0,
+        subscriptionExpiry: isPrem ? (targetUser.subscriptionExpiry || new Date(now.getTime() + (tier === "yearly" ? 365 : 30) * 86400000).toISOString()) : null
       };
+      list[editIndex] = updatedUser;
       setAllSystemUsers(list);
       safeSetItem("all_system_users", JSON.stringify(list));
       
@@ -2451,7 +2882,23 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
       // If editing current user, sync immediately
       if (user && user.uid === uid) {
-        setUser(list[editIndex]);
+        await syncUserToStorageAndPlatform(updatedUser);
+      } else if (!isMockFirebase) {
+        const { updateDoc, doc } = await import("firebase/firestore");
+        await updateDoc(doc(db, "users", uid), {
+          subscriptionStatus: updatedUser.subscriptionStatus,
+          subscription: updatedUser.subscription,
+          subscriptionTier: updatedUser.subscriptionTier,
+          subscriptionPlan: updatedUser.subscriptionPlan,
+          isPremium: updatedUser.isPremium,
+          premiumAccess: updatedUser.premiumAccess,
+          accountType: updatedUser.accountType,
+          badge: updatedUser.badge,
+          isFreeTrial: updatedUser.isFreeTrial,
+          freeTrialStatus: updatedUser.freeTrialStatus,
+          freeTrialDaysRemaining: updatedUser.freeTrialDaysRemaining,
+          subscriptionExpiry: updatedUser.subscriptionExpiry
+        }).catch(err => console.warn("Firestore admin tier update sync failed:", err));
       }
     }
   };
@@ -2462,6 +2909,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       const list = [...allSystemUsers];
       const targetUser = list[editIndex];
       let updatedUser = { ...targetUser };
+      const isAdmin = isEmailAdmin(targetUser.email);
 
       const now = new Date();
       if (action === "activate") {
@@ -2469,8 +2917,16 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         updatedUser = {
           ...updatedUser,
           subscriptionStatus: "premium",
+          subscription: "premium",
           subscriptionTier: "monthly",
           subscriptionPlan: "monthly",
+          isPremium: true,
+          premiumAccess: true,
+          accountType: isAdmin ? "Admin Athlete" : "Premium Athlete",
+          badge: isAdmin ? "Admin Athlete" : "Premium Athlete",
+          isFreeTrial: false,
+          freeTrialStatus: "none",
+          freeTrialDaysRemaining: 0,
           subscriptionActivationDate: now.toISOString(),
           subscriptionExpiry: expiry,
           paymentReference: "ADMIN_OVERRIDE_ACTIVATE_" + Math.random().toString(36).substring(2, 8).toUpperCase()
@@ -2479,11 +2935,20 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         let currentExpiry = updatedUser.subscriptionExpiry ? new Date(updatedUser.subscriptionExpiry) : now;
         if (currentExpiry < now) currentExpiry = now; // If already expired, extend from now
         const extended = new Date(currentExpiry.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        const resolvedTier = updatedUser.subscriptionTier === "none" || !updatedUser.subscriptionTier ? "monthly" : updatedUser.subscriptionTier;
         updatedUser = {
           ...updatedUser,
           subscriptionStatus: "premium",
-          subscriptionTier: updatedUser.subscriptionTier === "none" ? "monthly" : updatedUser.subscriptionTier,
-          subscriptionPlan: updatedUser.subscriptionPlan || "monthly",
+          subscription: "premium",
+          subscriptionTier: resolvedTier,
+          subscriptionPlan: updatedUser.subscriptionPlan || resolvedTier,
+          isPremium: true,
+          premiumAccess: true,
+          accountType: isAdmin ? "Admin Athlete" : "Premium Athlete",
+          badge: isAdmin ? "Admin Athlete" : "Premium Athlete",
+          isFreeTrial: false,
+          freeTrialStatus: "none",
+          freeTrialDaysRemaining: 0,
           subscriptionExpiry: extended,
           subscriptionActivationDate: updatedUser.subscriptionActivationDate || now.toISOString()
         };
@@ -2491,16 +2956,32 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         updatedUser = {
           ...updatedUser,
           subscriptionStatus: "free",
+          subscription: "free",
           subscriptionTier: "none",
           subscriptionPlan: "none",
+          isPremium: false,
+          premiumAccess: false,
+          accountType: isAdmin ? "Admin Athlete" : "Free Athlete",
+          badge: isAdmin ? "Admin Athlete" : "Free Athlete",
+          isFreeTrial: false,
+          freeTrialStatus: "expired",
+          freeTrialDaysRemaining: 0,
           subscriptionExpiry: now.toISOString() // past or now date
         };
       } else if (action === "cancel") {
         updatedUser = {
           ...updatedUser,
           subscriptionStatus: "free",
+          subscription: "free",
           subscriptionTier: "none",
           subscriptionPlan: "none",
+          isPremium: false,
+          premiumAccess: false,
+          accountType: isAdmin ? "Admin Athlete" : "Free Athlete",
+          badge: isAdmin ? "Admin Athlete" : "Free Athlete",
+          isFreeTrial: false,
+          freeTrialStatus: "expired",
+          freeTrialDaysRemaining: 0,
           subscriptionExpiry: null
         };
       }
@@ -2513,17 +2994,21 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
       // Synchronize immediately if targeting current user
       if (user && user.uid === uid) {
-        setUser(updatedUser);
-        safeSetItem(`fit_user_${uid}`, JSON.stringify(updatedUser));
-      }
-
-      // Sync to Firestore in background
-      if (!isMockFirebase) {
+        await syncUserToStorageAndPlatform(updatedUser);
+      } else if (!isMockFirebase) {
         const { updateDoc, doc } = await import("firebase/firestore");
         await updateDoc(doc(db, "users", uid), {
           subscriptionStatus: updatedUser.subscriptionStatus,
+          subscription: updatedUser.subscription,
           subscriptionTier: updatedUser.subscriptionTier,
           subscriptionPlan: updatedUser.subscriptionPlan || null,
+          isPremium: updatedUser.isPremium,
+          premiumAccess: updatedUser.premiumAccess,
+          accountType: updatedUser.accountType,
+          badge: updatedUser.badge,
+          isFreeTrial: updatedUser.isFreeTrial,
+          freeTrialStatus: updatedUser.freeTrialStatus,
+          freeTrialDaysRemaining: updatedUser.freeTrialDaysRemaining,
           subscriptionActivationDate: updatedUser.subscriptionActivationDate || null,
           subscriptionExpiry: updatedUser.subscriptionExpiry || null,
           paymentReference: updatedUser.paymentReference || null
@@ -3378,7 +3863,14 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       loadWeeklyReports,
       triggerWeeklyReportGeneration,
       workoutFilters,
-      setWorkoutFilters
+      setWorkoutFilters,
+      programProgress,
+      enrollProgram,
+      updateProgramProgress,
+      recordProgramStopPoint,
+      markProgramWorkoutComplete,
+      resumeProgram,
+      getActiveEnrolledPrograms
     }}>
       {children}
     </AppContext.Provider>

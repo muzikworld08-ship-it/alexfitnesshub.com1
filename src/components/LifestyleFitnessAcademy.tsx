@@ -308,7 +308,7 @@ const LIFESTYLE_CHALLENGES: ChallengeData[] = [
   }
 ];
 
-// Helper to generate Stretching routines dynamically
+// Helper to generate Stretching routines dynamically (8-10 comprehensive routines)
 const getStretchingRoutine = (title: string) => {
   return [
     {
@@ -328,12 +328,44 @@ const getStretchingRoutine = (title: string) => {
       instructions: "Place hands behind your head, pull elbows wide, puff your chest forward, and rotate your ribcage side-to-side."
     },
     {
+      phase: "Upper Body",
+      name: "Active Arm Circles & Shoulder Opener",
+      duration: "60 seconds",
+      sets: "2 sets",
+      benefits: "Increases synovia in glenohumeral joints and releases traps.",
+      instructions: "Extend arms wide and make smooth circular rotations, gradually expanding diameter."
+    },
+    {
       phase: "Lower Body",
       name: "90/90 Active Hip Opener",
       duration: "60 seconds per hip",
       sets: "2 sets",
       benefits: "Decompresses tight hip capsules and relieves lower back load transfer.",
       instructions: "Sit on the floor with legs folded at 90-degree angles in front and to the side. Lean your chest gently over your front leg."
+    },
+    {
+      phase: "Lower Body",
+      name: "World's Greatest Stretch & Lunge",
+      duration: "60 seconds per side",
+      sets: "2 sets",
+      benefits: "Opens hip flexors, thoracic spine, and hamstrings simultaneously.",
+      instructions: "Step forward into a deep lunge, drop inside elbow to floor, then rotate arm towards ceiling."
+    },
+    {
+      phase: "Posterior Chain",
+      name: "Full Posterior Muscle Release Stretch",
+      duration: "75 seconds",
+      sets: "2 sets",
+      benefits: "Releases tight hamstrings, calves, and lumbar tension.",
+      instructions: "Hinge at the hips, keeping soft bend in knees, reach toward toes and take deep relaxed breaths."
+    },
+    {
+      phase: "Anterior Chain",
+      name: "Prone Cobra Chest Opener",
+      duration: "60 seconds",
+      sets: "2 sets",
+      benefits: "Strengthens rhomboids and restores natural lumbar curvature.",
+      instructions: "Lie flat on stomach, lift upper chest off ground, roll shoulders back and squeeze glutes."
     },
     {
       phase: "Mobility Focus",
@@ -354,7 +386,7 @@ const getStretchingRoutine = (title: string) => {
   ];
 };
 
-// Helper to generate Workout Program dynamically based on user context
+// Helper to generate Workout Program dynamically based on user context (8-10 exercises per day)
 const getDynamicWorkoutProgram = (
   challengeTitle: string, 
   level: "Beginner" | "Intermediate" | "Advanced", 
@@ -362,10 +394,10 @@ const getDynamicWorkoutProgram = (
 ) => {
   const isGym = location === "Gym";
   
-  // Custom tailored schedules
+  // Custom tailored schedules with 8 to 10 exercises per day
   return [
     {
-      day: "Day 1: Posterior Chain Restoration",
+      day: "Day 1: Posterior Chain & Back Restoration",
       warmUp: "Y-T-W Scapular Raises (Bodyweight) - 2 sets of 15 reps",
       exercises: [
         {
@@ -379,12 +411,48 @@ const getDynamicWorkoutProgram = (
           reps: level === "Beginner" ? "3 sets of 8 (Controlled)" : level === "Intermediate" ? "3 sets of 12 (Moderate)" : "4 sets of 10 (Heavy)",
           rest: "90 seconds",
           coaching: "Push your hips far back and feel the hamstrings stretch. Keep your spine perfectly flat."
+        },
+        {
+          name: isGym ? "Seated Cable Row" : "Inverted Bodyweight Row",
+          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "3 sets of 12" : "4 sets of 12",
+          rest: "60 seconds",
+          coaching: "Drive your elbows back and pinch your shoulder blades together firmly."
+        },
+        {
+          name: "Face Pulls / Band Pull-Aparts",
+          reps: level === "Beginner" ? "3 sets of 12" : level === "Intermediate" ? "4 sets of 15" : "4 sets of 20",
+          rest: "45 seconds",
+          coaching: "Target rear delts and external rotators to reverse rounded desk posture."
+        },
+        {
+          name: "Hyperextensions / Supermans",
+          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "3 sets of 15" : "4 sets of 15",
+          rest: "45 seconds",
+          coaching: "Strengthen erector spinae muscles with controlled pauses at top."
+        },
+        {
+          name: isGym ? "Dumbbell Hammer Curls" : "Resistance Band Bicep Curls",
+          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "3 sets of 12" : "4 sets of 12",
+          rest: "45 seconds",
+          coaching: "Keep elbows tucked against sides; prevent swinging."
+        },
+        {
+          name: "Bird Dog Isometric Holds",
+          reps: level === "Beginner" ? "3 sets of 8 per side" : level === "Intermediate" ? "3 sets of 12 per side" : "4 sets of 12 per side",
+          rest: "30 seconds",
+          coaching: "Lock core and extend opposite arm and leg without arching lower back."
+        },
+        {
+          name: "Plank Hold",
+          reps: level === "Beginner" ? "3 sets of 30s" : level === "Intermediate" ? "3 sets of 45s" : "4 sets of 60s",
+          rest: "45 seconds",
+          coaching: "Maintain tight pelvic tuck and squeeze quads and glutes."
         }
       ],
       coolDown: "Child's Pose Spinal Reach - 90 seconds"
     },
     {
-      day: "Day 2: Lateral and Front Stability",
+      day: "Day 2: Lateral, Chest & Front Stability",
       warmUp: "Active Arm Circles & Core Bracing - 2 minutes",
       exercises: [
         {
@@ -394,16 +462,52 @@ const getDynamicWorkoutProgram = (
           coaching: "Lock your core tightly to protect your lower back at the top of the press."
         },
         {
+          name: isGym ? "Barbell / Dumbbell Bench Press" : "Push-ups (Knee or Standard)",
+          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "4 sets of 10" : "4 sets of 12",
+          rest: "75 seconds",
+          coaching: "Keep chest tall and control the eccentric descent to floor."
+        },
+        {
+          name: "Dumbbell / Band Lateral Raises",
+          reps: level === "Beginner" ? "3 sets of 12 (Light)" : level === "Intermediate" ? "4 sets of 15" : "4 sets of 15",
+          rest: "45 seconds",
+          coaching: "Lead with elbows and avoid shrugging traps up to neck."
+        },
+        {
+          name: isGym ? "Incline Dumbbell Chest Press" : "Decline Feet-Elevated Push-ups",
+          reps: level === "Beginner" ? "3 sets of 8" : level === "Intermediate" ? "3 sets of 12" : "4 sets of 10",
+          rest: "60 seconds",
+          coaching: "Target clavicular upper chest with controlled press."
+        },
+        {
           name: "Plank with Shoulder Taps",
           reps: level === "Beginner" ? "3 sets of 30 seconds" : level === "Intermediate" ? "3 sets of 45 seconds" : "4 sets of 60 seconds",
           rest: "45 seconds",
           coaching: "Avoid shifting your hips; keep your torso perfectly parallel to the floor."
+        },
+        {
+          name: isGym ? "Tricep Rope Pushdowns" : "Overhead Dumbbell Tricep Extension",
+          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "3 sets of 12" : "4 sets of 15",
+          rest: "45 seconds",
+          coaching: "Full lockout at bottom without flaring elbows out."
+        },
+        {
+          name: "Dead Bug Core Bracing",
+          reps: level === "Beginner" ? "3 sets of 10 per side" : level === "Intermediate" ? "3 sets of 14 per side" : "4 sets of 16 per side",
+          rest: "30 seconds",
+          coaching: "Press lumbar spine flat against the ground during entire movement."
+        },
+        {
+          name: "Side Plank Hold",
+          reps: level === "Beginner" ? "3 sets of 20s per side" : level === "Intermediate" ? "3 sets of 35s per side" : "4 sets of 45s per side",
+          rest: "30 seconds",
+          coaching: "Elevate hips high to recruit internal and external obliques."
         }
       ],
       coolDown: "Prone Cobra Chest Opener - 2 minutes"
     },
     {
-      day: "Day 3: Lower Limb and Glute Awakening",
+      day: "Day 3: Lower Limb, Glute & Core Awakening",
       warmUp: "Bodyweight Air Squats & Glute Kickbacks - 3 minutes",
       exercises: [
         {
@@ -413,10 +517,46 @@ const getDynamicWorkoutProgram = (
           coaching: "Descend slowly for 3 seconds before driving back up powerfully."
         },
         {
+          name: isGym ? "Barbell Back Squats" : "Bodyweight Air Squats",
+          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "4 sets of 10" : "4 sets of 12",
+          rest: "90 seconds",
+          coaching: "Keep chest proud, drive knees outward in line with toes."
+        },
+        {
+          name: "Walking Lunges (or Reverse Lunges)",
+          reps: level === "Beginner" ? "3 sets of 10 per leg" : level === "Intermediate" ? "3 sets of 14 per leg" : "4 sets of 16 per leg",
+          rest: "60 seconds",
+          coaching: "Drop back knee to 1 inch above floor; maintain upright posture."
+        },
+        {
           name: "Single-Leg Glute Bridges",
           reps: level === "Beginner" ? "3 sets of 8 per side" : level === "Intermediate" ? "3 sets of 12 per side" : "4 sets of 15 per side",
           rest: "45 seconds",
           coaching: "Drive through your heel and squeeze your glutes hard at the top."
+        },
+        {
+          name: isGym ? "Leg Curl Machine" : "Dumbbell Hamstring Sliders",
+          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "3 sets of 12" : "4 sets of 12",
+          rest: "60 seconds",
+          coaching: "Control the return phase smoothly to build hamstring resilience."
+        },
+        {
+          name: "Standing Calf Raises",
+          reps: level === "Beginner" ? "3 sets of 15" : level === "Intermediate" ? "4 sets of 20" : "4 sets of 25",
+          rest: "30 seconds",
+          coaching: "Full plantarflexion at top with 2-second hold on balls of feet."
+        },
+        {
+          name: "Russian Twists",
+          reps: level === "Beginner" ? "3 sets of 16" : level === "Intermediate" ? "3 sets of 24" : "4 sets of 30",
+          rest: "45 seconds",
+          coaching: "Rotate shoulders fully to engage internal obliques and transversus."
+        },
+        {
+          name: "Mountain Climbers",
+          reps: level === "Beginner" ? "3 sets of 30s" : level === "Intermediate" ? "3 sets of 45s" : "4 sets of 60s",
+          rest: "45 seconds",
+          coaching: "Drive knees rapidly toward chest while maintaining rigid plank."
         }
       ],
       coolDown: "90/90 Hip Stretch - 60 seconds per leg"
@@ -425,7 +565,7 @@ const getDynamicWorkoutProgram = (
 };
 
 export default function LifestyleFitnessAcademy() {
-  const { user, setView, exercises } = useApp();
+  const { user, setView, exercises, recordProgramStopPoint, markProgramWorkoutComplete } = useApp();
   const [activeChallengeId, setActiveChallengeId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"education" | "stretching" | "workout" | "habits">("education");
 
@@ -540,7 +680,37 @@ export default function LifestyleFitnessAcademy() {
         localStorage.setItem(streakKey, currentStreak.toString());
       } catch (e) {}
     }
+
+    if (updated[id] && markProgramWorkoutComplete) {
+      markProgramWorkoutComplete(
+        "lifestyle_academy",
+        id,
+        activeChallengeId || 1,
+        activeChallengeId || 1,
+        1
+      );
+    }
   };
+
+  // Sync stop point to central AppContext whenever activeChallengeId updates
+  useEffect(() => {
+    if (activeChallengeId && recordProgramStopPoint) {
+      const challenge = LIFESTYLE_CHALLENGES.find(c => c.id === activeChallengeId);
+      if (challenge) {
+        recordProgramStopPoint(
+          "lifestyle_academy",
+          `Challenge ${challenge.id}: ${challenge.title}`,
+          `lfa-c${challenge.id}`,
+          challenge.id,
+          1,
+          {
+            challengeId: challenge.id,
+            challengeTitle: challenge.title
+          }
+        );
+      }
+    }
+  }, [activeChallengeId, recordProgramStopPoint]);
 
   // Check if premium logic
   const handleChallengeClick = (challenge: ChallengeData) => {
@@ -1005,10 +1175,10 @@ export default function LifestyleFitnessAcademy() {
                         className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row gap-4 sm:gap-5 items-stretch text-left w-full min-w-0"
                       >
                         {/* Dynamic GIF/Video Demonstration */}
-                        <div className="w-full sm:w-48 md:w-52 h-40 sm:h-36 shrink-0 rounded-xl overflow-hidden shadow-sm">
+                        <div className="w-full sm:w-48 md:w-52 shrink-0 rounded-xl shadow-sm relative">
                           <WorkoutVisual 
                             exerciseName={getMatchedExerciseName(stretch.name)} 
-                            className="h-full w-full" 
+                            className="w-full" 
                             isCard={true} 
                           />
                         </div>
@@ -1114,10 +1284,10 @@ export default function LifestyleFitnessAcademy() {
                           {dayProg.exercises.map((ex, exIdx) => (
                             <div key={exIdx} className="bg-white p-4 sm:p-5 border border-slate-200 rounded-xl flex flex-col sm:flex-row gap-4 sm:gap-5 items-stretch w-full min-w-0">
                               {/* Centralized Exercise Demonstration GIF/Video */}
-                              <div className="w-full sm:w-44 h-36 sm:h-28 shrink-0 rounded-lg overflow-hidden shadow-xs">
+                              <div className="w-full sm:w-48 shrink-0 rounded-lg shadow-xs relative">
                                 <WorkoutVisual 
                                   exerciseName={getMatchedExerciseName(ex.name)} 
-                                  className="h-full w-full" 
+                                  className="w-full" 
                                   isCard={true} 
                                 />
                               </div>

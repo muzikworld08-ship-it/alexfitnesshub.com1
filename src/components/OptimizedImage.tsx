@@ -110,7 +110,6 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const containerStyle: React.CSSProperties = {
     position: "relative",
     display: "inline-block",
-    overflow: "hidden",
     ...(aspectRatio ? { aspectRatio } : {}),
     ...style,
   };
@@ -140,7 +139,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           referrerPolicy={referrerPolicy}
           onError={handleImageError}
           onLoad={handleImageLoad}
-          className={`w-full h-full object-cover transition-opacity duration-300 ${
+          className={`w-full h-full ${className?.includes('object-contain') ? 'object-contain' : 'object-cover'} transition-opacity duration-300 ${
             isLoaded ? "opacity-100" : "opacity-0"
           }`}
           {...restProps}

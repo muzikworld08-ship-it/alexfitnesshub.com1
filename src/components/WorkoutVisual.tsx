@@ -112,116 +112,59 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
     return (
       <div 
         id={`visual-card-${(exerciseName || exercise?.name || "exercise").replace(/\s+/g, '-').toLowerCase()}`} 
-        className={`relative overflow-hidden ${className} bg-slate-100 border border-slate-200 rounded-2xl flex flex-col justify-between`}
+        className={`relative w-full ${className} bg-slate-900 rounded-xl overflow-hidden flex flex-col items-center justify-center`}
       >
         {resolvedMediaUrl && !hasError ? (
-          <div className="absolute inset-0 w-full h-full">
+          <div className="relative w-full h-full flex items-center justify-center">
             {loading && (
-              <div className="absolute inset-0 bg-slate-200 animate-pulse z-20 flex flex-col items-center justify-center space-y-2">
+              <div className="absolute inset-0 bg-slate-900 animate-pulse z-10 flex flex-col items-center justify-center space-y-2 min-h-[160px]">
                 <Dumbbell className="w-5 h-5 text-slate-400 animate-spin" />
-                <span className="text-[8px] font-mono font-bold text-slate-400 tracking-wider">LOADING SKELETON</span>
+                <span className="text-[8px] font-mono font-bold text-slate-400 tracking-wider">LOADING</span>
               </div>
             )}
-            {formatMediaSrc(resolvedMediaUrl, retryCount) ? (
+            {resolvedMediaType === "video" || (resolvedMediaUrl && (resolvedMediaUrl.toLowerCase().endsWith(".mp4") || resolvedMediaUrl.toLowerCase().endsWith(".webm") || resolvedMediaUrl.toLowerCase().endsWith(".mov") || resolvedMediaUrl.startsWith("data:video/"))) ? (
+              <video
+                src={formatMediaSrc(resolvedMediaUrl, retryCount)}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className={`w-full h-full block object-contain transition-opacity duration-500 ${loading ? 'opacity-0' : 'opacity-100'}`}
+                onCanPlay={() => setLoading(false)}
+                onError={handleMediaError}
+              />
+            ) : formatMediaSrc(resolvedMediaUrl, retryCount) ? (
               <img 
                 src={formatMediaSrc(resolvedMediaUrl, retryCount)} 
                 alt={exerciseName || "Exercise Preview"} 
-                className={`w-full h-full object-cover transition-opacity duration-700 filter brightness-110 ${loading ? 'opacity-0' : 'opacity-100'}`} 
+                className={`w-full h-full block object-contain transition-opacity duration-500 ${loading ? 'opacity-0' : 'opacity-100'}`} 
                 referrerPolicy="no-referrer"
                 loading="lazy"
                 onLoad={() => setLoading(false)}
                 onError={handleMediaError}
               />
             ) : null}
-            <div className="absolute inset-0 bg-white/10" />
           </div>
-        ) : null}
-        
-        <div className="flex flex-col h-full justify-between relative z-10 p-4">
-          {/* Top spacer to guarantee absolute safety under absolute parent badges */}
-          <div className="h-6" />
-          
-          {/* Central graphic: stylized glowing biomechanical radar schematic */}
-          {(!resolvedMediaUrl || hasError) ? (
-            <div className="my-auto flex flex-col items-center justify-center space-y-2">
-              <div className="relative flex items-center justify-center">
-                {/* Outer pulsing ring */}
-                <div className="absolute inset-0 rounded-full bg-[#C0392B]/5 border border-[#C0392B]/10 animate-ping duration-[3000ms]" />
-                
-                {/* Middle concentric ring with dashed border */}
-                <div className="absolute h-16 w-16 rounded-full border border-dashed border-[#C0392B]/20 animate-spin-slow" style={{ animationDuration: '20s' }} />
-                
-                {/* Inner glowing circle */}
-                <div className="h-12 w-12 rounded-full bg-red-50 border border-red-200/50 flex items-center justify-center shadow-inner">
-                  <Dumbbell className="w-5 h-5 text-[#C0392B]" />
-                </div>
+        ) : (
+          <div className="flex flex-col h-full min-h-[180px] justify-center items-center relative z-10 p-4 w-full">
+            <div className="flex flex-col items-center justify-center space-y-2 py-4">
+              <div className="h-12 w-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
+                <Dumbbell className="w-5 h-5 text-[#C0392B]" />
               </div>
-              
-              <div className="text-center space-y-0.5">
-                <span className="text-[8px] font-mono font-black text-[#C0392B] uppercase tracking-widest bg-red-50 px-2 py-0.5 rounded border border-red-100">
-                  {hasError ? "FALLBACK SYSTEM ACTIVE" : "KINETIC PROTOCOL"}
-                </span>
-                <p className="text-[10px] text-slate-500 font-sans font-bold tracking-tight">
-                  {displayMuscles.length > 0 ? `Target: ${displayMuscles[0].toUpperCase()}` : "BIOMECHANIC ANALYSIS"}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="my-auto flex flex-col items-center justify-center">
-              {/* Optional overlay spacer */}
-            </div>
-          )}
-          
-          {/* Footer bar */}
-          <div className="flex justify-between items-center border-t border-slate-200/20 pt-2 text-[7.5px] font-mono text-slate-700 bg-white/95 backdrop-blur-md px-2 py-1.5 rounded-lg border border-slate-100 uppercase tracking-widest relative z-10 shadow-sm">
-            <span>{exerciseName || exercise?.name || "ALEX KINESIOLOGY"}</span>
-            <div className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>{hasError ? "FALLBACK PROT." : resolvedMediaUrl ? "GIF ACTIVE" : "SYSTEM ACTIVE"}</span>
+              <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                {exerciseName || exercise?.name || "EXERCISE ACTIVE"}
+              </span>
             </div>
           </div>
-        </div>
-        
-        {(!resolvedMediaUrl || hasError) && (
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000003_1px,transparent_1px),linear-gradient(to_bottom,#00000003_1px,transparent_1px)] bg-[size:12px_12px] pointer-events-none" />
         )}
       </div>
     );
   }
 
   return (
-    <div id="workout-visual-root" className="w-full max-w-full bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm flex flex-col p-4 sm:p-5 space-y-4 sm:space-y-5 min-w-0">
-      
-      {/* Exercise Core Title and Meta Specs */}
-      <div className="border-b border-slate-100 pb-4">
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-slate-100 text-[#C0392B]">
-              <Dumbbell className="w-5 h-5" />
-            </span>
-            <div>
-              <h3 className="font-sans font-extrabold text-[#1C1C1C] text-base sm:text-lg tracking-tight uppercase leading-none">
-                {exerciseName || exercise?.name}
-              </h3>
-              <p className="text-[10px] text-slate-450 uppercase font-mono tracking-wider mt-1.5">
-                Specification Protocol & Discrimination
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex flex-wrap gap-1.5">
-            <span className="bg-[#C0392B]/10 border border-[#C0392B]/20 text-[9px] text-[#C0392B] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-              {displayCategory}
-            </span>
-            <span className="bg-slate-100 border border-slate-200 text-[9px] text-slate-600 font-mono px-2 py-0.5 rounded uppercase tracking-wider">
-              {displayDifficulty}
-            </span>
-          </div>
-        </div>
-      </div>
-
+    <div id="workout-visual-root" className="w-full max-w-full overflow-hidden flex flex-col space-y-3 min-w-0">
       {/* Manually uploaded GIF / custom media display */}
-      <div id="exercise-demo-media-box" className="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-950 border border-slate-200 flex items-center justify-center">
+      <div id="exercise-demo-media-box" className="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center">
         {resolvedMediaUrl && !hasError ? (
           <>
             {loading && (
@@ -232,7 +175,7 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
                 />
                 <div className="relative z-30 flex flex-col items-center justify-center space-y-1.5 p-3 bg-slate-900/60 backdrop-blur-md rounded-xl text-white">
                   <Dumbbell className="w-6 h-6 text-slate-400 animate-spin" />
-                  <span className="text-[9px] font-mono font-bold text-slate-400 tracking-wider">LOADING KINESIOLOGY STREAM</span>
+                  <span className="text-[9px] font-mono font-bold text-slate-400 tracking-wider">LOADING STREAM</span>
                 </div>
               </div>
             )}
@@ -263,21 +206,12 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
           </>
         ) : (
           <div className="flex flex-col items-center justify-center space-y-3 p-6 text-center">
-            <div className="relative flex items-center justify-center">
-              <div className="absolute h-20 w-20 rounded-full border border-dashed border-[#C0392B]/30 animate-spin-slow" style={{ animationDuration: '25s' }} />
-              <div className="absolute h-24 w-24 rounded-full bg-[#C0392B]/5 animate-pulse" />
-              <div className="h-14 w-14 rounded-full bg-slate-900 border border-[#C0392B]/30 flex items-center justify-center shadow-lg">
-                <Dumbbell className="w-6 h-6 text-[#C0392B]" />
-              </div>
+            <div className="h-14 w-14 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center shadow-lg">
+              <Dumbbell className="w-6 h-6 text-[#C0392B]" />
             </div>
-            <div className="space-y-1">
-              <span className="text-[10px] font-mono font-black text-[#C0392B] bg-[#C0392B]/10 px-2.5 py-1 rounded border border-[#C0392B]/20 tracking-wider">
-                {hasError ? "MEDIA HOST UNREACHABLE" : "KINETIC PLACEHOLDER"}
-              </span>
-              <p className="text-xs text-slate-400 font-medium max-w-sm">
-                {hasError ? "Unable to retrieve raw media stream. Falling back to biomechanic guidelines." : "No custom visual uploaded. Follow the professional instructions below."}
-              </p>
-            </div>
+            <p className="text-xs text-slate-400 font-medium max-w-sm">
+              Kinetic guidance active
+            </p>
           </div>
         )}
       </div>

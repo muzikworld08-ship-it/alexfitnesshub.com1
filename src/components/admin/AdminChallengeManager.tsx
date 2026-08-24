@@ -127,7 +127,7 @@ export default function AdminChallengeManager() {
   };
 
   // Update specific workout sets/reps in challenge
-  const handleUpdateWorkoutSetsReps = (wId: string, sets: string, reps: string) => {
+  const handleUpdateWorkoutSetsReps = (wId: string, sets: string | number, reps: string | number) => {
     setFormWorkouts(prev => prev.map(w => w.id === wId ? { ...w, sets, reps } : w));
   };
 

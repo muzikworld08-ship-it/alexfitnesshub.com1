@@ -208,14 +208,40 @@ export const AdminAssetManager: React.FC = () => {
   };
 
   // Filter exercises list for target exercise picker
-  const categories = ["all", ...Array.from(new Set(exercises.map((e) => e.category).filter(Boolean)))];
+  const allCategoryTags = Array.from(
+    new Set([
+      "Women Confidence Program",
+      "Gym Workouts",
+      "Home Workouts",
+      "Cardio Workouts",
+      "Calisthenics Workouts",
+      "Military Style Fitness",
+      "Chest",
+      "Back",
+      "Shoulders",
+      "Biceps",
+      "Triceps",
+      "Glutes",
+      "Abs",
+      "HIIT",
+      "Mobility",
+      ...exercises.map((e) => e.category).filter(Boolean),
+      ...exercises.flatMap((e) => e.categories || [])
+    ])
+  ).filter(Boolean);
+
+  const categories = ["all", ...allCategoryTags];
 
   const filteredExercises = exercises.filter((ex) => {
     const matchesSearch =
       ex.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       ex.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ex.muscleGroups.some((m) => m.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCategory = selectedCategory === "all" || ex.category === selectedCategory;
+      ex.muscleGroups.some((m) => m.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (ex.categories && ex.categories.some((c) => c.toLowerCase().includes(searchQuery.toLowerCase())));
+    const matchesCategory = 
+      selectedCategory === "all" || 
+      ex.category === selectedCategory || 
+      (ex.categories && ex.categories.includes(selectedCategory));
     return matchesSearch && matchesCategory;
   });
 
