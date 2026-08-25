@@ -122,15 +122,17 @@ const mapDrillToLibraryName = (drill: string): string => {
   name = name.replace(/\(.*\)/g, "").trim();
   const lower = name.toLowerCase();
 
-  if (lower.includes("plank hold")) return "Plank";
-  if (lower.includes("side plank hold")) return "Side Plank";
-  if (lower.includes("rope jump")) return "Rope Jump";
-  if (lower.includes("treadmill walk") || lower.includes("12-3-30")) return "12-3-30 Treadmill Walk";
-  if (lower.includes("push-up") || lower.includes("push up")) return "Push-ups";
+  if (lower.includes("plank hold") || lower.includes("plank with shoulder")) return "Plank";
+  if (lower.includes("side plank hold") || lower.includes("side plank")) return "Side Plank";
+  if (lower.includes("rope jump") || lower.includes("jump rope")) return "Rope Jump";
+  if (lower.includes("treadmill walk") || lower.includes("12-3-30") || lower.includes("incline walk")) return "12-3-30 Treadmill Walk";
+  if (lower.includes("push-up") || lower.includes("push up") || lower.includes("pushups")) return "Push-ups";
+  if (lower.includes("jump squat")) return "Jump Squats";
+  if (lower.includes("goblet squat") || lower.includes("tempo squat")) return "Tempo Goblet Squat";
   if (lower.includes("squat")) return "Squats";
-  if (lower.includes("lunges") || lower.includes("lunge")) return "Lunges";
+  if (lower.includes("reverse lunges") || lower.includes("lunges") || lower.includes("lunge")) return "Lunges";
   if (lower.includes("mountain climber")) return "Mountain Climbers";
-  if (lower.includes("burpee")) return "Burpees";
+  if (lower.includes("burpee") || lower.includes("burpees")) return "Burpees";
   if (lower.includes("jumping jack")) return "Jumping Jacks";
   if (lower.includes("high knee")) return "High Knees";
   if (lower.includes("bear crawl")) return "Bear Crawl";
@@ -138,14 +140,134 @@ const mapDrillToLibraryName = (drill: string): string => {
   if (lower.includes("russian twist")) return "Russian Twist";
   if (lower.includes("bicycle crunch")) return "Bicycle Crunch";
   if (lower.includes("dead bug")) return "Dead Bug";
-  if (lower.includes("arm circles")) return "Active Arm Circles & Core Bracing";
-  if (lower.includes("hip opener")) return "90/90 Active Hip Opener";
-  if (lower.includes("cat-cow")) return "Primal Cat-Cow Spinal Waves";
-  if (lower.includes("cobra pose")) return "Prone Cobra Chest Opener";
+  if (lower.includes("flutter kick")) return "Flutter Kicks";
+  if (lower.includes("glute bridge") || lower.includes("glute bridges")) return "Glute Bridge & Isometric Hold";
+  if (lower.includes("arm circles") || lower.includes("torso twists")) return "Active Arm Circles & Core Bracing";
+  if (lower.includes("hip opener") || lower.includes("hip openers")) return "90/90 Active Hip Opener";
+  if (lower.includes("cat-cow") || lower.includes("cat cow")) return "Primal Cat-Cow Spinal Waves";
+  if (lower.includes("spiderman") || lower.includes("chest rotations")) return "World's Greatest Stretch Complex";
+  if (lower.includes("cobra pose") || lower.includes("cobra")) return "Prone Cobra Chest Opener";
   if (lower.includes("hamstring stretch")) return "Full Posterior Muscle Release Stretch";
-  if (lower.includes("child's pose")) return "Deep Diaphragmatic Box Breathing";
+  if (lower.includes("child's pose") || lower.includes("deep breathing")) return "Deep Diaphragmatic Box Breathing";
 
   return name;
+};
+
+export interface ParsedDrill {
+  raw: string;
+  name: string;
+  libName: string;
+  prescription: string;
+  intensity: string;
+  muscles: string[];
+  coachingCue: string;
+  caloriesEst: string;
+}
+
+export const parseDrillDetails = (drill: string, sectionType: string): ParsedDrill => {
+  let name = drill;
+  let prescription = "";
+  
+  if (drill.includes(":")) {
+    const parts = drill.split(":");
+    name = parts[0].trim();
+    prescription = parts.slice(1).join(":").trim();
+  } else if (drill.includes("—")) {
+    const parts = drill.split("—");
+    name = parts[0].trim();
+    prescription = parts.slice(1).join("—").trim();
+  } else {
+    name = drill;
+    prescription = "Prescribed Protocol";
+  }
+
+  const cleanName = name.replace(/\(.*\)/g, "").trim();
+  const libName = mapDrillToLibraryName(drill);
+  const lower = drill.toLowerCase();
+
+  let intensity = "High Intensity";
+  let muscles = ["Abdominal Wall", "Core"];
+  let coachingCue = "Engage deep transverse abdominis by drawing navel inward; maintain continuous rhythmic breathing.";
+  let caloriesEst = "80-120 kcal";
+
+  if (sectionType.includes("warmup") || sectionType.includes("01")) {
+    intensity = "Mobility Warm-Up";
+    muscles = ["Hip Flexors", "Spine", "Shoulders"];
+    coachingCue = "Perform with controlled cadence; expand thoracic mobility to prime central nervous system.";
+    caloriesEst = "30-50 kcal";
+  } else if (sectionType.includes("core") || sectionType.includes("02")) {
+    intensity = "Deep Core Compression";
+    muscles = ["Transverse Abdominis", "Obliques", "Rectus Abdominis"];
+    coachingCue = "Tuck pelvis slightly to eliminate anterior pelvic tilt; actively compress core like a tight corset.";
+    caloriesEst = "60-90 kcal";
+  } else if (sectionType.includes("hiit") || sectionType.includes("03")) {
+    intensity = "Anaerobic Burn";
+    muscles = ["Cardiovascular", "Full Body", "Lower Abs"];
+    coachingCue = "Push maximum explosive speed during work intervals to maximize excess post-exercise oxygen consumption (EPOC).";
+    caloriesEst = "120-180 kcal";
+  } else if (sectionType.includes("strength") || sectionType.includes("04")) {
+    intensity = "Compound Strength";
+    muscles = ["Quadriceps", "Glutes", "Pectorals", "Delts"];
+    coachingCue = "Focus on full range of motion and deliberate 2-second eccentric lowering to recruit deep motor units.";
+    caloriesEst = "100-150 kcal";
+  } else if (sectionType.includes("fullBodyCircuit") || sectionType.includes("finisher") || sectionType.includes("05")) {
+    intensity = "Peak Incline Finisher";
+    muscles = ["Posterior Chain", "Core", "Calves", "Metabolic Engine"];
+    coachingCue = "Lock into the target incline pace without resting hands on side rails to force continuous core stabilizing torque.";
+    caloriesEst = "150-250 kcal";
+  } else if (sectionType.includes("cooldown") || sectionType.includes("06")) {
+    intensity = "Recovery Cooldown";
+    muscles = ["Spine Decompression", "Hamstrings", "Hip Joint"];
+    coachingCue = "Slow down breath cycle to 4-second inhales and 6-second exhales to flush lactic acid accumulation.";
+    caloriesEst = "20-40 kcal";
+  }
+
+  // Movement-specific refined cues
+  if (lower.includes("plank")) {
+    muscles = ["Transverse Abdominis", "Shoulder Girdle", "Glutes"];
+    coachingCue = "Squeeze glutes and press floor away through forearms; lock ribcage down without sagging hips.";
+  } else if (lower.includes("dead bug")) {
+    muscles = ["Deep Inner Core", "Lower Abdominals", "Hip Flexors"];
+    coachingCue = "Press lumbar spine flat against the ground; slowly extend contralateral limbs with maximum control.";
+  } else if (lower.includes("mountain climber")) {
+    muscles = ["Rectus Abdominis", "Hip Flexors", "Anterior Deltoids", "Cardio"];
+    coachingCue = "Drive knees straight toward chest without elevating hips above shoulder level.";
+  } else if (lower.includes("burpee")) {
+    muscles = ["Full Body", "Pectorals", "Quadriceps", "Aerobic Capacity"];
+    coachingCue = "Land soft on balls of feet; explode upward into triple extension through hips, knees, and ankles.";
+  } else if (lower.includes("12-3-30") || lower.includes("treadmill")) {
+    muscles = ["Gluteal Complex", "Hamstrings", "Calves", "Metabolic Engine"];
+    coachingCue = "Keep spine vertical at 12% incline; pump arms naturally and avoid gripping handles to force core stability.";
+  } else if (lower.includes("squat")) {
+    muscles = ["Quadriceps", "Gluteus Maximus", "Adductor Magnus"];
+    coachingCue = "Push knees outward tracking over toes; sink hips below parallel while maintaining an upright posture.";
+  } else if (lower.includes("push-up") || lower.includes("push up")) {
+    muscles = ["Pectoralis Major", "Anterior Deltoids", "Triceps", "Core Bracing"];
+    coachingCue = "Maintain a rigid plank; tuck elbows at 45-degrees and touch chest gently before pressing up.";
+  } else if (lower.includes("russian twist")) {
+    muscles = ["Internal & External Obliques", "Transverse Abdominis"];
+    coachingCue = "Elevate feet slightly, keep spine neutral, and rotate torso through ribcage with a distinct 1s pause.";
+  } else if (lower.includes("bicycle crunch")) {
+    muscles = ["Obliques", "Upper/Lower Rectus Abdominis"];
+    coachingCue = "Avoid pulling neck; rotate through thoracic spine with smooth 2-second extensions per side.";
+  } else if (lower.includes("rope jump")) {
+    muscles = ["Calves", "Forearms", "Cardiovascular Conditioning"];
+    coachingCue = "Keep jumps low and bouncy on balls of feet; initiate circular rope torque purely from wrists.";
+  } else if (lower.includes("bear crawl")) {
+    muscles = ["Shoulder Girdle", "Deep Core Bracing", "Quadriceps"];
+    coachingCue = "Hover knees 2 inches off floor with flat tabletop back; step opposing limbs in tight synchronization.";
+  }
+
+  return {
+    raw: drill,
+    name: cleanName,
+    libName,
+    prescription,
+    intensity,
+    muscles,
+    coachingCue,
+    caloriesEst
+  };
 };
 
 // Generate high-fidelity workouts progression for weeks 1 to 20
@@ -228,6 +350,150 @@ const getWorkoutForWeekAndDay = (week: number, dayNum: number) => {
     },
     exercisesList: exercises
   };
+};
+
+interface BoldDrillCardProps {
+  drill: string;
+  sectionType: string;
+  sectionTitle: string;
+  stepNumber: string;
+  drillIndex: number;
+  isDark: boolean;
+  isCompleted?: boolean;
+  onToggleComplete?: () => void;
+  accentColor?: string;
+}
+
+const BoldDrillCard: React.FC<BoldDrillCardProps> = ({
+  drill,
+  sectionType,
+  sectionTitle,
+  stepNumber,
+  drillIndex,
+  isDark,
+  isCompleted,
+  onToggleComplete,
+  accentColor = "#D32F2F"
+}) => {
+  const details = parseDrillDetails(drill, sectionType);
+
+  return (
+    <div
+      className={`group relative rounded-3xl overflow-hidden border transition-all duration-300 hover:shadow-2xl flex flex-col justify-between ${
+        isCompleted
+          ? (isDark ? "bg-emerald-950/20 border-emerald-500/40" : "bg-emerald-50/70 border-emerald-500/40")
+          : (isDark ? "bg-slate-900/90 border-slate-800/90 hover:border-[#D32F2F]/50 shadow-lg" : "bg-white border-slate-200/90 hover:border-[#D32F2F]/40 shadow-sm")
+      }`}
+    >
+      {/* Frameless Edge-to-Edge Bold Media Header */}
+      <div className="relative w-full aspect-[16/10] workout-media-frameless flex items-center justify-center overflow-hidden">
+        <UnifiedExerciseMedia
+          exerciseName={details.libName}
+          className="w-full h-full object-contain workout-gif-display group-hover:scale-105 transition-transform duration-500"
+        />
+
+        {/* Subtle Bottom Vignette */}
+        <div className="workout-media-vignette" />
+
+        {/* Top Badges */}
+        <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2 z-10 pointer-events-none">
+          <span className="workout-media-badge">
+            {stepNumber} • {sectionTitle}
+          </span>
+          <span
+            className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm ${
+              isCompleted
+                ? "bg-emerald-500 text-white font-black"
+                : "bg-black/80 text-amber-400 border border-white/15"
+            }`}
+          >
+            {isCompleted ? "✔ COMPLETED" : details.intensity}
+          </span>
+        </div>
+
+        {/* Bottom Prescription & Calorie Overlay on Media */}
+        <div className="absolute bottom-2.5 inset-x-3 flex items-end justify-between z-10 pointer-events-none">
+          <div className="bg-black/80 backdrop-blur-md border border-white/15 px-3 py-1 rounded-xl max-w-[70%] truncate shadow-sm">
+            <span className="text-[10px] font-mono font-bold text-white tracking-wide truncate block">
+              ⏱ {details.prescription}
+            </span>
+          </div>
+          <span className="text-[9px] font-mono font-bold text-emerald-400 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-emerald-500/20 shadow-sm shrink-0">
+            🔥 {details.caloriesEst}
+          </span>
+        </div>
+      </div>
+
+      {/* Card Content */}
+      <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+        <div className="space-y-2.5">
+          <div className="flex items-start justify-between gap-2">
+            <h4
+              className={`text-base sm:text-lg font-black uppercase font-display leading-tight tracking-tight ${
+                isCompleted
+                  ? (isDark ? "text-emerald-400" : "text-emerald-800")
+                  : (isDark ? "text-white" : "text-slate-950")
+              }`}
+            >
+              {details.name}
+            </h4>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-mono font-black uppercase tracking-wider text-[#D32F2F] bg-[#D32F2F]/10 px-2.5 py-0.5 rounded-full border border-[#D32F2F]/20">
+              {details.libName}
+            </span>
+            <span className="text-[9px] font-mono text-slate-400 uppercase font-semibold">
+              Drill #{drillIndex + 1}
+            </span>
+          </div>
+
+          {/* Biomechanical Pro Coaching Cue */}
+          <p className={`text-xs leading-relaxed font-medium ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+            {details.coachingCue}
+          </p>
+
+          {/* Target Muscle Badges */}
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {details.muscles.map((m, idx) => (
+              <span
+                key={idx}
+                className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded-md ${
+                  isDark
+                    ? "bg-slate-800/80 text-slate-300 border border-slate-700/60"
+                    : "bg-slate-100 text-slate-700 border border-slate-200"
+                }`}
+              >
+                {m}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Action Toggle */}
+        <div className={`pt-3 border-t flex items-center justify-between gap-3 ${isDark ? "border-slate-800/80" : "border-slate-100"}`}>
+          <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wide">
+            Target Focus Drill
+          </span>
+          {onToggleComplete && (
+            <button
+              onClick={onToggleComplete}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold uppercase transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                isCompleted
+                  ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20"
+                  : isDark
+                    ? "bg-slate-800 text-slate-200 hover:bg-[#D32F2F] hover:text-white border border-slate-700"
+                    : "bg-slate-100 text-slate-700 hover:bg-[#D32F2F] hover:text-white border border-slate-200"
+              }`}
+            >
+              {isCompleted ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : <Play className="w-3 h-3 fill-current" />}
+              {isCompleted ? "Done" : "Check Off"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default function BellyFatShredView() {
@@ -487,7 +753,7 @@ export default function BellyFatShredView() {
         }
       );
     }
-  }, [progress?.currentWeek, progress?.currentDay, progress?.completedWorkouts?.length, recordProgramStopPoint]);
+  }, [progress?.currentWeek, progress?.currentDay, progress?.completedWorkouts?.length]);
 
   const syncProgress = async (updated: BellyFatShredProgress) => {
     if (!user) return;
@@ -935,6 +1201,25 @@ export default function BellyFatShredView() {
       ...progress,
       currentWeek: prevWeek,
       currentDay: prevDay
+    };
+    syncProgress(updated);
+  };
+
+  const handleSelectWeek = (week: number) => {
+    if (!progress || week < 1 || week > 20) return;
+    const updated = {
+      ...progress,
+      currentWeek: week,
+      currentDay: 1
+    };
+    syncProgress(updated);
+  };
+
+  const handleSelectDay = (day: number) => {
+    if (!progress || day < 1 || day > 7) return;
+    const updated = {
+      ...progress,
+      currentDay: day
     };
     syncProgress(updated);
   };
@@ -1434,12 +1719,17 @@ export default function BellyFatShredView() {
                     </div>
 
                     {/* Drill Exercises checklist */}
-                    <div className="space-y-2.5">
-                      <span className="text-[9px] font-mono text-slate-400 uppercase tracking-wider block">
-                        REQUIRED DRILLS (TAP TO CHECK OFF)
-                      </span>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-mono text-slate-400 uppercase tracking-wider font-black block">
+                          STEP DRILLS • TAP TO TOGGLE COMPLETE
+                        </span>
+                        <span className="text-[9px] font-mono text-[#D32F2F] uppercase font-bold">
+                          Step {activeGuideStep + 1} of 6
+                        </span>
+                      </div>
 
-                      <div className="space-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                         {(activeGuideStep === 0 ? workoutInfo.warmup :
                           activeGuideStep === 1 ? workoutInfo.core :
                           activeGuideStep === 2 ? workoutInfo.hiit :
@@ -1448,44 +1738,28 @@ export default function BellyFatShredView() {
                           workoutInfo.cooldown).map((drill, idx) => {
                             const drillId = `step_${activeGuideStep}_drill_${idx}`;
                             const isChecked = !!completedGuideDrills[drillId];
-                            const libName = mapDrillToLibraryName(drill);
+                            const sectionName = activeGuideStep === 0 ? "Warm-Up" :
+                                                activeGuideStep === 1 ? "Midsection" :
+                                                activeGuideStep === 2 ? "HIIT" :
+                                                activeGuideStep === 3 ? "Strength" :
+                                                activeGuideStep === 4 ? "Finisher" : "Cooldown";
+                            const sectionType = activeGuideStep === 0 ? "warmup" :
+                                                activeGuideStep === 1 ? "core" :
+                                                activeGuideStep === 2 ? "hiit" :
+                                                activeGuideStep === 3 ? "strength" :
+                                                activeGuideStep === 4 ? "fullBodyCircuit" : "cooldown";
                             return (
-                              <button
+                              <BoldDrillCard
                                 key={idx}
-                                onClick={() => handleToggleGuideDrill(drillId)}
-                                className={`w-full text-left p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 text-xs cursor-pointer ${
-                                  isChecked
-                                    ? "bg-emerald-500/10 border-emerald-500/30 text-slate-700"
-                                    : "bg-slate-50 hover:bg-slate-100/50:bg-slate-900/60 border-slate-200"
-                                }`}
-                              >
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
-                                    isChecked ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 bg-white"
-                                  }`}>
-                                    {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <span className={`font-semibold block ${isChecked ? "line-through text-slate-400" : "text-slate-700"}`}>
-                                      {drill}
-                                    </span>
-                                    <span className="text-[9px] text-[#D32F2F] font-mono block mt-0.5 uppercase tracking-wide">
-                                      {libName}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2.5 shrink-0">
-                                  <span className={`text-[9px] font-mono uppercase px-2 py-0.5 rounded ${
-                                    isChecked ? "bg-emerald-500/10 text-emerald-500" : "bg-slate-200/60 text-slate-500"
-                                  }`}>
-                                    {isChecked ? "Done" : "Pending"}
-                                  </span>
-                                  <UnifiedExerciseMedia
-                                    exerciseName={libName}
-                                    className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-sm bg-slate-100"
-                                  />
-                                </div>
-                              </button>
+                                drill={drill}
+                                sectionType={sectionType}
+                                sectionTitle={sectionName}
+                                stepNumber={`0${activeGuideStep + 1}`}
+                                drillIndex={idx}
+                                isDark={isDark}
+                                isCompleted={isChecked}
+                                onToggleComplete={() => handleToggleGuideDrill(drillId)}
+                              />
                             );
                         })}
                       </div>
@@ -2025,297 +2299,462 @@ export default function BellyFatShredView() {
         {/* TAB 2: DETAILED WORKOUT SCHEDULE */}
         {activeTab === "workouts" && (
           <div className="space-y-8">
-            <div className={`border rounded-3xl p-6 sm:p-8 ${cardBg}`}>
-              <span className="text-[9px] font-mono text-[#D32F2F] uppercase block tracking-widest mb-1">METABOLIC PROGRAMMING</span>
-              <h2 className={`text-2xl font-black uppercase font-display ${textPrimary}`}>Active Routine Architecture</h2>
-              <p className={`text-xs mt-2 max-w-xl ${textSecondary}`}>
-                Difficulty increases dynamically every month. Follow the structural progression to mobilize body fat and prevent physical plateau.
-              </p>
+            {/* 5-Month Phase & Week/Day Architecture Switcher */}
+            <div className={`border rounded-3xl p-6 sm:p-8 space-y-6 ${cardBg}`}>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <span className="text-[9px] font-mono text-[#D32F2F] uppercase block tracking-widest font-black mb-1">
+                    5-MONTH METABOLIC PROGRAMMING • COMPLETE ARCHITECTURE
+                  </span>
+                  <h2 className={`text-2xl sm:text-3xl font-black uppercase font-display tracking-tight ${textPrimary}`}>
+                    {workoutInfo.title}
+                  </h2>
+                  <p className={`text-xs mt-1.5 max-w-2xl leading-relaxed ${textSecondary}`}>
+                    Progressive 5-Month cycle designed to systematically mobilize stubborn visceral fat through compound resistance, metabolic intervals, and deep abdominal wall compression.
+                  </p>
+                </div>
 
-              {/* Progress switcher */}
-              <div className={`flex flex-wrap items-center justify-between gap-4 mt-6 pt-6 border-t ${borderCol}`}>
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs font-bold ${textSecondary}`}>Current Phase:</span>
-                  <span className="text-xs font-black uppercase tracking-wider text-[#D32F2F] bg-[#D32F2F]/15 border border-[#D32F2F]/30 px-3 py-1 rounded-full">
-                    {workoutInfo.phase}
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <button
+                    onClick={() => {
+                      setActiveTab("dashboard");
+                      setActiveGuideStep(0);
+                      setGuideTimerSeconds(0);
+                      setGuideTimerRunning(true);
+                    }}
+                    className="px-5 py-3 rounded-2xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-[#D32F2F]/20 transition cursor-pointer"
+                  >
+                    <Play className="w-4 h-4 fill-current" />
+                    <span>Launch Guided Companion</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 5-Month Phase Navigator Tabs */}
+              <div className="space-y-2 pt-2 border-t border-slate-200/80">
+                <span className="text-[9px] font-mono text-slate-400 uppercase font-black tracking-wider block">
+                  SELECT 5-MONTH TRAINING PHASE:
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                  {[
+                    { month: 1, weeks: "W1-W4", title: "Month 1: Foundation", sub: "Metabolic Prep" },
+                    { month: 2, weeks: "W5-W8", title: "Month 2: HIIT Accelerate", sub: "Base Conditioning" },
+                    { month: 3, weeks: "W9-W12", title: "Month 3: Resistance", sub: "Progressive Overload" },
+                    { month: 4, weeks: "W13-W16", title: "Month 4: Conditioning", sub: "High Velocity" },
+                    { month: 5, weeks: "W17-W20", title: "Month 5: Peak Shred", sub: "Maximum Definition" }
+                  ].map((m) => {
+                    const currentMonth = Math.ceil(progress.currentWeek / 4);
+                    const isSelectedMonth = currentMonth === m.month;
+                    return (
+                      <button
+                        key={m.month}
+                        onClick={() => {
+                          const targetWeek = (m.month - 1) * 4 + 1;
+                          handleSelectWeek(targetWeek);
+                        }}
+                        className={`p-3 rounded-2xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                          isSelectedMonth
+                            ? "bg-[#D32F2F] text-white border-[#D32F2F] shadow-md shadow-[#D32F2F]/25"
+                            : isDark
+                              ? "bg-slate-900/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-800"
+                              : "bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-100"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className={`text-[9px] font-mono font-black uppercase ${isSelectedMonth ? "text-white/80" : "text-[#D32F2F]"}`}>
+                            {m.weeks}
+                          </span>
+                          {isSelectedMonth && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                          )}
+                        </div>
+                        <div className="mt-1">
+                          <span className="text-xs font-black uppercase block leading-tight truncate">
+                            {m.title}
+                          </span>
+                          <span className={`text-[9px] block mt-0.5 truncate ${isSelectedMonth ? "text-white/75" : "text-slate-400"}`}>
+                            {m.sub}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Week & Day Selector Bar */}
+              <div className={`pt-4 border-t flex flex-col md:flex-row md:items-center justify-between gap-4 ${borderCol}`}>
+                {/* Week Selector Chips (W1 - W20) */}
+                <div className="space-y-1.5 overflow-x-auto pb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-mono text-slate-400 uppercase font-bold shrink-0">
+                      WEEK:
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {Array.from({ length: 20 }, (_, i) => i + 1).map((w) => {
+                        const isCurrentW = progress.currentWeek === w;
+                        return (
+                          <button
+                            key={w}
+                            onClick={() => handleSelectWeek(w)}
+                            className={`w-7 h-7 rounded-lg text-[10px] font-mono font-bold transition shrink-0 cursor-pointer flex items-center justify-center ${
+                              isCurrentW
+                                ? "bg-[#D32F2F] text-white shadow-sm"
+                                : isDark
+                                  ? "bg-slate-800/80 text-slate-300 hover:bg-slate-700 border border-slate-700/60"
+                                  : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+                            }`}
+                          >
+                            W{w}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Day selector pills (Day 1 - Day 7) */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[9px] font-mono text-slate-400 uppercase font-bold shrink-0">
+                    DAY:
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={handlePrevDay}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold cursor-pointer ${btnSecondary}`}
+                      title="Previous Day"
+                    >
+                      ◀
+                    </button>
+                    {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => {
+                      const isSelectedD = progress.currentDay === d;
+                      return (
+                        <button
+                          key={d}
+                          onClick={() => handleSelectDay(d)}
+                          className={`w-7 h-7 rounded-lg text-xs font-mono font-black transition cursor-pointer flex items-center justify-center ${
+                            isSelectedD
+                              ? "bg-slate-900 text-white shadow-sm"
+                              : isDark
+                                ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          }`}
+                        >
+                          D{d}
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={handleNextDay}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold cursor-pointer ${btnSecondary}`}
+                      title="Next Day"
+                    >
+                      ▶
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Metric Summary Badges */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                <div className={`p-3.5 rounded-2xl border ${secondaryCardBg}`}>
+                  <span className="text-[9px] font-mono text-slate-400 uppercase block">Active Phase</span>
+                  <span className="text-xs font-black text-[#D32F2F] uppercase block mt-0.5 truncate">
+                    {workoutInfo.phase.split(":")[0]}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-xs font-mono">
-                  <span className="text-slate-500">Day:</span>
-                  <button 
-                    onClick={handlePrevDay} 
-                    className={`px-2 py-1 rounded font-bold cursor-pointer ${btnSecondary}`}
-                  >
-                    Prev
-                  </button>
-                  <span className={`font-black px-2 ${textPrimary}`}>W{progress.currentWeek} D{progress.currentDay}</span>
-                  <button 
-                    onClick={handleNextDay} 
-                    className={`px-2 py-1 rounded font-bold cursor-pointer ${btnSecondary}`}
-                  >
-                    Next
-                  </button>
+                <div className={`p-3.5 rounded-2xl border ${secondaryCardBg}`}>
+                  <span className="text-[9px] font-mono text-slate-400 uppercase block">Target Burn</span>
+                  <span className={`text-xs font-black uppercase block mt-0.5 ${textPrimary}`}>
+                    🔥 {workoutInfo.calBurn}
+                  </span>
+                </div>
+                <div className={`p-3.5 rounded-2xl border ${secondaryCardBg}`}>
+                  <span className="text-[9px] font-mono text-slate-400 uppercase block">Session Duration</span>
+                  <span className={`text-xs font-black uppercase block mt-0.5 ${textPrimary}`}>
+                    ⏱ {workoutInfo.duration}
+                  </span>
+                </div>
+                <div className={`p-3.5 rounded-2xl border ${secondaryCardBg}`}>
+                  <span className="text-[9px] font-mono text-slate-400 uppercase block">Intensity Tier</span>
+                  <span className="text-xs font-black text-emerald-500 uppercase block mt-0.5">
+                    ⚡ {workoutInfo.difficulty} Level
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Workout Bento Grid */}
-            <div className="grid lg:grid-cols-3 gap-8">
-              
-              {/* Routine structure card */}
-              <div className="lg:col-span-2 space-y-6">
-                
-                {/* Dynamic workout layout */}
-                <div className={`border rounded-3xl p-6 space-y-6 ${cardBg}`}>
-                  <div className={`flex justify-between items-start border-b pb-4 ${borderCol}`}>
-                    <div>
-                      <h3 className={`text-lg font-black uppercase font-display leading-tight ${textPrimary}`}>
-                        {workoutInfo.title}
-                      </h3>
-                      <p className="text-[10px] text-slate-500 mt-1 uppercase font-mono">
-                        Estimating {workoutInfo.calBurn} • 3-4 sessions/week
-                      </p>
-                    </div>
-                    
-                    <span className="text-xs font-black uppercase tracking-wider text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
-                      {workoutInfo.difficulty} Drill
+            {/* SECTION 01: WARM-UP MOBILITY */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[9px] font-mono text-[#D32F2F] font-black uppercase tracking-widest block">
+                    SECTION 01 • CARDIOVASCULAR & SPINAL PREP
+                  </span>
+                  <h3 className={`text-xl font-black uppercase font-display tracking-tight ${textPrimary}`}>
+                    01. Warm-Up Mobility (5-8 Mins)
+                  </h3>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 uppercase hidden sm:block">
+                  {workoutInfo.warmup.length} Target Drills
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {workoutInfo.warmup.map((drill, idx) => {
+                  const drillId = `step_0_drill_${idx}`;
+                  return (
+                    <BoldDrillCard
+                      key={idx}
+                      drill={drill}
+                      sectionType="warmup"
+                      sectionTitle="Warm-Up"
+                      stepNumber="01"
+                      drillIndex={idx}
+                      isDark={isDark}
+                      isCompleted={!!completedGuideDrills[drillId]}
+                      onToggleComplete={() => handleToggleGuideDrill(drillId)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* SECTION 02: MIDSECTION COMPRESSION */}
+            <div className="space-y-4 pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[9px] font-mono text-[#D32F2F] font-black uppercase tracking-widest block">
+                    SECTION 02 • TRANSVERSE & INNER CORE
+                  </span>
+                  <h3 className={`text-xl font-black uppercase font-display tracking-tight ${textPrimary}`}>
+                    02. Midsection Compression (10 Mins)
+                  </h3>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 uppercase hidden sm:block">
+                  {workoutInfo.core.length} Target Drills
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {workoutInfo.core.map((drill, idx) => {
+                  const drillId = `step_1_drill_${idx}`;
+                  return (
+                    <BoldDrillCard
+                      key={idx}
+                      drill={drill}
+                      sectionType="core"
+                      sectionTitle="Midsection"
+                      stepNumber="02"
+                      drillIndex={idx}
+                      isDark={isDark}
+                      isCompleted={!!completedGuideDrills[drillId]}
+                      onToggleComplete={() => handleToggleGuideDrill(drillId)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* SECTION 03: METABOLIC HIIT INTERVALS */}
+            <div className="space-y-4 pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[9px] font-mono text-[#D32F2F] font-black uppercase tracking-widest block">
+                    SECTION 03 • HIGH VELOCITY CALORIE ACCELERATION
+                  </span>
+                  <h3 className={`text-xl font-black uppercase font-display tracking-tight ${textPrimary}`}>
+                    03. Metabolic HIIT Intervals (15-20 Mins)
+                  </h3>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 uppercase hidden sm:block">
+                  {workoutInfo.hiit.length} Target Drills
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {workoutInfo.hiit.map((drill, idx) => {
+                  const drillId = `step_2_drill_${idx}`;
+                  return (
+                    <BoldDrillCard
+                      key={idx}
+                      drill={drill}
+                      sectionType="hiit"
+                      sectionTitle="HIIT Burn"
+                      stepNumber="03"
+                      drillIndex={idx}
+                      isDark={isDark}
+                      isCompleted={!!completedGuideDrills[drillId]}
+                      onToggleComplete={() => handleToggleGuideDrill(drillId)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* SECTION 04: COMPOUND OVERLOAD STRENGTH */}
+            <div className="space-y-4 pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[9px] font-mono text-[#D32F2F] font-black uppercase tracking-widest block">
+                    SECTION 04 • LARGE MUSCLE RECRUITMENT
+                  </span>
+                  <h3 className={`text-xl font-black uppercase font-display tracking-tight ${textPrimary}`}>
+                    04. Compound Overload Strength (20 Mins)
+                  </h3>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 uppercase hidden sm:block">
+                  {workoutInfo.strength.length} Target Drills
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {workoutInfo.strength.map((drill, idx) => {
+                  const drillId = `step_3_drill_${idx}`;
+                  return (
+                    <BoldDrillCard
+                      key={idx}
+                      drill={drill}
+                      sectionType="strength"
+                      sectionTitle="Compound Strength"
+                      stepNumber="04"
+                      drillIndex={idx}
+                      isDark={isDark}
+                      isCompleted={!!completedGuideDrills[drillId]}
+                      onToggleComplete={() => handleToggleGuideDrill(drillId)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* SECTION 05: FULL-BODY FINISHER & 12-3-30 */}
+            <div className="space-y-4 pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[9px] font-mono text-[#D32F2F] font-black uppercase tracking-widest block">
+                    SECTION 05 • INCLINE METABOLIC FINISHER
+                  </span>
+                  <h3 className={`text-xl font-black uppercase font-display tracking-tight ${textPrimary}`}>
+                    05. Full-Body Finisher & 12-3-30 (15-45 Mins)
+                  </h3>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 uppercase hidden sm:block">
+                  {workoutInfo.fullBodyCircuit.length} Target Drills
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {workoutInfo.fullBodyCircuit.map((drill, idx) => {
+                  const drillId = `step_4_drill_${idx}`;
+                  return (
+                    <BoldDrillCard
+                      key={idx}
+                      drill={drill}
+                      sectionType="fullBodyCircuit"
+                      sectionTitle="Metabolic Finisher"
+                      stepNumber="05"
+                      drillIndex={idx}
+                      isDark={isDark}
+                      isCompleted={!!completedGuideDrills[drillId]}
+                      onToggleComplete={() => handleToggleGuideDrill(drillId)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* SECTION 06: RECOVERY COOLDOWN */}
+            <div className="space-y-4 pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[9px] font-mono text-[#D32F2F] font-black uppercase tracking-widest block">
+                    SECTION 06 • PARASYMPATHETIC FLUSH
+                  </span>
+                  <h3 className={`text-xl font-black uppercase font-display tracking-tight ${textPrimary}`}>
+                    06. Recovery Cooldown (5 Mins)
+                  </h3>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 uppercase hidden sm:block">
+                  {workoutInfo.cooldown.length} Target Drills
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {workoutInfo.cooldown.map((drill, idx) => {
+                  const drillId = `step_5_drill_${idx}`;
+                  return (
+                    <BoldDrillCard
+                      key={idx}
+                      drill={drill}
+                      sectionType="cooldown"
+                      sectionTitle="Cooldown"
+                      stepNumber="06"
+                      drillIndex={idx}
+                      isDark={isDark}
+                      isCompleted={!!completedGuideDrills[drillId]}
+                      onToggleComplete={() => handleToggleGuideDrill(drillId)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Modifications & Intensity Scaling panel */}
+            <div className="grid lg:grid-cols-3 gap-6 pt-4">
+              {/* Target modifications */}
+              <div className={`lg:col-span-2 border rounded-3xl p-6 sm:p-8 space-y-4 ${cardBg}`}>
+                <div className="flex items-center gap-2.5 border-b pb-3 border-slate-200">
+                  <Flame className="w-5 h-5 text-[#D32F2F]" />
+                  <h3 className={`text-base font-black uppercase font-display ${textPrimary}`}>
+                    Intensity Progression & Scaling Matrix
+                  </h3>
+                </div>
+
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <div className={`p-4 rounded-2xl border ${secondaryCardBg}`}>
+                    <span className="text-[9px] font-mono font-black text-slate-400 bg-slate-900/10 px-2.5 py-0.5 rounded uppercase">
+                      Beginner Tuning
                     </span>
+                    <p className={`text-xs mt-2.5 leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700"}`}>
+                      {workoutInfo.modifications.beginner}
+                    </p>
                   </div>
 
-                  {/* Warmup */}
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-black uppercase text-[#D32F2F] tracking-widest flex items-center gap-2 font-display">
-                      <span>01. Warm-Up Mobility (5-8 Mins)</span>
-                    </h4>
-                    <ul className="grid sm:grid-cols-2 gap-3 text-xs">
-                      {workoutInfo.warmup.map((drill, idx) => {
-                        const libName = mapDrillToLibraryName(drill);
-                        return (
-                          <li key={idx} className={`p-2.5 pl-3 rounded-2xl border flex items-center justify-between gap-3 ${secondaryCardBg}`}>
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span className="text-emerald-500 font-black shrink-0">✔</span>
-                              <div className="min-w-0">
-                                <span className={`font-semibold block ${isDark ? "text-slate-300" : "text-slate-700"} truncate`}>{drill}</span>
-                                <span className="text-[8px] font-mono text-slate-400 block mt-0.5 uppercase tracking-wide">
-                                  {libName}
-                                </span>
-                              </div>
-                            </div>
-                            <UnifiedExerciseMedia
-                              exerciseName={libName}
-                              className="w-10 h-10 rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-sm bg-slate-100"
-                            />
-                          </li>
-                        );
-                      })}
-                    </ul>
+                  <div className={`p-4 rounded-2xl border ${secondaryCardBg}`}>
+                    <span className="text-[9px] font-mono font-black text-sky-500 bg-sky-500/10 px-2.5 py-0.5 rounded uppercase">
+                      Intermediate Tuning
+                    </span>
+                    <p className={`text-xs mt-2.5 leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700"}`}>
+                      {workoutInfo.modifications.intermediate}
+                    </p>
                   </div>
 
-                  {/* Midsection stability */}
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-black uppercase text-[#D32F2F] tracking-widest flex items-center gap-2 font-display">
-                      <span>02. Midsection Compression (10 Mins)</span>
-                    </h4>
-                    <ul className="grid sm:grid-cols-2 gap-3 text-xs">
-                      {workoutInfo.core.map((drill, idx) => {
-                        const libName = mapDrillToLibraryName(drill);
-                        return (
-                          <li key={idx} className={`p-2.5 pl-3 rounded-2xl border flex items-center justify-between gap-3 ${secondaryCardBg}`}>
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span className="text-emerald-500 font-black shrink-0">✔</span>
-                              <div className="min-w-0">
-                                <span className={`font-semibold block ${isDark ? "text-slate-300" : "text-slate-700"} truncate`}>{drill}</span>
-                                <span className="text-[8px] font-mono text-slate-400 block mt-0.5 uppercase tracking-wide">
-                                  {libName}
-                                </span>
-                              </div>
-                            </div>
-                            <UnifiedExerciseMedia
-                              exerciseName={libName}
-                              className="w-10 h-10 rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-sm bg-slate-100"
-                            />
-                          </li>
-                        );
-                      })}
-                    </ul>
+                  <div className={`p-4 rounded-2xl border ${secondaryCardBg}`}>
+                    <span className="text-[9px] font-mono font-black text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded uppercase">
+                      Advanced Tuning
+                    </span>
+                    <p className={`text-xs mt-2.5 leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700"}`}>
+                      {workoutInfo.modifications.advanced}
+                    </p>
                   </div>
-
-                  {/* HIIT intervals */}
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-black uppercase text-[#D32F2F] tracking-widest flex items-center gap-2 font-display">
-                      <span>03. Metabolic HIIT Intervals (15-20 Mins)</span>
-                    </h4>
-                    <ul className="grid sm:grid-cols-2 gap-3 text-xs">
-                      {workoutInfo.hiit.map((drill, idx) => {
-                        const libName = mapDrillToLibraryName(drill);
-                        return (
-                          <li key={idx} className={`p-2.5 pl-3 rounded-2xl border flex items-center justify-between gap-3 ${secondaryCardBg}`}>
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span className="text-emerald-500 font-black shrink-0">✔</span>
-                              <div className="min-w-0">
-                                <span className={`font-semibold block ${isDark ? "text-slate-300" : "text-slate-700"} truncate`}>{drill}</span>
-                                <span className="text-[8px] font-mono text-slate-400 block mt-0.5 uppercase tracking-wide">
-                                  {libName}
-                                </span>
-                              </div>
-                            </div>
-                            <UnifiedExerciseMedia
-                              exerciseName={libName}
-                              className="w-10 h-10 rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-sm bg-slate-100"
-                            />
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-
-                  {/* Strength */}
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-black uppercase text-[#D32F2F] tracking-widest flex items-center gap-2 font-display">
-                      <span>04. Compound Overload Strength (20 Mins)</span>
-                    </h4>
-                    <ul className="grid sm:grid-cols-2 gap-3 text-xs">
-                      {workoutInfo.strength.map((drill, idx) => {
-                        const libName = mapDrillToLibraryName(drill);
-                        return (
-                          <li key={idx} className={`p-2.5 pl-3 rounded-2xl border flex items-center justify-between gap-3 ${secondaryCardBg}`}>
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span className="text-emerald-500 font-black shrink-0">✔</span>
-                              <div className="min-w-0">
-                                <span className={`font-semibold block ${isDark ? "text-slate-300" : "text-slate-700"} truncate`}>{drill}</span>
-                                <span className="text-[8px] font-mono text-slate-400 block mt-0.5 uppercase tracking-wide">
-                                  {libName}
-                                </span>
-                              </div>
-                            </div>
-                            <UnifiedExerciseMedia
-                              exerciseName={libName}
-                              className="w-10 h-10 rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-sm bg-slate-100"
-                            />
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-
-                  {/* Incline walk finisher */}
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-black uppercase text-[#D32F2F] tracking-widest flex items-center gap-2 font-display">
-                      <span>05. Full-Body Finisher & 12-3-30 (15-45 Mins)</span>
-                    </h4>
-                    <ul className="grid sm:grid-cols-2 gap-3 text-xs">
-                      {workoutInfo.fullBodyCircuit.map((drill, idx) => {
-                        const libName = mapDrillToLibraryName(drill);
-                        return (
-                          <li key={idx} className={`p-2.5 pl-3 rounded-2xl border flex items-center justify-between gap-3 ${secondaryCardBg}`}>
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span className="text-emerald-500 font-black shrink-0">✔</span>
-                              <div className="min-w-0">
-                                <span className={`font-semibold block ${isDark ? "text-slate-300" : "text-slate-700"} truncate`}>{drill}</span>
-                                <span className="text-[8px] font-mono text-slate-400 block mt-0.5 uppercase tracking-wide">
-                                  {libName}
-                                </span>
-                              </div>
-                            </div>
-                            <UnifiedExerciseMedia
-                              exerciseName={libName}
-                              className="w-10 h-10 rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-sm bg-slate-100"
-                            />
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-
-                  {/* Cooldown */}
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-black uppercase text-[#D32F2F] tracking-widest flex items-center gap-2 font-display">
-                      <span>06. Recovery Cooldown (5 Mins)</span>
-                    </h4>
-                    <ul className="grid sm:grid-cols-2 gap-3 text-xs">
-                      {workoutInfo.cooldown.map((drill, idx) => {
-                        const libName = mapDrillToLibraryName(drill);
-                        return (
-                          <li key={idx} className={`p-2.5 pl-3 rounded-2xl border flex items-center justify-between gap-3 ${secondaryCardBg}`}>
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span className="text-emerald-500 font-black shrink-0">✔</span>
-                              <div className="min-w-0">
-                                <span className={`font-semibold block ${isDark ? "text-slate-300" : "text-slate-700"} truncate`}>{drill}</span>
-                                <span className="text-[8px] font-mono text-slate-400 block mt-0.5 uppercase tracking-wide">
-                                  {libName}
-                                </span>
-                              </div>
-                            </div>
-                            <UnifiedExerciseMedia
-                              exerciseName={libName}
-                              className="w-10 h-10 rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-sm bg-slate-100"
-                            />
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-
                 </div>
-
               </div>
 
-              {/* Modifications & Intensity Scaling panel */}
-              <div className="space-y-6">
-                
-                {/* Target modifications */}
-                <div className={`border rounded-3xl p-6 space-y-4 ${cardBg}`}>
-                  <h3 className={`text-sm font-black uppercase font-display border-b pb-3 ${borderCol}`}>
-                    Intensity Modifications
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    <div className={`p-4 rounded-2xl border ${secondaryCardBg}`}>
-                      <span className="text-[9px] font-mono font-black text-slate-400 bg-slate-900/40 px-2.5 py-0.5 rounded uppercase">
-                        Beginner Tuning
-                      </span>
-                      <p className={`text-[11px] mt-2 leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700"}`}>
-                        {workoutInfo.modifications.beginner}
-                      </p>
-                    </div>
+              {/* Science of overall deficit */}
+              <div className={`border rounded-3xl p-6 sm:p-8 ${cardBg}`}>
+                <h3 className={`text-base font-black uppercase font-display border-b pb-3 flex items-center gap-2 ${borderCol}`}>
+                  <Info className="w-4 h-4 text-[#D32F2F]" />
+                  <span>Scientific Fact Check</span>
+                </h3>
 
-                    <div className={`p-4 rounded-2xl border ${secondaryCardBg}`}>
-                      <span className="text-[9px] font-mono font-black text-sky-400 bg-sky-900/10 px-2.5 py-0.5 rounded uppercase">
-                        Intermediate Tuning
-                      </span>
-                      <p className={`text-[11px] mt-2 leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700"}`}>
-                        {workoutInfo.modifications.intermediate}
-                      </p>
-                    </div>
-
-                    <div className={`p-4 rounded-2xl border ${secondaryCardBg}`}>
-                      <span className="text-[9px] font-mono font-black text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded uppercase">
-                        Advanced Tuning
-                      </span>
-                      <p className={`text-[11px] mt-2 leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700"}`}>
-                        {workoutInfo.modifications.advanced}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Science of overall deficit */}
-                <div className={`border rounded-3xl p-6 ${cardBg}`}>
-                  <h3 className={`text-sm font-black uppercase font-display border-b pb-3 flex items-center gap-2 ${borderCol}`}>
-                    <Info className="w-4 h-4 text-[#D32F2F]" />
-                    <span>Scientific Fact Check</span>
-                  </h3>
-                  
-                  <p className={`text-[11px] leading-relaxed mt-3 ${textSecondary}`}>
-                    <strong>Can you target belly fat directly?</strong> No, localized fat mobilization (spot reduction) is a physiological myth. 
-                    Lipolysis is systemic. Fatty acids are released from adipose tissue pools throughout the body during a caloric deficit. 
-                    Consistent compound exercises and high incline walks elevate your daily energy expenditure, pulling down overall fat percentages, 
-                    which over time permanently reduces abdominal/visceral layers.
-                  </p>
-                </div>
-
+                <p className={`text-xs leading-relaxed mt-3.5 ${textSecondary}`}>
+                  <strong>Can you target belly fat directly?</strong> No, localized fat mobilization (spot reduction) is a physiological myth.
+                  Lipolysis is systemic. Fatty acids are released from adipose tissue pools throughout the body during a caloric deficit.
+                  Consistent compound exercises and high incline walks elevate your daily energy expenditure, pulling down overall fat percentages,
+                  which over time permanently reduces abdominal and visceral layers.
+                </p>
               </div>
-
             </div>
 
             {/* Secure Premium Program Vault from API */}
@@ -2379,17 +2818,20 @@ export default function BellyFatShredView() {
                               {w.duration}
                             </span>
                           </div>
-                          <div className={`space-y-3 pt-2 border-t ${borderCol}`}>
+                          <div className="grid sm:grid-cols-2 gap-4 pt-3 border-t border-slate-200/50">
                             {w.exercises?.map((ex: any, idx: number) => (
-                              <div key={idx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
-                                <div className="w-16 h-12 rounded-lg overflow-hidden shrink-0 bg-slate-900 border border-slate-200">
-                                  <UnifiedExerciseMedia exerciseName={ex.name} className="w-full h-full object-cover" />
+                              <div key={idx} className={`rounded-2xl overflow-hidden border flex flex-col justify-between transition-all hover:shadow-md ${isDark ? "bg-slate-900/90 border-slate-800" : "bg-white border-slate-200"}`}>
+                                <div className="w-full aspect-video workout-media-frameless flex items-center justify-center relative overflow-hidden">
+                                  <UnifiedExerciseMedia exerciseName={ex.name} className="w-full h-full object-contain workout-gif-display" />
+                                  <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/80 backdrop-blur-md rounded-md text-[9px] font-mono font-bold text-white z-10 border border-white/10">
+                                    {ex.sets} sets × {ex.reps}
+                                  </div>
                                 </div>
-                                <div className="min-w-0 flex-1 text-[10px]">
-                                  <span className={`font-mono font-bold block truncate ${isDark ? "text-slate-300" : "text-slate-800"}`}>
-                                    {ex.name} — {ex.sets}x{ex.reps}
+                                <div className="p-3 text-[11px] space-y-1">
+                                  <span className={`font-mono font-black uppercase block truncate ${isDark ? "text-slate-200" : "text-slate-900"}`}>
+                                    {ex.name}
                                   </span>
-                                  <span className="text-slate-500 italic line-clamp-1">{ex.instructions}</span>
+                                  <span className="text-slate-400 text-[10px] line-clamp-2">{ex.instructions}</span>
                                 </div>
                               </div>
                             ))}
@@ -2599,13 +3041,14 @@ export default function BellyFatShredView() {
                         </div>
 
                         {/* Interactive Visual Media */}
-                        <div className="rounded-2xl border border-slate-200 bg-slate-900 w-full flex items-center justify-center relative">
+                        <div className="rounded-2xl overflow-hidden workout-media-frameless w-full aspect-video flex items-center justify-center relative shadow-md">
                           <UnifiedExerciseMedia 
                             exerciseName={exercise.name} 
-                            className="w-full h-auto object-contain"
+                            className="w-full h-full object-contain workout-gif-display"
                           />
-                          <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 rounded-lg text-[9px] font-mono text-slate-300 z-10">
-                            🔥 {exercise.caloriesEst}
+                          <div className="absolute top-2.5 left-2.5 px-2.5 py-1 bg-black/80 backdrop-blur-md rounded-lg text-[9px] font-mono font-bold text-white z-10 flex items-center gap-1 shadow-sm border border-white/10">
+                            <span>🔥</span>
+                            <span>{exercise.caloriesEst}</span>
                           </div>
                         </div>
 

@@ -1593,14 +1593,14 @@ export default function WomenConfidenceProgram() {
                 >
                   <div className="p-4 sm:p-6 flex flex-col lg:flex-row gap-5 sm:gap-6 items-start w-full">
                     {/* Media / Unified Media Demonstration */}
-                    <div className="w-full lg:w-72 aspect-video rounded-xl overflow-hidden bg-slate-950 flex-shrink-0 relative border border-gray-200 shadow-xs">
+                    <div className="w-full lg:w-72 aspect-video rounded-xl overflow-hidden workout-media-frameless flex-shrink-0 relative">
                       <UnifiedExerciseMedia 
                         exerciseName={ex.name}
                         exerciseId={ex.id}
-                        className="w-full h-full"
+                        className="w-full h-full object-contain workout-gif-display"
                         fallbackType="dumbbell"
                       />
-                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-xs text-white text-[10px] font-bold z-10">
+                      <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/80 backdrop-blur-xs text-white text-[10px] font-mono font-bold z-10 border border-white/10">
                         Drill #{index + 1}
                       </div>
                       {isCompleted && (

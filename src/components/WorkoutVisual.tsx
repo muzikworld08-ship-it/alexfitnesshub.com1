@@ -14,6 +14,7 @@ import { findMatchingExercise } from "../utils/exerciseMatching";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
 import { getExerciseGifUrl } from "../data/exercises";
 import { getSupabaseCdnUrl } from "../utils/supabaseImage";
+import { isImageCached, markImageCached } from "../utils/imageCache";
 
 interface WorkoutVisualProps {
   exerciseId?: string;
@@ -37,7 +38,7 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
   customMediaUrl,
   customMediaType,
   isCard = false,
-  priority = true
+  priority = false
 }: WorkoutVisualProps) {
 
   const { exercises } = useCentralizedExercises();
@@ -50,23 +51,33 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
   const displayEquipment = exercise?.equipment || [];
   const displayDifficulty = exercise?.difficulty || "Beginner";
 
-  const defaultGifUrl = getExerciseGifUrl(exercise?.name || exerciseName || category || "");
+  const defaultGifUrl = React.useMemo(() => {
+    return getExerciseGifUrl(exercise?.name || exerciseName || category || "");
+  }, [exercise?.name, exerciseName, category]);
+
   const primaryRawUrl = customMediaUrl || exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl || defaultGifUrl;
+  const initialResolvedUrl = resolveAdminMediaUrl(primaryRawUrl) || defaultGifUrl;
   
   // Performance & Robustness states
-  const [loading, setLoading] = React.useState(true);
+  const [activeMediaUrl, setActiveMediaUrl] = React.useState<string>(initialResolvedUrl);
+  const [loading, setLoading] = React.useState<boolean>(() => !isImageCached(initialResolvedUrl));
   const [hasError, setHasError] = React.useState(false);
   const [retryCount, setRetryCount] = React.useState(0);
-  const [activeMediaUrl, setActiveMediaUrl] = React.useState<string>("");
+  const imgRef = React.useRef<HTMLImageElement | null>(null);
 
   React.useEffect(() => {
-    setLoading(true);
+    const nextUrl = resolveAdminMediaUrl(primaryRawUrl) || defaultGifUrl;
+    setActiveMediaUrl(nextUrl);
     setHasError(false);
     setRetryCount(0);
-    setActiveMediaUrl(resolveAdminMediaUrl(primaryRawUrl) || defaultGifUrl);
+    if (isImageCached(nextUrl)) {
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
   }, [primaryRawUrl, defaultGifUrl]);
 
-  const resolvedMediaUrl = activeMediaUrl || resolveAdminMediaUrl(primaryRawUrl) || defaultGifUrl;
+  const resolvedMediaUrl = activeMediaUrl || initialResolvedUrl;
   const resolvedMediaType = customMediaType || exercise?.customMediaType || "image";
 
   const handleMediaError = () => {
@@ -107,12 +118,25 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
     return cdnOptimized.includes("?") ? `${cdnOptimized}&retry=${retry}` : `${cdnOptimized}?retry=${retry}`;
   };
 
+  const handleImageRef = (node: HTMLImageElement | null) => {
+    imgRef.current = node;
+    if (node && node.complete && node.naturalWidth > 0 && loading) {
+      setLoading(false);
+      markImageCached(resolvedMediaUrl);
+    }
+  };
+
+  const handleImageLoadSuccess = () => {
+    setLoading(false);
+    markImageCached(resolvedMediaUrl);
+  };
+
   // Card Mode Layout Helper
   if (isCard) {
     return (
       <div 
         id={`visual-card-${(exerciseName || exercise?.name || "exercise").replace(/\s+/g, '-').toLowerCase()}`} 
-        className={`relative w-full ${className} bg-slate-900 rounded-xl overflow-hidden flex flex-col items-center justify-center`}
+        className={`relative w-full ${className} workout-media-frameless rounded-xl overflow-hidden flex flex-col items-center justify-center`}
       >
         {resolvedMediaUrl && !hasError ? (
           <div className="relative w-full h-full flex items-center justify-center">
@@ -129,18 +153,21 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
                 loop
                 muted
                 playsInline
-                className={`w-full h-full block object-contain transition-opacity duration-500 ${loading ? 'opacity-0' : 'opacity-100'}`}
+                className={`w-full h-full block object-contain workout-gif-display transition-opacity duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}
                 onCanPlay={() => setLoading(false)}
                 onError={handleMediaError}
               />
             ) : formatMediaSrc(resolvedMediaUrl, retryCount) ? (
               <img 
+                ref={handleImageRef}
                 src={formatMediaSrc(resolvedMediaUrl, retryCount)} 
                 alt={exerciseName || "Exercise Preview"} 
-                className={`w-full h-full block object-contain transition-opacity duration-500 ${loading ? 'opacity-0' : 'opacity-100'}`} 
+                className={`w-full h-full block object-contain workout-gif-display transition-opacity duration-200 ${loading ? 'opacity-0' : 'opacity-100'}`} 
                 referrerPolicy="no-referrer"
-                loading="lazy"
-                onLoad={() => setLoading(false)}
+                loading={priority ? "eager" : "lazy"}
+                decoding="async"
+                {...({ fetchPriority: priority ? "high" : "auto" } as any)}
+                onLoad={handleImageLoadSuccess}
                 onError={handleMediaError}
               />
             ) : null}
@@ -164,16 +191,12 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
   return (
     <div id="workout-visual-root" className="w-full max-w-full overflow-hidden flex flex-col space-y-3 min-w-0">
       {/* Manually uploaded GIF / custom media display */}
-      <div id="exercise-demo-media-box" className="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center">
+      <div id="exercise-demo-media-box" className="relative w-full aspect-video rounded-xl overflow-hidden workout-media-frameless flex items-center justify-center">
         {resolvedMediaUrl && !hasError ? (
           <>
             {loading && (
-              <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-md animate-pulse z-20 flex flex-col items-center justify-center space-y-2">
-                <div 
-                  className="absolute inset-0 bg-cover bg-center filter blur-xl scale-110 opacity-40"
-                  style={{ backgroundImage: `url(${resolvedMediaUrl})` }}
-                />
-                <div className="relative z-30 flex flex-col items-center justify-center space-y-1.5 p-3 bg-slate-900/60 backdrop-blur-md rounded-xl text-white">
+              <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-xs animate-pulse z-20 flex flex-col items-center justify-center space-y-2">
+                <div className="relative z-30 flex flex-col items-center justify-center space-y-1.5 p-3 bg-slate-900/60 backdrop-blur-xs rounded-xl text-white">
                   <Dumbbell className="w-6 h-6 text-slate-400 animate-spin" />
                   <span className="text-[9px] font-mono font-bold text-slate-400 tracking-wider">LOADING STREAM</span>
                 </div>
@@ -186,20 +209,21 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
                 loop
                 muted
                 playsInline
-                className={`w-full h-full object-contain transition-all duration-700 ease-out ${loading ? 'opacity-0 filter blur-md scale-105' : 'opacity-100 filter-none scale-100'}`}
+                className={`w-full h-full object-contain workout-gif-display transition-all duration-300 ease-out ${loading ? 'opacity-0' : 'opacity-100'}`}
                 onCanPlay={() => setLoading(false)}
                 onError={handleMediaError}
               />
             ) : formatMediaSrc(resolvedMediaUrl, retryCount) ? (
               <img 
+                ref={handleImageRef}
                 src={formatMediaSrc(resolvedMediaUrl, retryCount)} 
                 alt={exerciseName || "Exercise Demo GIF"} 
                 decoding="async"
-                className={`w-full h-full object-contain transition-all duration-700 ease-out ${loading ? 'opacity-0 filter blur-md scale-105' : 'opacity-100 filter-none scale-100'}`} 
+                className={`w-full h-full object-contain workout-gif-display transition-all duration-200 ease-out ${loading ? 'opacity-0' : 'opacity-100'}`} 
                 referrerPolicy="no-referrer"
                 loading={priority ? "eager" : "lazy"}
                 {...({ fetchPriority: priority ? "high" : "auto" } as any)}
-                onLoad={() => setLoading(false)}
+                onLoad={handleImageLoadSuccess}
                 onError={handleMediaError}
               />
             ) : null}

@@ -178,6 +178,92 @@ body, input, select, textarea, button, p, span, div, h1, h2, h3, h4, h5, h6, li,
   box-sizing: border-box;
 }
 
+/* =========================================================================
+   CUSTOM WORKOUT GIF & EXERCISE MEDIA DISPLAY CSS ENGINE
+   Frameless, Full-Width, Bold Grid High-Impact Presentation
+   ========================================================================= */
+
+.workout-media-frameless {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: #050811;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.workout-gif-display {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  display: block;
+}
+
+.workout-card-bold {
+  border-radius: 1.25rem;
+  overflow: hidden;
+  background-color: #FFFFFF;
+  border: 1px solid #E8E8E8;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.workout-card-bold:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.08), 0 10px 15px -5px rgba(0, 0, 0, 0.04);
+  border-color: rgba(229, 57, 53, 0.35);
+}
+
+.workout-grid-bold {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .workout-grid-bold {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+}
+
+.workout-media-badge {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #FFFFFF;
+  font-family: 'Roboto Condensed', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  z-index: 10;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+}
+
+.workout-media-vignette {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 4.5rem;
+  background: linear-gradient(to top, rgba(2, 6, 23, 0.9) 0%, rgba(2, 6, 23, 0.4) 50%, transparent 100%);
+  pointer-events: none;
+  z-index: 5;
+}
+
 /* Global Overflow-X Safeguard for Responsive Scaling */
 html, body, #root {
   overflow-x: hidden;

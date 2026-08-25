@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { MessageSquare } from "lucide-react";
 import { auth } from "./lib/firebase";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { AppProvider, useApp, checkIsUserPremium } from "./context/AppContext";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, type Variants } from "motion/react";
 import Navbar from "./components/Navbar";
 import HomeView from "./components/HomeView";
 import WorkoutLibrary from "./components/WorkoutLibrary";
@@ -29,6 +29,34 @@ import DailyNotificationController from "./components/DailyNotificationControlle
 import GlobalSkeletonLoader, { DashboardSkeleton, CardGridSkeleton, ListSkeleton } from "./components/SkeletonLoader";
 import GlobalTransitionOverlay from "./components/GlobalTransitionOverlay";
 import PremiumUpgradeModal from "./components/PremiumUpgradeModal";
+import { preloadCriticalFitnessAssets } from "./utils/imageCache";
+
+const pageTransitionVariants: Variants = {
+  initial: {
+    opacity: 0,
+    y: 12,
+    filter: "blur(4px)",
+  },
+  animate: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.28,
+      ease: [0.22, 1, 0.36, 1],
+      when: "beforeChildren",
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: -8,
+    filter: "blur(2px)",
+    transition: {
+      duration: 0.18,
+      ease: [0.22, 1, 0.36, 1],
+    },
+  },
+};
 
 
 
@@ -115,7 +143,7 @@ function FitnessAppContent() {
     );
   };
 
-  // Instantly enforce pure white light theme on initial render
+  // Instantly enforce pure white light theme on initial render and warm critical media cache
   React.useLayoutEffect(() => {
     try {
       const root = window.document.documentElement;
@@ -123,6 +151,7 @@ function FitnessAppContent() {
       root.setAttribute("data-theme", "light");
       localStorage.setItem("fit_theme", "light");
     } catch (e) {}
+    preloadCriticalFitnessAssets();
   }, []);
 
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -608,15 +637,15 @@ function FitnessAppContent() {
         onOpenAuth={() => setIsAuthOpen(true)} 
       />
 
-      {/* Main Switchboard Route Mounting */}
+      {/* Main Switchboard Route Mounting with Staggered Transitions */}
       <main className="pt-20 lg:pt-24 pb-16 min-h-screen w-full max-w-full flex flex-col justify-start overflow-x-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentView}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            variants={pageTransitionVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
             className="w-full max-w-full flex-grow flex flex-col min-w-0 overflow-x-hidden"
           >
             <React.Suspense fallback={renderSkeletonForView(currentView)}>

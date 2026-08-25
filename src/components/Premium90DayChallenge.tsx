@@ -577,7 +577,7 @@ export default function Premium90DayChallenge() {
         }
       );
     }
-  }, [dbState?.currentDay, dbState?.challengeId, dbState?.completedDays?.length, recordProgramStopPoint]);
+  }, [dbState?.currentDay, dbState?.challengeId, dbState?.completedDays?.length]);
 
   // Mark Today's Workout completed
   const handleCompleteWorkout = async () => {
@@ -1284,7 +1284,7 @@ export default function Premium90DayChallenge() {
                                 </div>
 
                                 {/* HD Giphy loop representation */}
-                                <div className="relative w-full rounded-xl bg-slate-950 flex items-center justify-center border border-slate-200 shadow-xs">
+                                <div className="relative w-full rounded-xl workout-media-frameless flex items-center justify-center">
                                   <WorkoutVisual 
                                     exerciseId={ex.id} 
                                     exerciseName={ex.name} 

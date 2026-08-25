@@ -668,6 +668,8 @@ export default function WorkoutVideos() {
                             src={video.thumbnail}
                             alt={video.title}
                             referrerPolicy="no-referrer"
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
                           />
                         ) : null}
@@ -779,6 +781,8 @@ export default function WorkoutVideos() {
                         src={video.thumbnail}
                         alt={video.title}
                         referrerPolicy="no-referrer"
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
                       />
                     ) : null}

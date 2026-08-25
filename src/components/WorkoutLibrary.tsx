@@ -1584,11 +1584,11 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Left 7 columns: Moving GIF Loop */}
             <div className="lg:col-span-7 space-y-4">
-              <div className="relative rounded-3xl overflow-hidden bg-slate-950 aspect-video shadow-xl border border-slate-200">
+              <div className="relative rounded-3xl overflow-hidden workout-media-frameless aspect-video shadow-xl">
                 <UnifiedExerciseMedia
                   exerciseId={activeExercise.id}
                   exerciseName={activeExercise.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover workout-gif-display"
                 />
                 <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-xs px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-white flex items-center gap-2">
                   <Activity className="w-4 h-4 text-red-500 fill-red-500 animate-pulse" />
@@ -1810,6 +1810,8 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                   src={resolveAdminMediaUrl(activeWorkout.imageUrl)}
                   alt={activeWorkout.name}
                   referrerPolicy="no-referrer"
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -1908,12 +1910,12 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                     {/* Right Side: Animated GIF */}
                     <div
                       onClick={() => setActiveExercise(exDetail)}
-                      className="w-full md:w-44 lg:w-48 aspect-video md:aspect-square bg-white rounded-xl overflow-hidden border border-[#ECECEC] flex-shrink-0 flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+                      className="w-full md:w-44 lg:w-48 aspect-video md:aspect-square workout-media-frameless rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
                     >
                       <UnifiedExerciseMedia
                         exerciseId={exDetail.id}
                         exerciseName={exDetail.name}
-                        className="w-full h-full object-contain p-2"
+                        className="w-full h-full object-contain workout-gif-display"
                       />
                     </div>
                   </div>

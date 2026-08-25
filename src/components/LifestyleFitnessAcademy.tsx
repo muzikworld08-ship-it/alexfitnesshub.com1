@@ -710,7 +710,7 @@ export default function LifestyleFitnessAcademy() {
         );
       }
     }
-  }, [activeChallengeId, recordProgramStopPoint]);
+  }, [activeChallengeId]);
 
   // Check if premium logic
   const handleChallengeClick = (challenge: ChallengeData) => {
@@ -1175,10 +1175,10 @@ export default function LifestyleFitnessAcademy() {
                         className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row gap-4 sm:gap-5 items-stretch text-left w-full min-w-0"
                       >
                         {/* Dynamic GIF/Video Demonstration */}
-                        <div className="w-full sm:w-48 md:w-52 shrink-0 rounded-xl shadow-sm relative">
+                        <div className="w-full sm:w-48 md:w-52 shrink-0 rounded-xl workout-media-frameless relative aspect-video sm:aspect-auto">
                           <WorkoutVisual 
                             exerciseName={getMatchedExerciseName(stretch.name)} 
-                            className="w-full" 
+                            className="w-full h-full" 
                             isCard={true} 
                           />
                         </div>
@@ -1284,10 +1284,10 @@ export default function LifestyleFitnessAcademy() {
                           {dayProg.exercises.map((ex, exIdx) => (
                             <div key={exIdx} className="bg-white p-4 sm:p-5 border border-slate-200 rounded-xl flex flex-col sm:flex-row gap-4 sm:gap-5 items-stretch w-full min-w-0">
                               {/* Centralized Exercise Demonstration GIF/Video */}
-                              <div className="w-full sm:w-48 shrink-0 rounded-lg shadow-xs relative">
+                              <div className="w-full sm:w-48 shrink-0 rounded-lg workout-media-frameless relative aspect-video sm:aspect-auto">
                                 <WorkoutVisual 
                                   exerciseName={getMatchedExerciseName(ex.name)} 
-                                  className="w-full" 
+                                  className="w-full h-full" 
                                   isCard={true} 
                                 />
                               </div>

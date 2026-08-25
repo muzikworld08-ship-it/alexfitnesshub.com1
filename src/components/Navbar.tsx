@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useApp, isEmailAdmin } from "../context/AppContext";
+import { useApp, isEmailAdmin, checkIsUserPremium } from "../context/AppContext";
 import { 
   Menu, X, Shield, Lock, Award, ChevronDown, Calendar, Flame, 
   Dumbbell, Sparkles, BookOpen, Activity, Heart, Users, Video, 
@@ -19,6 +19,8 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
   const { user, logout } = useApp();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const isPremium = checkIsUserPremium(user);
 
   // Close hamburger menu on window resize to desktop
   useEffect(() => {
@@ -85,7 +87,19 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     }, 180);
   };
 
-  const topMenuItems = [
+  // Top horizontal bar items
+  const topMenuItems = isPremium ? [
+    { id: "home", label: "HOME", action: () => handleCustomNav("home") },
+    { id: "dashboard", label: "DASHBOARD", action: () => handleCustomNav("dashboard") },
+    { id: "daily-plan", label: "DAILY PLAN", action: () => handleCustomNav("daily-plan") },
+    { id: "women-confidence", label: "WOMEN CONFIDENCE", action: () => handleCustomNav("women-confidence") },
+    { id: "belly-fat-shred", label: "BELLY SHRED", action: () => handleCustomNav("belly-fat-shred") },
+    { id: "lifestyle-academy", label: "PROGRAMS", action: () => handleCustomNav("lifestyle-academy") },
+    { id: "library", label: "WORKOUTS", action: () => handleCustomNav("library") },
+    { id: "nutrition", label: "NUTRITION", action: () => handleCustomNav("nutrition") },
+    { id: "coach", label: "AI COACH", action: () => handleCustomNav("coach") },
+    { id: "community", label: "COMMUNITY", action: () => handleCustomNav("community") }
+  ] : [
     { id: "home", label: "HOME", action: () => handleCustomNav("home") },
     { id: "women-confidence", label: "WOMEN CONFIDENCE", action: () => handleCustomNav("women-confidence") },
     { id: "lifestyle-academy", label: "PROGRAMS", action: () => handleCustomNav("lifestyle-academy") },
@@ -95,55 +109,39 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     { id: "calculators", label: "CALCULATORS", action: () => { if (user) { handleCustomNav("daily-calibration-desk"); } else { handleFreeInteractiveNav("calibration"); } } },
     { id: "coach", label: "AI COACH", action: () => handleCustomNav("coach") },
     { id: "community", label: "COMMUNITY", action: () => { if (user) { handleCustomNav("community"); } else { handleFreeInteractiveNav("community"); } } },
-    {
-      id: "premium-zone",
-      label: "PREMIUM HUB",
-      isDropdown: true,
-      subItems: [
-        { id: "women-confidence", label: "Women Confidence Program", desc: "180-Day strength, fitness & confidence", icon: Heart },
-        { id: "daily-plan", label: "My Daily Plan", desc: "Tailored training & meal schedule", icon: Calendar },
-        { id: "challenges", label: "Monthly Challenges", desc: "90-day physical competitions", icon: Award },
-        { id: "belly-fat-shred", label: "Belly Fat Shred", desc: "Accelerated direct core fat loss", icon: Flame },
-        { id: "dashboard", label: "Athlete Dashboard", desc: "Track progress, reports & stats", icon: Shield }
-      ]
-    },
     { id: "pricing", label: "PRICING", action: () => handleCustomNav("pricing") }
   ];
 
-  const drawerSections = [
-    {
-      title: "CORE APPLICATION PAGES",
-      items: [
-        { id: "home", label: "Home Page", desc: "Main portal, features & workout search", icon: Dumbbell, color: "text-red-500 bg-red-50" },
-        { id: "women-confidence", label: "Women Confidence Program", desc: "180-Day strength & mindset transformation", icon: Heart, color: "text-rose-600 bg-rose-50" },
-        { id: "lifestyle-academy", label: "Programs & Academy", desc: "12-Week structured physique splits", icon: BookOpen, color: "text-blue-500 bg-blue-50" },
-        { id: "library", label: "Workout Library & Drills", desc: "Full exercise directory with kinetic specs", icon: Activity, color: "text-emerald-500 bg-emerald-50" },
-        { id: "workout-videos", label: "Exercise Video Vault", desc: "HD form demonstrations & workouts", icon: Video, color: "text-purple-500 bg-purple-50" },
-        { id: "saved-exercises", label: "Saved Drills & Workouts", desc: "Your bookmarked routine collection", icon: Bookmark, color: "text-amber-500 bg-amber-50" },
-        { id: "nutrition", label: "Nutrition & Meal Matrix", desc: "Macro calibrator & localized diet plans", icon: Heart, color: "text-rose-500 bg-rose-50" },
-        { id: "coach", label: "AI Fitness Coach", desc: "Server-side Gemini AI consultations", icon: Sparkles, color: "text-indigo-500 bg-indigo-50" },
-        { id: "community", label: "Community Arena", desc: "Share updates & connect with athletes", icon: Users, color: "text-teal-500 bg-teal-50" },
-      ]
-    },
-    {
-      title: "PREMIUM ATHLETE HUB",
-      items: [
-        { id: "women-confidence", label: "Women Confidence Program (180 Days)", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-100/70" },
-        { id: "daily-plan", label: "My Daily Plan", desc: "Personalized daily schedule & drills", icon: Calendar, color: "text-red-600 bg-red-100/60" },
-        { id: "challenges", label: "Monthly 90-Day Challenges", desc: "Physical transformation competition", icon: Award, color: "text-amber-600 bg-amber-100/60" },
-        { id: "belly-fat-shred", label: "Belly Fat Shred System", desc: "Direct core & abdominal fat burning", icon: Flame, color: "text-orange-600 bg-orange-100/60" },
-        { id: "dashboard", label: "Athlete Performance Desk", desc: "Comprehensive metrics, progress & reports", icon: Shield, color: "text-sky-600 bg-sky-100/60" },
-        { id: "weight-trajectory", label: "Weight Trajectory Logs", desc: "Biometric weigh-in graph & checkpoints", icon: BarChart3, color: "text-emerald-600 bg-emerald-100/60" },
-        { id: "daily-calibration-desk", label: "Biometric Calibration Desk", desc: "Hydration, calories & sleep targets", icon: Calculator, color: "text-indigo-600 bg-indigo-100/60" },
-      ]
-    },
-    {
-      title: "FEATURE HIGHLIGHTS & PAGES",
-      items: [
-        { id: "success-stories", label: "Transformation Stories", desc: "Verified athlete before/after reviews", icon: Star, color: "text-yellow-600 bg-yellow-50" },
-        { id: "pricing", label: "Membership Plans", desc: "Activate AlexFitnessHub Premium", icon: Crown, color: "text-[#E53935] bg-red-50" }
-      ]
-    }
+  // Unified single drawer menu items (dynamic based on subscription)
+  const drawerMenuItems = isPremium ? [
+    { id: "dashboard", label: "Athlete Performance Desk", desc: "Your metrics, streaks & performance reports", icon: Shield, color: "text-sky-600 bg-sky-50" },
+    { id: "daily-plan", label: "My Daily Plan", desc: "Personalized daily schedule & drills", icon: Calendar, color: "text-red-600 bg-red-50" },
+    { id: "women-confidence", label: "Women Confidence Program", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-50" },
+    { id: "belly-fat-shred", label: "Belly Fat Shred System", desc: "5-Month core & metabolic shredding protocol", icon: Flame, color: "text-orange-600 bg-orange-50" },
+    { id: "challenges", label: "Monthly 90-Day Challenges", desc: "Physical transformation competitions", icon: Award, color: "text-amber-600 bg-amber-50" },
+    { id: "coach", label: "AI Fitness Coach", desc: "Personalized Gemini AI consultations", icon: Sparkles, color: "text-indigo-600 bg-indigo-50" },
+    { id: "home", label: "Home Page", desc: "Main portal, workout search & preview", icon: Dumbbell, color: "text-red-500 bg-red-50" },
+    { id: "lifestyle-academy", label: "Programs & Academy", desc: "12-Week structured physique splits", icon: BookOpen, color: "text-blue-600 bg-blue-50" },
+    { id: "library", label: "Workout Library & Drills", desc: "Full exercise directory with kinetic specs", icon: Activity, color: "text-emerald-600 bg-emerald-50" },
+    { id: "workout-videos", label: "Exercise Video Vault", desc: "HD form demonstrations & workouts", icon: Video, color: "text-purple-600 bg-purple-50" },
+    { id: "saved-exercises", label: "Saved Drills & Workouts", desc: "Your bookmarked routine collection", icon: Bookmark, color: "text-amber-600 bg-amber-50" },
+    { id: "nutrition", label: "Nutrition & Meal Matrix", desc: "Macro calibrator & localized diet plans", icon: Heart, color: "text-rose-600 bg-rose-50" },
+    { id: "weight-trajectory", label: "Weight Trajectory Logs", desc: "Biometric weigh-in graph & checkpoints", icon: BarChart3, color: "text-emerald-600 bg-emerald-50" },
+    { id: "daily-calibration-desk", label: "Biometric Calibration Desk", desc: "Hydration, calories & sleep targets", icon: Calculator, color: "text-indigo-600 bg-indigo-50" },
+    { id: "community", label: "Community Arena", desc: "Share updates & connect with athletes", icon: Users, color: "text-teal-600 bg-teal-50" },
+    { id: "success-stories", label: "Transformation Stories", desc: "Verified athlete before/after reviews", icon: Star, color: "text-yellow-600 bg-yellow-50" },
+    ...((user?.role === "admin" || (user?.email && isEmailAdmin(user.email))) ? [
+      { id: "admin", label: "Admin Management Console", desc: "System settings, analytics & user controls", icon: Shield, color: "text-red-700 bg-red-100" }
+    ] : [])
+  ] : [
+    { id: "home", label: "Home Page", desc: "Main portal, features & workout search", icon: Dumbbell, color: "text-red-500 bg-red-50" },
+    { id: "lifestyle-academy", label: "Programs & Academy", desc: "12-Week structured physique splits", icon: BookOpen, color: "text-blue-500 bg-blue-50" },
+    { id: "library", label: "Workout Library & Drills", desc: "Full exercise directory with kinetic specs", icon: Activity, color: "text-emerald-500 bg-emerald-50" },
+    { id: "workout-videos", label: "Exercise Video Vault", desc: "HD form demonstrations & workouts", icon: Video, color: "text-purple-500 bg-purple-50" },
+    { id: "nutrition", label: "Nutrition & Macro Matrix", desc: "Macro calibrator & localized diet plans", icon: Heart, color: "text-rose-500 bg-rose-50" },
+    { id: "community", label: "Community Arena", desc: "Share updates & connect with athletes", icon: Users, color: "text-teal-500 bg-teal-50" },
+    { id: "success-stories", label: "Transformation Stories", desc: "Verified athlete before/after reviews", icon: Star, color: "text-yellow-600 bg-yellow-50" },
+    { id: "pricing", label: "Upgrade to Premium Membership", desc: "Unlock Daily Plan, 90-Day Challenges & AI Coach", icon: Crown, color: "text-white bg-gradient-to-r from-red-600 to-rose-600", isHighlight: true }
   ];
 
   return (
@@ -170,72 +168,6 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
           {/* Horizontal Quick Links Bar */}
           <nav className="hidden lg:flex items-center gap-2 sm:gap-4 lg:gap-5 overflow-x-auto whitespace-nowrap scrollbar-none py-1 min-w-0 flex-1 justify-end" aria-label="Main Desktop Navigation Menu">
             {topMenuItems.map((item) => {
-              if (item.isDropdown) {
-                const isActive = ["daily-plan", "challenges", "belly-fat-shred", "dashboard"].includes(currentView);
-                return (
-                  <div
-                    key={item.id}
-                    className="relative shrink-0"
-                    onMouseEnter={() => setIsDropdownOpen(true)}
-                    onMouseLeave={() => setIsDropdownOpen(false)}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      className={`text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-250 cursor-pointer border-b-2 py-1 flex items-center gap-1 ${
-                        isActive 
-                          ? "text-[#E53935] border-[#E53935]" 
-                          : "text-[#2B2B2B] border-transparent hover:text-[#E53935]"
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                      <ChevronDown className={`w-3 h-3 sm:w-3.5 sm:h-3.5 transition-transform duration-200 ${isDropdownOpen ? "rotate-180 text-[#E53935]" : "text-[#707070]"}`} />
-                    </button>
-
-                    <AnimatePresence>
-                      {isDropdownOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 10 }}
-                          transition={{ duration: 0.15 }}
-                          className="absolute right-0 sm:left-1/2 sm:-translate-x-1/2 top-full mt-2 w-64 sm:w-72 max-w-[calc(100vw-2rem)] bg-white border border-[#E8E8E8] rounded-2xl shadow-xl py-3 z-50 text-left"
-                        >
-                          {item.subItems?.map((subItem) => {
-                            const SubIcon = subItem.icon;
-                            const isSubActive = currentView === subItem.id;
-                            return (
-                              <button
-                                key={subItem.id}
-                                onClick={() => {
-                                  setIsDropdownOpen(false);
-                                  handleCustomNav(subItem.id);
-                                }}
-                                className={`w-full flex items-start gap-3.5 px-4 sm:px-5 py-3 transition-all text-left border-0 cursor-pointer ${
-                                  isSubActive 
-                                    ? "bg-red-50/60 text-[#E53935]" 
-                                    : "text-[#2B2B2B] hover:bg-[#FAFAFA]"
-                                }`}
-                              >
-                                <SubIcon className={`w-4 h-4 sm:w-5 sm:h-5 mt-0.5 shrink-0 ${isSubActive ? "text-[#E53935]" : "text-[#707070]"}`} />
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-[12px] sm:text-[13px] font-bold uppercase tracking-wide leading-tight">
-                                    {subItem.label}
-                                  </span>
-                                  <span className="text-[10px] sm:text-[11px] text-[#707070] mt-0.5 font-medium truncate">
-                                    {subItem.desc}
-                                  </span>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                );
-              }
-
               const isActive = 
                 currentView === item.id || 
                 (item.id === "pricing" && currentView === "home" && window.location.hash === "#pricing");
@@ -439,50 +371,54 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                 )}
               </div>
 
-              {/* Scrollable Navigation Sections */}
-              <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-6 custom-scrollbar">
-                {drawerSections.map((sec, secIdx) => (
-                  <div key={secIdx} className="space-y-2">
-                    <h5 className="text-[10px] font-mono font-black uppercase tracking-widest text-slate-400 px-1">
-                      {sec.title}
-                    </h5>
-                    <div className="grid gap-1.5">
-                      {sec.items.map((item) => {
-                        const IconComp = item.icon;
-                        const isCurrent = currentView === item.id;
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => handleCustomNav(item.id)}
-                            className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all cursor-pointer border ${
-                              isCurrent 
-                                ? "bg-red-50/80 border-red-200 text-[#E53935] shadow-2xs font-bold" 
-                                : "bg-white hover:bg-slate-50 border-transparent hover:border-slate-200 text-slate-800"
-                            }`}
-                          >
-                            <span className={`p-2 rounded-lg shrink-0 ${item.color}`}>
-                              <IconComp className="w-4 h-4" />
+              {/* Scrollable Single Navigation Section */}
+              <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
+                <div className="flex items-center justify-between px-1 pb-1">
+                  <h5 className="text-[10px] font-mono font-black uppercase tracking-widest text-slate-400">
+                    {isPremium ? "ATHLETE PLATFORM MENU" : "EXPLORE ALEXFITNESSHUB"}
+                  </h5>
+                  <span className="text-[9px] font-mono font-bold text-slate-400">
+                    {drawerMenuItems.length} items
+                  </span>
+                </div>
+
+                <div className="grid gap-1.5">
+                  {drawerMenuItems.map((item: any) => {
+                    const IconComp = item.icon;
+                    const isCurrent = currentView === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleCustomNav(item.id)}
+                        className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all cursor-pointer border ${
+                          isCurrent 
+                            ? "bg-red-50/80 border-red-200 text-[#E53935] shadow-2xs font-bold" 
+                            : item.isHighlight
+                              ? "bg-gradient-to-r from-red-50 to-rose-50 border-red-200 hover:border-red-300 text-slate-900 shadow-2xs"
+                              : "bg-white hover:bg-slate-50 border-transparent hover:border-slate-200 text-slate-800"
+                        }`}
+                      >
+                        <span className={`p-2 rounded-lg shrink-0 ${item.color}`}>
+                          <IconComp className="w-4 h-4" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold uppercase tracking-tight truncate">
+                              {item.label}
                             </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold uppercase tracking-tight truncate">
-                                  {item.label}
-                                </span>
-                                {isCurrent && (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-[#E53935] shrink-0" />
-                                )}
-                              </div>
-                              <p className="text-[10px] text-slate-500 truncate mt-0.5 font-sans">
-                                {item.desc}
-                              </p>
-                            </div>
-                            <ArrowRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${isCurrent ? "text-[#E53935] translate-x-0.5" : "text-slate-300"}`} />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                            {isCurrent && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#E53935] shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500 truncate mt-0.5 font-sans">
+                            {item.desc}
+                          </p>
+                        </div>
+                        <ArrowRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${isCurrent ? "text-[#E53935] translate-x-0.5" : "text-slate-300"}`} />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Drawer Bottom Footer */}

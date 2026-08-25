@@ -775,6 +775,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
             src="https://github.com/muzikmail2-arch/Git/blob/main/ChatGPT%20Image%20Jul%2018,%202026,%2006_59_52%20PM.png?raw=true" 
             alt="Alex Fitness Hub Elite Training Facility"
             loading="eager"
+            decoding="async"
             {...({ fetchPriority: "high" } as any)}
             className="w-full h-full object-cover object-center scale-100 filter brightness-125 contrast-110 saturate-105"
             referrerPolicy="no-referrer"
@@ -1379,7 +1380,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
             >
               <div className="h-44 w-full overflow-hidden relative bg-slate-100 border-b border-gray-100">
                 <OptimizedImage 
-                  src="https://theathletesphysique.com/wp-content/uploads/2020/07/Athletes-Physique-Exercise-Database.jpg" 
+                  src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCbe0AW9uRYSPjXXgL3nwdjYa1JzOdUvZEz3fxoDa8Qw&s=10" 
                   alt="Elite Exercise Library"
                   aspectRatio="16/9"
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -2453,7 +2454,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
 
                             {post.imageUrl ? (
                               <div className="w-full max-h-48 rounded-xl overflow-hidden border border-slate-150 shadow-sm">
-                                <img src={post.imageUrl} alt="Uploaded progress" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                <img src={post.imageUrl} alt="Uploaded progress" className="w-full h-full object-cover" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
                               </div>
                             ) : null}
 

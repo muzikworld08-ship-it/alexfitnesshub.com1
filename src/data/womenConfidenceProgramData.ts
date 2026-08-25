@@ -99,7 +99,7 @@ export const PROGRAM_PHASES: ProgramPhase[] = [
     description: "Phase 1 focuses on core stabilization, pelvic floor activation, joint mobility, posture correction, and mastering fundamental movement patterns with pristine mechanics.",
     primaryFocus: "Kinetic Alignment, Glute Activation & Habit Formation",
     colorTheme: "from-rose-500 via-pink-500 to-rose-600",
-    bannerImage: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200&auto=format&fit=crop&q=80"
+    bannerImage: "https://cdn.shopify.com/s/files/1/0503/6110/6616/files/athletes-doing-exercises-with-kettlebells_1024x1024.jpg?v=1629941573"
   },
   {
     phaseNumber: 2,
@@ -110,7 +110,7 @@ export const PROGRAM_PHASES: ProgramPhase[] = [
     description: "Phase 2 introduces progressive resistance loading and metabolic circuits to build lean, metabolic active muscle while supporting sustained whole-body fat oxidation.",
     primaryFocus: "Progressive Loading, Metabolic Tone & Posterior Chain Power",
     colorTheme: "from-fuchsia-600 via-pink-600 to-rose-500",
-    bannerImage: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&auto=format&fit=crop&q=80"
+    bannerImage: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTT1oxBXCFDr-HAd8_GRem87mgVwBjra6ay9NYAVcnBbeA9s_3fNDPWVDo&s=10"
   },
   {
     phaseNumber: 3,
@@ -121,7 +121,7 @@ export const PROGRAM_PHASES: ProgramPhase[] = [
     description: "Phase 3 emphasizes aesthetic shaping: glute hypertrophy, shoulder capping, back posture sculpting, and core tightening without exhausting burnout.",
     primaryFocus: "Hourglass Taper, Core Sculpting & Postural Elegance",
     colorTheme: "from-violet-600 via-pink-600 to-rose-500",
-    bannerImage: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1200&auto=format&fit=crop&q=80"
+    bannerImage: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQQR_wqJ2OvJTqTyffzsUIf2QwSAHxao_ZMkYQA5zBpYdDK8Xi9JW3U7FRF&s=10"
   },
   {
     phaseNumber: 4,
@@ -143,7 +143,7 @@ export const PROGRAM_PHASES: ProgramPhase[] = [
     description: "Phase 5 incorporates advanced eccentric tempos, isometric holds, and targeted metabolic waves to sculpt refined muscular definition and joint resilience.",
     primaryFocus: "Time-Under-Tension, Peak Glute-Ham Tie-In & Deep Abdominal Control",
     colorTheme: "from-pink-600 via-rose-600 to-amber-600",
-    bannerImage: "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=1200&auto=format&fit=crop&q=80"
+    bannerImage: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRW7GG57ik5pyyM9oxAwQmxWbLTJSHhhXYJrfgsBYmyd6ixwXnzlE3z3t4&s=10"
   },
   {
     phaseNumber: 6,
@@ -154,7 +154,7 @@ export const PROGRAM_PHASES: ProgramPhase[] = [
     description: "The crowning phase consolidating 6 months of devotion into a permanent lifestyle transformation. You emerge physically strong, mentally resilient, and radiantly confident.",
     primaryFocus: "Lifelong Mastery, Radiant Confidence & Sustainable Athleticism",
     colorTheme: "from-rose-600 via-amber-500 to-yellow-500",
-    bannerImage: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=1200&auto=format&fit=crop&q=80"
+    bannerImage: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6lg7QbEmeaktDsLgmzvRytUSD09Q7F52tHF6Vw4NP3J1vp8AeEpqkn6_E&s=10"
   }
 ];
 

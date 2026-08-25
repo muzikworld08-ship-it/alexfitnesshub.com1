@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { 
   signOut, 
   onAuthStateChanged, 
@@ -1619,7 +1619,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const enrollProgram = async (programId: string, details?: Partial<ProgramProgressItem>) => {
+  const enrollProgram = useCallback(async (programId: string, details?: Partial<ProgramProgressItem>) => {
     const now = new Date().toISOString();
     setProgramProgressState(prev => {
       const existing = prev[programId] || DEFAULT_PROGRAM_PROGRESS[programId] || {
@@ -1651,7 +1651,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const next = { ...prev, [programId]: updated };
       try {
-        const uid = auth.currentUser?.uid || user?.uid;
+        const uid = auth.currentUser?.uid;
         safeSetItem("fit_program_progress_guest", JSON.stringify(next));
         if (uid) {
           safeSetItem(`fit_program_progress_${uid}`, JSON.stringify(next));
@@ -1660,9 +1660,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch (e) {}
       return next;
     });
-  };
+  }, []);
 
-  const updateProgramProgress = async (programId: string, updates: Partial<ProgramProgressItem>) => {
+  const updateProgramProgress = useCallback(async (programId: string, updates: Partial<ProgramProgressItem>) => {
     setProgramProgressState(prev => {
       const existing = prev[programId] || DEFAULT_PROGRAM_PROGRESS[programId];
       if (!existing) return prev;
@@ -1675,7 +1675,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const next = { ...prev, [programId]: updated };
       try {
-        const uid = auth.currentUser?.uid || user?.uid;
+        const uid = auth.currentUser?.uid;
         safeSetItem("fit_program_progress_guest", JSON.stringify(next));
         if (uid) {
           safeSetItem(`fit_program_progress_${uid}`, JSON.stringify(next));
@@ -1684,9 +1684,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch (e) {}
       return next;
     });
-  };
+  }, []);
 
-  const recordProgramStopPoint = async (
+  const recordProgramStopPoint = useCallback(async (
     programId: string,
     workoutName: string,
     workoutId?: string,
@@ -1694,9 +1694,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     week?: number,
     extra?: Partial<ProgramProgressItem>
   ) => {
-    const now = new Date().toISOString();
     setProgramProgressState(prev => {
-      const existing = prev[programId] || DEFAULT_PROGRAM_PROGRESS[programId] || {
+      const existing = prev[programId] || DEFAULT_PROGRAM_PROGRESS[programId];
+      if (
+        existing &&
+        existing.lastStoppedWorkoutName === workoutName &&
+        existing.lastStoppedWorkoutId === (workoutId || existing.lastStoppedWorkoutId) &&
+        (day === undefined || existing.currentDay === day) &&
+        (week === undefined || existing.currentWeek === week)
+      ) {
+        return prev;
+      }
+
+      const now = new Date().toISOString();
+      const base = existing || {
         programId,
         programTitle: extra?.programTitle || programId.replace(/_/g, " ").toUpperCase(),
         category: extra?.category || "Fitness Program",
@@ -1716,19 +1727,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
 
       const updated: ProgramProgressItem = {
-        ...existing,
+        ...base,
         ...extra,
         enrolled: true,
-        currentDay: day !== undefined ? day : existing.currentDay,
-        currentWeek: week !== undefined ? week : existing.currentWeek,
+        currentDay: day !== undefined ? day : base.currentDay,
+        currentWeek: week !== undefined ? week : base.currentWeek,
         lastStoppedWorkoutName: workoutName,
-        lastStoppedWorkoutId: workoutId || existing.lastStoppedWorkoutId,
+        lastStoppedWorkoutId: workoutId || base.lastStoppedWorkoutId,
         lastStoppedAt: now
       };
 
       const next = { ...prev, [programId]: updated };
       try {
-        const uid = auth.currentUser?.uid || user?.uid;
+        const uid = auth.currentUser?.uid;
         safeSetItem("fit_program_progress_guest", JSON.stringify(next));
         if (uid) {
           safeSetItem(`fit_program_progress_${uid}`, JSON.stringify(next));
@@ -1737,9 +1748,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch (e) {}
       return next;
     });
-  };
+  }, []);
 
-  const markProgramWorkoutComplete = async (
+  const markProgramWorkoutComplete = useCallback(async (
     programId: string,
     workoutId: string,
     nextWorkoutNameOrDay?: string | number,
@@ -1771,7 +1782,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const next = { ...prev, [programId]: updated };
       try {
-        const uid = auth.currentUser?.uid || user?.uid;
+        const uid = auth.currentUser?.uid;
         safeSetItem("fit_program_progress_guest", JSON.stringify(next));
         if (uid) {
           safeSetItem(`fit_program_progress_${uid}`, JSON.stringify(next));
@@ -1780,9 +1791,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch (e) {}
       return next;
     });
-  };
+  }, []);
 
-  const resumeProgram = (programId: string) => {
+  const resumeProgram = useCallback((programId: string) => {
     const item = programProgress[programId] || DEFAULT_PROGRAM_PROGRESS[programId];
     if (!item) {
       setView("challenges");
@@ -1799,15 +1810,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else {
       setView("challenges");
     }
-  };
+  }, [programProgress]);
 
-  const getActiveEnrolledPrograms = (): ProgramProgressItem[] => {
+  const getActiveEnrolledPrograms = useCallback((): ProgramProgressItem[] => {
     return Object.values(programProgress)
       .filter(p => p.enrolled)
       .sort((a, b) => new Date(b.lastStoppedAt || 0).getTime() - new Date(a.lastStoppedAt || 0).getTime());
-  };
+  }, [programProgress]);
 
-  const setWorkoutFilters = (filters: Partial<WorkoutLibraryFilters>) => {
+  const setWorkoutFilters = useCallback((filters: Partial<WorkoutLibraryFilters>) => {
     setWorkoutFiltersState(prev => {
       const updated = { ...prev, ...filters };
       try {
@@ -1820,7 +1831,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch (e) {}
       return updated;
     });
-  };
+  }, []);
 
   const loadUserData = (uid: string) => {
     // Load Workout Library Search and Filters from local/cloud
@@ -2328,7 +2339,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // --- WEEKLY REPORTS HANDLERS ---
 
-  const loadWeeklyReports = async (targetUid?: string) => {
+  const loadWeeklyReports = useCallback(async (targetUid?: string) => {
     const uid = targetUid || user?.uid;
     if (!uid) return;
 
@@ -2404,7 +2415,7 @@ Congratulations on wrapping up another elite training week! Consistency is the b
         safeSetItem(`fit_weekly_reports_${uid}`, JSON.stringify(list));
       }
     }
-  };
+  }, [user?.uid, user?.email, user?.displayName, user?.weight]);
 
   const triggerWeeklyReportGeneration = async () => {
     if (!user) return;

@@ -27,8 +27,42 @@ export function getSupabaseCdnUrl(
 
   const trimmed = src.trim();
 
-  // 1. Data URLs, Blob URLs, or inline SVGs are passed as-is
-  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:") || trimmed.endsWith(".svg")) {
+  // 1. Data URLs, Blob URLs, inline SVGs, or animated GIFs are passed as-is
+  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:") || trimmed.endsWith(".svg") || trimmed.toLowerCase().includes(".gif")) {
+    return trimmed;
+  }
+
+  // Handle common trusted direct CDNs without proxy latency
+  if (
+    trimmed.includes("giphy.com") ||
+    trimmed.includes("giphy.net") ||
+    trimmed.includes("images.unsplash.com") ||
+    trimmed.includes("firebasestorage.googleapis.com") ||
+    trimmed.includes("storage.googleapis.com") ||
+    trimmed.includes("firebasestorage.app") ||
+    trimmed.includes("gstatic.com") ||
+    trimmed.includes("googleusercontent.com") ||
+    trimmed.includes("shopify.com") ||
+    trimmed.includes("theathletesphysique.com") ||
+    trimmed.includes("picsum.photos") ||
+    trimmed.includes("cloudinary.com") ||
+    trimmed.includes("cloudfront.net") ||
+    trimmed.includes("githubusercontent.com") ||
+    trimmed.includes("imgur.com") ||
+    trimmed.includes("ytimg.com")
+  ) {
+    if (trimmed.includes("images.unsplash.com")) {
+      try {
+        const unsplashUrl = new URL(trimmed);
+        if (options.width) unsplashUrl.searchParams.set("w", options.width.toString());
+        if (options.quality) unsplashUrl.searchParams.set("q", options.quality.toString());
+        unsplashUrl.searchParams.set("auto", "format");
+        unsplashUrl.searchParams.set("fit", "crop");
+        return unsplashUrl.toString();
+      } catch (e) {
+        return trimmed;
+      }
+    }
     return trimmed;
   }
 
@@ -38,7 +72,7 @@ export function getSupabaseCdnUrl(
     quality = 80,
     format = "webp",
     resize = "cover",
-    useProxyFallback = true,
+    useProxyFallback = false,
   } = options;
 
   // Build query parameter options string
@@ -93,29 +127,8 @@ export function getSupabaseCdnUrl(
     return appendParams(trimmed);
   }
 
-  // 7. External CDN URLs (Unsplash, Firebase Storage, Cloud Storage, Picsum, etc.)
-  if (trimmed.includes("images.unsplash.com")) {
-    const unsplashUrl = new URL(trimmed);
-    if (width) unsplashUrl.searchParams.set("w", width.toString());
-    if (quality) unsplashUrl.searchParams.set("q", quality.toString());
-    unsplashUrl.searchParams.set("auto", "format");
-    unsplashUrl.searchParams.set("fit", "crop");
-    return unsplashUrl.toString();
-  }
-
-  if (
-    trimmed.includes("firebasestorage.googleapis.com") ||
-    trimmed.includes("storage.googleapis.com") ||
-    trimmed.includes("firebasestorage.app") ||
-    trimmed.includes("picsum.photos") ||
-    trimmed.includes("cloudinary.com") ||
-    trimmed.includes("cloudfront.net")
-  ) {
-    return trimmed;
-  }
-
-  // 8. Optional server proxy for unrecognized external URLs
-  if (options.useProxyFallback === true) {
+  // 7. Fallback for unrecognized external URLs
+  if (useProxyFallback === true) {
     const proxyUrl = `/api/cdn-image?url=${encodeURIComponent(trimmed)}`;
     return appendParams(proxyUrl);
   }
@@ -132,7 +145,23 @@ export function getSupabaseSrcSet(
   options: Omit<SupabaseImageOptions, "width"> = {}
 ): string {
   if (!src) return "";
-  if (src.startsWith("data:") || src.startsWith("blob:") || src.endsWith(".svg")) {
+  if (
+    src.startsWith("data:") ||
+    src.startsWith("blob:") ||
+    src.endsWith(".svg") ||
+    src.toLowerCase().includes(".gif")
+  ) {
+    return "";
+  }
+
+  // Only produce srcset if the URL supports dynamic sizing (Unsplash or Supabase)
+  const isDynamic =
+    src.includes("images.unsplash.com") ||
+    src.includes("supabase.co/storage/") ||
+    src.includes("supabase.in/storage/") ||
+    (!src.startsWith("http://") && !src.startsWith("https://") && !src.startsWith("/"));
+
+  if (!isDynamic) {
     return "";
   }
 

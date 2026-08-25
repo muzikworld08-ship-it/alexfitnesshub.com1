@@ -13,17 +13,36 @@ try {
 
 if (typeof window !== "undefined") {
   const isBenignFirestoreMessage = (msg: string) => {
+    if (!msg || typeof msg !== "string") return false;
+    const lower = msg.toLowerCase();
     return (
-      msg.includes("Disconnecting idle stream") ||
-      msg.includes("Timed out waiting for new targets") ||
-      (msg.includes("RPC 'Listen' stream") && msg.includes("CANCELLED")) ||
-      msg.includes("GrpcConnection RPC 'Listen'")
+      lower.includes("disconnecting idle stream") ||
+      lower.includes("timed out waiting for new targets") ||
+      (lower.includes("rpc 'listen' stream") && lower.includes("cancelled")) ||
+      lower.includes("grpcconnection rpc 'listen'") ||
+      lower.includes("grpcconnection rpc") ||
+      lower.includes("code: 1 message: 1 cancelled")
     );
+  };
+
+  const extractStringFromArg = (a: any): string => {
+    if (!a) return "";
+    if (typeof a === "string") return a;
+    if (a instanceof Error) return `${a.name || ""} ${a.message || ""} ${a.stack || ""}`;
+    try {
+      const str = String(a);
+      const json = typeof a === "object" ? JSON.stringify(a) : "";
+      const msg = a.message || "";
+      const stack = a.stack || "";
+      return `${str} ${json} ${msg} ${stack}`;
+    } catch (e) {
+      return String(a);
+    }
   };
 
   const origConsoleError = console.error;
   console.error = function (...args: any[]) {
-    const text = args.map(a => (typeof a === "string" ? a : a?.message || JSON.stringify(a) || "")).join(" ");
+    const text = args.map(extractStringFromArg).join(" ");
     if (isBenignFirestoreMessage(text)) {
       // Benign idle stream cleanup by Firestore SDK, suppress from error logs
       return;
@@ -31,15 +50,25 @@ if (typeof window !== "undefined") {
     origConsoleError.apply(console, args);
   };
 
+  const origConsoleWarn = console.warn;
+  console.warn = function (...args: any[]) {
+    const text = args.map(extractStringFromArg).join(" ");
+    if (isBenignFirestoreMessage(text)) {
+      return;
+    }
+    origConsoleWarn.apply(console, args);
+  };
+
   window.addEventListener("error", (event) => {
-    if (event.message && isBenignFirestoreMessage(event.message)) {
+    const msg = `${event.message || ""} ${event.error ? extractStringFromArg(event.error) : ""}`;
+    if (isBenignFirestoreMessage(msg)) {
       event.preventDefault();
       event.stopImmediatePropagation();
     }
   });
 
   window.addEventListener("unhandledrejection", (event) => {
-    const reason = event.reason?.message || String(event.reason || "");
+    const reason = extractStringFromArg(event.reason);
     if (isBenignFirestoreMessage(reason)) {
       event.preventDefault();
       event.stopImmediatePropagation();
