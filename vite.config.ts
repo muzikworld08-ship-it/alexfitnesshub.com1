@@ -2,6 +2,31 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig } from 'vite';
+import { build as esbuildBuild } from 'esbuild';
+
+function serverBundlePlugin() {
+  return {
+    name: 'vite-plugin-server-bundle',
+    async closeBundle() {
+      console.log('[Vite Build] Bundling server.ts -> dist/server.cjs...');
+      try {
+        await esbuildBuild({
+          entryPoints: [path.resolve(process.cwd(), 'server.ts')],
+          bundle: true,
+          platform: 'node',
+          format: 'cjs',
+          packages: 'external',
+          sourcemap: true,
+          outfile: path.resolve(process.cwd(), 'dist/server.cjs'),
+        });
+        console.log('[Vite Build] Successfully generated dist/server.cjs for production deployment.');
+      } catch (err) {
+        console.error('[Vite Build] Failed to compile server.ts:', err);
+        throw err;
+      }
+    },
+  };
+}
 
 function imageOptimizerPlugin() {
   return {
@@ -45,10 +70,10 @@ function imageOptimizerPlugin() {
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss(), imageOptimizerPlugin()],
+    plugins: [react(), tailwindcss(), imageOptimizerPlugin(), serverBundlePlugin()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(process.cwd(), '.'),
       },
     },
     build: {
