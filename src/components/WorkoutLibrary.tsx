@@ -2322,6 +2322,8 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                       initial={{ opacity: 0, scale: 0.96, y: 12 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.96, y: -10 }}
+                      whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
+                      whileTap={{ scale: 0.98 }}
                       transition={{ duration: 0.22, ease: "easeOut" }}
                       key={bp.name}
                       onClick={() => {
@@ -2382,6 +2384,8 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                       initial={{ opacity: 0, scale: 0.96, y: 12 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.96, y: -10 }}
+                      whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
+                      whileTap={{ scale: 0.98 }}
                       transition={{ duration: 0.22, ease: "easeOut" }}
                       key={c.name}
                       onClick={() => {
@@ -2443,6 +2447,8 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                       initial={{ opacity: 0, scale: 0.96, y: 12 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.96, y: -10 }}
+                      whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
+                      whileTap={{ scale: 0.98 }}
                       transition={{ duration: 0.22, ease: "easeOut" }}
                       key={mob.name}
                       onClick={() => {
@@ -2498,10 +2504,12 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {WORKOUT_CATEGORIES_INFO.map((cat) => (
-                      <div
+                      <motion.div
                         key={cat.id}
+                        whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => setSelectedWorkoutCategory(cat.id)}
-                        className="group bg-white border border-[#E8E8E8] hover:border-[#E53935]/50 rounded-[18px] overflow-hidden shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-250 cursor-pointer flex flex-col justify-between"
+                        className="group bg-white border border-[#E8E8E8] hover:border-[#E53935]/50 rounded-[18px] overflow-hidden shadow-xs hover:shadow-md transition-all duration-250 cursor-pointer flex flex-col justify-between"
                       >
                         <div className="relative h-44 w-full bg-slate-950 overflow-hidden">
                           <OptimizedImage
@@ -2526,7 +2534,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                             <ArrowRight className="w-4 h-4" />
                           </span>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 </div>
@@ -2581,15 +2589,15 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                               const isBookmarked = savedWorkouts.includes(workout.id);
                               
                               return (
-                                <div
+                                <motion.div
                                   key={workout.id}
-                                  className="group bg-white border border-[#ECECEC] rounded-2xl p-6 transition-all duration-200 hover:shadow-xs flex flex-col justify-between text-left"
+                                  whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
+                                  whileTap={{ scale: 0.99 }}
+                                  className="group bg-white border border-[#ECECEC] hover:border-[#C0392B]/40 hover:shadow-lg rounded-2xl p-6 transition-all duration-200 flex flex-col justify-between text-left"
                                   style={{
                                     background: "#FFFFFF",
-                                    border: "1px solid #ECECEC",
                                     borderRadius: "16px",
-                                    padding: "24px",
-                                    transition: ".2s"
+                                    padding: "24px"
                                   }}
                                 >
                                   {/* Workout Image */}
@@ -2671,7 +2679,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                                       </button>
                                     </div>
                                   </div>
-                                </div>
+                                </motion.div>
                               );
                             })}
                           </div>
@@ -2814,6 +2822,8 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                               initial={{ opacity: 0, scale: 0.95, y: 15 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                              whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
+                              whileTap={{ scale: 0.98 }}
                               transition={{ duration: 0.25, ease: "easeOut" }}
                               key={ex.id}
                               className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all"
@@ -2970,6 +2980,8 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                         initial={{ opacity: 0, scale: 0.95, y: 15 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                        whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
+                        whileTap={{ scale: 0.98 }}
                         transition={{ duration: 0.25, ease: "easeOut" }}
                         key={ex.id}
                         className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all"
