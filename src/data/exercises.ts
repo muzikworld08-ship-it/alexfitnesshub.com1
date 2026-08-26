@@ -48,34 +48,184 @@ export interface Exercise {
 export function getExerciseGifUrl(name: string, category: string = ""): string {
   const nameLower = name.toLowerCase();
   
-  if (nameLower.includes("bench press") || nameLower.includes("chest press") || nameLower.includes("push up") || nameLower.includes("pushup") || nameLower.includes("fly") || nameLower.includes("crossover") || nameLower.includes("guillotine")) {
+  // Specific Chest exercises
+  if (
+    nameLower.includes("bench press") ||
+    nameLower.includes("chest press") ||
+    nameLower.includes("push up") ||
+    nameLower.includes("pushup") ||
+    nameLower.includes("pec deck") ||
+    nameLower.includes("crossover") ||
+    nameLower.includes("guillotine") ||
+    (nameLower.includes("fly") && !nameLower.includes("rear delt")) ||
+    (nameLower.includes("dips") && nameLower.includes("chest"))
+  ) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h0YnpwM2wzdW9vdG9ndjY5NHdvdnBwdXB4Mm5qNXRpcG5xMDlxMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o84U6421O1IIXbowg/giphy.gif";
   }
-  if (nameLower.includes("squat") || nameLower.includes("leg press") || nameLower.includes("lunges") || nameLower.includes("lunge") || nameLower.includes("step up") || nameLower.includes("sissy") || nameLower.includes("cyclist")) {
-    return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2bzNyMTZ4ZHp0aXB6dnZzcDZrcTZhbmplbmF2MnpydzF1b3ByMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/u8946fAnhQ6cH9R16e/giphy.gif";
-  }
-  if (nameLower.includes("plank") || nameLower.includes("crunch") || nameLower.includes("twist") || nameLower.includes("abdominal") || nameLower.includes("sit up") || nameLower.includes("situp") || nameLower.includes("dead bug") || nameLower.includes("vacuum") || nameLower.includes("pallof") || nameLower.includes("dragon flag") || nameLower.includes("wiper") || nameLower.includes("woodchopper")) {
-    return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NiaXQxMGxkcTVwZGxhbjVvNnlvZDJ4bnB4ZGpwNnZxdThscDZ6eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT8qB7Sbwskk27Rdy8/giphy.gif";
-  }
-  if (nameLower.includes("glute bridge") || nameLower.includes("hip thrust") || nameLower.includes("kickback") || nameLower.includes("glute") || nameLower.includes("frog pump") || nameLower.includes("pull-through") || nameLower.includes("kas")) {
+
+  // Glutes & Hip Thrusts
+  if (
+    nameLower.includes("glute bridge") ||
+    nameLower.includes("hip thrust") ||
+    (nameLower.includes("kickback") && nameLower.includes("glute")) ||
+    nameLower.includes("frog pump") ||
+    nameLower.includes("pull-through") ||
+    nameLower.includes("kas glute") ||
+    nameLower.includes("glute walk") ||
+    nameLower.includes("hip abduction")
+  ) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExOTVxbGRzNDVleW12ZTRsdXoxeDJmd2t2enN5YnYwdXhyeTV6ZW5xeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/v1F0A8f5Ff6hO/giphy.gif";
   }
-  if (nameLower.includes("mountain climber") || nameLower.includes("burpee") || nameLower.includes("jacks") || nameLower.includes("bike") || nameLower.includes("cycling") || nameLower.includes("run") || nameLower.includes("sprint") || nameLower.includes("walk") || nameLower.includes("devil press") || nameLower.includes("wall ball") || nameLower.includes("sled") || nameLower.includes("boxing")) {
+
+  // Legs, Squats, Lunges, Quads, Hamstrings
+  if (
+    nameLower.includes("squat") ||
+    nameLower.includes("leg press") ||
+    nameLower.includes("lunge") ||
+    nameLower.includes("step up") ||
+    nameLower.includes("sissy") ||
+    nameLower.includes("cyclist") ||
+    nameLower.includes("hamstring") ||
+    nameLower.includes("leg extension") ||
+    nameLower.includes("leg curl") ||
+    nameLower.includes("calf raise")
+  ) {
+    return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2bzNyMTZ4ZHp0aXB6dnZzcDZrcTZhbmplbmF2MnpydzF1b3ByMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/u8946fAnhQ6cH9R16e/giphy.gif";
+  }
+
+  // Core, Abs, Obliques
+  if (
+    nameLower.includes("plank") ||
+    nameLower.includes("crunch") ||
+    nameLower.includes("twist") ||
+    nameLower.includes("abdominal") ||
+    nameLower.includes("sit up") ||
+    nameLower.includes("situp") ||
+    nameLower.includes("dead bug") ||
+    nameLower.includes("vacuum") ||
+    nameLower.includes("pallof") ||
+    nameLower.includes("dragon flag") ||
+    nameLower.includes("wiper") ||
+    nameLower.includes("woodchopper") ||
+    nameLower.includes("flutter kick") ||
+    nameLower.includes("hollow body") ||
+    nameLower.includes("l sit") ||
+    nameLower.includes("l-sit") ||
+    nameLower.includes("bird dog") ||
+    nameLower.includes("ab wheel")
+  ) {
+    return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NiaXQxMGxkcTVwZGxhbjVvNnlvZDJ4bnB4ZGpwNnZxdThscDZ6eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT8qB7Sbwskk27Rdy8/giphy.gif";
+  }
+
+  // Cardio, HIIT, Sprints
+  if (
+    nameLower.includes("mountain climber") ||
+    nameLower.includes("burpee") ||
+    nameLower.includes("jumping jack") ||
+    nameLower.includes("bike") ||
+    nameLower.includes("cycling") ||
+    nameLower.includes("run") ||
+    nameLower.includes("sprint") ||
+    nameLower.includes("walk") ||
+    nameLower.includes("devil press") ||
+    nameLower.includes("wall ball") ||
+    nameLower.includes("sled") ||
+    nameLower.includes("boxing") ||
+    nameLower.includes("battle rope") ||
+    nameLower.includes("box jump") ||
+    nameLower.includes("skater jump") ||
+    nameLower.includes("high knee") ||
+    nameLower.includes("jump rope") ||
+    nameLower.includes("rope jump") ||
+    nameLower.includes("rowing machine")
+  ) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2bzNyMTZ4ZHp0aXB6dnZzcDZrcTZhbmplbmF2MnpydzF1b3ByMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/13sc1CHidbO6S4/giphy.gif";
   }
-  if (nameLower.includes("row") || nameLower.includes("pull-up") || nameLower.includes("pullup") || nameLower.includes("chin-up") || nameLower.includes("chinup") || nameLower.includes("deadlift") || nameLower.includes("lat pulldown") || nameLower.includes("pullover") || nameLower.includes("meadows") || nameLower.includes("pendlay") || nameLower.includes("seal row")) {
+
+  // Back, Lats, Pullups, Rows
+  if (
+    (nameLower.includes("row") && !nameLower.includes("upright row") && !nameLower.includes("rowing machine")) ||
+    nameLower.includes("pull-up") ||
+    nameLower.includes("pullup") ||
+    nameLower.includes("chin-up") ||
+    nameLower.includes("chinup") ||
+    nameLower.includes("deadlift") ||
+    nameLower.includes("lat pulldown") ||
+    nameLower.includes("pullover") ||
+    nameLower.includes("meadows") ||
+    nameLower.includes("pendlay") ||
+    nameLower.includes("seal row") ||
+    nameLower.includes("front lever") ||
+    nameLower.includes("back lever") ||
+    nameLower.includes("muscle up") ||
+    nameLower.includes("muscle-up") ||
+    nameLower.includes("lat prayer") ||
+    nameLower.includes("straight arm pulldown")
+  ) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZW1sODNuY2Q3N29pd2VrdGkzbndpdTJ4cnFkM3pxOHdqN3huc2sybyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/duuVpx00In40Syc7m6/giphy.gif";
   }
-  if (nameLower.includes("curl") || nameLower.includes("biceps") || nameLower.includes("bicep") || nameLower.includes("zottman") || nameLower.includes("bayesian") || nameLower.includes("spider")) {
+
+  // Biceps, Forearms
+  if (
+    nameLower.includes("bicep") ||
+    (nameLower.includes("curl") && !nameLower.includes("leg curl") && !nameLower.includes("hamstring")) ||
+    nameLower.includes("zottman") ||
+    nameLower.includes("bayesian") ||
+    nameLower.includes("spider curl") ||
+    nameLower.includes("preacher") ||
+    nameLower.includes("wrist curl")
+  ) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NiaXQxMGxkcTVwZGxhbjVvNnlvZDJ4bnB4ZGpwNnZxdThscDZ6eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7qE1YN7aBOFPRw8E/giphy.gif";
   }
-  if (nameLower.includes("dip") || nameLower.includes("dips") || nameLower.includes("tricep") || nameLower.includes("triceps") || nameLower.includes("pushdown") || nameLower.includes("extension") || nameLower.includes("jm press") || nameLower.includes("tate press")) {
+
+  // Triceps
+  if (
+    (nameLower.includes("dip") && !nameLower.includes("hip dip") && !nameLower.includes("plank")) ||
+    nameLower.includes("tricep") ||
+    nameLower.includes("pushdown") ||
+    nameLower.includes("skull crusher") ||
+    (nameLower.includes("kickback") && !nameLower.includes("glute")) ||
+    nameLower.includes("close grip bench") ||
+    nameLower.includes("jm press") ||
+    nameLower.includes("tate press") ||
+    (nameLower.includes("overhead") && nameLower.includes("extension"))
+  ) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExOTV4bHF2eXU4eWZsc29tZndyYWVtbjR6dWU3dGkwdHNyeTV6ZW5xeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o84U39K5Cj6D0v2w0/giphy.gif";
   }
-  if (nameLower.includes("press") || nameLower.includes("raise") || nameLower.includes("deltoid") || nameLower.includes("shoulders") || nameLower.includes("delts") || nameLower.includes("face pull") || nameLower.includes("lu raise") || nameLower.includes("bradford") || nameLower.includes("snatch") || nameLower.includes("get-up")) {
+
+  // Shoulders, Deltoids, Overhead Presses
+  if (
+    nameLower.includes("shoulder") ||
+    nameLower.includes("overhead press") ||
+    nameLower.includes("military press") ||
+    nameLower.includes("lateral raise") ||
+    nameLower.includes("front raise") ||
+    nameLower.includes("rear delt") ||
+    nameLower.includes("deltoid") ||
+    nameLower.includes("face pull") ||
+    nameLower.includes("lu raise") ||
+    nameLower.includes("bradford") ||
+    nameLower.includes("upright row") ||
+    nameLower.includes("shrug") ||
+    nameLower.includes("arnold press") ||
+    nameLower.includes("handstand") ||
+    nameLower.includes("planche")
+  ) {
     return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZHp5NDZocWlkNDNuN2psZHZpcXpnaXR2MXByajVwNG9tZG5reHR1NCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7qE6b39zV1LALZRe/giphy.gif";
   }
-  if (nameLower.includes("stretch") || nameLower.includes("mobility") || nameLower.includes("pigeon") || nameLower.includes("scorpion") || nameLower.includes("couch") || nameLower.includes("shin box") || nameLower.includes("cat-cow")) {
+
+  // Mobility & Stretching
+  if (
+    nameLower.includes("stretch") ||
+    nameLower.includes("mobility") ||
+    nameLower.includes("pigeon") ||
+    nameLower.includes("scorpion") ||
+    nameLower.includes("couch") ||
+    nameLower.includes("shin box") ||
+    nameLower.includes("cat-cow") ||
+    nameLower.includes("child's pose") ||
+    nameLower.includes("cobra")
+  ) {
     return "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&auto=format&fit=crop&q=80";
   }
 
@@ -491,106 +641,226 @@ export function determineCategories(
   const equipL = equipment.map(e => e.toLowerCase());
   const allMuscles = [primaryL, ...secondaryL];
 
-  // 1. Body Parts (16 items)
-  if (allMuscles.includes("chest") || allMuscles.includes("pectoralis major") || nameL.includes("bench press") || nameL.includes("chest press") || nameL.includes("fly") || nameL.includes("pushup") || nameL.includes("push up")) {
+  // 1. Chest
+  const isChest =
+    allMuscles.some(m => m.includes("chest") || m.includes("pectoral")) ||
+    nameL.includes("bench press") ||
+    nameL.includes("chest press") ||
+    nameL.includes("pushup") ||
+    nameL.includes("push up") ||
+    nameL.includes("pec deck") ||
+    nameL.includes("crossover") ||
+    (nameL.includes("fly") && !nameL.includes("rear delt")) ||
+    (nameL.includes("dips") && nameL.includes("chest"));
+  if (isChest) {
     cats.push("Chest");
   }
-  if (allMuscles.includes("back") || allMuscles.includes("lats") || allMuscles.includes("traps") || allMuscles.includes("rhomboids") || nameL.includes("row") || nameL.includes("pullup") || nameL.includes("pull-up") || nameL.includes("pulldown") || nameL.includes("deadlift") || nameL.includes("latissimus")) {
+
+  // 2. Back & Lats
+  const isBack =
+    allMuscles.some(m => m.includes("back") || m.includes("lat") || m.includes("traps") || m.includes("rhomboid") || m.includes("erector")) ||
+    (nameL.includes("row") && !nameL.includes("upright row") && !nameL.includes("rowing machine")) ||
+    nameL.includes("pullup") ||
+    nameL.includes("pull-up") ||
+    nameL.includes("chin-up") ||
+    nameL.includes("chinup") ||
+    nameL.includes("pulldown") ||
+    nameL.includes("deadlift") ||
+    nameL.includes("latissimus") ||
+    nameL.includes("pullover") ||
+    nameL.includes("hyperextension");
+  if (isBack) {
     cats.push("Back");
   }
-  if (allMuscles.includes("shoulders") || allMuscles.includes("shoulder") || allMuscles.includes("delts") || allMuscles.includes("deltoid") || nameL.includes("press") || nameL.includes("raise") || nameL.includes("arnold") || nameL.includes("lateral cap")) {
+
+  // 3. Shoulders / Deltoids
+  const isShoulder =
+    allMuscles.some(m => m.includes("shoulder") || m.includes("delt") || m.includes("trapezius")) ||
+    nameL.includes("overhead press") ||
+    nameL.includes("shoulder press") ||
+    nameL.includes("military press") ||
+    nameL.includes("arnold press") ||
+    nameL.includes("lateral raise") ||
+    nameL.includes("front raise") ||
+    nameL.includes("rear delt") ||
+    nameL.includes("face pull") ||
+    nameL.includes("lu raise") ||
+    nameL.includes("bradford") ||
+    nameL.includes("upright row") ||
+    nameL.includes("shrug") ||
+    nameL.includes("lateral cap");
+  if (isShoulder) {
     cats.push("Shoulders");
   }
-  if (allMuscles.includes("biceps") || allMuscles.includes("bicep") || nameL.includes("curl") || nameL.includes("preacher")) {
+
+  // 4. Biceps
+  const isBicep =
+    allMuscles.some(m => m.includes("bicep")) ||
+    (nameL.includes("curl") && !nameL.includes("leg curl") && !nameL.includes("hamstring") && !nameL.includes("wrist")) ||
+    nameL.includes("preacher") ||
+    nameL.includes("zottman") ||
+    nameL.includes("spider curl");
+  if (isBicep) {
     cats.push("Biceps");
   }
-  if (allMuscles.includes("triceps") || allMuscles.includes("tricep") || nameL.includes("pushdown") || nameL.includes("skull crusher") || nameL.includes("kickback") || nameL.includes("dips") || nameL.includes("dip") || nameL.includes("horseshoe")) {
+
+  // 5. Triceps
+  const isTricep =
+    allMuscles.some(m => m.includes("tricep")) ||
+    nameL.includes("tricep") ||
+    nameL.includes("pushdown") ||
+    nameL.includes("skull crusher") ||
+    (nameL.includes("kickback") && !nameL.includes("glute")) ||
+    (nameL.includes("dips") && !nameL.includes("hip dip") && !nameL.includes("plank")) ||
+    (nameL.includes("dip") && !nameL.includes("hip dip") && !nameL.includes("plank")) ||
+    nameL.includes("close grip bench") ||
+    nameL.includes("jm press") ||
+    nameL.includes("tate press") ||
+    (nameL.includes("overhead") && nameL.includes("extension"));
+  if (isTricep) {
     cats.push("Triceps");
   }
-  if (allMuscles.includes("forearms") || allMuscles.includes("forearm") || nameL.includes("wrist") || nameL.includes("grip") || nameL.includes("forearm")) {
+
+  // 6. Forearms & Grip
+  const isForearm =
+    allMuscles.some(m => m.includes("forearm") || m.includes("wrist") || m.includes("grip")) ||
+    nameL.includes("wrist curl") ||
+    nameL.includes("grip") ||
+    nameL.includes("farmer") ||
+    nameL.includes("suitcase carry");
+  if (isForearm) {
     cats.push("Forearms");
   }
-  if (allMuscles.includes("abs") || nameL.includes("crunch") || nameL.includes("sit up") || nameL.includes("situp") || nameL.includes("leg raise") || nameL.includes("flutter")) {
+
+  // 7. Abs & Core
+  const isAbs =
+    allMuscles.some(m => m.includes("abs") || m.includes("abdominal")) ||
+    nameL.includes("crunch") ||
+    nameL.includes("sit up") ||
+    nameL.includes("situp") ||
+    nameL.includes("leg raise") ||
+    nameL.includes("flutter kick") ||
+    nameL.includes("hollow body") ||
+    nameL.includes("dragon flag") ||
+    nameL.includes("dead bug") ||
+    nameL.includes("stomach vacuum");
+  if (isAbs) {
     cats.push("Abs");
+    cats.push("Core");
   }
-  if (allMuscles.includes("obliques") || nameL.includes("twist") || nameL.includes("side plank") || nameL.includes("woodchopper")) {
+
+  // 8. Obliques
+  const isOblique =
+    allMuscles.some(m => m.includes("oblique")) ||
+    nameL.includes("twist") ||
+    nameL.includes("side plank") ||
+    nameL.includes("woodchopper") ||
+    nameL.includes("windshield wiper") ||
+    nameL.includes("hip dips");
+  if (isOblique) {
     cats.push("Obliques");
+    cats.push("Core");
   }
-  if (allMuscles.includes("lower back") || nameL.includes("lower back") || nameL.includes("erector") || nameL.includes("hyperextension")) {
+
+  // 9. Lower Back
+  if (
+    allMuscles.some(m => m.includes("lower back") || m.includes("erector")) ||
+    nameL.includes("good morning") ||
+    nameL.includes("back extension") ||
+    nameL.includes("bird dog") ||
+    nameL.includes("hyperextension")
+  ) {
     cats.push("Lower Back");
   }
-  if (allMuscles.includes("glutes") || allMuscles.includes("glute") || nameL.includes("glute") || nameL.includes("hip thrust") || nameL.includes("bridge") || nameL.includes("kickback")) {
+
+  // 10. Glutes
+  const isGlute =
+    allMuscles.some(m => m.includes("glute")) ||
+    nameL.includes("glute") ||
+    nameL.includes("hip thrust") ||
+    nameL.includes("bridge") ||
+    (nameL.includes("kickback") && nameL.includes("glute")) ||
+    nameL.includes("frog pump") ||
+    nameL.includes("pull-through") ||
+    nameL.includes("kas");
+  if (isGlute) {
     cats.push("Glutes");
   }
-  if (allMuscles.includes("quads") || allMuscles.includes("quadriceps") || nameL.includes("squat") || nameL.includes("leg press") || nameL.includes("split squat") || nameL.includes("extension")) {
+
+  // 11. Quadriceps
+  const isQuad =
+    allMuscles.some(m => m.includes("quad")) ||
+    nameL.includes("squat") ||
+    nameL.includes("leg press") ||
+    nameL.includes("lunge") ||
+    nameL.includes("split squat") ||
+    nameL.includes("leg extension") ||
+    nameL.includes("sissy") ||
+    nameL.includes("cyclist") ||
+    nameL.includes("step up") ||
+    nameL.includes("wall sit");
+  if (isQuad) {
     cats.push("Quadriceps");
+    cats.push("Legs");
   }
-  if (allMuscles.includes("hamstrings") || allMuscles.includes("hamstring") || nameL.includes("deadlift") || nameL.includes("curl")) {
+
+  // 12. Hamstrings
+  const isHamstring =
+    allMuscles.some(m => m.includes("hamstring")) ||
+    nameL.includes("romanian deadlift") ||
+    nameL.includes("rdl") ||
+    nameL.includes("leg curl") ||
+    nameL.includes("nordic");
+  if (isHamstring) {
     cats.push("Hamstrings");
+    cats.push("Legs");
   }
-  if (allMuscles.includes("calves") || allMuscles.includes("calf") || nameL.includes("calf") || nameL.includes("calves")) {
+
+  // 13. Calves
+  const isCalf =
+    allMuscles.some(m => m.includes("calf") || m.includes("calves") || m.includes("soleus") || m.includes("gastrocnemius")) ||
+    nameL.includes("calf");
+  if (isCalf) {
     cats.push("Calves");
+    cats.push("Legs");
   }
-  if (allMuscles.includes("hip flexors") || nameL.includes("hip opener") || nameL.includes("knee-to-chest")) {
+
+  // 14. Hip Flexors
+  if (allMuscles.some(m => m.includes("hip flexor") || m.includes("psoas")) || nameL.includes("couch stretch") || nameL.includes("knee-to-chest")) {
     cats.push("Hip Flexors");
   }
-  if (allMuscles.includes("neck") || nameL.includes("neck")) {
+
+  // 15. Neck
+  if (allMuscles.some(m => m.includes("neck")) || nameL.includes("neck")) {
     cats.push("Neck");
   }
-  if (nameL.includes("full body") || nameL.includes("fullbody") || nameL.includes("compound") || nameL.includes("complex") || nameL.includes("thruster") || nameL.includes("burpee") || nameL.includes("renegade")) {
+
+  // 16. Full Body
+  if (nameL.includes("full body") || nameL.includes("fullbody") || nameL.includes("compound") || nameL.includes("complex") || nameL.includes("thruster") || nameL.includes("burpee") || nameL.includes("renegade") || nameL.includes("clean and press") || nameL.includes("snatch") || nameL.includes("get-up")) {
     cats.push("Full Body");
   }
 
-  // 2. Cardio (9 items)
-  if (nameL.includes("run") || nameL.includes("sprint")) {
-    cats.push("Running");
-  }
-  if (nameL.includes("walk") || nameL.includes("treadmill")) {
-    cats.push("Walking");
-  }
-  if (nameL.includes("rope") || nameL.includes("jump rope") || nameL.includes("rope jump")) {
-    cats.push("Jump Rope");
-  }
-  if (nameL.includes("hiit") || nameL.includes("interval") || nameL.includes("circuit") || nameL.includes("tabata")) {
-    cats.push("HIIT");
-  }
-  if (nameL.includes("bike") || nameL.includes("cycle") || nameL.includes("cycling")) {
-    cats.push("Cycling");
-  }
-  if (nameL.includes("swim") || nameL.includes("swimming")) {
-    cats.push("Swimming");
-  }
-  if (nameL.includes("rowing") || nameL.includes("rower") || nameL.includes("rowing machine")) {
-    cats.push("Rowing");
-  }
-  if (nameL.includes("burpee") || nameL.includes("burpees")) {
-    cats.push("Burpees");
-  }
-  if (nameL.includes("stair") || nameL.includes("stairmaster") || nameL.includes("stair climber")) {
-    cats.push("Stair Climber");
-  }
+  // Cardio
+  if (nameL.includes("run") || nameL.includes("sprint")) cats.push("Running");
+  if (nameL.includes("walk") || nameL.includes("treadmill")) cats.push("Walking");
+  if (nameL.includes("rope") || nameL.includes("jump rope") || nameL.includes("rope jump")) cats.push("Jump Rope");
+  if (nameL.includes("hiit") || nameL.includes("interval") || nameL.includes("circuit") || nameL.includes("tabata")) cats.push("HIIT");
+  if (nameL.includes("bike") || nameL.includes("cycle") || nameL.includes("cycling")) cats.push("Cycling");
+  if (nameL.includes("swim") || nameL.includes("swimming")) cats.push("Swimming");
+  if (nameL.includes("rowing") || nameL.includes("rower") || nameL.includes("rowing machine")) cats.push("Rowing");
+  if (nameL.includes("burpee") || nameL.includes("burpees")) cats.push("Burpees");
+  if (nameL.includes("stair") || nameL.includes("stairmaster") || nameL.includes("stair climber")) cats.push("Stair Climber");
 
-  // Fallback high level category
   if (allMuscles.includes("cardio") || nameL.includes("cardio")) {
     cats.push("Cardio");
   }
 
-  // 3. Mobility (6 items)
-  if (nameL.includes("stretch") || nameL.includes("stretching") || nameL.includes("reach") || nameL.includes("opener")) {
-    cats.push("Stretching");
-  }
-  if (nameL.includes("warm up") || nameL.includes("warm-up") || nameL.includes("jumps") || nameL.includes("swings")) {
-    cats.push("Warm Up");
-  }
-  if (nameL.includes("cool down") || nameL.includes("cooldown") || nameL.includes("decompression")) {
-    cats.push("Cool Down");
-  }
-  if (nameL.includes("yoga") || nameL.includes("pose")) {
-    cats.push("Yoga");
-  }
-  if (nameL.includes("pilates") || nameL.includes("teaser")) {
-    cats.push("Pilates");
-  }
+  // Mobility & Recovery
+  if (nameL.includes("stretch") || nameL.includes("stretching") || nameL.includes("reach") || nameL.includes("opener")) cats.push("Stretching");
+  if (nameL.includes("warm up") || nameL.includes("warm-up")) cats.push("Warm Up");
+  if (nameL.includes("cool down") || nameL.includes("cooldown") || nameL.includes("decompression")) cats.push("Cool Down");
+  if (nameL.includes("yoga") || nameL.includes("pose")) cats.push("Yoga");
+  if (nameL.includes("pilates") || nameL.includes("teaser")) cats.push("Pilates");
   if (nameL.includes("recovery") || nameL.includes("mobility") || nameL.includes("cat-cow") || nameL.includes("breathing")) {
     cats.push("Recovery");
     cats.push("Mobility");
@@ -649,45 +919,115 @@ function getExerciseYouTubeVideoId(name: string, primary: string): string {
   const nameL = name.toLowerCase();
   const primL = primary.toLowerCase();
   
-  if (primL.includes("chest") || nameL.includes("bench press") || nameL.includes("chest press") || nameL.includes("push up") || nameL.includes("pushup")) {
+  if (
+    primL.includes("chest") ||
+    nameL.includes("bench press") ||
+    nameL.includes("chest press") ||
+    nameL.includes("push up") ||
+    nameL.includes("pushup") ||
+    (nameL.includes("fly") && !nameL.includes("rear delt"))
+  ) {
     if (nameL.includes("incline") || nameL.includes("fly")) {
       return "XvGlaH80m_o"; // Incline dumbbell press & chest fly video
     }
     return "myfEsD8S9M4"; // Bench press main chest video
   }
-  if (primL.includes("back") || nameL.includes("row") || nameL.includes("pullup") || nameL.includes("pull-up") || nameL.includes("pulldown") || nameL.includes("deadlift")) {
+
+  if (
+    primL.includes("back") ||
+    (nameL.includes("row") && !nameL.includes("upright row") && !nameL.includes("rowing machine")) ||
+    nameL.includes("pullup") ||
+    nameL.includes("pull-up") ||
+    nameL.includes("pulldown") ||
+    (nameL.includes("deadlift") && !nameL.includes("romanian"))
+  ) {
     if (nameL.includes("row") || nameL.includes("deadlift")) {
       return "wYREQvVeeIs"; // Back row / deadlift strength video
     }
     return "870yZl_yReQ"; // Pullup / lat pulldown back video
   }
-  if (primL.includes("shoulder") || nameL.includes("press") || nameL.includes("lateral raise") || nameL.includes("deltoid") || primL.includes("shoulders")) {
-    if (nameL.includes("raise")) {
+
+  if (
+    primL.includes("shoulder") ||
+    primL.includes("deltoid") ||
+    nameL.includes("overhead press") ||
+    nameL.includes("shoulder press") ||
+    nameL.includes("military press") ||
+    nameL.includes("lateral raise") ||
+    nameL.includes("rear delt") ||
+    nameL.includes("upright row") ||
+    nameL.includes("arnold press")
+  ) {
+    if (nameL.includes("raise") || nameL.includes("rear delt")) {
       return "08tO8mE6mrc"; // Shoulder lateral raises
     }
     return "7t8bSjF06D4"; // Overhead shoulder press
   }
-  if (primL.includes("biceps") || primL.includes("bicep") || nameL.includes("curl")) {
+
+  if (
+    primL.includes("biceps") ||
+    primL.includes("bicep") ||
+    (nameL.includes("curl") && !nameL.includes("leg curl") && !nameL.includes("hamstring"))
+  ) {
     return "H6M_eXUelO8"; // Bicep curl gym video
   }
-  if (primL.includes("triceps") || primL.includes("tricep") || nameL.includes("dip") || nameL.includes("pushdown") || nameL.includes("extension")) {
+
+  if (
+    primL.includes("triceps") ||
+    primL.includes("tricep") ||
+    nameL.includes("pushdown") ||
+    (nameL.includes("kickback") && !nameL.includes("glute")) ||
+    (nameL.includes("dip") && !nameL.includes("hip dip") && !nameL.includes("plank")) ||
+    (nameL.includes("extension") && !nameL.includes("leg") && !nameL.includes("back"))
+  ) {
     return "f6300x57U4o"; // Tricep pushdowns / extension video
   }
-  if (primL.includes("legs") || primL.includes("quad") || primL.includes("hamstring") || primL.includes("calves") || nameL.includes("squat") || nameL.includes("lunge")) {
+
+  if (
+    primL.includes("legs") ||
+    primL.includes("quad") ||
+    primL.includes("hamstring") ||
+    primL.includes("calves") ||
+    nameL.includes("squat") ||
+    nameL.includes("lunge") ||
+    nameL.includes("leg press") ||
+    nameL.includes("leg curl") ||
+    nameL.includes("leg extension")
+  ) {
     if (nameL.includes("squat")) {
       return "3_p8pEqZ5L8"; // Heavy squats leg video
     }
     return "N_2gN4xP_hE"; // Leg extensions / lunges video
   }
-  if (primL.includes("core") || primL.includes("abs") || nameL.includes("plank") || nameL.includes("crunch") || nameL.includes("sit up") || nameL.includes("situp")) {
+
+  if (
+    primL.includes("core") ||
+    primL.includes("abs") ||
+    nameL.includes("plank") ||
+    nameL.includes("crunch") ||
+    nameL.includes("sit up") ||
+    nameL.includes("situp") ||
+    nameL.includes("dead bug")
+  ) {
     if (nameL.includes("plank") || nameL.includes("sit up") || nameL.includes("situp")) {
       return "2MoGxae-zyo"; // Flat abs home core routine
     }
     return "X_9VoUeG8-0"; // Intense core sixpack workouts
   }
-  if (primL.includes("cardio") || nameL.includes("burpee") || nameL.includes("jacks") || nameL.includes("climber") || nameL.includes("run") || nameL.includes("hiit")) {
+
+  if (
+    primL.includes("cardio") ||
+    nameL.includes("burpee") ||
+    nameL.includes("jacks") ||
+    nameL.includes("climber") ||
+    nameL.includes("run") ||
+    nameL.includes("sprint") ||
+    nameL.includes("hiit") ||
+    nameL.includes("jump rope")
+  ) {
     return "2pLt0T_bAkw"; // Intense cardio / fat burn video
   }
+
   // Fallbacks
   return "jTID7S8PsnM"; // Default Premium full body conditioning
 }

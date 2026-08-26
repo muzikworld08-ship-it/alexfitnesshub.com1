@@ -752,22 +752,30 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
         // Difficulty match
         if (ex.difficulty && ex.difficulty.toLowerCase().includes(term)) return true;
 
-        // Special movement pattern synonym logic
-        if (term === "push" || term === "pushing" || term === "chest") {
-          const isPush = nameLower.includes("push") || nameLower.includes("press") || nameLower.includes("extension") || nameLower.includes("dip") || nameLower.includes("kickback") || catLower.includes("chest") || catLower.includes("shoulders") || catLower.includes("triceps") || bodyPartLower.includes("chest") || bodyPartLower.includes("shoulders");
+        // High-precision anatomical & movement category terms
+        if (term === "push" || term === "pushing") {
+          const isPush = (ex.muscleGroups && ex.muscleGroups.some(m => ["chest", "shoulders", "triceps"].includes(m.toLowerCase()))) ||
+            nameLower.includes("push") || nameLower.includes("press") || nameLower.includes("dip");
           if (isPush) return true;
         }
-        if (term === "pull" || term === "pulling" || term === "back") {
-          const isPull = nameLower.includes("pull") || nameLower.includes("row") || nameLower.includes("curl") || nameLower.includes("deadlift") || nameLower.includes("raise") || catLower.includes("back") || catLower.includes("biceps") || bodyPartLower.includes("back") || bodyPartLower.includes("biceps");
+        if (term === "pull" || term === "pulling") {
+          const isPull = (ex.muscleGroups && ex.muscleGroups.some(m => ["back", "biceps", "forearms", "lats"].includes(m.toLowerCase()))) ||
+            nameLower.includes("pull") || nameLower.includes("row") || nameLower.includes("chin");
           if (isPull) return true;
         }
         if (term === "upper" || term === "upperbody" || term === "upper body") {
-          const isUpper = !bodyPartLower.includes("leg") && !bodyPartLower.includes("calf") && !bodyPartLower.includes("glute") && (bodyPartLower.includes("chest") || bodyPartLower.includes("back") || bodyPartLower.includes("shoulder") || bodyPartLower.includes("arm") || bodyPartLower.includes("bicep") || bodyPartLower.includes("tricep") || nameLower.includes("pushup") || nameLower.includes("bench"));
+          const isUpper = !bodyPartLower.includes("leg") && !bodyPartLower.includes("calf") && !bodyPartLower.includes("glute") &&
+            (bodyPartLower.includes("chest") || bodyPartLower.includes("back") || bodyPartLower.includes("shoulder") || bodyPartLower.includes("arm") || bodyPartLower.includes("bicep") || bodyPartLower.includes("tricep") || nameLower.includes("pushup") || nameLower.includes("bench"));
           if (isUpper) return true;
         }
-        if (term === "lower" || term === "lowerbody" || term === "lower body" || term === "legs") {
+        if (term === "lower" || term === "lowerbody" || term === "lower body") {
           const isLower = bodyPartLower.includes("leg") || bodyPartLower.includes("calf") || bodyPartLower.includes("glute") || bodyPartLower.includes("thigh") || nameLower.includes("squat") || nameLower.includes("deadlift") || nameLower.includes("lunge");
           if (isLower) return true;
+        }
+        if (term === "arms" || term === "arm") {
+          const isArm = (ex.muscleGroups && ex.muscleGroups.some(m => ["biceps", "triceps", "forearms"].includes(m.toLowerCase()))) ||
+            nameLower.includes("curl") || nameLower.includes("tricep") || nameLower.includes("bicep") || nameLower.includes("dip");
+          if (isArm) return true;
         }
         if (term === "hinge") {
           if (nameLower.includes("deadlift") || nameLower.includes("hinge") || nameLower.includes("rdl") || nameLower.includes("good morning")) return true;
@@ -808,23 +816,35 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
       return true;
     });
 
-    // If there's a search query, let's sort the results elegantly to put Core Exercises at the top!
+    // If there's a search query, sort results by relevance score
     if (query) {
       return deduplicated.sort((a, b) => {
-        const aIsCore = a.id.startsWith("core-ex-");
-        const bIsCore = b.id.startsWith("core-ex-");
-        
-        // Push Core Exercises to the top
-        if (aIsCore && !bIsCore) return -1;
-        if (!aIsCore && bIsCore) return 1;
+        const aName = (a.name || "").toLowerCase();
+        const bName = (b.name || "").toLowerCase();
 
-        // Secondarily rank by matching exact keywords in name
-        const aNameHasQuery = a.name.toLowerCase().includes(query);
-        const bNameHasQuery = b.name.toLowerCase().includes(query);
-        if (aNameHasQuery && !bNameHasQuery) return -1;
-        if (!aNameHasQuery && bNameHasQuery) return 1;
+        // 1. Exact match
+        if (aName === query && bName !== query) return -1;
+        if (bName === query && aName !== query) return 1;
 
-        return 0;
+        // 2. Starts with query
+        if (aName.startsWith(query) && !bName.startsWith(query)) return -1;
+        if (bName.startsWith(query) && !aName.startsWith(query)) return 1;
+
+        // 3. Name contains full query
+        const aHasFull = aName.includes(query);
+        const bHasFull = bName.includes(query);
+        if (aHasFull && !bHasFull) return -1;
+        if (!aHasFull && bHasFull) return 1;
+
+        // 4. Primary muscle matches query
+        const aPrimary = (a.muscleGroups?.[0] || a.bodyPart || "").toLowerCase();
+        const bPrimary = (b.muscleGroups?.[0] || b.bodyPart || "").toLowerCase();
+        const aPrimMatch = aPrimary.includes(query);
+        const bPrimMatch = bPrimary.includes(query);
+        if (aPrimMatch && !bPrimMatch) return -1;
+        if (!aPrimMatch && bPrimMatch) return 1;
+
+        return aName.localeCompare(bName);
       });
     }
 
