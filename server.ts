@@ -5072,14 +5072,20 @@ async function startServer() {
       }
     }));
 
-    app.get("*", (req, res) => {
+    app.get("*all", (req, res) => {
       // Force index.html to NEVER be cached so users always receive the newest build mapping instantly
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
       res.setHeader("Surrogate-Control", "no-store");
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
       res.removeHeader("ETag");
-      res.sendFile(path.join(distPath, "index.html"));
+
+      const indexPath = path.join(distPath, "index.html");
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(200).send("<!DOCTYPE html><html><head><title>Alex Fitness Hub</title></head><body><h2>Application Initializing...</h2><p>Please refresh in a few seconds.</p><script>setTimeout(() => window.location.reload(), 3000);</script></body></html>");
+      }
     });
   }
 
