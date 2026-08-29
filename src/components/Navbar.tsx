@@ -38,8 +38,9 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     setIsDropdownOpen(false);
     
     // Check if view requires login for guests
-    const guestRestrictedViews = ["daily-plan", "coach", "dashboard", "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", "handbook", "weight-trajectory", "challenges", "belly-fat-shred", "women-confidence"];
+    const guestRestrictedViews = ["daily-plan", "coach", "dashboard", "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", "handbook", "weight-trajectory", "challenges", "belly-fat-shred", "women-confidence", "saved-exercises", "nutrition"];
     if (guestRestrictedViews.includes(targetView) && !user) {
+      localStorage.setItem("fit_attempted_view", targetView);
       onOpenAuth();
       return;
     }

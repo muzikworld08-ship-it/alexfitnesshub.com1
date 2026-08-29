@@ -152,6 +152,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // --- Calibration Goals ---
+    match /calibration_goals/{userId} {
+      allow read, write: if true;
+    }
+
     // --- Todos Collection ---
     match /todos/{todoId} {
       allow read, write: if true;

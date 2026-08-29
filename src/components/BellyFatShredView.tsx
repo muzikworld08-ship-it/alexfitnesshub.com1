@@ -297,11 +297,20 @@ const getWorkoutForWeekAndDay = (week: number, dayNum: number) => {
     title = `HIIT Intervals & Midsection Stability`;
     exercises = ["High Knees", "Plank", "Russian Twist", "Mountain Climbers", "Bicycle Crunch", "Flutter Kicks", "Jumping Jacks", "Dead Bug", "Push-ups"];
   } else if (dayNum === 2) {
+    title = `Active Recovery: 12-3-30 Incline Treadmill Walk & Core Reset`;
+    exercises = ["12-3-30 Treadmill Walk", "Dead Bug", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing", "Plank", "Side Plank"];
+  } else if (dayNum === 3) {
     title = `Compound Calorie Crusher & Legs`;
     exercises = ["Squats", "Burpees", "Lunges", "12-3-30 Treadmill Walk", "Dead Bug", "Glute Bridges", "Jump Squats", "Bear Crawl", "Side Plank"];
-  } else if (dayNum === 3) {
+  } else if (dayNum === 4) {
+    title = `Active Recovery: Zone 2 Kinetic Walking & Aerobic Base`;
+    exercises = ["12-3-30 Treadmill Walk", "Rope Jump", "Mountain Climbers", "Side Plank", "Dead Bug", "Child's Pose Spinal Reach"];
+  } else if (dayNum === 5) {
     title = `Upper Body Sculpt & Metabolic Circuit`;
     exercises = ["Push-ups", "Jumping Jacks", "Side Plank", "Bear Crawl", "Reverse Crunch", "Mountain Climbers", "Arm Circles", "Plank", "High Knees"];
+  } else if (dayNum === 6) {
+    title = `Active Recovery: Low-Intensity Steady-State (LISS) Walking & Full Body Flush`;
+    exercises = ["12-3-30 Treadmill Walk", "Glute Bridges", "Dead Bug", "Plank", "90/90 Hip Stretch", "Child's Pose Spinal Reach"];
   } else {
     title = `Elite Midsection Melt & Endurance`;
     exercises = ["Rope Jump", "Russian Twist", "Plank", "Mountain Climbers", "Squats", "Burpees", "Bicycle Crunch", "Flutter Kicks", "Lunges"];

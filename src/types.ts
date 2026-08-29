@@ -166,8 +166,23 @@ export interface VitalsLog {
   id: string;
   userId: string;
   date: string; // YYYY-MM-DD
-  restingHeartRate: number; // in bpm
+  restingHeartRate?: number; // in bpm
   sleepDuration: number; // in hours
+  hydrationGlasses?: number; // in glasses (default 8)
+  readinessScore?: number; // calculated 0-100 score
+  energyLevel?: number; // 1-5 scale (optional)
+  notes?: string;
+  createdAt?: string;
+}
+
+export interface CalibrationGoals {
+  id?: string;
+  userId: string;
+  dailyHydrationGoal: number; // target glasses (e.g., 10)
+  dailySleepGoal: number; // target hours (e.g., 8.0)
+  targetReadinessScore?: number; // target readiness % (e.g., 85)
+  targetRestingHeartRate?: number; // target RHR in bpm (e.g., 60)
+  updatedAt?: string;
 }
 
 export interface WorkoutLibraryFilters {

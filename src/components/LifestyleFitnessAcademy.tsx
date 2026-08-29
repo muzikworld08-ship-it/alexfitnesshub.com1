@@ -394,7 +394,7 @@ const getDynamicWorkoutProgram = (
 ) => {
   const isGym = location === "Gym";
   
-  // Custom tailored schedules with 8 to 10 exercises per day
+  // Custom tailored schedules with 8 to 10 exercises per day, including exactly 3 cardio/walking recovery days
   return [
     {
       day: "Day 1: Posterior Chain & Back Restoration",
@@ -452,7 +452,62 @@ const getDynamicWorkoutProgram = (
       coolDown: "Child's Pose Spinal Reach - 90 seconds"
     },
     {
-      day: "Day 2: Lateral, Chest & Front Stability",
+      day: "Day 2: Active Recovery — Zone 2 Kinetic Incline Walk & Low-Impact Cardio",
+      warmUp: "Dynamic Ankle & Hip Flexor Circles - 2 minutes",
+      exercises: [
+        {
+          name: isGym ? "12-3-30 Treadmill Walk" : "Brisk Outdoor Power Walk with Incline",
+          reps: level === "Beginner" ? "20 minutes (10% incline, 2.8 mph)" : level === "Intermediate" ? "30 minutes (12% incline, 3.0 mph)" : "40 minutes (12% incline, 3.2 mph)",
+          rest: "Continuous Aerobic",
+          coaching: "Maintain nasal breathing and stay in Zone 2 heart rate to flush metabolic lactate without muscular strain."
+        },
+        {
+          name: "Low-Impact Jump Rope / Step Jacks",
+          reps: level === "Beginner" ? "3 sets of 45 seconds" : level === "Intermediate" ? "3 sets of 60 seconds" : "4 sets of 90 seconds",
+          rest: "30 seconds",
+          coaching: "Land softly on the balls of your feet with a relaxed shoulder girdle."
+        },
+        {
+          name: "Bodyweight Air Squats (Recovery Tempo)",
+          reps: level === "Beginner" ? "2 sets of 12 (Slow)" : level === "Intermediate" ? "3 sets of 15 (Slow)" : "3 sets of 20 (Slow)",
+          rest: "30 seconds",
+          coaching: "Move smoothly through full range of motion to circulate synovial fluid in knees and hips."
+        },
+        {
+          name: "Standing High Knees (Low-Impact Cadence)",
+          reps: level === "Beginner" ? "3 sets of 30 seconds" : level === "Intermediate" ? "3 sets of 45 seconds" : "4 sets of 45 seconds",
+          rest: "30 seconds",
+          coaching: "Drive knees up to hip height with rhythmic arm drive, avoiding heavy stomping."
+        },
+        {
+          name: "Dead Bug Core Bracing",
+          reps: level === "Beginner" ? "3 sets of 10 per side" : level === "Intermediate" ? "3 sets of 12 per side" : "3 sets of 15 per side",
+          rest: "30 seconds",
+          coaching: "Re-engage transverse abdominis while keeping the lumbar spine flat."
+        },
+        {
+          name: "Primal Cat-Cow Spinal Waves",
+          reps: level === "Beginner" ? "2 sets of 10 cycles" : level === "Intermediate" ? "3 sets of 12 cycles" : "3 sets of 15 cycles",
+          rest: "20 seconds",
+          coaching: "Mobilize the thoracic and lumbar spine in sync with deep diaphragmatic breaths."
+        },
+        {
+          name: "Single-Leg Glute Bridges (Active Squeeze)",
+          reps: level === "Beginner" ? "2 sets of 8 per side" : level === "Intermediate" ? "3 sets of 10 per side" : "3 sets of 12 per side",
+          rest: "30 seconds",
+          coaching: "Wake up the glutes and posterior chain without adding excessive muscular fatigue."
+        },
+        {
+          name: "Plank Hold with Box Breathing",
+          reps: level === "Beginner" ? "2 sets of 30 seconds" : level === "Intermediate" ? "3 sets of 40 seconds" : "3 sets of 50 seconds",
+          rest: "30 seconds",
+          coaching: "Hold steady isometric tension while taking smooth 4-second inhales and exhales."
+        }
+      ],
+      coolDown: "Child's Pose Spinal Reach & Deep Box Breathing - 2 minutes"
+    },
+    {
+      day: "Day 3: Lateral, Chest & Front Stability",
       warmUp: "Active Arm Circles & Core Bracing - 2 minutes",
       exercises: [
         {
@@ -507,7 +562,62 @@ const getDynamicWorkoutProgram = (
       coolDown: "Prone Cobra Chest Opener - 2 minutes"
     },
     {
-      day: "Day 3: Lower Limb, Glute & Core Awakening",
+      day: "Day 4: Active Recovery — Aerobic Conditioning & Fast Step Walking",
+      warmUp: "Light Arm Swings & Knee-to-Chest Hugs - 2 minutes",
+      exercises: [
+        {
+          name: isGym ? "Stationary Cycling / Ergometer Steady-State" : "Brisk Pace Kinetic Walking / Cadence March",
+          reps: level === "Beginner" ? "20 minutes (Moderate Resistance / Cadence)" : level === "Intermediate" ? "30 minutes (Steady Aerobic Pace)" : "35 minutes (Zone 2 Cadence)",
+          rest: "Continuous Pace",
+          coaching: "Focus on relaxed breathing and a steady, rhythmic stride to enhance circulation and capillary density."
+        },
+        {
+          name: "Mountain Climbers (Controlled Recovery Pace)",
+          reps: level === "Beginner" ? "3 sets of 25 seconds" : level === "Intermediate" ? "3 sets of 40 seconds" : "3 sets of 50 seconds",
+          rest: "30 seconds",
+          coaching: "Drive knees in a steady rhythm without sprinting; maintain flat back and stable shoulders."
+        },
+        {
+          name: "Dynamic Side Shuffles / Lateral Step Taps",
+          reps: level === "Beginner" ? "3 sets of 30 seconds" : level === "Intermediate" ? "3 sets of 45 seconds" : "4 sets of 45 seconds",
+          rest: "30 seconds",
+          coaching: "Stay light on feet and activate the gluteus medius in the frontal plane."
+        },
+        {
+          name: "Bird Dog Isometric Holds",
+          reps: level === "Beginner" ? "2 sets of 8 per side" : level === "Intermediate" ? "3 sets of 10 per side" : "3 sets of 12 per side",
+          rest: "30 seconds",
+          coaching: "Maintain neutral pelvis; hold 2 seconds at full extension."
+        },
+        {
+          name: "Standing Calf Raises & Ankle Mobilizers",
+          reps: level === "Beginner" ? "2 sets of 15" : level === "Intermediate" ? "3 sets of 20" : "3 sets of 25",
+          rest: "30 seconds",
+          coaching: "Full plantarflexion at top to promote venous return from lower extremities."
+        },
+        {
+          name: "Russian Twists (Bodyweight Rhythm)",
+          reps: level === "Beginner" ? "2 sets of 16" : level === "Intermediate" ? "3 sets of 20" : "3 sets of 24",
+          rest: "30 seconds",
+          coaching: "Rotate smoothly from the thoracic spine while stabilizing the pelvis."
+        },
+        {
+          name: "Side Plank Reach & Hold",
+          reps: level === "Beginner" ? "2 sets of 20s per side" : level === "Intermediate" ? "3 sets of 30s per side" : "3 sets of 40s per side",
+          rest: "30 seconds",
+          coaching: "Strengthen lateral quadratus lumborum for pelvic stability."
+        },
+        {
+          name: "Child's Pose with Lateral Lat Stretch",
+          reps: level === "Beginner" ? "2 sets of 45 seconds" : level === "Intermediate" ? "2 sets of 60 seconds" : "3 sets of 60 seconds",
+          rest: "20 seconds",
+          coaching: "Walk hands to the left and right to lengthen the lats and decompress the spine."
+        }
+      ],
+      coolDown: "Standing Quad & Hip Flexor Stretch - 90 seconds per leg"
+    },
+    {
+      day: "Day 5: Lower Limb, Glute & Core Awakening",
       warmUp: "Bodyweight Air Squats & Glute Kickbacks - 3 minutes",
       exercises: [
         {
@@ -560,6 +670,61 @@ const getDynamicWorkoutProgram = (
         }
       ],
       coolDown: "90/90 Hip Stretch - 60 seconds per leg"
+    },
+    {
+      day: "Day 6: Active Recovery — Low-Intensity Steady-State (LISS) Walking & Recovery Flush",
+      warmUp: "World's Greatest Stretch & Thoracic Opener - 3 minutes",
+      exercises: [
+        {
+          name: isGym ? "Elliptical / Stair Climber Steady Aerobic Zone 2" : "Continuous LISS Outdoor Walking (4,000-6,000 Steps)",
+          reps: level === "Beginner" ? "25 minutes steady walk" : level === "Intermediate" ? "35 minutes steady walk" : "45 minutes steady walk",
+          rest: "Continuous Low-Intensity",
+          coaching: "Keep a relaxed, upright posture, swinging arms freely to encourage total-body oxygenation and lymphatic flow."
+        },
+        {
+          name: "Low-Impact Shadow Boxing & Light Arm Drives",
+          reps: level === "Beginner" ? "3 sets of 45 seconds" : level === "Intermediate" ? "3 sets of 60 seconds" : "4 sets of 60 seconds",
+          rest: "30 seconds",
+          coaching: "Throw light jabs and crosses to circulate blood through the shoulder girdle without joint impact."
+        },
+        {
+          name: "Walking High Knee March with Torso Twist",
+          reps: level === "Beginner" ? "2 sets of 12 per side" : level === "Intermediate" ? "3 sets of 15 per side" : "3 sets of 20 per side",
+          rest: "30 seconds",
+          coaching: "Gently twist upper torso toward the lifted knee for functional gait mobility."
+        },
+        {
+          name: "Bodyweight Good Mornings (Hamstring Flush)",
+          reps: level === "Beginner" ? "2 sets of 10" : level === "Intermediate" ? "3 sets of 12" : "3 sets of 15",
+          rest: "30 seconds",
+          coaching: "Hinge at the hips with soft knees to lightly stretch and restore the hamstrings."
+        },
+        {
+          name: "Dead Bug Contralateral Extenders",
+          reps: level === "Beginner" ? "2 sets of 10 per side" : level === "Intermediate" ? "3 sets of 12 per side" : "3 sets of 14 per side",
+          rest: "30 seconds",
+          coaching: "Focus on complete breath exhalation as limbs extend away from center."
+        },
+        {
+          name: "Glute Bridge Pulses (Low Resistance)",
+          reps: level === "Beginner" ? "2 sets of 15" : level === "Intermediate" ? "3 sets of 20" : "3 sets of 25",
+          rest: "30 seconds",
+          coaching: "Gentle pulse at top range to stimulate blood flow through glutes and lower back."
+        },
+        {
+          name: "Plank with Alternating Knee Taps",
+          reps: level === "Beginner" ? "2 sets of 30 seconds" : level === "Intermediate" ? "3 sets of 40 seconds" : "3 sets of 50 seconds",
+          rest: "30 seconds",
+          coaching: "Tap knees to floor lightly while keeping the pelvis completely level."
+        },
+        {
+          name: "Deep Diaphragmatic 4-7-8 Breathing & Core Vacuum",
+          reps: level === "Beginner" ? "2 sets of 5 cycles" : level === "Intermediate" ? "3 sets of 6 cycles" : "3 sets of 8 cycles",
+          rest: "30 seconds",
+          coaching: "Inhale 4s, hold 7s, exhale 8s while gently drawing belly button toward spine to trigger parasympathetic recovery."
+        }
+      ],
+      coolDown: "90/90 Hip Stretch & Spine Decompression - 2 minutes"
     }
   ];
 };

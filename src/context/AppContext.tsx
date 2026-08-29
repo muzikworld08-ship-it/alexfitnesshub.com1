@@ -28,11 +28,13 @@ import {
   CustomProgram,
   PopupTestimonial,
   VitalsLog,
+  CalibrationGoals,
   WorkoutLibraryFilters,
   ChallengeWorkout,
   ChallengeItem,
   ProgramProgressItem
 } from "../types";
+import { calculateReadinessScore } from "../utils/readiness";
 import { EXERCISES, Exercise } from "../data/exercises";
 import { PremiumChallenge, FLAGSHIP_CHALLENGES, getChallengeWorkouts } from "../data/challenges";
 import { isExerciseMatch } from "../utils/exerciseMatching";
@@ -209,7 +211,21 @@ interface AppContextType {
 
   // Vitals Logs & Profile uploads
   vitalsLogs: VitalsLog[];
-  addVitalsLogAction: (restingHeartRate: number, sleepDuration: number, date?: string) => Promise<void>;
+  calibrationGoals: CalibrationGoals;
+  updateCalibrationGoalsAction: (goals: Partial<CalibrationGoals>) => Promise<void>;
+  addVitalsLogAction: (
+    vitalsDataOrRhr: number | {
+      sleepDuration: number;
+      hydrationGlasses?: number;
+      restingHeartRate?: number;
+      energyLevel?: number;
+      notes?: string;
+      date?: string;
+    },
+    sleepDuration?: number,
+    date?: string
+  ) => Promise<void>;
+  deleteVitalsLogAction: (logId: string) => Promise<void>;
   updateProfilePicture: (photoURL: string) => Promise<void>;
 
   // Program Progress & Resume Tracking
@@ -434,6 +450,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [weightLogs, setWeightLogs] = useState<WeightGoalLog[]>([]);
   const [vitalsLogs, setVitalsLogs] = useState<VitalsLog[]>([]);
+  const [calibrationGoals, setCalibrationGoals] = useState<CalibrationGoals>(() => {
+    const defaults: CalibrationGoals = {
+      userId: "guest",
+      dailyHydrationGoal: 10,
+      dailySleepGoal: 8.0,
+      targetReadinessScore: 85,
+      targetRestingHeartRate: 60
+    };
+    try {
+      const activeUid = localStorage.getItem("fit_active_uid");
+      const key = activeUid ? `fit_calibration_goals_${activeUid}` : "fit_calibration_goals_guest";
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === "object") {
+          return { ...defaults, ...parsed };
+        }
+      }
+    } catch (e) {}
+    return defaults;
+  });
   const [transactions, setTransactions] = useState<PaystackTransaction[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [exercises, setExercisesState] = useState<Exercise[]>(EXERCISES);
@@ -1995,11 +2032,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     } else {
       const initialVitals: VitalsLog[] = [
-        { id: "v1", userId: uid, date: "2026-06-01", restingHeartRate: 68, sleepDuration: 7.2 },
-        { id: "v2", userId: uid, date: "2026-06-03", restingHeartRate: 65, sleepDuration: 6.8 },
-        { id: "v3", userId: uid, date: "2026-06-06", restingHeartRate: 62, sleepDuration: 8.0 },
-        { id: "v4", userId: uid, date: "2026-06-09", restingHeartRate: 64, sleepDuration: 7.5 },
-        { id: "v5", userId: uid, date: "2026-06-12", restingHeartRate: 60, sleepDuration: 8.2 },
+        { id: "v1", userId: uid, date: "2026-06-01", restingHeartRate: 68, sleepDuration: 7.2, hydrationGlasses: 8, readinessScore: 82 },
+        { id: "v2", userId: uid, date: "2026-06-03", restingHeartRate: 65, sleepDuration: 6.8, hydrationGlasses: 7, readinessScore: 76 },
+        { id: "v3", userId: uid, date: "2026-06-06", restingHeartRate: 62, sleepDuration: 8.0, hydrationGlasses: 10, readinessScore: 94 },
+        { id: "v4", userId: uid, date: "2026-06-09", restingHeartRate: 64, sleepDuration: 7.5, hydrationGlasses: 8, readinessScore: 86 },
+        { id: "v5", userId: uid, date: "2026-06-12", restingHeartRate: 60, sleepDuration: 8.2, hydrationGlasses: 9, readinessScore: 96 },
       ];
       setVitalsLogs(initialVitals);
       safeSetItem(`fit_vitals_${uid}`, JSON.stringify(initialVitals));
@@ -2012,12 +2049,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const list: VitalsLog[] = [];
           snapshot.forEach((docSnap) => {
             const data = docSnap.data();
+            const sleep = typeof data.sleepDuration === "number" ? data.sleepDuration : 7.5;
+            const hyd = typeof data.hydrationGlasses === "number" ? data.hydrationGlasses : 8;
+            const rhr = typeof data.restingHeartRate === "number" ? data.restingHeartRate : undefined;
+            const energy = typeof data.energyLevel === "number" ? data.energyLevel : undefined;
+            const calcScore = typeof data.readinessScore === "number" ? data.readinessScore : calculateReadinessScore(sleep, hyd, rhr, energy).score;
+
             list.push({
-              id: data.id,
-              userId: data.userId,
+              id: data.id || docSnap.id,
+              userId: data.userId || uid,
               date: data.date,
-              restingHeartRate: data.restingHeartRate,
-              sleepDuration: data.sleepDuration
+              restingHeartRate: rhr,
+              sleepDuration: sleep,
+              hydrationGlasses: hyd,
+              readinessScore: calcScore,
+              energyLevel: energy,
+              notes: data.notes || undefined,
+              createdAt: data.createdAt || undefined
             });
           });
           list.sort((a, b) => a.date.localeCompare(b.date));
@@ -2027,6 +2075,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         })
         .catch((err) => console.warn("Failed to fetch vitals_logs from firestore:", err));
+
+      // Fetch calibration goals for user
+      getDoc(doc(db, "calibration_goals", uid))
+        .then((docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            const loadedGoals: CalibrationGoals = {
+              userId: uid,
+              dailyHydrationGoal: typeof data.dailyHydrationGoal === "number" ? data.dailyHydrationGoal : 10,
+              dailySleepGoal: typeof data.dailySleepGoal === "number" ? data.dailySleepGoal : 8.0,
+              targetReadinessScore: typeof data.targetReadinessScore === "number" ? data.targetReadinessScore : 85,
+              targetRestingHeartRate: typeof data.targetRestingHeartRate === "number" ? data.targetRestingHeartRate : 60,
+              updatedAt: data.updatedAt || undefined
+            };
+            setCalibrationGoals(loadedGoals);
+            safeSetItem(`fit_calibration_goals_${uid}`, JSON.stringify(loadedGoals));
+          }
+        })
+        .catch((err) => console.warn("Failed to fetch calibration_goals from firestore:", err));
     }
 
     // Sync weekly progress reports
@@ -2304,16 +2371,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addVitalsLogAction = async (restingHeartRate: number, sleepDuration: number, date?: string) => {
+  const addVitalsLogAction = async (
+    vitalsDataOrRhr: number | {
+      sleepDuration: number;
+      hydrationGlasses?: number;
+      restingHeartRate?: number;
+      energyLevel?: number;
+      notes?: string;
+      date?: string;
+    },
+    legacySleep?: number,
+    legacyDate?: string
+  ) => {
     if (!user) return;
+    let sleepDuration = 7.5;
+    let hydrationGlasses = 8;
+    let restingHeartRate: number | undefined = undefined;
+    let energyLevel: number | undefined = undefined;
+    let notes: string | undefined = undefined;
+    let logDate = new Date().toISOString().split("T")[0];
+
+    if (typeof vitalsDataOrRhr === "object" && vitalsDataOrRhr !== null) {
+      sleepDuration = vitalsDataOrRhr.sleepDuration;
+      hydrationGlasses = typeof vitalsDataOrRhr.hydrationGlasses === "number" ? vitalsDataOrRhr.hydrationGlasses : 8;
+      restingHeartRate = vitalsDataOrRhr.restingHeartRate;
+      energyLevel = vitalsDataOrRhr.energyLevel;
+      notes = vitalsDataOrRhr.notes;
+      if (vitalsDataOrRhr.date) logDate = vitalsDataOrRhr.date;
+    } else {
+      restingHeartRate = typeof vitalsDataOrRhr === "number" ? vitalsDataOrRhr : undefined;
+      sleepDuration = typeof legacySleep === "number" ? legacySleep : 7.5;
+      if (legacyDate) logDate = legacyDate;
+    }
+
+    const calcResult = calculateReadinessScore(sleepDuration, hydrationGlasses, restingHeartRate, energyLevel);
+
     const newLog: VitalsLog = {
-      id: "vit_" + Math.random().toString(36).substring(7),
+      id: "vit_" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
       userId: user.uid,
-      date: date || new Date().toISOString().split("T")[0],
-      restingHeartRate,
-      sleepDuration
+      date: logDate,
+      restingHeartRate: restingHeartRate || undefined,
+      sleepDuration,
+      hydrationGlasses,
+      readinessScore: calcResult.score,
+      energyLevel: energyLevel || undefined,
+      notes: notes || undefined,
+      createdAt: new Date().toISOString()
     };
-    const nextLogs = [...vitalsLogs, newLog].sort((a,b) => a.date.localeCompare(b.date));
+
+    // Filter out existing log for same date if updating, or append
+    const existingFiltered = vitalsLogs.filter(l => l.date !== newLog.date);
+    const nextLogs = [...existingFiltered, newLog].sort((a,b) => a.date.localeCompare(b.date));
     setVitalsLogs(nextLogs);
     safeSetItem(`fit_vitals_${user.uid}`, JSON.stringify(nextLogs));
 
@@ -2321,10 +2429,50 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setDoc(doc(db, "vitals_logs", newLog.id), {
         id: newLog.id,
         userId: user.uid,
-        restingHeartRate,
-        sleepDuration,
-        date: newLog.date
+        restingHeartRate: newLog.restingHeartRate || null,
+        sleepDuration: newLog.sleepDuration,
+        hydrationGlasses: newLog.hydrationGlasses,
+        readinessScore: newLog.readinessScore,
+        energyLevel: newLog.energyLevel || null,
+        notes: newLog.notes || null,
+        date: newLog.date,
+        createdAt: newLog.createdAt || new Date().toISOString()
       }).catch(err => handleFirestoreError(err, OperationType.WRITE, `vitals_logs/${newLog.id}`));
+    }
+  };
+
+  const deleteVitalsLogAction = async (logId: string) => {
+    if (!user) return;
+    const nextLogs = vitalsLogs.filter(l => l.id !== logId);
+    setVitalsLogs(nextLogs);
+    safeSetItem(`fit_vitals_${user.uid}`, JSON.stringify(nextLogs));
+
+    if (!isMockFirebase) {
+      deleteDoc(doc(db, "vitals_logs", logId))
+        .catch(err => handleFirestoreError(err, OperationType.DELETE, `vitals_logs/${logId}`));
+    }
+  };
+
+  const updateCalibrationGoalsAction = async (goalsUpdate: Partial<CalibrationGoals>) => {
+    const activeUid = user ? user.uid : "guest";
+    const updated: CalibrationGoals = {
+      ...calibrationGoals,
+      ...goalsUpdate,
+      userId: activeUid,
+      updatedAt: new Date().toISOString()
+    };
+    setCalibrationGoals(updated);
+    safeSetItem(`fit_calibration_goals_${activeUid}`, JSON.stringify(updated));
+
+    if (user && !isMockFirebase) {
+      setDoc(doc(db, "calibration_goals", user.uid), {
+        userId: user.uid,
+        dailyHydrationGoal: updated.dailyHydrationGoal,
+        dailySleepGoal: updated.dailySleepGoal,
+        targetReadinessScore: updated.targetReadinessScore || 85,
+        targetRestingHeartRate: updated.targetRestingHeartRate || 60,
+        updatedAt: updated.updatedAt
+      }, { merge: true }).catch(err => handleFirestoreError(err, OperationType.WRITE, `calibration_goals/${user.uid}`));
     }
   };
 
@@ -3826,7 +3974,10 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       updateWaterIntake,
       
       vitalsLogs,
+      calibrationGoals,
+      updateCalibrationGoalsAction,
       addVitalsLogAction,
+      deleteVitalsLogAction,
       updateProfilePicture,
       
       upgradeWithPaystack,

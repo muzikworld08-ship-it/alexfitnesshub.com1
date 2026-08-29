@@ -100,7 +100,7 @@ const apiLimiter = rateLimit({
   validate: { trustProxy: false },
   message: { success: false, error: "Too many requests from this IP, please try again later." }
 });
-app.use("/api/", apiLimiter);
+app.use("/api", apiLimiter);
 
 const ASSETS_DIR = path.join(process.cwd(), "assets");
 if (!fs.existsSync(ASSETS_DIR)) {
@@ -194,7 +194,7 @@ app.get("/assets/:filename", async (req, res, next) => {
 app.use("/assets", express.static(ASSETS_DIR));
 
 // --- SUPABASE CDN IMAGE PROXY & OPTIMIZATION ROUTE ---
-app.get(["/api/cdn-image", "/api/supabase-image-proxy"], async (req, res) => {
+const handleCdnImageProxy = async (req: any, res: any) => {
   try {
     const rawUrl = (req.query.url as string) || "";
     const width = req.query.width ? parseInt(req.query.width as string, 10) : undefined;
@@ -255,7 +255,10 @@ app.get(["/api/cdn-image", "/api/supabase-image-proxy"], async (req, res) => {
     console.warn("[CDN Image Proxy Error]:", err?.message || err);
     return res.status(500).json({ error: "Failed to optimize image via CDN proxy." });
   }
-});
+};
+
+app.get("/api/cdn-image", handleCdnImageProxy);
+app.get("/api/supabase-image-proxy", handleCdnImageProxy);
 
 // Configure high payload limits to allow massive Base64 images/videos to save correctly
 app.use(express.json({
@@ -5072,7 +5075,19 @@ async function startServer() {
       }
     }));
 
-    app.get("*all", (req, res) => {
+    // Robust, regex-free SPA catch-all handler without path-to-regexp parsing
+    // Express app.use without path parameter does not invoke path-to-regexp, eliminating PathError across all Express versions
+    app.use((req, res, next) => {
+      // If an unmatched API call reached here, return a clean 404 JSON response instead of HTML
+      if (req.path.startsWith("/api/")) {
+        return res.status(404).json({ error: "API endpoint not found", path: req.path });
+      }
+
+      // Only handle GET and HEAD requests for client-side routing
+      if (req.method !== "GET" && req.method !== "HEAD") {
+        return next();
+      }
+
       // Force index.html to NEVER be cached so users always receive the newest build mapping instantly
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
       res.setHeader("Surrogate-Control", "no-store");

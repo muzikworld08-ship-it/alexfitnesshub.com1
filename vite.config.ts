@@ -78,7 +78,7 @@ export default defineConfig(() => {
     },
     build: {
       outDir: path.resolve(process.cwd(), 'dist'),
-      emptyOutDir: false,
+      emptyOutDir: true,
       rollupOptions: {
         output: {
           entryFileNames: 'assets/[name]-[hash].js',

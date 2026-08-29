@@ -1162,7 +1162,10 @@ export const PROGRAMS: Program[] = [
     isPremium: false,
     schedule: [
       { day: "Day 1", focus: "Horizontal Upper Push & Pull", exercises: ["Push-ups", "Dumbbell Bent-Over Row with Chest Support", "Standing Dumbbell Overhead Press"] },
-      { day: "Day 2", focus: "Glute & Lower Quad Stability", exercises: ["Dumbbell Goblet Squats", "Single-Leg Glute Bridges", "Dead Bug"] }
+      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Zone 2 Kinetic Walking & Aerobic Flush", exercises: ["12-3-30 Treadmill Walk", "Bodyweight Squats", "Deep Diaphragmatic Box Breathing"] },
+      { day: "Day 3", focus: "Glute & Lower Quad Stability", exercises: ["Dumbbell Goblet Squats", "Single-Leg Glute Bridges", "Dead Bug"] },
+      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Low-Impact Cardio Conditioning", exercises: ["Rope Jump", "Mountain Climbers", "Child's Pose Spinal Reach"] },
+      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Outdoor Walking & Spinal Waves", exercises: ["Primal Cat-Cow Spinal Waves", "Plank Holds", "90/90 Hip Stretch"] }
     ]
   },
   {
@@ -1177,7 +1180,10 @@ export const PROGRAMS: Program[] = [
     isPremium: true,
     schedule: [
       { day: "Day 1", focus: "Chest & Triceps Overload", exercises: ["Barbell Bench Press", "Dumbbell Chest Press", "Chest Dips", "Triceps Pushdowns"] },
-      { day: "Day 2", focus: "Back & Biceps Thickness", exercises: ["Pull Ups", "Barbell Row", "Cable Lat Pulldowns (Slow Eccentric)", "Seated Dumbbell Bicep Peaks Curl"] }
+      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Low-Impact Cardio & Incline Walk", exercises: ["12-3-30 Treadmill Walk", "Jump Squats", "Child's Pose Spinal Reach"] },
+      { day: "Day 3", focus: "Back & Biceps Thickness", exercises: ["Pull Ups", "Barbell Row", "Cable Lat Pulldowns (Slow Eccentric)", "Seated Dumbbell Bicep Peaks Curl"] },
+      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Zone 2 Kinetic Walking & Mobility Flush", exercises: ["Primal Cat-Cow Spinal Waves", "Dynamic Warm-up Jumps", "Dead Bug"] },
+      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Walking & Metabolic Recovery", exercises: ["Plank with Shoulder Taps", "Bodyweight Squats", "90/90 Hip Stretch"] }
     ]
   },
   {
@@ -1192,7 +1198,10 @@ export const PROGRAMS: Program[] = [
     isPremium: false,
     schedule: [
       { day: "Day 1", focus: "Metabolic HIIT Blast", exercises: ["Burpees", "Mountain Climbers", "Jump Squats"] },
-      { day: "Day 2", focus: "Low-Intensity Fat Burn", exercises: ["12-3-30 Treadmill Walk", "Bodyweight Squats", "Plank Holds"] }
+      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Incline Walking & Aerobic Base", exercises: ["12-3-30 Treadmill Walk", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing"] },
+      { day: "Day 3", focus: "Low-Intensity Fat Burn", exercises: ["12-3-30 Treadmill Walk", "Bodyweight Squats", "Plank Holds"] },
+      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Low-Impact Steady Cardio & Steps", exercises: ["Rope Jump", "Side Plank", "Child's Pose Spinal Reach"] },
+      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Outdoor Walking & Hip Decompression", exercises: ["90/90 Hip Stretch", "Single-Leg Glute Bridges", "Dead Bug"] }
     ]
   },
   {
@@ -1207,7 +1216,10 @@ export const PROGRAMS: Program[] = [
     isPremium: true,
     schedule: [
       { day: "Day 1", focus: "Posterior Chain Power", exercises: ["Romanian Barbell Deadlifts", "Dumbbell Romanian Deadlifts", "Pull Ups"] },
-      { day: "Day 2", focus: "Anterior Squat Drive", exercises: ["High-Tension Barbell Back Squats", "Dumbbell Goblet Squats", "Plank Holds"] }
+      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Incline Walk & Parasympathetic Reset", exercises: ["12-3-30 Treadmill Walk", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing"] },
+      { day: "Day 3", focus: "Anterior Squat Drive", exercises: ["High-Tension Barbell Back Squats", "Dumbbell Goblet Squats", "Plank Holds"] },
+      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Zone 2 Walking & Joint Flushing", exercises: ["Dead Bug", "Single-Leg Glute Bridges", "Child's Pose Spinal Reach"] },
+      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Walking & Hip Mobility", exercises: ["90/90 Hip Stretch", "Bodyweight Squats", "Plank Holds"] }
     ]
   },
   {
@@ -1222,7 +1234,10 @@ export const PROGRAMS: Program[] = [
     isPremium: false,
     schedule: [
       { day: "Day 1", focus: "Glute & Hamstring Lift", exercises: ["Single-Leg Glute Bridges", "Dumbbell Romanian Deadlifts", "90/90 Hip Stretch"] },
-      { day: "Day 2", focus: "Core & Leg Definition", exercises: ["Dumbbell Goblet Squats", "Lunges", "Dead Bug"] }
+      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Incline Treadmill Walk & Glute Flow", exercises: ["12-3-30 Treadmill Walk", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing"] },
+      { day: "Day 3", focus: "Core & Leg Definition", exercises: ["Dumbbell Goblet Squats", "Lunges", "Dead Bug"] },
+      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Low-Impact Cardio & Core Reset", exercises: ["Rope Jump", "Mountain Climbers", "Child's Pose Spinal Reach"] },
+      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Outdoor Walk & Hip Mobility", exercises: ["90/90 Hip Stretch", "Plank Holds", "Single-Leg Glute Bridges"] }
     ]
   },
   {
@@ -1237,7 +1252,10 @@ export const PROGRAMS: Program[] = [
     isPremium: false,
     schedule: [
       { day: "Day 1", focus: "Full Body Fat Burn", exercises: ["Push-ups", "Bodyweight Squats", "Plank with Shoulder Taps"] },
-      { day: "Day 2", focus: "Living Room Cardio", exercises: ["Rope Jump", "Mountain Climbers", "Side Plank"] }
+      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Living Room Kinetic Walking & Mobility", exercises: ["12-3-30 Treadmill Walk", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing"] },
+      { day: "Day 3", focus: "Living Room Cardio", exercises: ["Rope Jump", "Mountain Climbers", "Side Plank"] },
+      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Zone 2 Step Walking & Low-Impact Flow", exercises: ["Dead Bug", "Bodyweight Squats", "Child's Pose Spinal Reach"] },
+      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Walking & Full Body Flush", exercises: ["90/90 Hip Stretch", "Plank Holds", "Single-Leg Glute Bridges"] }
     ]
   },
   {
@@ -1252,7 +1270,10 @@ export const PROGRAMS: Program[] = [
     isPremium: true,
     schedule: [
       { day: "Day 1", focus: "Latissimus & Chest Power", exercises: ["Cable Lat Pulldowns (Slow Eccentric)", "Barbell Bench Press", "Leg Press (High & Wide Stance)"] },
-      { day: "Day 2", focus: "Anterior & Lateral Shoulder Build", exercises: ["Standing Dumbbell Overhead Press", "Hanging Knee-to-Chest / Leg Raises", "High-Intensity Dumbbell Thrusters"] }
+      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Incline Treadmill Walk & Zone 2 Cardio", exercises: ["12-3-30 Treadmill Walk", "Deep Diaphragmatic Box Breathing", "Child's Pose Spinal Reach"] },
+      { day: "Day 3", focus: "Anterior & Lateral Shoulder Build", exercises: ["Standing Dumbbell Overhead Press", "Hanging Knee-to-Chest / Leg Raises", "High-Intensity Dumbbell Thrusters"] },
+      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Ergometer / Steady Walking Conditioning", exercises: ["Primal Cat-Cow Spinal Waves", "Dead Bug", "Bodyweight Squats"] },
+      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Walking & Spine Decompression", exercises: ["90/90 Hip Stretch", "Plank Holds", "Single-Leg Glute Bridges"] }
     ]
   },
   {
@@ -1267,7 +1288,10 @@ export const PROGRAMS: Program[] = [
     isPremium: true,
     schedule: [
       { day: "Day 1", focus: "Combat Conditioning", exercises: ["Push Ups", "Pull Ups", "Burpees", "Sprinting"] },
-      { day: "Day 2", focus: "Core Endurance", exercises: ["Sit Ups", "Plank Holds", "Bear Crawl", "Jump Squats"] }
+      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Ruck Walk / Kinetic Cadence Walking", exercises: ["12-3-30 Treadmill Walk", "Deep Diaphragmatic Box Breathing", "Primal Cat-Cow Spinal Waves"] },
+      { day: "Day 3", focus: "Core Endurance", exercises: ["Sit Ups", "Plank Holds", "Bear Crawl", "Jump Squats"] },
+      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Low-Impact Cardio Conditioning", exercises: ["Rope Jump", "Child's Pose Spinal Reach", "Dead Bug"] },
+      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Walking & Full Systemic Recovery", exercises: ["90/90 Hip Stretch", "Bodyweight Squats", "Plank Holds"] }
     ]
   },
   {
@@ -1282,7 +1306,10 @@ export const PROGRAMS: Program[] = [
     isPremium: false,
     schedule: [
       { day: "Day 1", focus: "Calisthenic Push Mastery", exercises: ["Advanced Calisthenics: Handstand Push Ups", "Advanced Calisthenics: Planche", "Advanced Calisthenics: One Arm Push Up"] },
-      { day: "Day 2", focus: "Calisthenic Pull & Core", exercises: ["Advanced Calisthenics: Muscle Ups", "Advanced Calisthenics: Front Lever", "Advanced Calisthenics: Dragon Flag"] }
+      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Kinetic Incline Walking & Scapular Flow", exercises: ["12-3-30 Treadmill Walk", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing"] },
+      { day: "Day 3", focus: "Calisthenic Pull & Core", exercises: ["Advanced Calisthenics: Muscle Ups", "Advanced Calisthenics: Front Lever", "Advanced Calisthenics: Dragon Flag"] },
+      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Low-Impact Cardio & Joint Recovery", exercises: ["Dead Bug", "Child's Pose Spinal Reach", "Bodyweight Squats"] },
+      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Outdoor Walking & Wrist/Shoulder Mobility", exercises: ["90/90 Hip Stretch", "Plank Holds", "Single-Leg Glute Bridges"] }
     ]
   },
   {
@@ -1297,7 +1324,10 @@ export const PROGRAMS: Program[] = [
     isPremium: false,
     schedule: [
       { day: "Day 1", focus: "Core Transverse Stability", exercises: ["Dead Bug", "Plank Holds", "Deep Diaphragmatic Box Breathing"] },
-      { day: "Day 2", focus: "Spinal Waves & Obliques", exercises: ["Primal Cat-Cow Spinal Waves", "Side Plank", "Reverse Crunch"] }
+      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Low-Impact Walking & Diaphragmatic Flow", exercises: ["12-3-30 Treadmill Walk", "Primal Cat-Cow Spinal Waves", "Child's Pose Spinal Reach"] },
+      { day: "Day 3", focus: "Spinal Waves & Obliques", exercises: ["Primal Cat-Cow Spinal Waves", "Side Plank", "Reverse Crunch"] },
+      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Zone 2 Step Walking & Pelvic Alignment", exercises: ["Single-Leg Glute Bridges", "Dead Bug", "Bodyweight Squats"] },
+      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Walking & Lumbar Decompression", exercises: ["90/90 Hip Stretch", "Plank Holds", "Deep Diaphragmatic Box Breathing"] }
     ]
   },
   {
@@ -1312,7 +1342,10 @@ export const PROGRAMS: Program[] = [
     isPremium: true,
     schedule: [
       { day: "Month 1-2 Focus", focus: "Foundation Cardio & Core", exercises: ["Rope Jump", "Plank Holds", "Dead Bug", "Squats"] },
-      { day: "Month 3-5 Focus", focus: "HIIT Intensity & Burnout", exercises: ["Burpees", "Mountain Climbers", "12-3-30 Treadmill Walk", "Push-ups"] }
+      { day: "Weekly Recovery Day 1", focus: "Active Recovery: Incline Walking (12-3-30)", exercises: ["12-3-30 Treadmill Walk", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing"] },
+      { day: "Month 3-5 Focus", focus: "HIIT Intensity & Burnout", exercises: ["Burpees", "Mountain Climbers", "12-3-30 Treadmill Walk", "Push-ups"] },
+      { day: "Weekly Recovery Day 2", focus: "Active Recovery: Low-Impact Zone 2 Cardio", exercises: ["Rope Jump", "Child's Pose Spinal Reach", "Dead Bug"] },
+      { day: "Weekly Recovery Day 3", focus: "Active Recovery: LISS Walking & Core Vacuum", exercises: ["90/90 Hip Stretch", "Plank Holds", "Single-Leg Glute Bridges"] }
     ]
   },
   {
@@ -1327,7 +1360,10 @@ export const PROGRAMS: Program[] = [
     isPremium: false,
     schedule: [
       { day: "Day 1-15 Rotation", focus: "Cardio & Stretching Recovery", exercises: ["Dynamic Warm-up Jumps", "Active Stretch Squats", "Child's Pose Spinal Reach"] },
-      { day: "Day 16-30 Rotation", focus: "Muscular Endurance Drive", exercises: ["Push-ups", "Dumbbell Romanian Deadlifts", "Plank with Shoulder Taps"] }
+      { day: "Active Recovery Day 1", focus: "Zone 2 Incline Walking & Breathwork", exercises: ["12-3-30 Treadmill Walk", "Deep Diaphragmatic Box Breathing", "Primal Cat-Cow Spinal Waves"] },
+      { day: "Day 16-30 Rotation", focus: "Muscular Endurance Drive", exercises: ["Push-ups", "Dumbbell Romanian Deadlifts", "Plank with Shoulder Taps"] },
+      { day: "Active Recovery Day 2", focus: "Low-Impact Cardio & Step Flush", exercises: ["Rope Jump", "Mountain Climbers", "Dead Bug"] },
+      { day: "Active Recovery Day 3", focus: "LISS Outdoor Walking & Hip Opener", exercises: ["90/90 Hip Stretch", "Bodyweight Squats", "Single-Leg Glute Bridges"] }
     ]
   },
   {
@@ -1342,7 +1378,10 @@ export const PROGRAMS: Program[] = [
     isPremium: false,
     schedule: [
       { day: "Day 1-3 Focus", focus: "Anaerobic Energy Bursts", exercises: ["Explosive Hip-Hinge Kettlebell Swings", "Burpees", "Side Plank"] },
-      { day: "Day 4-7 Focus", focus: "Full-Body Density", exercises: ["Dumbbell Renegade Rows with Push-Up", "High-Intensity Dumbbell Thrusters", "Dead Bug"] }
+      { day: "Recovery Day 1", focus: "Active Recovery: 15-Min Incline Power Walk", exercises: ["12-3-30 Treadmill Walk", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing"] },
+      { day: "Day 4-7 Focus", focus: "Full-Body Density", exercises: ["Dumbbell Renegade Rows with Push-Up", "High-Intensity Dumbbell Thrusters", "Dead Bug"] },
+      { day: "Recovery Day 2", focus: "Active Recovery: Light Cardio Step Intervals", exercises: ["Rope Jump", "Child's Pose Spinal Reach", "Dead Bug"] },
+      { day: "Recovery Day 3", focus: "Active Recovery: LISS Outdoor Walking Flush", exercises: ["90/90 Hip Stretch", "Plank Holds", "Single-Leg Glute Bridges"] }
     ]
   },
   {
@@ -1357,8 +1396,11 @@ export const PROGRAMS: Program[] = [
     isPremium: true,
     schedule: [
       { day: "Phase 1 - Glute Activation & Base", focus: "Glute Hypertrophy & Transverse Core", exercises: ["Glute Bridge & Isometric Hold", "Tempo Goblet Squat", "Contralateral Dead Bug", "Resistance Band Pull-Aparts & Posture Opener"] },
+      { day: "Weekly Recovery Day 1", focus: "Active Recovery: Zone 2 Kinetic Walking & Incline Flow", exercises: ["12-3-30 Treadmill Walk", "Deep Diaphragmatic Box Breathing", "Primal Cat-Cow Spinal Waves"] },
       { day: "Phase 2 - Curves & Sculpting", focus: "Posterior Chain & Shoulder V-Taper", exercises: ["Bulgarian Split Squat", "Dumbbell Romanian Deadlift (RDL)", "Single-Arm Supported Row", "Standing Dumbbell Overhead Shoulder Press"] },
-      { day: "Phase 3 - Dynamic Power", focus: "Compound Glute Power & Definition", exercises: ["Barbell Hip Thrust", "Curtsy Lunges", "Sumo Squat with Pulse", "Plank Hip Dips"] }
+      { day: "Weekly Recovery Day 2", focus: "Active Recovery: Low-Impact Cardio & Core Tightening", exercises: ["Rope Jump", "Mountain Climbers", "Child's Pose Spinal Reach"] },
+      { day: "Phase 3 - Dynamic Power", focus: "Compound Glute Power & Definition", exercises: ["Barbell Hip Thrust", "Curtsy Lunges", "Sumo Squat with Pulse", "Plank Hip Dips"] },
+      { day: "Weekly Recovery Day 3", focus: "Active Recovery: LISS Outdoor Step Walking & Hip Release", exercises: ["90/90 Hip Stretch", "Plank Holds", "Single-Leg Glute Bridges"] }
     ]
   },
   {
@@ -1373,7 +1415,10 @@ export const PROGRAMS: Program[] = [
     isPremium: true,
     schedule: [
       { day: "Day 1", focus: "Explosive Full Body Power", exercises: ["Devil Press with Dual Dumbbells", "Barbell Clean and Press", "Wall Balls (Thruster into High Target)"] },
-      { day: "Day 2", focus: "Tactical Stamina & Carries", exercises: ["Sled / Prowler Push & Pull Sprint", "Dumbbell Suitcase Carry", "Turkish Get-Up with Kettlebell"] }
+      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Incline Ruck Walk & Zone 2 Aerobic Base", exercises: ["12-3-30 Treadmill Walk", "Deep Diaphragmatic Box Breathing", "Primal Cat-Cow Spinal Waves"] },
+      { day: "Day 3", focus: "Tactical Stamina & Carries", exercises: ["Sled / Prowler Push & Pull Sprint", "Dumbbell Suitcase Carry", "Turkish Get-Up with Kettlebell"] },
+      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Low-Impact Cardio & Rotational Flushes", exercises: ["Rope Jump", "Child's Pose Spinal Reach", "Dead Bug"] },
+      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Walking & Full Systemic Recovery", exercises: ["90/90 Hip Stretch", "Plank Holds", "Single-Leg Glute Bridges"] }
     ]
   },
   {
@@ -1388,7 +1433,10 @@ export const PROGRAMS: Program[] = [
     isPremium: false,
     schedule: [
       { day: "Day 1", focus: "Hip & Pelvic Decoupling", exercises: ["World's Greatest Stretch Complex", "Couch Stretch for Tight Hip Flexors", "Shin Box Hip Internal-External Rotations"] },
-      { day: "Day 2", focus: "Thoracic & Spine Relief", exercises: ["Scorpion Stretch for Spinal Rotation", "Pigeon Pose with Active Thoracic Reach", "Pallof Press with Isometric Hold"] }
+      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Incline Walking & Diaphragmatic Flow", exercises: ["12-3-30 Treadmill Walk", "Deep Diaphragmatic Box Breathing", "Primal Cat-Cow Spinal Waves"] },
+      { day: "Day 3", focus: "Thoracic & Spine Relief", exercises: ["Scorpion Stretch for Spinal Rotation", "Pigeon Pose with Active Thoracic Reach", "Pallof Press with Isometric Hold"] },
+      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Low-Impact Cardio & Step Walk", exercises: ["Rope Jump", "Child's Pose Spinal Reach", "Dead Bug"] },
+      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Walking & Joint Flushes", exercises: ["90/90 Hip Stretch", "Plank Holds", "Single-Leg Glute Bridges"] }
     ]
   }
 ];

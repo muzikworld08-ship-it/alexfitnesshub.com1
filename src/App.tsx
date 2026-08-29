@@ -233,28 +233,14 @@ function FitnessAppContent() {
         "coach", "nutrition", "community", "challenges", "success-stories", 
         "workout-generator", "daily-plan", "dashboard", "weekly-reports", 
         "daily-habit-tracker", "daily-calibration-desk", "handbook", 
-        "weight-trajectory", "library", "workout-videos", "saved-exercises", "belly-fat-shred"
+        "weight-trajectory", "saved-exercises", "belly-fat-shred", "women-confidence"
       ];
 
       if (loginRequiredViews.includes(currentView) && !user) {
-        console.log(`[DevOps Security] Unauthenticated user attempted to access protected view: ${currentView}. Redirecting to Home and opening auth.`);
+        console.log(`[DevOps Security] Unauthenticated user attempted to access protected view: ${currentView}. Saving destination and opening auth.`);
+        localStorage.setItem("fit_attempted_view", currentView);
         setView("home");
         setIsAuthOpen(true);
-        return;
-      }
-
-      // Guard premium-restricted routes for logged-in non-premium users
-      const restrictedViews = [
-        "coach", "nutrition", "workout-generator", "daily-plan", "dashboard", 
-        "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", 
-        "handbook", "weight-trajectory", "community", "challenges", "belly-fat-shred"
-      ];
-      if (user && restrictedViews.includes(currentView)) {
-        const isPremium = checkIsUserPremium(user);
-        if (!isPremium) {
-          console.log(`[DevOps Security] Non-premium user attempted to access restricted view: ${currentView}. Redirecting to pricing section.`);
-          navigateToPricing();
-        }
       }
     }
   }, [user, currentView, loading]);
@@ -397,55 +383,17 @@ function FitnessAppContent() {
       "community": "Community Arena"
     };
 
-    const restrictedViews = [
-      "coach", "nutrition", "workout-generator", "daily-plan", "dashboard", 
-      "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", 
-      "handbook", "weight-trajectory", "community", "challenges", "belly-fat-shred", "women-confidence"
+    const loginRequiredViews = [
+      "coach", "nutrition", "community", "challenges", "success-stories", 
+      "workout-generator", "daily-plan", "dashboard", "weekly-reports", 
+      "daily-habit-tracker", "daily-calibration-desk", "handbook", 
+      "weight-trajectory", "saved-exercises", "belly-fat-shred", "women-confidence"
     ];
 
-    const isRestricted = restrictedViews.includes(resolvedView) || 
-                        targetView.startsWith("/premium") || 
-                        targetView.startsWith("premium") || 
-                        (VIEW_TO_PATH_MAP[resolvedView] && VIEW_TO_PATH_MAP[resolvedView].startsWith("/premium"));
-
-    if (isRestricted) {
-      const isPremium = checkIsUserPremium(user);
-      if (!isPremium) {
-        if (user && auth.currentUser) {
-          // Attempt instant backend profile status auto-healing check before denying access
-          auth.currentUser.getIdToken().then(async (token: string) => {
-            try {
-              const res = await fetch("/api/user/profile-status", {
-                headers: { Authorization: `Bearer ${token}` }
-              });
-              const data = await res.json();
-              if (data && data.profile && checkIsUserPremium(data.profile)) {
-                console.log("[Auto-Healing Guard] Verified active Premium subscription in database. Granting access.");
-                setView(resolvedView);
-                return;
-              }
-            } catch (e) {
-              console.warn("Auto-healing guard check exception:", e);
-            }
-            localStorage.setItem("fit_attempted_view", resolvedView);
-            setPremiumModalFeatureName(FEATURE_NAMES[resolvedView] || "Premium Feature");
-            setIsPremiumModalOpen(true);
-            navigateToPricing();
-          }).catch(() => {
-            localStorage.setItem("fit_attempted_view", resolvedView);
-            setPremiumModalFeatureName(FEATURE_NAMES[resolvedView] || "Premium Feature");
-            setIsPremiumModalOpen(true);
-            navigateToPricing();
-          });
-          return;
-        } else {
-          localStorage.setItem("fit_attempted_view", resolvedView);
-          setPremiumModalFeatureName(FEATURE_NAMES[resolvedView] || "Premium Feature");
-          setIsPremiumModalOpen(true);
-          navigateToPricing();
-          return;
-        }
-      }
+    if (loginRequiredViews.includes(resolvedView) && !user) {
+      localStorage.setItem("fit_attempted_view", resolvedView);
+      setIsAuthOpen(true);
+      return;
     }
 
     setView(resolvedView);

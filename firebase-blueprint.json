@@ -244,6 +244,20 @@
       },
       "required": ["userId"]
     },
+    "CalibrationGoals": {
+      "title": "Daily Calibration Goals",
+      "description": "Athlete hydration and sleep target configuration stored in Firestore.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "dailyHydrationGoal": { "type": "number" },
+        "dailySleepGoal": { "type": "number" },
+        "targetReadinessScore": { "type": "number" },
+        "targetRestingHeartRate": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dailyHydrationGoal", "dailySleepGoal"]
+    },
     "Mail": {
       "title": "Trigger Email",
       "description": "Email queue document for the Firebase Trigger Email Extension.",
