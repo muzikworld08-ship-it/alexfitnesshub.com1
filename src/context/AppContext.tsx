@@ -571,23 +571,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {}
   }, []);
 
-  // Handle local state tracking for offline or unauthenticated sessions
+  // Handle local state tracking for offline or unauthenticated sessions with permanent custom overrides cache
   useEffect(() => {
+    // Load local custom overrides cache
+    let cachedOverrides: Record<string, { customMediaUrl?: string; customMediaType?: "image" | "video" }> = {};
+    const storedOverridesStr = localStorage.getItem("fit_custom_exercise_overrides");
+    if (storedOverridesStr) {
+      try { cachedOverrides = JSON.parse(storedOverridesStr); } catch {}
+    }
+
     const storedExercises = localStorage.getItem("fit_exercises");
     if (storedExercises) {
       try {
         const parsed = JSON.parse(storedExercises) as Exercise[];
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // If stored exercises is stale (e.g. fewer items than authoritative EXERCISES), merge cleanly
           const map = new Map<string, Exercise>();
-          EXERCISES.forEach(e => map.set(e.id, e));
+          EXERCISES.forEach(e => {
+            let mediaOverride = cachedOverrides[e.id];
+            if (!mediaOverride) {
+              const matchedKey = Object.keys(cachedOverrides).find(k => isExerciseMatch(k, e.id) || isExerciseMatch(k, e.name));
+              if (matchedKey) mediaOverride = cachedOverrides[matchedKey];
+            }
+            map.set(e.id, {
+              ...e,
+              customMediaUrl: mediaOverride?.customMediaUrl || e.customMediaUrl,
+              customMediaType: mediaOverride?.customMediaType || e.customMediaType
+            });
+          });
           
           // Preserve any custom user-added exercises (gen_ or cust_)
           parsed.forEach(p => {
             if (p.id.startsWith("gen_") || p.id.startsWith("cust_")) {
               map.set(p.id, p);
             } else if (map.has(p.id)) {
-              // Apply any locally saved custom media/sets/reps overrides
               const existing = map.get(p.id)!;
               map.set(p.id, {
                 ...existing,
@@ -606,23 +622,60 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (e) {}
     }
-    localStorage.setItem("fit_exercises", JSON.stringify(EXERCISES));
+    
+    // Default base with cached overrides
+    const initialList = EXERCISES.map(e => {
+      let mediaOverride = cachedOverrides[e.id];
+      if (!mediaOverride) {
+        const matchedKey = Object.keys(cachedOverrides).find(k => isExerciseMatch(k, e.id) || isExerciseMatch(k, e.name));
+        if (matchedKey) mediaOverride = cachedOverrides[matchedKey];
+      }
+      if (mediaOverride) {
+        return {
+          ...e,
+          customMediaUrl: mediaOverride.customMediaUrl || e.customMediaUrl,
+          customMediaType: mediaOverride.customMediaType || e.customMediaType
+        };
+      }
+      return e;
+    });
+    setExercisesState(initialList);
+    localStorage.setItem("fit_exercises", JSON.stringify(initialList));
   }, []);
 
   // Fetch and sync custom exercise overrides from Firestore and local Express server JSON file
   useEffect(() => {
     const fetchCustomDatabaseOverrides = async () => {
       try {
+        // 0. Load cached localStorage overrides
+        let localOverrides: Record<string, { customMediaUrl?: string; customMediaType?: "image" | "video" }> = {};
+        try {
+          const stored = localStorage.getItem("fit_custom_exercise_overrides");
+          if (stored) localOverrides = JSON.parse(stored);
+        } catch {}
+
         // 1. Fetch from Local Express Server JSON file
         const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-        const apiRes = await fetch("/api/exercises/custom-media", {
-          headers: token ? { "Authorization": `Bearer ${token}` } : {}
-        });
-        const apiData = await apiRes.json();
-        const serverOverrides = apiData.success ? apiData.overrides : {};
+        let serverOverrides: Record<string, any> = {};
+        try {
+          const apiRes = await fetch("/api/exercises/custom-media", {
+            headers: token ? { "Authorization": `Bearer ${token}` } : {}
+          });
+          const apiData = await apiRes.json();
+          if (apiData.success && apiData.overrides) {
+            serverOverrides = apiData.overrides;
+          }
+        } catch (sErr) {
+          console.warn("Server overrides fetch warning:", sErr);
+        }
         
         // 2. Fetch persistent exercise media records from Supabase DB and Cloud Firestore
-        const persistentMediaOverrides = await fetchAllExerciseMediaFromDatabase();
+        let persistentMediaOverrides: Record<string, any> = {};
+        try {
+          persistentMediaOverrides = await fetchAllExerciseMediaFromDatabase();
+        } catch (pErr) {
+          console.warn("Persistent media fetch warning:", pErr);
+        }
 
         let firestoreOverrides: Record<string, { customMediaUrl?: string; customMediaType?: "image" | "video" }> = {};
         if (!isMockFirebase) {
@@ -638,7 +691,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               }
             });
           } catch (fErr) {
-            console.warn("Firestore custom exercise overrides fetch failed, relying on server file:", fErr);
+            console.warn("Firestore custom exercise overrides fetch notice (using server + local cache):", fErr);
           }
         }
 
@@ -651,12 +704,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               fetchedGeneratedExercises.push(d.data() as Exercise);
             });
           } catch (gErr) {
-            console.warn("Firestore dynamically generated exercises fetch failed:", gErr);
+            console.warn("Firestore dynamically generated exercises fetch notice:", gErr);
           }
         }
 
-        // Merge sources (Persistent Supabase/Firestore DB media overrides take ultimate priority)
-        const mergedOverrides = { ...serverOverrides, ...firestoreOverrides, ...persistentMediaOverrides };
+        // Merge sources (All persistent sources combined, localOverrides as baseline)
+        const mergedOverrides = { 
+          ...localOverrides,
+          ...serverOverrides, 
+          ...firestoreOverrides, 
+          ...persistentMediaOverrides 
+        };
+
+        // Persist combined overrides to localStorage so they never disappear
+        try {
+          localStorage.setItem("fit_custom_exercise_overrides", JSON.stringify(mergedOverrides));
+        } catch {}
 
         setExercisesState(prev => {
           const baseList = [...EXERCISES];
@@ -670,13 +733,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 override = mergedOverrides[matchedKey];
               }
             }
+            
+            // Retain any existing custom media already present in state
+            const prevMatch = prev.find(p => p.id === ex.id || isExerciseMatch(p.name, ex.name));
+            const existingMediaUrl = prevMatch?.customMediaUrl || ex.customMediaUrl;
+            const existingMediaType = prevMatch?.customMediaType || ex.customMediaType;
+
             if (override) {
               return {
                 ...ex,
-                customMediaUrl: override.customMediaUrl ?? ex.customMediaUrl,
-                customMediaType: override.customMediaType ?? ex.customMediaType
+                customMediaUrl: override.customMediaUrl ?? existingMediaUrl,
+                customMediaType: override.customMediaType ?? existingMediaType
               };
             }
+
+            if (existingMediaUrl) {
+              return {
+                ...ex,
+                customMediaUrl: existingMediaUrl,
+                customMediaType: existingMediaType
+              };
+            }
+
             return ex;
           });
 
@@ -703,7 +781,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           });
 
-          return [...combinedGenerated, ...mapped];
+          const finalExercises = [...combinedGenerated, ...mapped];
+          try {
+            localStorage.setItem("fit_exercises", JSON.stringify(finalExercises));
+          } catch {}
+          return finalExercises;
         });
 
       } catch (err) {
@@ -2849,11 +2931,15 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
       const resText = await response.json();
       
+      const errDetail = typeof resText?.error === "object"
+        ? (resText.error.message || JSON.stringify(resText.error))
+        : (typeof resText?.error === "string" ? resText.error : (resText?.message || "Failed to communicate with the AI engine."));
+
       let finalMessage = "";
       if (!response.ok) {
-        finalMessage = `### ⚠️ API Error (Status ${response.status})\n\n**Details:** ${resText.error || resText.message || "Failed to communicate with the AI engine."}`;
+        finalMessage = `### ⚠️ API Error (Status ${response.status})\n\n**Details:** ${errDetail}`;
       } else if (resText.error) {
-        finalMessage = `### ⚠️ AI Processing Error\n\n**Details:** ${resText.error}`;
+        finalMessage = `### ⚠️ AI Processing Error\n\n**Details:** ${errDetail}`;
       } else {
         finalMessage = resText.text || "I was unable to formulate a response. Let's try adjusting our routine direction!";
       }
@@ -2981,6 +3067,26 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     });
     setExercisesState(updatedExercises);
     safeSetItem("fit_exercises", JSON.stringify(updatedExercises));
+
+    // Save to fit_custom_exercise_overrides in localStorage permanently
+    try {
+      const storedOverridesStr = localStorage.getItem("fit_custom_exercise_overrides");
+      let currentOverrides: Record<string, any> = {};
+      if (storedOverridesStr) {
+        try { currentOverrides = JSON.parse(storedOverridesStr); } catch {}
+      }
+      if (finalMediaUrl) {
+        currentOverrides[exerciseId] = {
+          customMediaUrl: finalMediaUrl,
+          customMediaType: mediaType || "image"
+        };
+      } else {
+        delete currentOverrides[exerciseId];
+      }
+      safeSetItem("fit_custom_exercise_overrides", JSON.stringify(currentOverrides));
+    } catch (oErr) {
+      console.warn("Could not save to fit_custom_exercise_overrides:", oErr);
+    }
 
     // 3. Persist same clean path to real Cloud Firestore (so other users see it instantly across all matching variations)
     if (!isMockFirebase) {

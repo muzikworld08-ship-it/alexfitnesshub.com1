@@ -468,23 +468,32 @@ const ADMIN_PASS = (process.env.ADMIN_PASS || "Mbajugha2002@").trim();
 async function authenticateServer() {
   try {
     await signInWithEmailAndPassword(backendAuth, ADMIN_EMAIL, ADMIN_PASS);
-    console.log("[Firebase Server Auth] Authenticated as Admin (alexfitnesshub@gmail.com).");
+    console.log(`[Firebase Server Auth] Authenticated as Admin (${ADMIN_EMAIL}).`);
   } catch (err: any) {
+    const errCode = err?.code || "";
+    const errMsg = err?.message || "";
+
     if (
-      err.code === "auth/user-not-found" || 
-      err.message.includes("user-not-found") || 
-      err.code === "auth/invalid-credential" || 
-      err.message.includes("invalid-credential") ||
-      err.code === "auth/invalid-email"
+      errCode === "auth/user-not-found" || 
+      errMsg.includes("user-not-found") || 
+      errCode === "auth/invalid-credential" || 
+      errMsg.includes("invalid-credential")
     ) {
       try {
         await createUserWithEmailAndPassword(backendAuth, ADMIN_EMAIL, ADMIN_PASS);
-        console.log("[Firebase Server Auth] Created and authenticated Admin account.");
+        console.log(`[Firebase Server Auth] Created and authenticated Admin account (${ADMIN_EMAIL}).`);
       } catch (createErr: any) {
-        console.error("[Firebase Server Auth] Failed to create Admin account:", createErr.message);
+        if (
+          createErr.code === "auth/email-already-in-use" || 
+          createErr.message?.includes("email-already-in-use")
+        ) {
+          console.log(`[Firebase Server Auth] Admin account (${ADMIN_EMAIL}) already exists in Firebase Auth.`);
+        } else {
+          console.warn("[Firebase Server Auth] Admin account creation notice:", createErr.message || createErr);
+        }
       }
     } else {
-      console.error("[Firebase Server Auth] Authentication failed:", err.message);
+      console.warn("[Firebase Server Auth] Admin sign-in notice:", errMsg || err);
     }
   }
 
@@ -1352,7 +1361,7 @@ Always format your answers in highly structured, beautiful, and easy-to-read Mar
     }));
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.7-flash",
       contents: [
         ...chatHistory,
         { text: query || `Generate a detailed progress and wellness start guide for my goal of ${goal}` }
@@ -1538,7 +1547,7 @@ Provide a single, impact-focused, highly action-oriented wellness/recovery tip c
 Keep it very concise, formatting it as clean Markdown with exactly 3 highly direct actionable bullets. Use encouraging, high-level sports science terminology. Avoid prefaces, introductions, or lengthy paragraphs. Ensure it fits easily inside a dashboard element.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.7-flash",
       contents,
       config: {
         systemInstruction,
@@ -1904,7 +1913,7 @@ Always replace any exercises that conflict with user injuries with safe biomecha
 Only return valid, parseable JSON text. Do not wrap in markdown codeblocks (no \`\`\`json).`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.7-flash",
       contents: prompt,
       config: {
         systemInstruction,
@@ -1918,7 +1927,7 @@ Only return valid, parseable JSON text. Do not wrap in markdown codeblocks (no \
       const parsedPlan = JSON.parse(outputText.trim());
       return res.json({
         success: true,
-        method: "gemini-3.5-flash AI engine",
+        method: "gemini-3.7-flash AI engine",
         plan: parsedPlan
       });
     } catch (parseError) {
@@ -2229,7 +2238,7 @@ You generate highly specific, anatomically accurate, and personalized training b
 Ensure that the JSON is perfectly valid and matches the requested structure exactly.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.7-flash",
       contents,
       config: {
         systemInstruction,
@@ -2383,7 +2392,7 @@ Please analyze this target drill or routine, deduce its biomechanics, and return
 }`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.7-flash",
       contents,
     });
 
@@ -2676,8 +2685,18 @@ app.post("/api/media/upload", async (req: any, res: any) => {
       return res.json({ success: true, url: cloudUrl });
     }
 
-    // Fallback: Return raw data URL if REST upload is unavailable
-    return res.json({ success: true, url: fileData });
+    // Direct Static File Storage fallback
+    const localFilePath = path.join(ASSETS_DIR, fullFilename);
+    fs.writeFileSync(localFilePath, buffer);
+    const publicAssetsDir = path.join(process.cwd(), "public", "assets");
+    if (!fs.existsSync(publicAssetsDir)) {
+      fs.mkdirSync(publicAssetsDir, { recursive: true });
+    }
+    fs.writeFileSync(path.join(publicAssetsDir, fullFilename), buffer);
+
+    const staticLocalUrl = `/assets/${fullFilename}`;
+    console.log(`[Media Upload Server] Stored permanent asset locally: ${staticLocalUrl}`);
+    return res.json({ success: true, url: staticLocalUrl });
   } catch (err: any) {
     console.error("Error in /api/media/upload:", err);
     res.status(500).json({ success: false, error: err?.message || "Failed to upload image." });
@@ -2761,11 +2780,16 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
           if (cloudUploadedUrl) {
             customMediaUrl = cloudUploadedUrl;
           } else {
-            // Write to disk as fallback
+            // Write to disk as permanent local asset
             const localFilename = `exercise_custom_${exerciseId}.${ext}`;
             const filePath = path.join(ASSETS_DIR, localFilename);
             fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
-            customMediaUrl = rawInputUrl;
+            const publicAssetsDir = path.join(process.cwd(), "public", "assets");
+            if (!fs.existsSync(publicAssetsDir)) {
+              fs.mkdirSync(publicAssetsDir, { recursive: true });
+            }
+            fs.writeFileSync(path.join(publicAssetsDir, localFilename), Buffer.from(base64Data, "base64"));
+            customMediaUrl = `/assets/${localFilename}`;
           }
         }
       }
@@ -3739,7 +3763,7 @@ app.post("/api/gemini/analyze-food", requirePremium, async (req, res) => {
     });
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.7-flash",
       contents,
       config: {
         responseMimeType: "application/json",
@@ -3753,7 +3777,7 @@ app.post("/api/gemini/analyze-food", requirePremium, async (req, res) => {
 
     return res.json({
       success: true,
-      method: "Gemini 3.5 Neural Analysis",
+      method: "Gemini 3.7 Neural Analysis",
       result: parsed
     });
 
@@ -3844,7 +3868,7 @@ Proper hydration is the foundation of peak performance. To maximize your results
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.7-flash",
       contents: prompt,
       config: {
         systemInstruction,
@@ -3854,7 +3878,7 @@ Proper hydration is the foundation of peak performance. To maximize your results
 
     return res.json({
       success: true,
-      method: "Gemini 3.5 AI Advisor",
+      method: "Gemini 3.7 AI Advisor",
       text: response.text || "Ensure your whole-food targets are met daily."
     });
 
@@ -4825,7 +4849,7 @@ ONLY return a valid JSON object in this exact format, with NO markdown formattin
   if (ai) {
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-3.7-flash",
         contents: prompt,
         config: {
           systemInstruction,

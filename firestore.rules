@@ -138,6 +138,14 @@ service cloud.firestore {
     }
 
     // --- Premium 90 Day Challenges ---
+    match /challenges/{challengeId} {
+      allow read, write: if true;
+    }
+
+    match /user_program_progress/{userId} {
+      allow read, write: if true;
+    }
+
     match /user_premium_challenges/{userId} {
       allow read, write: if true;
     }

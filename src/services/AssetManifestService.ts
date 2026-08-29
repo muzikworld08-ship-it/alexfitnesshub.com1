@@ -163,6 +163,32 @@ export class AssetManifestService {
         console.warn("[AssetManifestService] exercises fetch notice:", exErr);
       }
 
+      // 3. Fetch from 'exercise_media' collection
+      try {
+        const mediaColRef = collection(db, "exercise_media");
+        const mediaSnap = await getDocs(mediaColRef);
+        mediaSnap.docs.forEach((docSnap) => {
+          const data = docSnap.data();
+          const assetId = data.exerciseId || docSnap.id;
+          const mediaUrl = data.customMediaUrl || data.originalUrlOrBase64;
+          if (mediaUrl) {
+            const sig = this.generateSignature(mediaUrl, data.customMediaType || "image");
+            if (!this.localManifest[assetId] || this.localManifest[assetId].signature !== sig) {
+              this.localManifest[assetId] = {
+                id: assetId,
+                signature: sig,
+                mediaUrl: mediaUrl,
+                mediaType: data.customMediaType || "image",
+                updatedAt: Date.now(),
+              };
+              updatedCount++;
+            }
+          }
+        });
+      } catch (mediaErr) {
+        console.warn("[AssetManifestService] exercise_media fetch notice:", mediaErr);
+      }
+
       if (updatedCount > 0) {
         this.saveManifest();
         console.log(`[AssetManifestService] Synced ${updatedCount} asset signatures from Firestore.`);

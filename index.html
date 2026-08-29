@@ -124,18 +124,7 @@
         });
       }
 
-      // 3. Aggressively flush old caches
-      if ('caches' in window) {
-        caches.keys().then(function(keys) {
-          keys.forEach(function(key) {
-            caches.delete(key).then(function() {
-              console.log('[DevOps Cache Cleanup] Deleted stale cache bucket:', key);
-            });
-          });
-        });
-      }
-
-      // 4. Force pure white light theme across all devices
+      // Force pure white light theme across all devices
       try {
         localStorage.setItem("fit_theme", "light");
         document.documentElement.classList.remove("dark");

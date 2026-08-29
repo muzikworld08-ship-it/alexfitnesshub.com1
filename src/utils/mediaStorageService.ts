@@ -140,7 +140,7 @@ export async function uploadMediaToCloud(
 
     if (res.ok) {
       const data = await res.json();
-      if (data.success && data.url && (data.url.startsWith("http://") || data.url.startsWith("https://"))) {
+      if (data.success && data.url && (data.url.startsWith("http://") || data.url.startsWith("https://") || data.url.startsWith("/assets/"))) {
         console.log(`[MediaStorage OK] Permanent Server Upload URL created: ${data.url}`);
         return data.url;
       }

@@ -1,0 +1,354 @@
+{
+  "exercise-sandbag-ground-to-shoulder-carry": {
+    "customMediaUrl": "https://apilyfta.com/static/GymvisualPNG/27121101-StrongMan-Sandbag-Walk_Weightlifting_small.png",
+    "customMediaType": "image"
+  },
+  "exercise-barbell-bench-press": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-incline-dumbbell-press": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-dumbbell-chest-press": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-decline-bench-press": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-cable-chest-fly": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-dumbbell-fly": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-push-ups": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-chest-dips": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U39K5Cj6D0v2w0/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-machine-chest-press": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-pec-deck-fly": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-pull-ups": {
+    "customMediaUrl": "https://media.giphy.com/media/duuVpx00In40Syc7m6/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-lat-pulldown": {
+    "customMediaUrl": "https://media.giphy.com/media/duuVpx00In40Syc7m6/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-barbell-row": {
+    "customMediaUrl": "https://media.giphy.com/media/duuVpx00In40Syc7m6/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-seated-cable-row": {
+    "customMediaUrl": "https://media.giphy.com/media/duuVpx00In40Syc7m6/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-dumbbell-row": {
+    "customMediaUrl": "https://media.giphy.com/media/duuVpx00In40Syc7m6/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-t-bar-row": {
+    "customMediaUrl": "https://media.giphy.com/media/duuVpx00In40Syc7m6/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-deadlift": {
+    "customMediaUrl": "https://media.giphy.com/media/duuVpx00In40Syc7m6/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-straight-arm-pulldown": {
+    "customMediaUrl": "https://media.giphy.com/media/duuVpx00In40Syc7m6/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-face-pulls": {
+    "customMediaUrl": "https://media.giphy.com/media/1wXclU28U18w0Gbp2E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-back-extension": {
+    "customMediaUrl": "https://media.giphy.com/media/duuVpx00In40Syc7m6/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-overhead-barbell-press": {
+    "customMediaUrl": "https://media.giphy.com/media/1wXclU28U18w0Gbp2E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-dumbbell-shoulder-press": {
+    "customMediaUrl": "https://media.giphy.com/media/1wXclU28U18w0Gbp2E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-lateral-raises": {
+    "customMediaUrl": "https://media.giphy.com/media/1wXclU28U18w0Gbp2E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-front-raises": {
+    "customMediaUrl": "https://media.giphy.com/media/1wXclU28U18w0Gbp2E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-rear-delt-fly": {
+    "customMediaUrl": "https://media.giphy.com/media/1wXclU28U18w0Gbp2E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-arnold-press": {
+    "customMediaUrl": "https://media.giphy.com/media/1wXclU28U18w0Gbp2E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-cable-lateral-raise": {
+    "customMediaUrl": "https://media.giphy.com/media/1wXclU28U18w0Gbp2E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-upright-row": {
+    "customMediaUrl": "https://media.giphy.com/media/1wXclU28U18w0Gbp2E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-shrugs": {
+    "customMediaUrl": "https://media.giphy.com/media/1wXclU28U18w0Gbp2E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-machine-shoulder-press": {
+    "customMediaUrl": "https://media.giphy.com/media/1wXclU28U18w0Gbp2E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-barbell-curl": {
+    "customMediaUrl": "https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-dumbbell-curl": {
+    "customMediaUrl": "https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-hammer-curl": {
+    "customMediaUrl": "https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-preacher-curl": {
+    "customMediaUrl": "https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-cable-curl": {
+    "customMediaUrl": "https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-concentration-curl": {
+    "customMediaUrl": "https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-incline-dumbbell-curl": {
+    "customMediaUrl": "https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-ez-bar-curl": {
+    "customMediaUrl": "https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-triceps-pushdown": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U39K5Cj6D0v2w0/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-skull-crushers": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U39K5Cj6D0v2w0/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-close-grip-bench-press": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U39K5Cj6D0v2w0/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-overhead-triceps-extension": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U39K5Cj6D0v2w0/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-dips": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U39K5Cj6D0v2w0/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-dumbbell-kickbacks": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U39K5Cj6D0v2w0/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-cable-overhead-extension": {
+    "customMediaUrl": "https://media.giphy.com/media/3o84U39K5Cj6D0v2w0/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-barbell-squat": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-leg-press": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-lunges": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-romanian-deadlift": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-leg-extension": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-leg-curl": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-calf-raises": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-bulgarian-split-squat": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-hip-thrust": {
+    "customMediaUrl": "https://media.giphy.com/media/v1F0A8f5Ff6hO/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-goblet-squat": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-hanging-leg-raise": {
+    "customMediaUrl": "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-cable-crunch": {
+    "customMediaUrl": "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-plank": {
+    "customMediaUrl": "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-russian-twist": {
+    "customMediaUrl": "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-bicycle-crunch": {
+    "customMediaUrl": "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-mountain-climbers": {
+    "customMediaUrl": "https://media.giphy.com/media/13sc1CHidbO6S4/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-ab-wheel-rollout": {
+    "customMediaUrl": "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-sit-ups": {
+    "customMediaUrl": "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-burpees": {
+    "customMediaUrl": "https://media.giphy.com/media/13sc1CHidbO6S4/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-jumping-jacks": {
+    "customMediaUrl": "https://media.giphy.com/media/13sc1CHidbO6S4/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-high-knees": {
+    "customMediaUrl": "https://media.giphy.com/media/13sc1CHidbO6S4/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-bear-crawl": {
+    "customMediaUrl": "https://media.giphy.com/media/13sc1CHidbO6S4/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-bodyweight-squats": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-glute-bridges": {
+    "customMediaUrl": "https://media.giphy.com/media/v1F0A8f5Ff6hO/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-jump-squats": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-walking-lunges": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-reverse-lunges": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-wall-sit": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-side-plank": {
+    "customMediaUrl": "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-leg-raises": {
+    "customMediaUrl": "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-jump-rope": {
+    "customMediaUrl": "https://media.giphy.com/media/3o6Zt481isNVuQI1l6/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-rope-jump": {
+    "customMediaUrl": "https://media.giphy.com/media/3o6Zt481isNVuQI1l6/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-12-3-30-treadmill-walk": {
+    "customMediaUrl": "https://media.giphy.com/media/13sc1CHidbO6S4/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-dead-bug": {
+    "customMediaUrl": "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-reverse-crunch": {
+    "customMediaUrl": "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-stomach-vacuum-core-bracing": {
+    "customMediaUrl": "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-bird-dog-stability-hold": {
+    "customMediaUrl": "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-glute-bridge-isometric-hold": {
+    "customMediaUrl": "https://media.giphy.com/media/v1F0A8f5Ff6hO/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-cable-glute-kickbacks": {
+    "customMediaUrl": "https://media.giphy.com/media/v1F0A8f5Ff6hO/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-sumo-squat-with-pulse": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-curtsy-lunges": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  },
+  "exercise-step-ups-with-knee-drive": {
+    "customMediaUrl": "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "customMediaType": "image"
+  }
+}
