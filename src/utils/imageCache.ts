@@ -109,11 +109,15 @@ export function preloadCriticalFitnessAssets(): void {
   if (typeof window === "undefined") return;
 
   const CRITICAL_URLS = [
-    "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h0YnpwM2wzdW9vdG9ndjY5NHdvdnBwdXB4Mm5qNXRpcG5xMDlxMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o84U6421O1IIXbowg/giphy.gif",
-    "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2bzNyMTZ4ZHp0aXB6dnZzcDZrcTZhbmplbmF2MnpydzF1b3ByMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/u8946fAnhQ6cH9R16e/giphy.gif",
-    "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NiaXQxMGxkcTVwZGxhbjVvNnlvZDJ4bnB4ZGpwNnZxdThscDZ6eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT8qB7Sbwskk27Rdy8/giphy.gif",
-    "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExOTVxbGRzNDVleW12ZTRsdXoxeDJmd2t2enN5YnYwdXhyeTV6ZW5xeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/v1F0A8f5Ff6hO/giphy.gif",
-    "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZW1sODNuY2Q3N29pd2VrdGkzbndpdTJ4cnFkM3pxOHdqN3huc2sybyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/duuVpx00In40Syc7m6/giphy.gif",
+    "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+    "https://media.giphy.com/media/v1F0A8f5Ff6hO/giphy.gif",
+    "https://media.giphy.com/media/duuVpx00In40Syc7m6/giphy.gif",
+    "https://media.giphy.com/media/13sc1CHidbO6S4/giphy.gif",
+    "https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif",
+    "https://media.giphy.com/media/3o84U39K5Cj6D0v2w0/giphy.gif",
+    "https://media.giphy.com/media/3o7qE6b39zV1LALZRe/giphy.gif",
     "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&auto=format&fit=crop&q=80",
     "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80"
   ];

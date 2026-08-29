@@ -109,6 +109,8 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
 
   const formatMediaSrc = (url: string, retry: number) => {
     if (!url) return "";
+    const isGif = url.toLowerCase().includes(".gif");
+    if (isGif) return url;
     const cdnOptimized = getSupabaseCdnUrl(url, {
       width: isCard ? 500 : 900,
       quality: 80,

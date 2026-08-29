@@ -25,10 +25,22 @@ export function getSupabaseCdnUrl(
 ): string {
   if (!src) return "";
 
-  const trimmed = src.trim();
+  let trimmed = src.trim();
+
+  // Upgrade http to https to avoid mixed-content blocks on deployed HTTPS sites
+  if (trimmed.startsWith("http://")) {
+    trimmed = "https://" + trimmed.slice(7);
+  }
 
   // 1. Data URLs, Blob URLs, inline SVGs, or animated GIFs are passed as-is
-  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:") || trimmed.endsWith(".svg") || trimmed.toLowerCase().includes(".gif")) {
+  if (
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("blob:") ||
+    trimmed.endsWith(".svg") ||
+    trimmed.toLowerCase().includes(".gif") ||
+    trimmed.includes("giphy.com") ||
+    trimmed.includes("giphy.net")
+  ) {
     return trimmed;
   }
 

@@ -1,3 +1,5 @@
+import { getExerciseGifUrl } from "./exercises";
+
 export interface WomenOnboardingProfile {
   age: number;
   height: number; // in cm
@@ -903,7 +905,8 @@ export function getDailyWorkoutForDay(
     const raw = WOMEN_EXERCISE_CATALOG[templateKey] || WOMEN_EXERCISE_CATALOG.glute_bridge;
     return {
       ...raw,
-      id: `wc_d${dayNumber}_ex${idx + 1}`
+      id: `wc_d${dayNumber}_ex${idx + 1}`,
+      gifUrl: getExerciseGifUrl(raw.name)
     };
   });
 

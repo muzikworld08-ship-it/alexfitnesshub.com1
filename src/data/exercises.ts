@@ -54,13 +54,16 @@ export function getExerciseGifUrl(name: string, category: string = ""): string {
     nameLower.includes("chest press") ||
     nameLower.includes("push up") ||
     nameLower.includes("pushup") ||
+    nameLower.includes("push-up") ||
     nameLower.includes("pec deck") ||
     nameLower.includes("crossover") ||
     nameLower.includes("guillotine") ||
     (nameLower.includes("fly") && !nameLower.includes("rear delt")) ||
-    (nameLower.includes("dips") && nameLower.includes("chest"))
+    (nameLower.includes("dips") && nameLower.includes("chest")) ||
+    nameLower.includes("incline dumbbell press") ||
+    nameLower.includes("decline bench")
   ) {
-    return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h0YnpwM2wzdW9vdG9ndjY5NHdvdnBwdXB4Mm5qNXRpcG5xMDlxMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o84U6421O1IIXbowg/giphy.gif";
+    return "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif";
   }
 
   // Glutes & Hip Thrusts
@@ -72,9 +75,11 @@ export function getExerciseGifUrl(name: string, category: string = ""): string {
     nameLower.includes("pull-through") ||
     nameLower.includes("kas glute") ||
     nameLower.includes("glute walk") ||
-    nameLower.includes("hip abduction")
+    nameLower.includes("hip abduction") ||
+    nameLower.includes("band walk") ||
+    nameLower.includes("curtsy")
   ) {
-    return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExOTVxbGRzNDVleW12ZTRsdXoxeDJmd2t2enN5YnYwdXhyeTV6ZW5xeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/v1F0A8f5Ff6hO/giphy.gif";
+    return "https://media.giphy.com/media/v1F0A8f5Ff6hO/giphy.gif";
   }
 
   // Legs, Squats, Lunges, Quads, Hamstrings
@@ -83,14 +88,19 @@ export function getExerciseGifUrl(name: string, category: string = ""): string {
     nameLower.includes("leg press") ||
     nameLower.includes("lunge") ||
     nameLower.includes("step up") ||
+    nameLower.includes("step-up") ||
     nameLower.includes("sissy") ||
     nameLower.includes("cyclist") ||
     nameLower.includes("hamstring") ||
     nameLower.includes("leg extension") ||
     nameLower.includes("leg curl") ||
-    nameLower.includes("calf raise")
+    nameLower.includes("calf raise") ||
+    nameLower.includes("bulgarian") ||
+    nameLower.includes("goblet") ||
+    nameLower.includes("hack squat") ||
+    nameLower.includes("wall sit")
   ) {
-    return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2bzNyMTZ4ZHp0aXB6dnZzcDZrcTZhbmplbmF2MnpydzF1b3ByMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/u8946fAnhQ6cH9R16e/giphy.gif";
+    return "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif";
   }
 
   // Core, Abs, Obliques
@@ -101,6 +111,7 @@ export function getExerciseGifUrl(name: string, category: string = ""): string {
     nameLower.includes("abdominal") ||
     nameLower.includes("sit up") ||
     nameLower.includes("situp") ||
+    nameLower.includes("sit-up") ||
     nameLower.includes("dead bug") ||
     nameLower.includes("vacuum") ||
     nameLower.includes("pallof") ||
@@ -112,12 +123,24 @@ export function getExerciseGifUrl(name: string, category: string = ""): string {
     nameLower.includes("l sit") ||
     nameLower.includes("l-sit") ||
     nameLower.includes("bird dog") ||
-    nameLower.includes("ab wheel")
+    nameLower.includes("ab wheel") ||
+    nameLower.includes("knee raise") ||
+    nameLower.includes("leg raise") ||
+    nameLower.includes("toe touch")
   ) {
-    return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NiaXQxMGxkcTVwZGxhbjVvNnlvZDJ4bnB4ZGpwNnZxdThscDZ6eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT8qB7Sbwskk27Rdy8/giphy.gif";
+    return "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif";
   }
 
-  // Cardio, HIIT, Sprints
+  // Jump Rope / Rope Jump
+  if (
+    nameLower.includes("jump rope") ||
+    nameLower.includes("rope jump") ||
+    nameLower.includes("skipping")
+  ) {
+    return "https://media.giphy.com/media/3o6Zt481isNVuQI1l6/giphy.gif";
+  }
+
+  // Cardio, HIIT, Sprints, Walking, Running
   if (
     nameLower.includes("mountain climber") ||
     nameLower.includes("burpee") ||
@@ -127,22 +150,24 @@ export function getExerciseGifUrl(name: string, category: string = ""): string {
     nameLower.includes("run") ||
     nameLower.includes("sprint") ||
     nameLower.includes("walk") ||
+    nameLower.includes("treadmill") ||
     nameLower.includes("devil press") ||
     nameLower.includes("wall ball") ||
     nameLower.includes("sled") ||
-    nameLower.includes("boxing") ||
     nameLower.includes("battle rope") ||
     nameLower.includes("box jump") ||
     nameLower.includes("skater jump") ||
     nameLower.includes("high knee") ||
-    nameLower.includes("jump rope") ||
-    nameLower.includes("rope jump") ||
-    nameLower.includes("rowing machine")
+    nameLower.includes("rowing machine") ||
+    nameLower.includes("cardio") ||
+    nameLower.includes("hiit") ||
+    nameLower.includes("aerobic") ||
+    nameLower.includes("12-3-30")
   ) {
-    return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2bzNyMTZ4ZHp0aXB6dnZzcDZrcTZhbmplbmF2MnpydzF1b3ByMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/13sc1CHidbO6S4/giphy.gif";
+    return "https://media.giphy.com/media/13sc1CHidbO6S4/giphy.gif";
   }
 
-  // Back, Lats, Pullups, Rows
+  // Back, Lats, Pullups, Rows, Deadlifts
   if (
     (nameLower.includes("row") && !nameLower.includes("upright row") && !nameLower.includes("rowing machine")) ||
     nameLower.includes("pull-up") ||
@@ -150,19 +175,20 @@ export function getExerciseGifUrl(name: string, category: string = ""): string {
     nameLower.includes("chin-up") ||
     nameLower.includes("chinup") ||
     nameLower.includes("deadlift") ||
+    nameLower.includes("rdl") ||
     nameLower.includes("lat pulldown") ||
     nameLower.includes("pullover") ||
     nameLower.includes("meadows") ||
     nameLower.includes("pendlay") ||
     nameLower.includes("seal row") ||
-    nameLower.includes("front lever") ||
-    nameLower.includes("back lever") ||
-    nameLower.includes("muscle up") ||
-    nameLower.includes("muscle-up") ||
     nameLower.includes("lat prayer") ||
-    nameLower.includes("straight arm pulldown")
+    nameLower.includes("straight arm pulldown") ||
+    nameLower.includes("t-bar") ||
+    nameLower.includes("t bar") ||
+    nameLower.includes("back extension") ||
+    nameLower.includes("hyperextension")
   ) {
-    return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZW1sODNuY2Q3N29pd2VrdGkzbndpdTJ4cnFkM3pxOHdqN3huc2sybyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/duuVpx00In40Syc7m6/giphy.gif";
+    return "https://media.giphy.com/media/duuVpx00In40Syc7m6/giphy.gif";
   }
 
   // Biceps, Forearms
@@ -173,9 +199,11 @@ export function getExerciseGifUrl(name: string, category: string = ""): string {
     nameLower.includes("bayesian") ||
     nameLower.includes("spider curl") ||
     nameLower.includes("preacher") ||
-    nameLower.includes("wrist curl")
+    nameLower.includes("wrist curl") ||
+    nameLower.includes("hammer curl") ||
+    nameLower.includes("concentration curl")
   ) {
-    return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3NiaXQxMGxkcTVwZGxhbjVvNnlvZDJ4bnB4ZGpwNnZxdThscDZ6eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7qE1YN7aBOFPRw8E/giphy.gif";
+    return "https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif";
   }
 
   // Triceps
@@ -188,12 +216,26 @@ export function getExerciseGifUrl(name: string, category: string = ""): string {
     nameLower.includes("close grip bench") ||
     nameLower.includes("jm press") ||
     nameLower.includes("tate press") ||
-    (nameLower.includes("overhead") && nameLower.includes("extension"))
+    (nameLower.includes("overhead") && nameLower.includes("extension")) ||
+    nameLower.includes("french press")
   ) {
-    return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExOTV4bHF2eXU4eWZsc29tZndyYWVtbjR6dWU3dGkwdHNyeTV6ZW5xeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o84U39K5Cj6D0v2w0/giphy.gif";
+    return "https://media.giphy.com/media/3o84U39K5Cj6D0v2w0/giphy.gif";
   }
 
-  // Shoulders, Deltoids, Overhead Presses
+  // Calisthenics Advanced (Handstands, Planche, Muscle Ups, Levers)
+  if (
+    nameLower.includes("handstand") ||
+    nameLower.includes("planche") ||
+    nameLower.includes("front lever") ||
+    nameLower.includes("back lever") ||
+    nameLower.includes("muscle up") ||
+    nameLower.includes("muscle-up") ||
+    nameLower.includes("calisthenic")
+  ) {
+    return "https://media.giphy.com/media/3o7TKMGpx4g2iNffYk/giphy.gif";
+  }
+
+  // Shoulders, Deltoids, Overhead Presses, Traps
   if (
     nameLower.includes("shoulder") ||
     nameLower.includes("overhead press") ||
@@ -208,13 +250,13 @@ export function getExerciseGifUrl(name: string, category: string = ""): string {
     nameLower.includes("upright row") ||
     nameLower.includes("shrug") ||
     nameLower.includes("arnold press") ||
-    nameLower.includes("handstand") ||
-    nameLower.includes("planche")
+    nameLower.includes("pull-apart") ||
+    nameLower.includes("pullapart")
   ) {
-    return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZHp5NDZocWlkNDNuN2psZHZpcXpnaXR2MXByajVwNG9tZG5reHR1NCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7qE6b39zV1LALZRe/giphy.gif";
+    return "https://media.giphy.com/media/3o7qE6b39zV1LALZRe/giphy.gif";
   }
 
-  // Mobility & Stretching
+  // Mobility, Stretching, Yoga, Recovery
   if (
     nameLower.includes("stretch") ||
     nameLower.includes("mobility") ||
@@ -224,12 +266,19 @@ export function getExerciseGifUrl(name: string, category: string = ""): string {
     nameLower.includes("shin box") ||
     nameLower.includes("cat-cow") ||
     nameLower.includes("child's pose") ||
-    nameLower.includes("cobra")
+    nameLower.includes("cobra") ||
+    nameLower.includes("breathing") ||
+    nameLower.includes("recovery") ||
+    nameLower.includes("warm-up") ||
+    nameLower.includes("warmup") ||
+    nameLower.includes("cool down") ||
+    nameLower.includes("cooldown")
   ) {
-    return "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&auto=format&fit=crop&q=80";
+    return "https://media.giphy.com/media/3o7TKMt1VVNkHV2PaE/giphy.gif";
   }
 
-  return "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h2bzNyMTZ4ZHp0aXB6dnZzcDZrcTZhbmplbmF2MnpydzF1b3ByMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/u8946fAnhQ6cH9R16e/giphy.gif";
+  // Universal High-Tension Movement Demonstration Loop
+  return "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif";
 }
 
 export interface Program {
