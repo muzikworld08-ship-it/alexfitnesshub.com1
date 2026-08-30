@@ -183,7 +183,7 @@ export default function DailyPlanView() {
     try {
       const token = auth.currentUser 
         ? await auth.currentUser.getIdToken() 
-        : (localStorage.getItem("fit_active_uid") || "mock-token");
+        : (localStorage.getItem("fit_active_uid") || "");
       const response = await fetch("/api/gemini/generate-plan", {
         method: "POST",
         headers: { 

@@ -12,6 +12,7 @@ import CoachView from "./components/CoachView";
 import AdminDashboard from "./components/AdminDashboard";
 import OnboardingWizard from "./components/OnboardingWizard";
 import AuthModal from "./components/AuthModal";
+import AuthView from "./components/AuthView";
 import NutritionView from "./components/NutritionView";
 import CommunityView from "./components/CommunityView";
 import SuccessView from "./components/SuccessView";
@@ -224,7 +225,7 @@ function FitnessAppContent() {
   React.useEffect(() => {
     if (loading) return;
 
-    if (currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register") {
+    if (currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register" || currentView === "auth") {
       if (user) {
         // Already logged in, redirect away from login screen immediately!
         setIsAuthOpen(false);
@@ -236,14 +237,13 @@ function FitnessAppContent() {
           setView("dashboard");
         }
       } else {
-        // Show Auth Modal when user navigates directly to /login or /signin or /signup
-        setIsAuthOpen(true);
+        // Close modal so full-page AuthView renders cleanly without popup obstruction
+        setIsAuthOpen(false);
       }
     } else if (currentView === "onboarding") {
       if (!user) {
-        // Force login if trying to access onboarding unauthenticated
-        setView("home");
-        setIsAuthOpen(true);
+        // Route to login if trying to access onboarding unauthenticated
+        setView("login");
       }
     }
   }, [currentView, user, loading, setView]);
@@ -258,14 +258,14 @@ function FitnessAppContent() {
         "weight-trajectory", "saved-exercises", "belly-fat-shred", "women-confidence"
       ];
 
-      if (loginRequiredViews.includes(currentView) && !user) {
-        console.log(`[DevOps Security] Unauthenticated user attempted to access protected view: ${currentView}. Saving destination and opening auth.`);
+      const activeUid = localStorage.getItem("fit_active_uid");
+      if (loginRequiredViews.includes(currentView) && !user && !activeUid) {
+        console.log(`[DevOps Security] Unauthenticated user attempted to access protected view: ${currentView}. Saving destination and navigating to login.`);
         localStorage.setItem("fit_attempted_view", currentView);
-        setView("home");
-        setIsAuthOpen(true);
+        setView("login");
       }
     }
-  }, [user, currentView, loading]);
+  }, [user, currentView, loading, setView]);
 
   // Keep window.location.pathname in sync with currentView
   React.useEffect(() => {
@@ -578,7 +578,7 @@ function FitnessAppContent() {
       <Navbar 
         currentView={currentView} 
         setView={handleSetView} 
-        onOpenAuth={() => setIsAuthOpen(true)} 
+        onOpenAuth={() => handleSetView("login")} 
       />
 
       {/* Main Switchboard Route Mounting with Staggered Transitions */}
@@ -594,7 +594,7 @@ function FitnessAppContent() {
           >
             <React.Suspense fallback={renderSkeletonForView(currentView)}>
               {currentView === "home" && (
-                <HomeView setView={handleSetView} onOpenAuth={() => setIsAuthOpen(true)} />
+                <HomeView setView={handleSetView} onOpenAuth={() => handleSetView("login")} />
               )}
               {currentView === "onboarding" && (
                 <OnboardingWizard />
@@ -643,6 +643,9 @@ function FitnessAppContent() {
               )}
               {currentView === "lifestyle-academy" && (
                 <LifestyleFitnessAcademy />
+              )}
+              {["login", "signin", "signup", "register", "auth"].includes(currentView) && (
+                <AuthView initialMode={currentView === "signup" || currentView === "register" ? "signup" : "signin"} />
               )}
 
               {currentView === "admin" && (

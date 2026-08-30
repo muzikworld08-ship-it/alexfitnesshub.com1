@@ -2993,7 +2993,7 @@ export default function BellyFatShredView() {
                     </h3>
                     
                     <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                      This premium workout circuit features 12 calorie-scorching movements, interactive video guides, speech-synthesized voice count-downs, real-time heart rate simulators, and automated cloud sync.
+                      This premium workout circuit features 12 calorie-scorching movements, interactive video guides, speech-synthesized voice count-downs, real-time heart rate tracking, and automated cloud sync.
                     </p>
                     
                     <button

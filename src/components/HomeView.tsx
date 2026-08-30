@@ -1215,7 +1215,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
           
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
             <span className="text-[10px] font-sans font-black tracking-[0.25em] text-[#D32F2F] uppercase bg-red-50 px-3.5 py-1.5 rounded-full inline-block">
-              BRIGHT LIVE WORKOUT DEMO
+              HD WORKOUT PREVIEW
             </span>
             <h2 className="text-3xl sm:text-4xl font-sans font-black tracking-tight text-slate-900 uppercase">
               ALEXFITNESSHUB <span className="text-[#D32F2F]">HD TRAINING STREAM</span>

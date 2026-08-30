@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
-import { X, Mail, Lock, User, Shield, CheckCircle, AlertCircle, Eye, EyeOff, Award } from "lucide-react";
+import { X, Mail, Lock, User, Shield, CheckCircle, AlertCircle, Eye, EyeOff, Award, ArrowRight } from "lucide-react";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -182,15 +182,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <div className="space-y-5">
             <div>
               <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
-                ATHLETE ACCESS PORTAL
+                AlexFitnessHub
               </span>
               <h3 className="text-xl font-bold font-sans text-slate-900 mt-1 uppercase tracking-tight">
                 {isForgot ? "Reset Password" : isSignUp ? "Create Account" : "Sign In"}
               </h3>
               <p className="text-xs text-slate-500 font-medium">
                 {isForgot 
-                  ? "Enter your email to retrieve recovery parameters" 
-                  : isSignUp ? "Build your personal AlexFitnessHub profile" : "Gain instant workout ecosystem credentials"}
+                  ? "Enter your email to receive recovery instructions" 
+                  : isSignUp ? "Build your personalized athlete profile" : "Enter your credentials to access your workouts"}
               </p>
             </div>
 
@@ -200,6 +200,22 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
                   <span>{error}</span>
                 </div>
+                {(error.toLowerCase().includes("already exists") || error.toLowerCase().includes("already in use")) && (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSignUp(false);
+                        setError("");
+                        setValidation({});
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C0392B] text-white text-[11px] font-bold uppercase tracking-wider hover:bg-[#A93226] transition shadow-xs cursor-pointer border-0"
+                    >
+                      <span>Sign In with this Email</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

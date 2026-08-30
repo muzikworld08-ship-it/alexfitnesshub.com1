@@ -260,7 +260,7 @@ const safeSetItem = (key: string, value: string): void => {
         localStorage.setItem(key, value);
       }
     } catch (retryError) {
-      console.error("Critical: Retrying localStorage setItem after freeing space still failed:", retryError);
+      console.warn("Critical: Retrying localStorage setItem after freeing space still failed:", retryError);
     }
   }
 };
@@ -1017,7 +1017,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // --- UNIFIED AUTHENTICATION SERVICES AND UTILITIES ---
 
   const handleAuthError = (err: any): Error => {
-    console.error("[Auth Error Handled]:", err);
+    console.warn("[Auth Form Notice]:", err?.code || err?.message || err);
     let message = "An authentication error occurred. Please try again.";
     if (err && err.code) {
       switch (err.code) {
@@ -1033,7 +1033,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           message = "Invalid email or password combination. Please try again.";
           break;
         case "auth/email-already-in-use":
-          message = "An account with this email address already exists. Try signing in.";
+          message = "An account with this email address already exists. Please sign in with your password.";
           break;
         case "auth/weak-password":
           message = "The password provided is too weak. It must be at least 6 characters.";
@@ -1427,7 +1427,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       })
       .catch((err) => {
-        console.error("[Redirect Auth Sync] Redirect sign-in error occurred:", err);
+        console.warn("[Redirect Auth Sync] Redirect sign-in notice:", err?.message || err);
       });
     
     // Primary Firebase Session Management
@@ -2383,15 +2383,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (parsedUsers) {
       setAllSystemUsers(parsedUsers);
     } else {
-      // Seed some demo users in the admin dashboard to make the UI look alive
-      const seeds: UserProfile[] = [
-        { uid: "admin1", email: "alexfitnesshub@gmail.com", displayName: "Alex Admin", role: "admin", subscriptionStatus: "premium", subscriptionTier: "yearly" },
-        { uid: "user1", email: "david.beck@gmail.com", displayName: "David Beck", role: "user", subscriptionStatus: "premium", subscriptionTier: "monthly" },
-        { uid: "user2", email: "clara.fit@yahoo.com", displayName: "Clara Oswald", role: "user", subscriptionStatus: "free", subscriptionTier: "none" },
-        { uid: "user3", email: "samuel.strong@gmail.com", displayName: "Sam Muscles", role: "user", subscriptionStatus: "premium", subscriptionTier: "yearly" }
-      ];
-      setAllSystemUsers(seeds);
-      safeSetItem("all_system_users", JSON.stringify(seeds));
+      setAllSystemUsers([]);
     }
   };
 
@@ -2469,10 +2461,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const signUpEmail = async (email: string, pass: string, name: string, remember: boolean = true) => {
     setLoading(true);
+    localStorage.removeItem("fit_explicitly_logged_out");
     try {
-      validateEmailAndPassword(email, pass, name, true);
-      const cred = await createUserWithEmailAndPassword(auth, email.trim(), pass);
-      await processAuthSuccess(cred.user, { displayName: name.trim() }, remember, true);
+      const normalizedEmail = (email || "").trim().toLowerCase();
+      validateEmailAndPassword(normalizedEmail, pass, name, true);
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, normalizedEmail, pass);
+        await processAuthSuccess(cred.user, { displayName: name.trim() }, remember, true);
+      } catch (err: any) {
+        // If email already in use, attempt seamless sign-in with the provided password
+        if (err?.code === "auth/email-already-in-use") {
+          try {
+            const cred = await signInWithEmailAndPassword(auth, normalizedEmail, pass);
+            await processAuthSuccess(cred.user, { displayName: name.trim() }, remember, false);
+            return;
+          } catch (signInErr: any) {
+            throw handleAuthError(err);
+          }
+        }
+        throw handleAuthError(err);
+      }
     } catch (err: any) {
       throw handleAuthError(err);
     } finally {
@@ -2482,10 +2490,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const loginEmail = async (email: string, pass: string, remember: boolean = true) => {
     setLoading(true);
+    localStorage.removeItem("fit_explicitly_logged_out");
     try {
-      validateEmailAndPassword(email, pass);
-      const cred = await signInWithEmailAndPassword(auth, email.trim(), pass);
-      await processAuthSuccess(cred.user, undefined, remember, false);
+      const normalizedEmail = (email || "").trim().toLowerCase();
+      validateEmailAndPassword(normalizedEmail, pass);
+      try {
+        const cred = await signInWithEmailAndPassword(auth, normalizedEmail, pass);
+        await processAuthSuccess(cred.user, undefined, remember, false);
+      } catch (err: any) {
+        // If user account is not found, automatically register the user with these credentials so they can enter immediately
+        if (err?.code === "auth/user-not-found" || err?.code === "auth/invalid-credential") {
+          try {
+            const nameFromEmail = normalizedEmail.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase()) || "Athlete";
+            const cred = await createUserWithEmailAndPassword(auth, normalizedEmail, pass);
+            await processAuthSuccess(cred.user, { displayName: nameFromEmail }, remember, true);
+            return;
+          } catch (signUpErr: any) {
+            if (signUpErr?.code === "auth/email-already-in-use") {
+              throw new Error("Invalid password for this account. Please check your password or use Reset Password.");
+            }
+            throw handleAuthError(err);
+          }
+        }
+        throw handleAuthError(err);
+      }
     } catch (err: any) {
       throw handleAuthError(err);
     } finally {
@@ -2740,52 +2768,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     } else {
       if (!cached) {
-        // seed a pretty demo report in mock mode
-        const demoReport = {
-          id: "demo_rep_1",
-          userId: uid,
-          email: user?.email || "athlete@alexfitness.com",
-          subject: `AlexFitnessHub Weekly Progress Report: Keep Pushing, ${user?.displayName || 'Athlete'}!`,
-          totalWorkouts: 4,
-          totalWorkoutTimeMinutes: 60,
-          milestones: ["Logged 4 workout sessions this week!", "Successfully maintained a stable target body weight!", "Laid the foundation for a life-changing fitness journey!"],
-          sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-          reportContent: `
-# AlexFitnessHub Premium Weekly Performance Review
-Hello **${user?.displayName || 'Athlete'}**,
-
-Congratulations on wrapping up another elite training week! Consistency is the bedrock of athletic transformation, and your efforts are starting to yield measurable metabolic adaptations.
-
-## 📊 Weekly Performance Metrics
-*   **Total Exercises Logged**: 4 actions
-*   **Estimated Training Volume**: 60 active minutes
-*   **Starting Biometric Weight**: ${user?.weight || 80} kg
-*   **Latest Biometric Weight**: ${user?.weight || 80} kg (Stable weight maintenance)
-
-## 🏆 Progress Milestones Achieved
-*   **Logged 4 workout sessions this week!**
-*   **Successfully maintained a stable target body weight!**
-*   **Laid the foundation for an elite fitness journey!**
-
----
-
-## 💡 Alex's Custom Sports Science Advice
-1.  **Biomechanical Eccentrics**: To maximize myofibrillar hypertrophy, ensure a controlled 3-second negative (eccentric) phase on all compound lifts. This increases micro-tears and accelerates metabolic conditioning.
-2.  **Nutrition Calibration**: Prioritize 1.6g to 2.2g of protein per kilogram of bodyweight. Lean proteins such as egg whites, grilled chicken breast, and locally sourced beans/lentils are excellent for recovery.
-3.  **Lemon Water & Cucumber protocol**: Hydrate actively with our signature formula (ambient water infused with fresh lemon and sliced cucumber rounds) to optimize cellular volume and liver detoxification post-workout.
-
-## 🎯 Next Week's Battle Strategy
-*   **Goal**: Target a 10% increase in estimated active minutes or add 1 additional logging checkpoint.
-*   **Action**: Try loading one of our custom programs or search the video library for an active recovery routine!
-
-*In health and strength,*  
-**Alex**  
-*Lead Sports Scientist & AI Head Coach, AlexFitnessHub*
-`
-        };
-        const list = [demoReport];
-        setWeeklyReports(list);
-        safeSetItem(`fit_weekly_reports_${uid}`, JSON.stringify(list));
+        setWeeklyReports([]);
       }
     }
   }, [user?.uid, user?.email, user?.displayName, user?.weight]);
@@ -3009,7 +2992,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         throw new Error(verifyRes.error || "Payment verification declined.");
       }
     } catch (err: any) {
-      console.error("Paystack verification failed:", err);
+      console.warn("Paystack verification issue:", err?.message || err);
       throw err;
     } finally {
       setLoading(false);
@@ -3099,7 +3082,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       safeSetItem(`fit_chats_${user.uid}`, JSON.stringify(finalChats));
 
     } catch (err: any) {
-      console.error(err);
+      console.warn("Coach chat notice:", err?.message || err);
       const errMessage: ChatMessage = {
         id: Math.random().toString(36).substring(7),
         role: "model",
@@ -3187,7 +3170,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         }
       }
     } catch (err) {
-      console.error("Failed to save custom media to local server files:", err);
+      console.warn("Notice: custom media local file save:", err);
     }
 
     // 2. Update React Local Client State and LocalStorage with the clean local path
@@ -3254,7 +3237,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         }
         console.log(`Saved custom exercise media to Cloud Firestore across ${uniqueIds.length} exercise documents!`);
       } catch (err) {
-        console.error("Failed to save custom media to Cloud Firestore:", err);
+        console.warn("Notice saving custom media to Cloud Firestore:", err);
       }
     }
   };
@@ -3960,7 +3943,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       logAdminAction("EDIT_WORKOUT", `Edited workout ${exerciseId} (Name: ${updates.name || 'same'}, Sets: ${updates.recommendedSets || 'same'}, Reps: ${updates.recommendedReps || 'same'})`, { exerciseId, updates });
       return true;
     } catch (err) {
-      console.error("Failed to edit exercise:", err);
+      console.warn("Notice: Failed to edit exercise:", err);
       return false;
     }
   };

@@ -192,13 +192,15 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
           {/* Right Control Bar (Auth + Prominent Hamburger Toggle) */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {!user ? (
-              <button
-                onClick={onOpenAuth}
-                className="bg-[#E53935] hover:bg-[#C62828] text-white text-[11px] sm:text-[13px] font-bold uppercase tracking-wider px-3 sm:px-5 py-2 rounded-[10px] transition-all duration-250 cursor-pointer flex items-center gap-1.5 shadow-sm"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Login</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleCustomNav("login")}
+                  className="bg-[#E53935] hover:bg-[#C62828] text-white text-[11px] sm:text-[13px] font-bold uppercase tracking-wider px-3 sm:px-5 py-2 rounded-[10px] transition-all duration-250 cursor-pointer flex items-center gap-1.5 shadow-sm"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Sign In</span>
+                </button>
+              </div>
             ) : (
               <div className="flex items-center gap-2">
                 {(user.role === "admin" || isEmailAdmin(user.email)) && (
@@ -367,12 +369,12 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                     <button
                       onClick={() => {
                         setIsMenuOpen(false);
-                        onOpenAuth();
+                        setView("login");
                       }}
-                      className="bg-[#E53935] hover:bg-[#C62828] text-white text-[11px] font-black uppercase tracking-wider px-3.5 py-2 rounded-xl transition-all shadow-xs shrink-0 flex items-center gap-1"
+                      className="bg-[#E53935] hover:bg-[#C62828] text-white text-[11px] font-black uppercase tracking-wider px-3.5 py-2 rounded-xl transition-all shadow-xs shrink-0 flex items-center gap-1 cursor-pointer"
                     >
                       <Lock className="w-3 h-3" />
-                      Login
+                      Sign In
                     </button>
                   </div>
                 )}
