@@ -19,6 +19,7 @@ import WorkoutPlayer from "./WorkoutPlayer";
 import { OptimizedImage } from "./OptimizedImage";
 import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
+import { useWorkoutTimer } from "../context/WorkoutTimerContext";
 
 const BODY_PARTS_DETAILS = [
   { name: "Chest", desc: "Build thick pectoralis major/minor fibers and front deltoid symmetry", img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7G_JEDmUiLxTLVwV35owlnJssH_3TLx1qdCmEWF9WOZ4WfE9mFQL1ZpQ&s=10" },
@@ -218,6 +219,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
     workoutFilters,
     setWorkoutFilters
   } = useApp();
+  const workoutTimer = useWorkoutTimer();
   const isUserPremium = Boolean(user && (user.subscriptionStatus === "premium" || user.role === "admin"));
   
   const {
@@ -1158,14 +1160,28 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                     </span>
                   </div>
                   
-                  <button
-                    type="button"
-                    onClick={() => setActivePlayerSession({ exercises: [selectedExercise], title: selectedExercise.name })}
-                    className="px-5 py-3 rounded-xl text-xs font-mono font-extrabold uppercase tracking-wider transition-all select-none cursor-pointer flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white shadow-md active:scale-95"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-white" />
-                    <span>Launch Workout Player</span>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        workoutTimer.startQuickRest(60, selectedExercise.name, 1, 3);
+                      }}
+                      className="px-3.5 py-3 rounded-xl text-xs font-mono font-extrabold uppercase tracking-wider transition-all select-none cursor-pointer flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95"
+                      title="Start a 60s rest interval in the floating overlay"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 fill-white" />
+                      <span>Start 60s Rest</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActivePlayerSession({ exercises: [selectedExercise], title: selectedExercise.name })}
+                      className="px-4 py-3 rounded-xl text-xs font-mono font-extrabold uppercase tracking-wider transition-all select-none cursor-pointer flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white shadow-md active:scale-95"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-white" />
+                      <span>Workout Player</span>
+                    </button>
+                  </div>
                 </div>
 
                 {sessionTime > 0 && (

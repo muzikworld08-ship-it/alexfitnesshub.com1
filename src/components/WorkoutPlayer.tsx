@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Exercise } from "../data/exercises";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
+import { useWorkoutTimer } from "../context/WorkoutTimerContext";
 
 interface WorkoutPlayerProps {
   exercises: Exercise[];
@@ -30,6 +31,7 @@ interface WorkoutPlayerProps {
 }
 
 export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComplete }: WorkoutPlayerProps) {
+  const workoutTimer = useWorkoutTimer();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
   const totalSets = 3; // Standard 3 sets per exercise
@@ -315,6 +317,26 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
 
         {/* Header Controls */}
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              workoutTimer.startWorkout({
+                title: sessionTitle,
+                exercises: exercises.map(ex => ({ name: ex.name, sets: totalSets, restDuration })),
+                restDuration: restDuration
+              });
+              if (phase === "rest") {
+                workoutTimer.startQuickRest(secondsRemaining || restDuration, currentExercise?.name, currentSet, totalSets);
+              }
+              onClose();
+            }}
+            className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer"
+            title="Minimize workout to persistent floating overlay"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Float Timer</span>
+          </button>
+
           <button
             onClick={() => setIsMuted(!isMuted)}
             className="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl transition text-slate-300 hover:text-white border-0 cursor-pointer"

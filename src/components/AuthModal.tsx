@@ -8,7 +8,7 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const { loginEmail, signUpEmail, loginWithGoogle, loginWithApple, sendPasswordReset } = useApp();
+  const { loginEmail, signUpEmail, loginWithGoogle, loginWithApple, sendPasswordReset, setView } = useApp();
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgot, setIsForgot] = useState(false);
   const [email, setEmail] = useState("");
@@ -19,6 +19,17 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  const handleSuccessfulAuth = () => {
+    const attempted = localStorage.getItem("fit_attempted_view");
+    if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
+      localStorage.removeItem("fit_attempted_view");
+      setView(attempted);
+    } else {
+      setView("dashboard");
+    }
+    onClose();
+  };
 
   // Real-time validation states
   const [validation, setValidation] = useState<{
@@ -113,10 +124,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         setMessage("A password recovery link has been pushed to your email.");
       } else if (isSignUp) {
         await signUpEmail(email, password, name, rememberMe);
-        onClose();
+        handleSuccessfulAuth();
       } else {
         await loginEmail(email, password, rememberMe);
-        onClose();
+        handleSuccessfulAuth();
       }
     } catch (err: any) {
       setError(err?.message || "An authentication error occurred. Please verify your credentials and try again.");
@@ -131,10 +142,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     try {
       if (provider === "google") {
         await loginWithGoogle();
-        onClose();
+        handleSuccessfulAuth();
       } else {
         await loginWithApple();
-        onClose();
+        handleSuccessfulAuth();
       }
     } catch (err: any) {
       setError(err?.message || `${provider === "google" ? "Google" : "Apple"} Authentication failed.`);

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { HomeWorkoutCircuit, HomeExercise, bellyFatCardioCircuit } from "../data/homeWorkouts";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
+import { useWorkoutTimer } from "../context/WorkoutTimerContext";
 
 interface HomeWorkoutPlayerProps {
   onComplete: (caloriesBurned: number, durationMinutes: number) => void;
@@ -26,6 +27,7 @@ interface HomeWorkoutPlayerProps {
 }
 
 export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPlayerProps) {
+  const workoutTimer = useWorkoutTimer();
   const circuit = bellyFatCardioCircuit;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [secondsRemaining, setSecondsRemaining] = useState(30);
@@ -426,13 +428,33 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
         <span className="text-xs font-mono font-bold text-[#D32F2F] uppercase tracking-widest bg-[#D32F2F]/10 border border-[#D32F2F]/20 px-3 py-1 rounded-full flex items-center gap-1.5">
           <Activity className="w-3.5 h-3.5 animate-pulse" /> Live Circuit Session
         </span>
-        <button 
-          onClick={handleMuteToggle}
-          className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-white"
-          title={isMuted ? "Unmute Coaching Voice" : "Mute Coaching Voice"}
-        >
-          {isMuted ? <VolumeX className="w-5 h-5 text-rose-500" /> : <Volume2 className="w-5 h-5" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              workoutTimer.startWorkout({
+                title: "Belly Fat Shred Circuit",
+                exercises: circuit.exercises.map(ex => ({ name: ex.name, sets: 1, restDuration: 30 })),
+                restDuration: 30
+              });
+              workoutTimer.startQuickRest(secondsRemaining || 30, currentExercise.name, currentIndex + 1, circuit.exercises.length);
+              onClose();
+            }}
+            className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer"
+            title="Minimize circuit to persistent floating overlay"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Float Timer</span>
+          </button>
+
+          <button 
+            onClick={handleMuteToggle}
+            className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-white"
+            title={isMuted ? "Unmute Coaching Voice" : "Mute Coaching Voice"}
+          >
+            {isMuted ? <VolumeX className="w-5 h-5 text-rose-500" /> : <Volume2 className="w-5 h-5" />}
+          </button>
+        </div>
       </header>
 
       {/* Main Container */}

@@ -155,7 +155,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.warn('[Firebase Firestore Notice]:', JSON.stringify(errInfo));
+  console.warn(`[Firebase Firestore Notice] ${operationType} on ${path || 'unknown'}: ${errInfo.error}`);
   return errInfo;
 }
 

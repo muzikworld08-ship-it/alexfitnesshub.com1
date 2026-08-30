@@ -110,10 +110,8 @@ Status: API key not configured - logged in simulation mode.`);
     console.log(`[MailerSend Success] Email delivered to ${to}. Result:`, result);
     return { success: true, result };
   } catch (error: any) {
-    console.error(`[MailerSend Error] Delivery failed to ${to}:`, error);
-    if (error.response?.body) {
-      console.error(`[MailerSend API Error Body]:`, JSON.stringify(error.response.body));
-    }
+    const errMsg = error?.response?.body?.message || error?.message || String(error);
+    console.warn(`[MailerSend Notice] Delivery notice to ${to}: ${errMsg}`);
     throw error;
   }
 }

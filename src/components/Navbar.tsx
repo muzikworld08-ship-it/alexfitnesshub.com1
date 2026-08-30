@@ -210,24 +210,30 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                     <span>ADMIN</span>
                   </button>
                 )}
-                {user.photoURL && user.photoURL.trim() !== "" ? (
-                  <OptimizedImage
-                    src={user.photoURL}
-                    alt={user.displayName || "User"}
-                    priority={true}
-                    loading="eager"
-                    fetchPriority="high"
-                    width={64}
-                    height={64}
-                    quality={85}
-                    format="webp"
-                    className="w-8 h-8 rounded-full object-cover border border-[#E8E8E8]"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-[#E53935] flex items-center justify-center text-white font-black text-xs uppercase shadow-sm">
-                    {user.displayName ? user.displayName[0] : (user.email ? user.email[0] : "A")}
-                  </div>
-                )}
+                <button
+                  onClick={() => handleCustomNav("dashboard")}
+                  className="flex items-center gap-1.5 focus:outline-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                  title="Go to Dashboard"
+                >
+                  {user.photoURL && user.photoURL.trim() !== "" ? (
+                    <OptimizedImage
+                      src={user.photoURL}
+                      alt={user.displayName || "User"}
+                      priority={true}
+                      loading="eager"
+                      fetchPriority="high"
+                      width={64}
+                      height={64}
+                      quality={85}
+                      format="webp"
+                      className="w-8 h-8 rounded-full object-cover border border-[#E8E8E8]"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-[#E53935] flex items-center justify-center text-white font-black text-xs uppercase shadow-sm">
+                      {user.displayName ? user.displayName[0] : (user.email ? user.email[0] : "A")}
+                    </div>
+                  )}
+                </button>
                 <button
                   onClick={() => {
                     logout();

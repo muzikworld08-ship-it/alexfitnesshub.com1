@@ -330,23 +330,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const pathToView: Record<string, string> = {
       "/": "home",
       "/payment/success": "payment-success",
+      "/library": "library",
       "/premium/library": "library",
+      "/workout-generator": "workout-generator",
       "/premium/workout-generator": "workout-generator",
+      "/workout-videos": "workout-videos",
       "/premium/workout-videos": "workout-videos",
+      "/saved-exercises": "saved-exercises",
       "/premium/saved-exercises": "saved-exercises",
+      "/coach": "coach",
       "/premium/coach": "coach",
+      "/nutrition": "nutrition",
       "/premium/nutrition": "nutrition",
+      "/daily-plan": "daily-plan",
       "/premium/daily-plan": "daily-plan",
+      "/challenges": "challenges",
       "/premium/challenges": "challenges",
+      "/community": "community",
       "/premium/community": "community",
+      "/weekly-reports": "weekly-reports",
       "/premium/weekly-reports": "weekly-reports",
+      "/daily-habit-tracker": "daily-habit-tracker",
       "/premium/daily-habit-tracker": "daily-habit-tracker",
+      "/daily-calibration-desk": "daily-calibration-desk",
       "/premium/daily-calibration-desk": "daily-calibration-desk",
+      "/handbook": "handbook",
       "/premium/handbook": "handbook",
+      "/weight-trajectory": "weight-trajectory",
       "/premium/weight-trajectory": "weight-trajectory",
+      "/dashboard": "dashboard",
       "/premium/dashboard": "dashboard",
+      "/belly-fat-shred": "belly-fat-shred",
       "/premium/belly-fat-shred": "belly-fat-shred",
+      "/women-confidence": "women-confidence",
+      "/premium/women-confidence": "women-confidence",
       "/lifestyle-academy": "lifestyle-academy",
+      "/onboarding": "onboarding",
+      "/login": "login",
+      "/signin": "signin",
+      "/signup": "signup",
+      "/register": "register",
+      "/admin": "admin",
+      "/premium/admin": "admin",
     };
     if (pathToView[pathname]) {
       return pathToView[pathname];
@@ -1116,7 +1141,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   /**
    * Central Unified Auth Success Handler
    * Standardizes session persistence, Firestore synchronization, cached profiles,
-   * admin analytics registration, and safety guards across ALL authentication methods.
+   * admin analytics registration, and immediate redirection across ALL authentication methods.
    */
   const processAuthSuccess = async (
     firebaseUser: any,
@@ -1134,7 +1159,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem("fit_explicitly_logged_out");
     } else {
       localStorage.removeItem("fit_saved_email");
-      localStorage.setItem("fit_explicitly_logged_out", "true");
+      localStorage.removeItem("fit_explicitly_logged_out");
     }
 
     // Attempt to load existing local profile first for near-instant UI reactivity
@@ -1148,28 +1173,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Standardize default profile fields if none cached or if we need a base
-    // Returning logging-in users should default onboarded to true, while brand new sign ups default to false
+    const isAdmin = isEmailAdmin(email);
+
+    // Standardize default profile fields with seamless dashboard access
     const baseProfile: UserProfile = {
       uid,
       email,
       displayName: additionalData?.displayName || firebaseUser.displayName || email.split("@")[0] || "Athlete",
       photoURL: firebaseUser.photoURL || undefined,
-      role: isEmailAdmin(email) ? "admin" : "user",
-      subscriptionStatus: "free",
-      subscriptionTier: "none",
+      role: isAdmin ? "admin" : "user",
+      subscriptionStatus: isAdmin ? "premium" : "free",
+      subscriptionTier: isAdmin ? "yearly" : "none",
+      accountType: isAdmin ? "Admin Athlete" : "Free Trial",
+      badge: isAdmin ? "Admin Athlete" : "Free Trial",
+      isFreeTrial: !isAdmin,
+      freeTrialStatus: isAdmin ? "none" : "active",
+      freeTrialDaysRemaining: isAdmin ? 0 : 7,
       createdAt: new Date().toISOString(),
-      onboarded: isNewSignUp ? false : true,
+      onboarded: true,
       ...profile, // overlay cached attributes if any
     };
 
-    // If returning user, ensure onboarded is true
-    if (!isNewSignUp && baseProfile.onboarded !== false) {
-      baseProfile.onboarded = true;
-    }
+    baseProfile.onboarded = true;
 
-    // Keep state updated immediately to trigger App.tsx redirect flow
+    // Keep state updated immediately to trigger immediate UI reactivity
     setUser(baseProfile);
+    setAuthDatabaseError(null);
+    setIsBlockedUser(false);
+
+    // Determine target redirect view immediately
+    const attempted = localStorage.getItem("fit_attempted_view");
+    if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
+      localStorage.removeItem("fit_attempted_view");
+      setView(attempted);
+    } else if (currentView === "home" || currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register" || !currentView) {
+      setView("dashboard");
+    }
 
     if (!isMockFirebase) {
       try {
@@ -1177,34 +1216,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const userSnap = await getDoc(userDocRef);
         if (userSnap.exists()) {
           const fetchedData = userSnap.data() as UserProfile;
-          const isAdmin = isEmailAdmin(email);
+          const userIsAdmin = isEmailAdmin(email);
           const hasActiveExpiry = fetchedData.subscriptionExpiry ? (new Date(fetchedData.subscriptionExpiry) > new Date()) : true;
-          const isUserPremium = isAdmin || ((fetchedData.subscriptionStatus === "premium" || fetchedData.subscription === "premium" || fetchedData.isPremium === true) && hasActiveExpiry);
+          const isUserPremium = userIsAdmin || ((fetchedData.subscriptionStatus === "premium" || fetchedData.subscription === "premium" || fetchedData.isPremium === true) && hasActiveExpiry);
           
           profile = { 
             ...baseProfile, 
             ...fetchedData,
-            role: isAdmin ? "admin" : "user", // Normal subscribers always role = "user"
+            role: userIsAdmin ? "admin" : "user",
             subscription: isUserPremium ? "premium" : "free",
             subscriptionStatus: isUserPremium ? "premium" : "free",
             isPremium: isUserPremium,
             premiumAccess: isUserPremium,
-            accountType: isUserPremium ? (isAdmin ? "Admin Athlete" : "Premium Athlete") : "Free Athlete",
-            badge: isUserPremium ? (isAdmin ? "Admin Athlete" : "Premium Athlete") : "Free Athlete",
-            onboarded: fetchedData.onboarded !== undefined ? fetchedData.onboarded : (isNewSignUp ? false : true)
+            accountType: isUserPremium ? (userIsAdmin ? "Admin Athlete" : "Premium Athlete") : "Free Athlete",
+            badge: isUserPremium ? (userIsAdmin ? "Admin Athlete" : "Premium Athlete") : "Free Athlete",
+            onboarded: true
           };
         } else {
           // Check Supabase profiles table as persistent backend database source
           try {
             const { data: sbProfile } = await supabase.from("profiles").select("*").eq("uid", uid).maybeSingle();
             if (sbProfile) {
-              const isAdmin = isEmailAdmin(email);
-              const isUserPremium = isAdmin || (sbProfile.subscription_status === "premium" || sbProfile.subscription === "premium");
+              const userIsAdmin = isEmailAdmin(email);
+              const isUserPremium = userIsAdmin || (sbProfile.subscription_status === "premium" || sbProfile.subscription === "premium");
               profile = {
                 ...baseProfile,
                 displayName: sbProfile.display_name || baseProfile.displayName,
                 photoURL: sbProfile.photo_url || baseProfile.photoURL,
-                role: isAdmin ? "admin" : "user",
+                role: userIsAdmin ? "admin" : "user",
                 subscription: isUserPremium ? "premium" : "free",
                 subscriptionStatus: isUserPremium ? "premium" : "free",
                 isPremium: isUserPremium,
@@ -1216,7 +1255,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 height: sbProfile.height || baseProfile.height,
                 targetWeight: sbProfile.target_weight || baseProfile.targetWeight,
                 gender: sbProfile.gender || baseProfile.gender,
-                onboarded: sbProfile.onboarded !== undefined ? sbProfile.onboarded : (isNewSignUp ? false : true),
+                onboarded: true,
                 age: sbProfile.age || baseProfile.age,
                 activityLevel: sbProfile.activity_level || baseProfile.activityLevel,
                 workoutExperience: sbProfile.workout_experience || baseProfile.workoutExperience,
@@ -1230,7 +1269,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } catch (sErr) {
             profile = baseProfile;
           }
-          await setDoc(userDocRef, profile);
+          await setDoc(userDocRef, profile, { merge: true });
         }
         
         // Handle Welcome email trigger for new sign-ups
@@ -1384,7 +1423,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 // Cache in local storage for subsequent offline loads
                 safeSetItem(`fit_user_${profile.uid}`, JSON.stringify(profile));
               } else {
-                // Brand new user: Check local storage or build clean Free Trial profile with onboarded = false
+                // Brand new user: Check local storage or build clean profile with full dashboard access
                 const cachedStr = localStorage.getItem(`fit_user_${firebaseUser.uid}`);
                 if (cachedStr) {
                   try {
@@ -1410,7 +1449,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     isFreeTrial: isAdmin ? false : true,
                     freeTrialStatus: isAdmin ? "none" : "active",
                     freeTrialDaysRemaining: isAdmin ? 0 : 7,
-                    onboarded: false, // Brand new users must complete onboarding
+                    onboarded: true,
                     createdAt: new Date().toISOString(),
                   };
                   await setDoc(userDocRef, profile, { merge: true });
@@ -1438,7 +1477,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   subscriptionStatus: "free",
                   subscriptionTier: "none",
                   createdAt: new Date().toISOString(),
-                  onboarded: false,
+                  onboarded: true,
                 };
                 safeSetItem(`fit_user_${firebaseUser.uid}`, JSON.stringify(profile));
               }
@@ -2377,8 +2416,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("fit_explicitly_logged_out", "true");
     localStorage.removeItem("fit_saved_email");
     localStorage.removeItem("fit_active_uid");
-    await signOut(auth);
+    localStorage.removeItem("fit_attempted_view");
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.warn("SignOut notice:", e);
+    }
     setUser(null);
+    setView("home");
     setLoading(false);
   };
 

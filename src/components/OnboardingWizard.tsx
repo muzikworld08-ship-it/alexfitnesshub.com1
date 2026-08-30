@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 
 export default function OnboardingWizard() {
-  const { user, completeOnboarding } = useApp();
+  const { user, completeOnboarding, setView } = useApp();
   const [step, setStep] = useState(1);
   const totalSteps = 6;
 
@@ -137,6 +137,7 @@ export default function OnboardingWizard() {
         availableDays,
         trainingLocation
       });
+      setView("dashboard");
     } catch (err) {
       console.error(err);
       alert("Something went wrong while customizing your program. Let's try again.");
@@ -165,9 +166,17 @@ export default function OnboardingWizard() {
               ALEXFITNESSHUB ONBOARDING
             </span>
           </div>
-          <span className="text-xs font-mono font-bold text-slate-500">
-            STEP {step} OF {totalSteps}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono font-bold text-slate-500">
+              STEP {step} OF {totalSteps}
+            </span>
+            <button
+              onClick={() => setView("dashboard")}
+              className="text-[11px] font-mono font-bold text-slate-400 hover:text-slate-800 transition-colors uppercase tracking-wider underline cursor-pointer"
+            >
+              Skip to Dashboard
+            </button>
+          </div>
         </div>
 
         {/* Progress bar */}

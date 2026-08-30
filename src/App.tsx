@@ -30,6 +30,8 @@ import GlobalSkeletonLoader, { DashboardSkeleton, CardGridSkeleton, ListSkeleton
 import GlobalTransitionOverlay from "./components/GlobalTransitionOverlay";
 import PremiumUpgradeModal from "./components/PremiumUpgradeModal";
 import { preloadCriticalFitnessAssets } from "./utils/imageCache";
+import { WorkoutTimerProvider } from "./context/WorkoutTimerContext";
+import FloatingWorkoutTimerOverlay from "./components/FloatingWorkoutTimerOverlay";
 
 const pageTransitionVariants: Variants = {
   initial: {
@@ -63,29 +65,46 @@ const pageTransitionVariants: Variants = {
 const PATH_TO_VIEW_MAP: Record<string, string> = {
   "/": "home",
   "/payment/success": "payment-success",
+  "/library": "library",
   "/premium/library": "library",
+  "/workout-generator": "workout-generator",
   "/premium/workout-generator": "workout-generator",
+  "/workout-videos": "workout-videos",
   "/premium/workout-videos": "workout-videos",
+  "/saved-exercises": "saved-exercises",
   "/premium/saved-exercises": "saved-exercises",
+  "/coach": "coach",
   "/premium/coach": "coach",
+  "/nutrition": "nutrition",
   "/premium/nutrition": "nutrition",
+  "/daily-plan": "daily-plan",
   "/premium/daily-plan": "daily-plan",
+  "/challenges": "challenges",
   "/premium/challenges": "challenges",
+  "/community": "community",
   "/premium/community": "community",
+  "/weekly-reports": "weekly-reports",
   "/premium/weekly-reports": "weekly-reports",
+  "/daily-habit-tracker": "daily-habit-tracker",
   "/premium/daily-habit-tracker": "daily-habit-tracker",
+  "/daily-calibration-desk": "daily-calibration-desk",
   "/premium/daily-calibration-desk": "daily-calibration-desk",
+  "/handbook": "handbook",
   "/premium/handbook": "handbook",
+  "/weight-trajectory": "weight-trajectory",
   "/premium/weight-trajectory": "weight-trajectory",
-  "/premium/dashboard": "dashboard",
   "/dashboard": "dashboard",
+  "/premium/dashboard": "dashboard",
+  "/belly-fat-shred": "belly-fat-shred",
   "/premium/belly-fat-shred": "belly-fat-shred",
-  "/lifestyle-academy": "lifestyle-academy",
   "/women-confidence": "women-confidence",
   "/premium/women-confidence": "women-confidence",
+  "/lifestyle-academy": "lifestyle-academy",
   "/onboarding": "onboarding",
   "/login": "login",
   "/signin": "signin",
+  "/signup": "signup",
+  "/register": "register",
   "/admin": "admin",
   "/premium/admin": "admin",
 };
@@ -156,7 +175,7 @@ function FitnessAppContent() {
 
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
-  // Refactored Auth Sync: Track previous uid to only trigger redirect ONCE on login/logout
+  // Refactored Auth Sync: Track previous uid to trigger redirect immediately on login/logout
   const prevUserUid = React.useRef<string | undefined>(undefined);
   const isInitialMount = React.useRef<boolean>(true);
 
@@ -166,6 +185,15 @@ function FitnessAppContent() {
     if (isInitialMount.current) {
       isInitialMount.current = false;
       prevUserUid.current = currentUid;
+      if (currentUid && (currentView === "home" || currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register")) {
+        const attempted = localStorage.getItem("fit_attempted_view");
+        if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
+          localStorage.removeItem("fit_attempted_view");
+          setView(attempted);
+        } else {
+          setView("dashboard");
+        }
+      }
       return;
     }
 
@@ -175,19 +203,14 @@ function FitnessAppContent() {
     // Transition: Logged out -> Logged in
     if (currentUid && !previousUid) {
       setIsAuthOpen(false);
-      if (user?.onboarded === false) {
-        console.log("[DevOps Auth Sync] Successfully authenticated. Redirecting brand new user to onboarding.");
-        setView("onboarding");
+      const attempted = localStorage.getItem("fit_attempted_view");
+      if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
+        localStorage.removeItem("fit_attempted_view");
+        console.log(`[DevOps Auth Sync] Redirecting to attempted view: ${attempted}`);
+        setView(attempted);
       } else {
-        const attempted = localStorage.getItem("fit_attempted_view");
-        if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin") {
-          localStorage.removeItem("fit_attempted_view");
-          console.log(`[DevOps Auth Sync] Redirecting to attempted view: ${attempted}`);
-          setView(attempted);
-        } else if (currentView === "home" || currentView === "login" || currentView === "signin") {
-          console.log("[DevOps Auth Sync] Successfully authenticated. Redirecting existing user to dashboard.");
-          setView("dashboard");
-        }
+        console.log("[DevOps Auth Sync] Successfully authenticated. Redirecting user to dashboard.");
+        setView("dashboard");
       }
     } else if (!currentUid && previousUid) {
       // Transition: Logged in -> Logged out
@@ -195,23 +218,25 @@ function FitnessAppContent() {
       setIsAuthOpen(false);
       setView("home");
     }
-  }, [user]);
+  }, [user, currentView, setView]);
 
-  // Handle explicit /login, /signin, /onboarding routing triggers and redirect guards
+  // Handle explicit /login, /signin, /signup routing triggers and redirect guards
   React.useEffect(() => {
     if (loading) return;
 
-    if (currentView === "login" || currentView === "signin") {
+    if (currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register") {
       if (user) {
         // Already logged in, redirect away from login screen immediately!
         setIsAuthOpen(false);
-        if (user.onboarded === false) {
-          setView("onboarding");
+        const attempted = localStorage.getItem("fit_attempted_view");
+        if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
+          localStorage.removeItem("fit_attempted_view");
+          setView(attempted);
         } else {
           setView("dashboard");
         }
       } else {
-        // Show Auth Modal when user navigates directly to /login or /signin
+        // Show Auth Modal when user navigates directly to /login or /signin or /signup
         setIsAuthOpen(true);
       }
     } else if (currentView === "onboarding") {
@@ -219,12 +244,9 @@ function FitnessAppContent() {
         // Force login if trying to access onboarding unauthenticated
         setView("home");
         setIsAuthOpen(true);
-      } else if (user.onboarded !== false) {
-        // Redirect to dashboard if already onboarded
-        setView("dashboard");
       }
     }
-  }, [currentView, user, loading]);
+  }, [currentView, user, loading, setView]);
 
   // General Guard to catch any unauthorized entries to protected views for unauthenticated guests
   React.useEffect(() => {
@@ -549,32 +571,6 @@ function FitnessAppContent() {
     );
   }
 
-  // Force onboarding configuration on first sign up
-  if (user && user.onboarded === false) {
-    return (
-      <div className="min-h-screen bg-background text-foreground transition-colors duration-200">
-        <Navbar 
-          currentView={currentView} 
-          setView={handleSetView} 
-          onOpenAuth={() => setIsAuthOpen(true)} 
-        />
-        <React.Suspense fallback={
-          <div className="max-w-4xl mx-auto p-8 w-full">
-            <DashboardSkeleton />
-          </div>
-        }>
-          <OnboardingWizard />
-        </React.Suspense>
-        <React.Suspense fallback={null}>
-          <AuthModal 
-            isOpen={isAuthOpen} 
-            onClose={() => setIsAuthOpen(false)} 
-          />
-        </React.Suspense>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground transition-colors duration-200">
       
@@ -599,6 +595,9 @@ function FitnessAppContent() {
             <React.Suspense fallback={renderSkeletonForView(currentView)}>
               {currentView === "home" && (
                 <HomeView setView={handleSetView} onOpenAuth={() => setIsAuthOpen(true)} />
+              )}
+              {currentView === "onboarding" && (
+                <OnboardingWizard />
               )}
               {currentView === "payment-success" && (
                 <PaymentSuccessView />
@@ -678,6 +677,9 @@ function FitnessAppContent() {
 
 
 
+      {/* Persistent Floating Workout Rest Timer Overlay */}
+      <FloatingWorkoutTimerOverlay />
+
     </div>
   );
 }
@@ -686,7 +688,9 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AppProvider>
-        <FitnessAppContent />
+        <WorkoutTimerProvider>
+          <FitnessAppContent />
+        </WorkoutTimerProvider>
       </AppProvider>
     </ErrorBoundary>
   );

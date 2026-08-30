@@ -308,20 +308,10 @@ function getGeminiClient() {
   return aiClient;
 }
 
-// Global detailed error logger for diagnostic traceability
+// Global clean error logger for diagnostic traceability
 function logDetailedError(category: string, error: any, context?: any) {
-  console.error(`\n=== [DETAILED ERROR LOG: ${category.toUpperCase()}] ===`);
-  console.error(`Timestamp: ${new Date().toISOString()}`);
-  if (error instanceof Error) {
-    console.error(`Message: ${error.message}`);
-    console.error(`Stack Trace:\n${error.stack}`);
-  } else {
-    console.error(`Raw Error:`, error);
-  }
-  if (context) {
-    console.error(`Context Data:\n${JSON.stringify(context, null, 2)}`);
-  }
-  console.error(`==========================================\n`);
+  const errMsg = error instanceof Error ? error.message : (error?.message || String(error));
+  console.warn(`[${category.toUpperCase()} Notice]: ${errMsg}`);
 }
 
 // MailerSend Integration Logic
@@ -416,10 +406,8 @@ Status: MAILERSEND_API_KEY or API_KEY is missing - simulated successfully.`);
     console.log(`[MailerSend Success] Email sent successfully to ${to}. Result:`, result);
     return { success: true, result };
   } catch (error: any) {
-    console.error(`[MailerSend Error] Failed to send email to ${to}:`, error);
-    if (error.response?.body) {
-      console.error(`[MailerSend API Response Body]:`, JSON.stringify(error.response.body));
-    }
+    const errMsg = error?.response?.body?.message || error?.message || String(error);
+    console.warn(`[MailerSend Notice] Failed to send email to ${to}: ${errMsg}`);
     throw error;
   }
 }
