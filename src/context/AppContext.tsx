@@ -1138,6 +1138,75 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const syncWeightLogToSupabase = async (userId: string, log: WeightGoalLog) => {
+    try {
+      const { error } = await supabase.from("progress_logs").upsert({
+        id: log.id,
+        user_id: userId,
+        weight: log.weight,
+        body_fat: log.bodyFat || null,
+        date: log.date,
+        notes: "",
+        created_at: new Date().toISOString()
+      });
+      if (error) console.warn("[Supabase Progress Logs] Upsert notice:", error.message);
+    } catch (err) {
+      console.warn("[Supabase Progress Logs] Background sync error:", err);
+    }
+  };
+
+  const syncActivityLogToSupabase = async (userId: string, log: ActivityLog) => {
+    try {
+      const { error } = await supabase.from("activity_logs").upsert({
+        id: log.id,
+        user_id: userId,
+        exercise_id: log.exerciseId,
+        exercise_name: log.exerciseName,
+        date: log.date,
+        weight: log.weight,
+        reps: log.reps,
+        notes: log.notes || null,
+        created_at: new Date().toISOString()
+      });
+      if (error) console.warn("[Supabase Activity Logs] Upsert notice:", error.message);
+    } catch (err) {
+      console.warn("[Supabase Activity Logs] Background sync error:", err);
+    }
+  };
+
+  const syncVitalsLogToSupabase = async (userId: string, log: VitalsLog) => {
+    try {
+      const { error } = await supabase.from("vitals_logs").upsert({
+        id: log.id,
+        user_id: userId,
+        date: log.date,
+        resting_heart_rate: log.restingHeartRate || null,
+        sleep_duration: log.sleepDuration,
+        hydration_glasses: log.hydrationGlasses,
+        readiness_score: log.readinessScore,
+        energy_level: log.energyLevel || null,
+        notes: log.notes || null,
+        created_at: log.createdAt || new Date().toISOString()
+      });
+      if (error) console.warn("[Supabase Vitals Logs] Upsert notice:", error.message);
+    } catch (err) {
+      console.warn("[Supabase Vitals Logs] Background sync error:", err);
+    }
+  };
+
+  const syncSavedWorkoutsToSupabase = async (userId: string, saves: string[]) => {
+    try {
+      const { error } = await supabase.from("saved_workouts").upsert({
+        user_id: userId,
+        workout_ids: saves,
+        updated_at: new Date().toISOString()
+      });
+      if (error) console.warn("[Supabase Saved Workouts] Upsert notice:", error.message);
+    } catch (err) {
+      console.warn("[Supabase Saved Workouts] Background sync error:", err);
+    }
+  };
+
   /**
    * Central Unified Auth Success Handler
    * Standardizes session persistence, Firestore synchronization, cached profiles,
@@ -1213,8 +1282,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!isMockFirebase) {
       try {
         const userDocRef = doc(db, "users", uid);
-        const userSnap = await getDoc(userDocRef);
-        if (userSnap.exists()) {
+        // Fast Firestore read with 2.5s timeout safeguard to prevent hanging login
+        const userSnapPromise = getDoc(userDocRef);
+        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
+        const userSnap = await Promise.race([userSnapPromise, timeoutPromise]) as any;
+
+        if (userSnap && userSnap.exists && userSnap.exists()) {
           const fetchedData = userSnap.data() as UserProfile;
           const userIsAdmin = isEmailAdmin(email);
           const hasActiveExpiry = fetchedData.subscriptionExpiry ? (new Date(fetchedData.subscriptionExpiry) > new Date()) : true;
@@ -1269,7 +1342,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } catch (sErr) {
             profile = baseProfile;
           }
-          await setDoc(userDocRef, profile, { merge: true });
+          setDoc(userDocRef, profile, { merge: true }).catch(err => {
+            console.warn("Firestore profile background write notice:", err);
+          });
         }
         
         // Handle Welcome email trigger for new sign-ups
@@ -1603,17 +1678,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           loadUserData(firebaseUser.uid);
         }
       } else {
-        // Explicitly logged out
-        setUser(null);
-        localStorage.removeItem("fit_active_uid");
-        setSavedWorkouts([]);
-        setActivityLogs([]);
-        setWeightLogs([]);
-        setVitalsLogs([]);
-        setTransactions([]);
-        setChatMessages([]);
-        setCustomPrograms([]);
-        setWeeklyReports([]);
+        // User is not signed into Firebase SDK
+        const isExplicitLogout = localStorage.getItem("fit_explicitly_logged_out") === "true";
+        const activeUid = localStorage.getItem("fit_active_uid");
+        
+        if (isExplicitLogout || !activeUid) {
+          setUser(null);
+          localStorage.removeItem("fit_active_uid");
+          setSavedWorkouts([]);
+          setActivityLogs([]);
+          setWeightLogs([]);
+          setVitalsLogs([]);
+          setTransactions([]);
+          setChatMessages([]);
+          setCustomPrograms([]);
+          setWeeklyReports([]);
+        } else {
+          // Attempt to restore cached user profile if present
+          const cachedUser = localStorage.getItem(`fit_user_${activeUid}`) || localStorage.getItem("fit_active_user");
+          if (cachedUser) {
+            try {
+              const parsed = JSON.parse(cachedUser);
+              setUser(parsed);
+              loadUserData(activeUid);
+            } catch (e) {
+              setUser(null);
+            }
+          } else {
+            setUser(null);
+          }
+        }
       }
       setLoading(false);
     });
@@ -2441,6 +2535,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     setSavedWorkouts(nextSaves);
     safeSetItem(`fit_saves_${user.uid}`, JSON.stringify(nextSaves));
+    syncSavedWorkoutsToSupabase(user.uid, nextSaves);
   };
 
   const logWorkoutCompletion = async (exerciseId: string, reps: number, weight: number, notes?: string) => {
@@ -2459,6 +2554,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const nextLogs = [newLog, ...activityLogs];
     setActivityLogs(nextLogs);
     safeSetItem(`fit_activity_${user.uid}`, JSON.stringify(nextLogs));
+    syncActivityLogToSupabase(user.uid, newLog);
 
     // Save to Firestore user_workout_actions if real connection
     if (!isMockFirebase) {
@@ -2484,6 +2580,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const nextLogs = [...weightLogs, newLog].sort((a,b) => a.date.localeCompare(b.date));
     setWeightLogs(nextLogs);
     safeSetItem(`fit_weights_${user.uid}`, JSON.stringify(nextLogs));
+    syncWeightLogToSupabase(user.uid, newLog);
 
     // Save to Firestore progress_logs if real connection
     if (!isMockFirebase) {
@@ -2551,6 +2648,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const nextLogs = [...existingFiltered, newLog].sort((a,b) => a.date.localeCompare(b.date));
     setVitalsLogs(nextLogs);
     safeSetItem(`fit_vitals_${user.uid}`, JSON.stringify(nextLogs));
+    syncVitalsLogToSupabase(user.uid, newLog);
 
     if (!isMockFirebase) {
       setDoc(doc(db, "vitals_logs", newLog.id), {

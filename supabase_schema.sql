@@ -143,3 +143,77 @@ CREATE POLICY "Allow public read/write access to exercise_media"
   USING (true) 
   WITH CHECK (true);
 
+
+-- -------------------------------------------------------
+-- 4. PROGRESS / WEIGHT LOGS TABLE
+-- -------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.progress_logs (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  weight NUMERIC NOT NULL,
+  body_fat NUMERIC,
+  date TEXT NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.progress_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public access to progress_logs" ON public.progress_logs;
+CREATE POLICY "Allow public access to progress_logs" ON public.progress_logs FOR ALL USING (true) WITH CHECK (true);
+
+
+-- -------------------------------------------------------
+-- 5. ACTIVITY / WORKOUT LOGS TABLE
+-- -------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.activity_logs (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  exercise_id TEXT NOT NULL,
+  exercise_name TEXT NOT NULL,
+  date TEXT NOT NULL,
+  weight NUMERIC,
+  reps NUMERIC,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public access to activity_logs" ON public.activity_logs;
+CREATE POLICY "Allow public access to activity_logs" ON public.activity_logs FOR ALL USING (true) WITH CHECK (true);
+
+
+-- -------------------------------------------------------
+-- 6. VITALS & CALIBRATION LOGS TABLE
+-- -------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.vitals_logs (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  date TEXT NOT NULL,
+  resting_heart_rate NUMERIC,
+  sleep_duration NUMERIC,
+  hydration_glasses NUMERIC,
+  readiness_score NUMERIC,
+  energy_level NUMERIC,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.vitals_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public access to vitals_logs" ON public.vitals_logs;
+CREATE POLICY "Allow public access to vitals_logs" ON public.vitals_logs FOR ALL USING (true) WITH CHECK (true);
+
+
+-- -------------------------------------------------------
+-- 7. SAVED WORKOUTS TABLE
+-- -------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.saved_workouts (
+  user_id TEXT PRIMARY KEY,
+  workout_ids JSONB DEFAULT '[]'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.saved_workouts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public access to saved_workouts" ON public.saved_workouts;
+CREATE POLICY "Allow public access to saved_workouts" ON public.saved_workouts FOR ALL USING (true) WITH CHECK (true);
+
+

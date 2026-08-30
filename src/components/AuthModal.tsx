@@ -39,11 +39,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   }>({});
 
   const validateEmail = (val: string) => {
-    if (!val) {
+    const clean = (val || "").trim();
+    if (!clean) {
       return "Email address is required.";
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(val)) {
+    if (!emailRegex.test(clean)) {
       return "Please enter a valid email address (e.g., user@example.com).";
     }
     return "";
@@ -60,11 +61,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   const validateName = (val: string) => {
-    if (!val.trim()) {
+    const clean = (val || "").trim();
+    if (!clean) {
       return "Name is required.";
     }
-    if (val.trim().length < 3) {
-      return "Name must be at least 3 characters.";
+    if (clean.length < 2) {
+      return "Name must be at least 2 characters.";
     }
     return "";
   };
@@ -101,10 +103,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setError("");
     setMessage("");
 
+    const cleanEmail = email.trim();
+    const cleanPass = password;
+    const cleanName = name.trim();
+
     // Run final validations
-    const emailErr = validateEmail(email);
-    const passwordErr = !isForgot ? validatePassword(password) : "";
-    const nameErr = (isSignUp && !isForgot) ? validateName(name) : "";
+    const emailErr = validateEmail(cleanEmail);
+    const passwordErr = !isForgot ? validatePassword(cleanPass) : "";
+    const nameErr = (isSignUp && !isForgot) ? validateName(cleanName) : "";
 
     if (emailErr || passwordErr || nameErr) {
       setValidation({
@@ -112,7 +118,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         password: passwordErr,
         name: nameErr
       });
-      setError("Please fix the validation errors in the form before submitting.");
+      setError(emailErr || passwordErr || nameErr || "Please verify your input before submitting.");
       return;
     }
 
@@ -120,13 +126,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
     try {
       if (isForgot) {
-        await sendPasswordReset(email);
+        await sendPasswordReset(cleanEmail);
         setMessage("A password recovery link has been pushed to your email.");
       } else if (isSignUp) {
-        await signUpEmail(email, password, name, rememberMe);
+        await signUpEmail(cleanEmail, cleanPass, cleanName, rememberMe);
         handleSuccessfulAuth();
       } else {
-        await loginEmail(email, password, rememberMe);
+        await loginEmail(cleanEmail, cleanPass, rememberMe);
         handleSuccessfulAuth();
       }
     } catch (err: any) {
@@ -295,7 +301,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     <label htmlFor="auth-password-input" className="block text-[10px] font-mono font-black text-slate-600 uppercase">PASSWORD</label>
                     <button
                       type="button"
-                      onClick={() => { setIsForgot(true); setError(""); setMessage(""); }}
+                      onClick={() => { setIsForgot(true); setError(""); setMessage(""); setValidation({}); }}
                       className="text-[10px] text-[#C0392B] hover:underline font-bold bg-transparent border-0 cursor-pointer"
                     >
                       Forgot Password?
@@ -424,7 +430,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             {isForgot ? (
               <button
                 type="button"
-                onClick={() => { setIsForgot(false); setError(""); }}
+                onClick={() => { setIsForgot(false); setError(""); setMessage(""); setValidation({}); }}
                 className="text-xs text-[#C0392B] hover:underline font-bold bg-transparent border-0 cursor-pointer"
               >
                 Back to Sign In
@@ -434,7 +440,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 {isSignUp ? "Already have a profile?" : "New to AlexFitnessHub?"}{" "}
                 <button
                   type="button"
-                  onClick={() => { setIsSignUp(!isSignUp); setError(""); }}
+                  onClick={() => { setIsSignUp(!isSignUp); setError(""); setMessage(""); setValidation({}); }}
                   className="font-bold text-[#C0392B] hover:underline cursor-pointer bg-transparent border-0"
                 >
                   {isSignUp ? "Sign In Instead" : "Create Account Now"}
