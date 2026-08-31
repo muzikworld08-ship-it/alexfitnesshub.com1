@@ -1774,6 +1774,61 @@ export default function BellyFatShredView() {
                       </div>
                     </div>
 
+                    {/* Next Section Upcoming Drills Preview Banner */}
+                    {activeGuideStep < 5 && (() => {
+                      const nextStep = activeGuideStep + 1;
+                      const nextSectionName = nextStep === 1 ? "02. Midsection Compression" :
+                                              nextStep === 2 ? "03. Metabolic HIIT" :
+                                              nextStep === 3 ? "04. Compound Overload Strength" :
+                                              nextStep === 4 ? "05. Full-Body Finisher & 12-3-30" : "06. Recovery Cooldown";
+                      const nextDrills = nextStep === 1 ? workoutInfo.core :
+                                         nextStep === 2 ? workoutInfo.hiit :
+                                         nextStep === 3 ? workoutInfo.strength :
+                                         nextStep === 4 ? workoutInfo.fullBodyCircuit : workoutInfo.cooldown;
+                      return (
+                        <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/80 text-left space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-[#D32F2F] animate-pulse" />
+                              <span className="text-[10px] font-mono font-black uppercase text-[#D32F2F] tracking-wider">
+                                UP NEXT: SECTION 0{nextStep + 1}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-mono text-slate-500 font-bold">
+                              {nextDrills.length} Upcoming Drills
+                            </span>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-slate-200/60 pt-2">
+                            <div>
+                              <h5 className="text-xs font-black uppercase text-slate-800">
+                                {nextSectionName}
+                              </h5>
+                              <p className="text-[11px] text-slate-500 font-sans mt-0.5">
+                                {nextStep === 1 && "Deep transverse abdominis activation & vacuum holds to tighten your inner waist wall."}
+                                {nextStep === 2 && "Maximal oxygen uptake cardio intervals to trigger rapid lipid breakdown."}
+                                {nextStep === 3 && "Heavy compound movements with 3s eccentric negatives to elevate metabolic burn."}
+                                {nextStep === 4 && "Zone 2 aerobic endurance & incline treadmill steps to burn stubborn fat."}
+                                {nextStep === 5 && "Full posterior chain release, slow breathing, and parasympathetic recovery."}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Quick pill preview of upcoming exercises */}
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {nextDrills.map((drill, dIdx) => (
+                              <span
+                                key={dIdx}
+                                className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-[10px] font-medium text-slate-700 shadow-2xs"
+                              >
+                                {drill.split(":")[0].replace(/\(.*\)/g, "").trim()}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {/* Section Tip */}
                     <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 text-[11px] leading-relaxed text-amber-600 flex gap-2">
                       <span className="text-xs">💡</span>
@@ -1790,7 +1845,7 @@ export default function BellyFatShredView() {
                         className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
                           activeGuideStep === 0
                             ? "opacity-40 cursor-not-allowed bg-slate-100 text-slate-400"
-                            : "bg-slate-100 hover:bg-slate-200:bg-slate-700 text-slate-700"
+                            : "bg-slate-100 hover:bg-slate-200 text-slate-700"
                         }`}
                       >
                         <ChevronLeft className="w-4 h-4" />
@@ -1805,7 +1860,7 @@ export default function BellyFatShredView() {
                               setGuideTimerRunning(false);
                             }
                           }}
-                          className="px-3.5 py-2.5 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-100:bg-slate-900 text-slate-500 transition"
+                          className="px-3.5 py-2.5 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-100 text-slate-500 transition"
                         >
                           Quit Session
                         </button>
@@ -1815,7 +1870,7 @@ export default function BellyFatShredView() {
                           className="py-2.5 px-5 rounded-xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white text-xs font-black uppercase tracking-wider transition cursor-pointer flex items-center gap-1.5 shadow-md shadow-[#D32F2F]/10"
                         >
                           <span>
-                            {activeGuideStep === 5 ? "Finish Workout 🏁" : "Next Section"}
+                            {activeGuideStep === 5 ? "Finish Workout 🏁" : `Proceed to Section 0${activeGuideStep + 2} ➜`}
                           </span>
                           <ChevronRight className="w-4 h-4 stroke-[3]" />
                         </button>
@@ -2997,18 +3052,7 @@ export default function BellyFatShredView() {
                     </p>
                     
                     <button
-                      onClick={() => {
-                        const el = document.getElementById("pricing");
-                        if (el) {
-                          el.scrollIntoView({ behavior: "smooth" });
-                        } else {
-                          setView("home");
-                          setTimeout(() => {
-                            const el2 = document.getElementById("pricing");
-                            if (el2) el2.scrollIntoView({ behavior: "smooth" });
-                          }, 300);
-                        }
-                      }}
+                      onClick={() => setView("pricing")}
                       className="w-full mt-6 px-6 py-3.5 bg-gradient-to-r from-amber-500 to-red-600 text-white hover:from-amber-600 hover:to-red-700 rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg cursor-pointer transform transition hover:scale-[1.02]"
                     >
                       Unlock Premium Access Now

@@ -46,13 +46,8 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     }
 
     if (targetView === "pricing") {
-      setView("home");
-      setTimeout(() => {
-        const el = document.getElementById("pricing");
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }, 150);
+      setView("pricing");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
@@ -169,9 +164,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
           {/* Horizontal Quick Links Bar */}
           <nav className="hidden lg:flex items-center gap-2 sm:gap-4 lg:gap-5 overflow-x-auto whitespace-nowrap scrollbar-none py-1 min-w-0 flex-1 justify-end" aria-label="Main Desktop Navigation Menu">
             {topMenuItems.map((item) => {
-              const isActive = 
-                currentView === item.id || 
-                (item.id === "pricing" && currentView === "home" && window.location.hash === "#pricing");
+              const isActive = currentView === item.id;
                 
               return (
                 <button

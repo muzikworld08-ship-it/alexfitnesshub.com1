@@ -4,13 +4,14 @@ import {
   Shield, CheckCircle, ArrowRight, Zap, Flame, 
   Play, Users, X, HelpCircle, Clipboard, ChevronDown, Star, Lock, MessageCircle, ChevronLeft,
   Mail, Bell, Heart, Sparkles, Activity, Crown,
-  Scale, Clock, Plus, TrendingUp, Droplet, ChevronRight
+  Scale, Clock, Plus, TrendingUp, Droplet, ChevronRight, Target, Award, Dumbbell, Compass
 } from "lucide-react";
 import { motion } from "motion/react";
 import { NewsletterSubscription } from "./NewsletterSubscription";
 import Logo from "./Logo";
 import { OptimizedImage } from "./OptimizedImage";
 import ContinueProgramTracker from "./ContinueProgramTracker";
+import { PROGRAMS } from "../data/exercises";
 
 const workoutCategories = [
   {
@@ -290,17 +291,6 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
     likePost, 
     commentOnPost 
   } = useApp();
-  const [submittingPlan, setSubmittingPlan] = useState<"monthly" | "yearly" | "multi" | null>(null);
-  const [activePaymentModal, setActivePaymentModal] = useState<"monthly" | "yearly" | "multi" | null>(null);
-
-  const scrollToCheckout = () => {
-    setTimeout(() => {
-      const el = document.getElementById("activate-premium-access-section");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    }, 100);
-  };
 
   // Public Interactive Preview Widgets state
   const [activeDemoTab, setActiveDemoTab] = useState<"trajectory" | "community" | "calibration" | "habits">(() => {
@@ -318,23 +308,6 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       }
     };
     window.addEventListener("set-demo-tab", handleSetTab);
-
-    // Auto-scroll to pricing section if requested
-    if (typeof window !== "undefined") {
-      if (window.location.hash === "#pricing" || (window as any).__shouldScrollToPricing) {
-        (window as any).__shouldScrollToPricing = false;
-        let count = 0;
-        const interval = setInterval(() => {
-          count++;
-          const pricingEl = document.getElementById("pricing");
-          if (pricingEl) {
-            pricingEl.scrollIntoView({ behavior: "smooth", block: "start" });
-            if (count > 4) clearInterval(interval);
-          }
-          if (count > 25) clearInterval(interval);
-        }, 100);
-      }
-    }
 
     return () => {
       window.removeEventListener("set-demo-tab", handleSetTab);
@@ -632,21 +605,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
     setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
   };
 
-  useEffect(() => {
-    if (activePaymentModal) {
-      const originalStyle = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = originalStyle;
-      };
-    }
-  }, [activePaymentModal]);
-
-  const [payEmail, setPayEmail] = useState(user?.email || "");
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [selectedMonths, setSelectedMonths] = useState(3);
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "volume" | "annual">("volume");
 
   // States for reviews/testimonials
   const [reviewFilter, setReviewFilter] = useState("All");
@@ -659,8 +618,6 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
   const [contactMessage, setContactMessage] = useState("");
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
-
-
 
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -678,67 +635,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
 
   useEffect(() => {
     if (user) {
-      setPayEmail(user.email || "");
       setContactEmail(user.email || "");
       setContactName(user.displayName || user.email?.split("@")[0] || "");
     }
   }, [user]);
-
-  const handleInitiatePayment = async (plan: "monthly" | "yearly" | "multi", customMonths?: number) => {
-    if (!user) {
-      onOpenAuth();
-      return;
-    }
-    
-    setCheckoutError(null);
-    setPayEmail(user.email || "");
-    setActivePaymentModal(plan);
-    setSubmittingPlan(plan);
-
-    const activeMonths = customMonths || (plan === "multi" ? selectedMonths : undefined);
-
-    try {
-      // 1. Fetch active Paystack Public Key
-      const configRes = await fetch("/api/payments/config");
-      const configData = await configRes.json();
-      const publicKey = configData.publicKey || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "";
-      
-      if (!publicKey) {
-        throw new Error("Paystack Public Key is not configured in backend or environment.");
-      }
-
-      // 2. Initialize checkout session on our server
-      const res = await fetch("/api/payments/initialize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan,
-          email: user.email,
-          userId: user.uid,
-          months: activeMonths
-        })
-      });
-      const data = await res.json();
-      if (!data.success || !data.authorization_url) {
-        throw new Error(data.error || "Unable to initialize secure transaction with Paystack.");
-      }
-
-      // 3. Directly redirect user to Paystack secure payment page
-      console.log(`[Redirect Flow] Redirecting user ${user.uid} to secure Paystack payment URL: ${data.authorization_url}`);
-      window.location.href = data.authorization_url;
-
-    } catch (err: any) {
-      console.error("Error initiating checkout:", err);
-      setCheckoutError(err.message || "Failed to initialize secure checkout. Please contact admin.");
-      setSubmittingPlan(null);
-    }
-  };
-
-  const basePriceMonthly = 19999;
-  const multiMonthTotal = basePriceMonthly * selectedMonths;
-  const yearlyPriceAnnual = 215989;
-  const yearlyNormalCost = basePriceMonthly * 12;
-  const yearlySavingsAmt = yearlyNormalCost - yearlyPriceAnnual;
 
   const faqsList = [
     {
@@ -951,10 +851,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                   if (user.subscriptionStatus === "premium" || user.role === "admin") {
                     setView("challenges");
                   } else {
-                    const el = document.getElementById("pricing");
-                    if (el) {
-                      el.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }
+                    setView("pricing");
                   }
                 }}
                 className="w-full md:w-auto px-8 py-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-sans font-black text-xs uppercase rounded-full shadow-lg hover:shadow-amber-500/20 hover:-translate-y-0.5 transition duration-200 cursor-pointer text-center whitespace-nowrap inline-flex items-center justify-center gap-2"
@@ -1022,10 +919,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                         <motion.button
                           whileHover={{ scale: 1.05, y: -2, boxShadow: "0 10px 20px rgba(0,0,0,0.05)" }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => {
-                            const el = document.getElementById("pricing");
-                            if (el) el.scrollIntoView({ behavior: "smooth" });
-                          }}
+                          onClick={() => setView("pricing")}
                           className="px-6 py-3 bg-white hover:bg-slate-50 text-slate-900 font-sans font-black text-xs uppercase rounded-full border border-slate-200 shadow-md transition-all duration-200 cursor-pointer"
                         >
                           View Pricing
@@ -1726,6 +1620,305 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
         </motion.div>
       </section>
 
+      {/* 3.5 CLINICALLY STRUCTURED TRAINING PROGRAMS & WHAT THEY DO */}
+      <section id="programs-curriculum" className="py-24 bg-[#FAFAFA] border-b border-border">
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+        >
+          {/* Header */}
+          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
+            <span className="text-[10px] font-sans font-black tracking-[0.25em] text-[#D32F2F] uppercase bg-red-50 border border-red-150 px-3.5 py-1.5 rounded-full inline-block">
+              COMPLETE ROADMAP DIRECTORY
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-display font-black tracking-tight text-[#1C1C1C] uppercase">
+              STRUCTURED PROGRAMS <span className="text-[#C0392B]">& HOW THEY WORK</span>
+            </h2>
+            <p className="text-xs sm:text-sm text-[#6B6B6B] max-w-2xl mx-auto leading-relaxed font-sans font-normal">
+              Every body has distinct physiological demands. Explore our certified curriculums designed to eliminate guesswork, accelerate fat oxidation, and build lasting strength safely.
+            </p>
+            <div className="h-1 w-16 bg-[#C0392B] mx-auto mt-4" />
+          </div>
+
+          {/* Programs Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {PROGRAMS.map((program) => {
+              const totalDays = program.schedule.length;
+              const isBellyFat = program.id === "5-month-belly-fat";
+              return (
+                <div
+                  key={program.id}
+                  className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group hover:border-[#D32F2F]/40"
+                >
+                  <div>
+                    {/* Image / Header Media */}
+                    <div className="relative h-48 w-full overflow-hidden bg-slate-900">
+                      <OptimizedImage
+                        src={program.imageUrl || "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1200&auto=format&fit=crop"}
+                        alt={program.name}
+                        aspectRatio="16/9"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 filter brightness-95"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                      
+                      <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10">
+                        <span className="px-2.5 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider bg-white text-[#1C1C1C] shadow-sm">
+                          {program.category}
+                        </span>
+                        {program.isPremium ? (
+                          <span className="px-2.5 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider bg-[#D32F2F] text-white flex items-center gap-1 shadow-sm">
+                            <Crown className="w-3 h-3 fill-current" />
+                            Premium
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider bg-emerald-600 text-white shadow-sm">
+                            Free Access
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white z-10">
+                        <span className="text-[11px] font-mono font-bold flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-[#D32F2F]" />
+                          {program.duration}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold uppercase bg-white/20 backdrop-blur-xs px-2 py-0.5 rounded">
+                          {program.difficulty}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Program Information Content */}
+                    <div className="p-6 space-y-4 text-left">
+                      <div className="space-y-1">
+                        <h4 className="font-display font-black text-lg text-[#1C1C1C] uppercase leading-tight group-hover:text-[#D32F2F] transition-colors">
+                          {program.name}
+                        </h4>
+                        <p className="text-xs text-[#6B6B6B] leading-relaxed font-sans">
+                          {program.description}
+                        </p>
+                      </div>
+
+                      {/* What this program does & how it helps */}
+                      <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-150 space-y-2">
+                        <div className="flex items-center gap-1.5 text-[#D32F2F] text-[10px] font-mono font-black uppercase tracking-wider">
+                          <Target className="w-3.5 h-3.5" />
+                          <span>Primary Outcomes & Benefits</span>
+                        </div>
+                        <ul className="space-y-1.5 text-[11px] text-slate-700 font-sans">
+                          {program.id === "5-month-belly-fat" && (
+                            <>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Visceral Fat Oxidation:</strong> Systematically attacks deep organ fat.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Transverse Core Strength:</strong> Flattens lower belly pouch and improves posture.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Zone 2 Incline Protocol:</strong> Preserves joints while optimizing resting metabolism.</span>
+                              </li>
+                            </>
+                          )}
+                          {program.id === "30-day-challenge" && (
+                            <>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Daily Consistency:</strong> Builds unbreakable 30-day exercise habits.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Cardiovascular Stamina:</strong> Enhances VO2 max and overall daily energy.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Low Friction:</strong> Minimal equipment needed for high-adherence home training.</span>
+                              </li>
+                            </>
+                          )}
+                          {program.id === "7-day-quick-burn" && (
+                            <>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Rapid Calorie Deficit:</strong> High-intensity bursts in just 15 minutes a day.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>EPOC Afterburn:</strong> Elevates metabolic rate for hours post-workout.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Time-Efficient:</strong> Engineered for busy executives and packed schedules.</span>
+                              </li>
+                            </>
+                          )}
+                          {program.id === "women-confidence-180" && (
+                            <>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Glute & Hip Shaping:</strong> Progressive overload targeting glute medius & maximus.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Hourglass Waist Toning:</strong> Vacuum holds and deep abdominal compression.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Scapular Alignment:</strong> Opens chest, pulls back shoulders, and elevates posture.</span>
+                              </li>
+                            </>
+                          )}
+                          {program.id === "athletic-conditioning-hybrid" && (
+                            <>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Explosive Power & Torque:</strong> Kettlebell swings, cleans, and rotational velocity.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Unbreakable Work Capacity:</strong> Blends sprint conditioning with functional carries.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Real-World Athleticism:</strong> Prevents sport-related injuries and joint imbalances.</span>
+                              </li>
+                            </>
+                          )}
+                          {program.id === "bodyweight-training" && (
+                            <>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Relative Strength Mastery:</strong> Planche, handstand, and lever progressions.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Zero Equipment Needed:</strong> Transform anywhere with bodyweight physics.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Tendon & Scapular Health:</strong> Strengthens connective tissues and stabilizing joints.</span>
+                              </li>
+                            </>
+                          )}
+                          {program.id === "core-strength" && (
+                            <>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Spinal Decompression:</strong> Bulletproofs lower back and lumbar vertebrae.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Transverse Wall Bracing:</strong> Creates a tight, functional natural weight belt.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Posture Stability:</strong> Eliminates anterior pelvic tilt and slouching habits.</span>
+                              </li>
+                            </>
+                          )}
+                          {program.id === "functional-mobility-longevity" && (
+                            <>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Hip & Thoracic Mobility:</strong> Unlocks tight desk-bound hips and stiff spines.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Pain-Free Movement:</strong> Eliminates morning stiffness and joint friction.</span>
+                              </li>
+                              <li className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <span><strong>Parasympathetic Recovery:</strong> Reduces systemic stress and improves sleep.</span>
+                              </li>
+                            </>
+                          )}
+                        </ul>
+                      </div>
+
+                      {/* Schedule Breakdown Sneak Peek */}
+                      <div className="space-y-1.5">
+                        <div className="text-[10px] font-mono text-slate-400 font-bold uppercase">
+                          Curriculum Structure ({totalDays} Phased Rotations):
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {program.schedule.slice(0, 3).map((sch, sIdx) => (
+                            <span
+                              key={sIdx}
+                              className="px-2 py-0.5 rounded-md bg-slate-100 text-[9px] font-mono text-slate-600 border border-slate-200/60"
+                            >
+                              {sch.focus.split(":")[0]}
+                            </span>
+                          ))}
+                          {totalDays > 3 && (
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[9px] font-mono text-slate-400">
+                              +{totalDays - 3} more phases
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Program Action Button */}
+                  <div className="p-6 pt-0">
+                    <button
+                      onClick={() => {
+                        if (isBellyFat) {
+                          setView("belly-fat-shred");
+                        } else if (program.id === "women-confidence-180") {
+                          setView("women-confidence");
+                        } else if (program.id === "30-day-challenge" || program.id === "7-day-quick-burn" || program.id === "athletic-conditioning-hybrid") {
+                          setView("challenges");
+                        } else {
+                          setView("library");
+                        }
+                      }}
+                      className={`w-full py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
+                        isBellyFat
+                          ? "bg-[#D32F2F] hover:bg-[#B71C1C] text-white shadow-[#D32F2F]/20"
+                          : "bg-[#1C1C1C] hover:bg-[#C0392B] text-white"
+                      }`}
+                    >
+                      <span>{isBellyFat ? "Launch 5-Month Melt" : "Start This Program"}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Trust Banner Callout */}
+          <div className="mt-16 p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white border border-slate-700 flex flex-col md:flex-row items-center justify-between gap-6 text-left shadow-lg">
+            <div className="space-y-2 max-w-2xl">
+              <div className="flex items-center gap-2 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider">
+                <Shield className="w-4 h-4 text-emerald-400" />
+                <span>100% Biomechanically Verified</span>
+              </div>
+              <h4 className="text-xl font-display font-black uppercase tracking-tight">
+                Not Sure Which Program Matches Your Goal?
+              </h4>
+              <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                Take our AI-assisted Physique Assessment or chat with our automated Gemini coach to formulate your ideal nutrition deficit, macro ratios, and program schedule.
+              </p>
+            </div>
+            <button
+              onClick={() => setView("bmiCalculator")}
+              className="py-3 px-6 rounded-2xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-sans font-black text-xs uppercase tracking-wider transition duration-200 shrink-0 shadow-lg cursor-pointer flex items-center gap-2 border-0"
+            >
+              <Activity className="w-4 h-4" />
+              <span>Calculate Body Stats & Macros</span>
+            </button>
+          </div>
+
+        </motion.div>
+      </section>
+
       {/* 4. PREMIUM INSTRUMENTS SECTION */}
       <section className="py-24 bg-background border-b border-border">
         <motion.div
@@ -2175,10 +2368,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                   </button>
                 ) : (
                   <button
-                    onClick={() => {
-                      const el = document.getElementById("pricing");
-                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }}
+                    onClick={() => setView("pricing")}
                     className="w-full py-4 bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-sans font-black text-xs uppercase tracking-widest rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer border-0"
                   >
                     <Lock className="w-4 h-4 text-white" />
@@ -2761,511 +2951,6 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
         </div>
       </section>
 
-      {/* 5. PRICING PLANS */}
-      <section id="pricing" className="py-24 bg-secondary border-b border-border transition-colors duration-300">
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
-        >
-          
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-2">
-            <span className="text-[10px] font-sans font-black tracking-[0.2em] text-slate-500 uppercase block">
-              MEMBERSHIP TIERS
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-display font-black tracking-tight text-slate-900 uppercase">
-              CHOOSE YOUR <span className="text-[var(--accent-gold)]">TRAINING TIER</span>
-            </h2>
-            <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-              Unlock the entire AlexFitnessHub ecosystem with premium slow-mo kinesiologist guides, macro calculations, and unlimited AI Coach calibrations.
-            </p>
-            <div className="h-1 w-16 bg-[var(--accent-gold)] mx-auto mt-3" />
-          </div>
-
-          {/* Plan Category Quick Selection Buttons */}
-          <div className="flex flex-wrap justify-center gap-2 max-w-xl mx-auto mb-10 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/60 shadow-inner">
-            <button
-              onClick={() => setSelectedPlan("monthly")}
-              className={`flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-xs font-sans font-black uppercase tracking-wider transition-all duration-300 ${
-                selectedPlan === "monthly"
-                  ? "bg-[#D32F2F] text-white shadow-md"
-                  : "text-slate-600 hover:text-slate-900:text-white"
-              }`}
-            >
-              Monthly Starter
-            </button>
-            <button
-              onClick={() => setSelectedPlan("volume")}
-              className={`flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-xs font-sans font-black uppercase tracking-wider transition-all duration-300 ${
-                selectedPlan === "volume"
-                  ? "bg-[#D32F2F] text-white shadow-md"
-                  : "text-slate-600 hover:text-slate-900:text-white"
-              }`}
-            >
-              2-6 Mo. Volume Selection
-            </button>
-            <button
-              onClick={() => setSelectedPlan("annual")}
-              className={`flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-xs font-sans font-black uppercase tracking-wider transition-all duration-300 ${
-                selectedPlan === "annual"
-                  ? "bg-[var(--accent-gold)] text-[var(--gold-btn-text)] shadow-md"
-                  : "text-slate-600 hover:text-slate-900:text-white"
-              }`}
-            >
-              VIP Elite Club (Annual)
-            </button>
-          </div>
-
-          {/* Interactive Tier Selection Grid */}
-          <div className="grid md:grid-cols-3 gap-8 items-stretch max-w-6xl mx-auto mb-12">
-            
-            {/* TIER 1: MONTHLY */}
-            <motion.div 
-              whileHover={{ y: -4, scale: 1.01 }}
-              onClick={() => {
-                setSelectedPlan("monthly");
-                scrollToCheckout();
-              }}
-              className={`p-6 sm:p-8 rounded-3xl bg-white border flex flex-col justify-between cursor-pointer transition-all duration-350 relative ${
-                selectedPlan === "monthly" 
-                  ? "border-2 border-[#D32F2F] ring-4 ring-red-500/10 shadow-lg" 
-                  : "border-slate-200 hover:border-slate-400:border-slate-700"
-              }`}
-            >
-              <div className="text-left">
-                <span className="text-[9px] font-sans font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-100 text-slate-800">
-                  MONTHLY STARTER
-                </span>
-                <div className="mt-4">
-                  <span className="text-3xl font-display font-black text-slate-900">₦19,999</span>
-                  <span className="text-slate-500 text-[10px] ml-1">/ 1 Month</span>
-                </div>
-                <p className="text-[11px] text-slate-600 mt-3 leading-relaxed font-sans font-medium">
-                  Full 1-month Premium Athlete access with unhindered workouts, slow-mo guides, and AI coaching.
-                </p>
-                <div className="mt-4 border-t border-slate-100 pt-3 space-y-2 text-[10px] text-slate-700">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#D32F2F] shrink-0" />
-                    Complete Exercise Library
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#D32F2F] shrink-0" />
-                    Interactive Calorie Calibrator
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#D32F2F] shrink-0" />
-                    HD Slow-Mo Biomechanics & Eccentrics
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#D32F2F] shrink-0" />
-                    Unlimited AI Coach Calibrations
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6">
-                <span className={`w-full block py-2.5 text-center font-sans font-bold text-[10px] uppercase rounded-full transition-all duration-200 ${
-                  selectedPlan === "monthly"
-                    ? "bg-[#D32F2F] text-white"
-                    : "bg-slate-100 text-slate-800 hover:bg-slate-200"
-                }`}>
-                  Select Monthly
-                </span>
-              </div>
-            </motion.div>
-
-            {/* TIER 2: VOLUME SELECTION (2 - 6 Months) */}
-            <motion.div 
-              whileHover={{ y: -4, scale: 1.01 }}
-              onClick={() => {
-                setSelectedPlan("volume");
-                scrollToCheckout();
-              }}
-              className={`p-6 sm:p-8 rounded-3xl bg-white border flex flex-col justify-between cursor-pointer transition-all duration-350 relative ${
-                selectedPlan === "volume" 
-                  ? "border-2 border-[#D32F2F] ring-4 ring-red-500/10 shadow-lg animate-[pulse-glow_2s_infinite]" 
-                  : "border-slate-200 hover:border-slate-400:border-slate-700"
-              }`}
-            >
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#D32F2F] text-white text-[8px] font-sans font-black uppercase tracking-wider px-3 py-1 rounded-full z-10">
-                DYNAMIC VOLUME SAVINGS
-              </div>
-              <div className="text-left">
-                <span className="text-[9px] font-sans font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-red-50 text-[#D32F2F]">
-                  FLEXIBLE VOLUME
-                </span>
-                
-                {/* Dynamic Price Display */}
-                <div className="mt-4">
-                  <span className="text-3xl font-display font-black text-slate-900">
-                    {selectedMonths === 2 && "₦35,999"}
-                    {selectedMonths === 3 && "₦49,999"}
-                    {selectedMonths === 4 && "₦63,999"}
-                    {selectedMonths === 5 && "₦77,999"}
-                    {selectedMonths === 6 && "₦89,999"}
-                  </span>
-                  <span className="text-slate-500 text-[10px] ml-1">/ {selectedMonths} Months</span>
-                  
-                  {/* Saving Badge */}
-                  <div className="mt-1">
-                    <span className="text-[10px] bg-emerald-500/10 text-emerald-600 font-mono font-bold px-2 py-0.5 rounded">
-                      {selectedMonths === 2 && "Save ₦3,999 (10% Off)"}
-                      {selectedMonths === 3 && "Save ₦9,998 (17% Off)"}
-                      {selectedMonths === 4 && "Save ₦15,997 (20% Off)"}
-                      {selectedMonths === 5 && "Save ₦21,996 (22% Off)"}
-                      {selectedMonths === 6 && "Save ₦29,995 (25% Off)"}
-                    </span>
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-slate-600 mt-3 leading-relaxed font-sans font-medium">
-                  Unlock dynamic, high-volume duration plans with compounding package savings to match your exact goals.
-                </p>
-
-                {/* Interactive Dynamic Controls */}
-                <div className="mt-4 p-3 rounded-2xl bg-slate-50 border border-slate-200/60 space-y-3">
-                  <span className="text-[9px] font-sans font-extrabold text-slate-500 uppercase block tracking-wider text-center">
-                    SELECT DURATION CAPACITY
-                  </span>
-                  
-                  {/* Row of Buttons */}
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {[2, 3, 4, 5, 6].map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedMonths(m);
-                          setSelectedPlan("volume");
-                        }}
-                        className={`py-2 rounded-xl text-xs font-sans font-black transition-all ${
-                          selectedMonths === m && selectedPlan === "volume"
-                            ? "bg-[#D32F2F] text-white shadow-sm scale-105"
-                            : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
-                        }`}
-                      >
-                        {m}M
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Range Slider */}
-                  <div className="pt-1.5">
-                    <input
-                      type="range"
-                      min="2"
-                      max="6"
-                      value={selectedMonths}
-                      onChange={(e) => {
-                        setSelectedMonths(parseInt(e.target.value));
-                        setSelectedPlan("volume");
-                      }}
-                      className="w-full accent-[#D32F2F] cursor-pointer bg-slate-200 h-1.5 rounded-lg appearance-none"
-                    />
-                    <div className="flex justify-between text-[8px] font-mono font-bold text-slate-400 mt-1">
-                      <span>2 MONTHS</span>
-                      <span>3 MONTHS</span>
-                      <span>4 MONTHS</span>
-                      <span>5 MONTHS</span>
-                      <span>6 MONTHS</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 border-t border-slate-100 pt-3 space-y-2 text-[10px] text-slate-700">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#D32F2F] shrink-0" />
-                    Complete Exercise Library
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#D32F2F] shrink-0" />
-                    Interactive Calorie Calibrator
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#D32F2F] shrink-0" />
-                    HD slow-mo guides & Eccentric models
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6">
-                <span className={`w-full block py-2.5 text-center font-sans font-bold text-[10px] uppercase rounded-full transition-all duration-200 ${
-                  selectedPlan === "volume"
-                    ? "bg-[#D32F2F] text-white"
-                    : "bg-slate-100 text-slate-800 hover:bg-slate-200"
-                }`}>
-                  Select Volume Plan
-                </span>
-              </div>
-            </motion.div>
-
-            {/* TIER 3: ANNUAL PLAN */}
-            <motion.div 
-              whileHover={{ y: -4, scale: 1.01 }}
-              onClick={() => {
-                setSelectedPlan("annual");
-                scrollToCheckout();
-              }}
-              className={`p-6 sm:p-8 rounded-3xl bg-white border flex flex-col justify-between cursor-pointer transition-all duration-350 relative ${
-                selectedPlan === "annual" 
-                  ? "border-2 border-[var(--accent-gold)] ring-4 ring-yellow-500/10 shadow-lg" 
-                  : "border-slate-200 hover:border-slate-400:border-slate-700"
-              }`}
-            >
-              <div className="absolute -top-3 right-4 bg-[var(--accent-gold)] text-[var(--gold-btn-text)] text-[8px] font-sans font-black uppercase tracking-wider px-2.5 py-1 rounded-full z-10">
-                10% DISCOUNT
-              </div>
-              <div className="text-left">
-                <span className="text-[9px] font-sans font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-yellow-50 text-[var(--accent-gold)] font-extrabold">
-                  VIP ELITE CLUB
-                </span>
-                <div className="mt-4">
-                  <span className="text-3xl font-display font-black text-slate-900">₦215,989</span>
-                  <span className="text-slate-500 text-[10px] ml-1">/ 12 Months</span>
-                </div>
-                <p className="text-[11px] text-slate-600 mt-3 leading-relaxed font-sans font-medium">
-                  Uncapped premium access for serious athletes establishing permanent high performance.
-                </p>
-                <div className="mt-4 border-t border-slate-100 pt-3 space-y-2 text-[10px] text-slate-700">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[var(--accent-gold)] shrink-0" />
-                    Complete Exercise Library
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[var(--accent-gold)] shrink-0" />
-                    All Current & Future Core Features
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[var(--accent-gold)] shrink-0" />
-                    VIP Digital Onboarding & Reports
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6">
-                <span className={`w-full block py-2.5 text-center font-sans font-bold text-[10px] uppercase rounded-full transition-all duration-200 ${
-                  selectedPlan === "annual"
-                    ? "bg-[var(--accent-gold)] text-[var(--gold-btn-text)]"
-                    : "bg-slate-100 text-slate-800 hover:bg-slate-200"
-                }`}>
-                  Select Annual
-                </span>
-              </div>
-            </motion.div>
-
-          </div>
-
-          {/* Dynamic Billing Summary & Secure Checkout Panel */}
-          <div className="grid lg:grid-cols-12 gap-8 items-start max-w-6xl mx-auto mb-16 bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xl transition-colors duration-300">
-            
-            {/* Left: Premium Benefits Checklist */}
-            <div className="lg:col-span-7 space-y-6">
-              <div>
-                <h4 className="text-base font-display font-black text-slate-900 uppercase flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-[var(--accent-gold)]" />
-                  Premium Elite Athlete Benefits
-                </h4>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Here is why upgrading to premium makes your physical transformation effortless:
-                </p>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4 text-xs font-medium text-slate-700">
-                <div className="space-y-3">
-                  <div className="flex gap-2.5 items-start">
-                    <Zap className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <span><strong>1,200+ Guides</strong>: Anatomical, high-contrast, looping loops.</span>
-                  </div>
-                  <div className="flex gap-2.5 items-start">
-                    <Zap className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <span><strong>0.5x Slow-Motion</strong>: Complete biomechanical visual feedback.</span>
-                  </div>
-                  <div className="flex gap-2.5 items-start">
-                    <Zap className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <span><strong>3s Eccentric coaching</strong>: Maximum muscle fiber recruitment.</span>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex gap-2.5 items-start">
-                    <Zap className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <span><strong>AI Nutrition Planner</strong>: High protein staple foods calibration.</span>
-                  </div>
-                  <div className="flex gap-2.5 items-start">
-                    <Zap className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <span><strong>Continuous AI Coach</strong>: Direct access to Chat calibrations.</span>
-                  </div>
-                  <div className="flex gap-2.5 items-start">
-                    <Zap className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <span><strong>Transformation Dashboard</strong>: Persistent metrics monitoring.</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Dynamic Billing Summary & Paystack Action */}
-            <div id="activate-premium-access-section" className="lg:col-span-5 bg-slate-50 rounded-2xl p-6 border border-slate-200 space-y-4">
-              <div>
-                <span className="text-[8px] font-mono font-black text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded uppercase">
-                  ✓ SECURE SUBSCRIPTION CHECKOUT
-                </span>
-                <h4 className="text-sm font-sans font-black text-slate-900 uppercase mt-2">
-                  Billing Summary
-                </h4>
-              </div>
-
-              {/* Dynamic Summary Values */}
-              <div className="space-y-2 border-b border-slate-200 pb-4 text-xs font-semibold text-slate-600">
-                <div className="flex justify-between">
-                  <span>Selected Plan:</span>
-                  <span className="text-slate-900 font-extrabold uppercase">
-                    {selectedPlan === "monthly" && "Monthly Starter (1 Month)"}
-                    {selectedPlan === "volume" && `Volume Selection (${selectedMonths} Months)`}
-                    {selectedPlan === "annual" && "VIP Elite Club (12 Months)"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Subtotal Cost:</span>
-                  <span className="line-through text-slate-400">
-                    {selectedPlan === "monthly" && "₦19,999"}
-                    {selectedPlan === "volume" && `₦${(19999 * selectedMonths).toLocaleString()}`}
-                    {selectedPlan === "annual" && "₦239,988"}
-                  </span>
-                </div>
-                <div className="flex justify-between text-emerald-600">
-                  <span>Package Discount:</span>
-                  <span>
-                    {selectedPlan === "monthly" && "₦0"}
-                    {selectedPlan === "volume" && (() => {
-                      if (selectedMonths === 2) return "-₦3,999";
-                      if (selectedMonths === 3) return "-₦9,998";
-                      if (selectedMonths === 4) return "-₦15,997";
-                      if (selectedMonths === 5) return "-₦21,996";
-                      if (selectedMonths === 6) return "-₦29,995";
-                      return "₦0";
-                    })()}
-                    {selectedPlan === "annual" && "-₦23,999"}
-                  </span>
-                </div>
-                <div className="flex justify-between text-slate-900 text-sm font-black pt-2 border-t border-dashed border-slate-200">
-                  <span>DUE TODAY:</span>
-                  <span>
-                    {selectedPlan === "monthly" && "₦19,999"}
-                    {selectedPlan === "volume" && (() => {
-                      if (selectedMonths === 2) return "₦35,999";
-                      if (selectedMonths === 3) return "₦49,999";
-                      if (selectedMonths === 4) return "₦63,999";
-                      if (selectedMonths === 5) return "₦77,999";
-                      if (selectedMonths === 6) return "₦89,999";
-                      return "₦0";
-                    })()}
-                    {selectedPlan === "annual" && "₦215,989"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Paystack Payment Notice */}
-              <div className="flex items-center gap-2.5 bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/10 text-[10px] text-emerald-800 font-medium">
-                <Shield className="w-5 h-5 text-emerald-500 shrink-0" />
-                <span>Billed securely via Paystack. Your details are encrypted with bank-level protocol protections. Complete payment to activate your premium benefits instantly.</span>
-              </div>
-
-              {/* Checkout CTA */}
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  if (selectedPlan === "monthly") {
-                    handleInitiatePayment("monthly", 1);
-                  } else if (selectedPlan === "volume") {
-                    handleInitiatePayment("multi", selectedMonths);
-                  } else if (selectedPlan === "annual") {
-                    handleInitiatePayment("yearly");
-                  }
-                }}
-                disabled={submittingPlan !== null}
-                className="w-full py-3.5 bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-sans font-black text-xs uppercase tracking-wider rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer border-0 disabled:opacity-50"
-              >
-                {submittingPlan ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    <span>CONTACTING PAYSTACK CORE...</span>
-                  </span>
-                ) : (
-                  <>
-                    <span>ACTIVATE PREMIUM ACCESS NOW</span>
-                    <ArrowRight className="w-4 h-4 text-white" />
-                  </>
-                )}
-              </motion.button>
-              {checkoutError && (
-                <p className="text-[10px] text-red-500 text-center font-bold">{checkoutError}</p>
-              )}
-            </div>
-
-          </div>
-
-          {/* Pricing Feature Comparison Grid */}
-          <div className="max-w-5xl mx-auto mb-16 space-y-4">
-            <h4 className="text-xs font-sans font-black uppercase text-slate-500 tracking-widest text-center">
-              PRICING PLAN COMPARISON
-            </h4>
-            <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm bg-white text-slate-800 text-xs">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-500 font-sans font-bold uppercase tracking-wider border-b border-slate-200">
-                    <th className="p-4">FEATURING PROTOCOLS</th>
-                    <th className="p-4 text-center">FREE ATHLETE</th>
-                    <th className="p-4 text-center text-red-600">PREMIUM ELITE ATHLETE</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  <tr>
-                    <td className="p-4 font-bold">1,200+ Visual Exercise Database</td>
-                    <td className="p-4 text-center text-slate-400">Basic Guides Only</td>
-                    <td className="p-4 text-center text-emerald-600 font-bold">✓ Unrestricted Access</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4 font-bold">0.5x Slow-Motion Biomechanics</td>
-                    <td className="p-4 text-center text-slate-400">❌ Locked</td>
-                    <td className="p-4 text-center text-emerald-600 font-bold">✓ Complete Loop Playback</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4 font-bold">3s Eccentric & Slow-Negative Guides</td>
-                    <td className="p-4 text-center text-slate-400">❌ Locked</td>
-                    <td className="p-4 text-center text-emerald-600 font-bold">✓ All Movements Enabled</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4 font-bold">AI Progressive Nutrient Calibrator</td>
-                    <td className="p-4 text-center text-slate-400">Standard Calculator</td>
-                    <td className="p-4 text-center text-emerald-600 font-bold">✓ Daily Micro-Adjustments</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4 font-bold">Uncapped Live AI Coach Chat</td>
-                    <td className="p-4 text-center text-slate-400">❌ Locked</td>
-                    <td className="p-4 text-center text-emerald-600 font-bold">✓ Unlimited Calibrations</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4 font-bold">Transformation Progress Dashboard</td>
-                    <td className="p-4 text-center text-slate-400">❌ Locked</td>
-                    <td className="p-4 text-center text-emerald-600 font-bold">✓ Persistent Logs & Milestones</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Secure Shield Protection Callout */}
-          <div className="max-w-md mx-auto p-6 rounded-2xl bg-white border border-slate-200 text-center flex flex-col items-center transition-colors duration-300">
-            <Shield className="w-8 h-8 text-[var(--accent-gold)] mb-3 animate-pulse" />
-            <h6 className="text-[10px] font-sans font-black uppercase tracking-wider text-slate-900">100% Risk-Free 14-Day Refund Promise</h6>
-            <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed font-sans">
-              Try premium with complete confidence. If our workout tracking or AI coaching does not upgrade your daily routine, request reimbursement within 14 days for rapid secure processing.
-            </p>
-          </div>
-
-        </motion.div>
-      </section>
-
       {/* 6. DYNAMIC ACCORDION FAQS SYSTEM */}
       <section id="faqs-segment" className="py-24 bg-background border-b border-border">
         <motion.div
@@ -3435,131 +3120,6 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       </section>
 
 
-
-      {/* 9. EMBEDDED PREMIUM ACTIVATION OVERLAY (PAYSTACK DISPLAY NAVIGATOR) */}
-      {activePaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-2xl relative text-slate-900">
-            
-            {/* HUD portal header */}
-            <div className="bg-slate-50 p-5 flex items-center justify-between border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-[#D32F2F] fill-[#D32F2F]" />
-                <span className="font-display font-black tracking-wider text-xs uppercase text-slate-800">
-                  PAYSTACK SECURE TRANSFORMATION GATEWAY
-                </span>
-              </div>
-              {checkoutError && (
-                <button 
-                  onClick={() => {
-                    setActivePaymentModal(null);
-                    setSubmittingPlan(null);
-                    setCheckoutError(null);
-                  }} 
-                  className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors no-scroll-top border-0 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            
-            <div className="p-6 space-y-6 text-xs font-sans">
-              
-              {checkoutError ? (
-                <div className="space-y-4 py-4">
-                  <div className="p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 leading-relaxed font-sans text-left font-semibold">
-                    <strong className="text-sm font-bold block mb-1 text-red-700">Initialization Failed</strong>
-                    {checkoutError}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActivePaymentModal(null);
-                      setSubmittingPlan(null);
-                      setCheckoutError(null);
-                    }}
-                    className="w-full py-3 bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-sans font-bold text-xs uppercase rounded-xl transition duration-200 no-scroll-top cursor-pointer border-0 shadow-sm"
-                  >
-                    Return to pricing plans
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {/* Beautiful Loading Core Indicator */}
-                  <div className="flex flex-col items-center justify-center space-y-4 text-center py-4">
-                    <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#D32F2F] border-t-transparent" />
-                    <div className="space-y-1">
-                      <h3 className="text-base font-black text-slate-900 tracking-tight uppercase">
-                        ALEXFITNESSHUB SECURE CONSOLE
-                      </h3>
-                      <p className="text-[10px] text-slate-500 uppercase tracking-widest font-mono font-bold">
-                        INITIALIZING PAYSTACK CHECKOUT GATEWAY
-                      </p>
-                    </div>
-                  </div>
- 
-                  {/* Transaction Parameters */}
-                  <div className="rounded-xl bg-slate-50 p-4 border border-slate-200 space-y-3 text-left shadow-xs">
-                    <div className="flex justify-between items-center py-1.5 border-b border-slate-200 font-mono text-[10px] text-slate-500 font-bold">
-                      <span>SECURE CONNECTION</span>
-                      <span className="text-emerald-600 font-bold uppercase">● ESTABLISHED</span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500 font-mono text-[10px] uppercase font-semibold">ATHLETE PROFILE:</span>
-                      <span className="font-bold text-slate-800">{user?.email}</span>
-                    </div>
- 
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500 font-mono text-[10px] uppercase font-semibold">MEMBERSHIP LEVEL:</span>
-                      <span className="font-bold text-[#D32F2F] uppercase">
-                        {activePaymentModal === "yearly" 
-                          ? "VIP Elite Club (12M)" 
-                          : activePaymentModal === "multi" 
-                          ? `Flexible Span (${selectedMonths}M)` 
-                          : "Monthly Elite (1M)"}
-                      </span>
-                    </div>
- 
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500 font-mono text-[10px] uppercase font-semibold">DUE VALUE TODAY:</span>
-                      <span className="font-black text-slate-900 text-sm">
-                        ₦{(activePaymentModal === "yearly" 
-                          ? yearlyPriceAnnual 
-                          : activePaymentModal === "multi" 
-                          ? multiMonthTotal 
-                          : basePriceMonthly).toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
- 
-                  {/* Connection log terminal simulation */}
-                  <div className="rounded-lg bg-slate-100 p-3.5 border border-slate-200 font-mono text-[9px] text-slate-600 space-y-1.5 text-left leading-normal">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[#D32F2F] font-bold">&gt;</span>
-                      <span>Enabling SSL/TLS 1.3 socket tunnel...</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[#D32F2F] font-bold">&gt;</span>
-                      <span>Requesting checkout redirect from paystack.co...</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 animate-pulse">
-                      <span className="text-[#D32F2F] font-bold">&gt;</span>
-                      <span className="text-slate-800 font-bold">Awaiting secure authorization handshakes...</span>
-                    </div>
-                  </div>
- 
-                  {/* Redirection Notice */}
-                  <p className="text-[10px] text-slate-500 leading-normal text-center max-w-sm mx-auto font-semibold">
-                    Please do not close, refresh, or navigate away. Redirection takes place automatically. After successful payment, your Premium account access will unlock instantly.
-                  </p>
-                </div>
-              )}
-
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 10. SYSTEM FOOTER */}
       <footer className="bg-white text-slate-800 border-t border-slate-200 py-16 font-sans text-left transition-colors duration-200">

@@ -1048,12 +1048,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
               type="button"
               onClick={() => {
                 localStorage.setItem("fit_attempted_view", "library");
-                const el = document.getElementById("pricing");
-                if (el) {
-                  el.scrollIntoView({ behavior: "smooth" });
-                } else {
-                  setView?.("home");
-                }
+                setView?.("pricing");
               }}
               className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-bold text-sm tracking-wide shadow-lg shadow-red-100 transition-all cursor-pointer flex items-center justify-center gap-2"
             >

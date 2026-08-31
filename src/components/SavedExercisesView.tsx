@@ -426,13 +426,7 @@ export default function SavedExercisesView({ setView }: SavedExercisesViewProps)
                           </div>
                         </div>
                         <button
-                          onClick={() => {
-                            setView("home");
-                            setTimeout(() => {
-                              const el = document.getElementById("pricing");
-                              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                            }, 150);
-                          }}
+                          onClick={() => setView("pricing")}
                           className="w-full py-2.5 rounded-xl bg-[#C0392B] hover:bg-[#A82E22] text-white text-[10px] font-mono font-black uppercase tracking-widest shadow-lg transition"
                         >
                           Unlock All Premium Exercises

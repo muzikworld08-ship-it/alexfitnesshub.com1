@@ -999,11 +999,7 @@ export default function LifestyleFitnessAcademy() {
                 <button
                   onClick={() => {
                     setShowSubscriptionAlert(null);
-                    setView("home");
-                    setTimeout(() => {
-                      const el = document.getElementById("pricing");
-                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }, 150);
+                    setView("pricing");
                   }}
                   className="w-full py-3.5 bg-[#D32F2F] hover:bg-[#B71C1C] text-white rounded-xl font-black text-xs uppercase tracking-wider shadow-lg transition"
                 >

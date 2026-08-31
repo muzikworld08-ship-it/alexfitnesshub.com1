@@ -25,6 +25,7 @@ import FitnessChallenges from "./components/FitnessChallenges";
 import BellyFatShredView from "./components/BellyFatShredView";
 import LifestyleFitnessAcademy from "./components/LifestyleFitnessAcademy";
 import WomenConfidenceProgram from "./components/WomenConfidenceProgram";
+import PricingView from "./components/PricingView";
 import { TestimonialPopup } from "./components/TestimonialPopup";
 import DailyNotificationController from "./components/DailyNotificationController";
 import GlobalSkeletonLoader, { DashboardSkeleton, CardGridSkeleton, ListSkeleton } from "./components/SkeletonLoader";
@@ -101,6 +102,8 @@ const PATH_TO_VIEW_MAP: Record<string, string> = {
   "/women-confidence": "women-confidence",
   "/premium/women-confidence": "women-confidence",
   "/lifestyle-academy": "lifestyle-academy",
+  "/pricing": "pricing",
+  "/premium/pricing": "pricing",
   "/onboarding": "onboarding",
   "/login": "login",
   "/signin": "signin",
@@ -353,32 +356,17 @@ function FitnessAppContent() {
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
   const [premiumModalFeatureName, setPremiumModalFeatureName] = useState("Premium Feature");
 
-  // Reliable, auto-scrolling pricing navigation
+  // Reliable pricing navigation to dedicated PricingView
   const navigateToPricing = () => {
     setIsPremiumModalOpen(false);
-    setView("home");
-    
-    if (typeof window !== "undefined") {
-      window.location.hash = "pricing";
-      (window as any).__shouldScrollToPricing = true;
-    }
-
-    let count = 0;
-    const timer = setInterval(() => {
-      count++;
-      const pricingEl = document.getElementById("pricing");
-      if (pricingEl) {
-        pricingEl.scrollIntoView({ behavior: "smooth", block: "start" });
-        if (count > 4) clearInterval(timer);
-      }
-      if (count > 25) clearInterval(timer);
-    }, 100);
+    setView("pricing");
   };
 
   // Protected navigation handler
   const handleSetView = (targetView: string) => {
     if (targetView === "pricing") {
-      navigateToPricing();
+      setIsPremiumModalOpen(false);
+      setView("pricing");
       return;
     }
 
@@ -643,6 +631,9 @@ function FitnessAppContent() {
               )}
               {currentView === "lifestyle-academy" && (
                 <LifestyleFitnessAcademy />
+              )}
+              {currentView === "pricing" && (
+                <PricingView setView={handleSetView} onOpenAuth={() => handleSetView("login")} />
               )}
               {["login", "signin", "signup", "register", "auth"].includes(currentView) && (
                 <AuthView initialMode={currentView === "signup" || currentView === "register" ? "signup" : "signin"} />

@@ -338,13 +338,7 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
                 </div>
               </div>
               <button
-                onClick={() => {
-                  setView("home");
-                  setTimeout(() => {
-                    const el = document.getElementById("pricing");
-                    if (el) el.scrollIntoView({ behavior: "smooth" });
-                  }, 150);
-                }}
+                onClick={() => setView("pricing")}
                 className="w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-sans font-black uppercase tracking-wider rounded-xl transition shadow-xs whitespace-nowrap cursor-pointer shrink-0"
               >
                 Renew Premium Now
@@ -599,13 +593,7 @@ function PremiumLockCard({ tabLabel, setView }: { tabLabel: string; setView: (vi
         </p>
         <div className="pt-2">
           <button
-            onClick={() => {
-              setView("home");
-              setTimeout(() => {
-                const el = document.getElementById("pricing");
-                if (el) el.scrollIntoView({ behavior: "smooth" });
-              }, 150);
-            }}
+            onClick={() => setView("pricing")}
             className="w-full py-2.5 bg-[#D32F2F] hover:bg-[#B71C1C] text-white text-[10px] font-sans font-black uppercase tracking-wider rounded-xl transition shadow-md cursor-pointer"
           >
             Unlock Premium Access
