@@ -1431,8 +1431,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     
     // Primary Firebase Session Management
+    let userDocUnsubscribe: (() => void) | null = null;
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       clearTimeout(safetyTimer);
+      if (userDocUnsubscribe) {
+        userDocUnsubscribe();
+        userDocUnsubscribe = null;
+      }
+
       if (firebaseUser) {
         localStorage.setItem("fit_active_uid", firebaseUser.uid);
         
@@ -1457,6 +1464,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setLoading(false); // Disable spinner since we have the cached user
             loadUserData(firebaseUser.uid);
           } catch (e) {}
+        }
+
+        // Attach Real-Time Firestore Snapshot Listener: Webhook updates to users/{uid} flip UI immediately
+        if (!isMockFirebase) {
+          try {
+            const userDocRef = doc(db, "users", firebaseUser.uid);
+            userDocUnsubscribe = onSnapshot(
+              userDocRef,
+              (docSnap) => {
+                if (docSnap.exists()) {
+                  const snapData = docSnap.data() as UserProfile;
+                  const isAdmin = isEmailAdmin(firebaseUser.email || undefined);
+                  const hasActiveExpiry = snapData.subscriptionExpiry ? (new Date(snapData.subscriptionExpiry) > new Date()) : true;
+                  const isPremium = isAdmin || ((snapData.subscriptionStatus === "premium" || snapData.subscription === "premium" || snapData.isPremium === true) && hasActiveExpiry);
+
+                  setUser((prevUser) => {
+                    const merged: UserProfile = {
+                      ...(prevUser || {}),
+                      ...snapData,
+                      uid: firebaseUser.uid,
+                      email: firebaseUser.email || snapData.email || "",
+                      displayName: snapData.displayName || prevUser?.displayName || firebaseUser.displayName || "Athlete",
+                      role: isAdmin ? "admin" : (snapData.role === "admin" && !isAdmin ? "user" : (snapData.role || "user")),
+                      subscription: isPremium ? "premium" : "free",
+                      subscriptionStatus: isPremium ? "premium" : "free",
+                      isPremium: isPremium,
+                      premiumAccess: isPremium,
+                      subscriptionTier: isPremium ? (snapData.subscriptionTier === "none" || !snapData.subscriptionTier ? "monthly" : snapData.subscriptionTier) : "none",
+                      subscriptionPlan: isPremium ? (snapData.subscriptionPlan || "monthly") : "none",
+                      accountType: isPremium ? (isAdmin ? "Admin Athlete" : "Premium Athlete") : "Free Athlete",
+                      badge: isPremium ? (isAdmin ? "Admin Athlete" : "Premium Athlete") : "Free Athlete",
+                      isFreeTrial: false,
+                      freeTrialStatus: isPremium ? "none" : "expired",
+                      freeTrialDaysRemaining: 0,
+                      onboarded: snapData.onboarded !== undefined ? snapData.onboarded : true
+                    };
+                    safeSetItem(`fit_user_${firebaseUser.uid}`, JSON.stringify(merged));
+                    return merged;
+                  });
+                }
+              },
+              (snapErr) => {
+                console.warn("Realtime user snapshot notice:", snapErr?.message || snapErr);
+              }
+            );
+          } catch (listenerErr) {
+            console.warn("Failed to attach user snapshot listener:", listenerErr);
+          }
         }
 
         let profile: UserProfile | null = null;
@@ -1717,6 +1772,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => {
       clearTimeout(safetyTimer);
       unsubscribe();
+      if (userDocUnsubscribe) userDocUnsubscribe();
     };
   }, []);
 
