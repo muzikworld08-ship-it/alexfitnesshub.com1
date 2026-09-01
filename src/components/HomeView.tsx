@@ -1648,237 +1648,201 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
             {PROGRAMS.map((program) => {
               const totalDays = program.schedule.length;
               const isBellyFat = program.id === "5-month-belly-fat";
+
+              // Comprehensive Primary Outcomes & Benefits Dictionary
+              const programBenefits: Record<string, { label: string; desc: string }[]> = {
+                "5-month-belly-fat": [
+                  { label: "Visceral Fat Oxidation", desc: "Systematically targets stubborn deep organ fat and lower pouch." },
+                  { label: "Transverse Core Strength", desc: "Flattens waistline and reinforces abdominal wall bracing." },
+                  { label: "Zone 2 Incline Protocol", desc: "Maximizes metabolic burn while preserving joint integrity." }
+                ],
+                "30-day-challenge": [
+                  { label: "Daily Habit Consistency", desc: "Builds unbreakable 30-day exercise discipline." },
+                  { label: "Cardiovascular Stamina", desc: "Elevates VO2 max, lung capacity, and daily energy." },
+                  { label: "Zero Equipment Friction", desc: "High-adherence home routines tailored for rapid compliance." }
+                ],
+                "7-day-quick-burn": [
+                  { label: "Rapid Calorie Deficit", desc: "High-intensity bursts in just 15 minutes a day." },
+                  { label: "EPOC Afterburn Effect", desc: "Elevates resting metabolic rate for hours post-workout." },
+                  { label: "Time-Optimized Structure", desc: "Engineered for busy professionals with packed schedules." }
+                ],
+                "women-confidence-180": [
+                  { label: "Glute & Hip Shaping", desc: "Progressive overload targeting gluteus maximus & medius." },
+                  { label: "Hourglass Waist Toning", desc: "Stomach vacuums and deep transverse core compression." },
+                  { label: "Scapular Alignment", desc: "Opens tight chest, pulls back shoulders, and elevates posture." }
+                ],
+                "athletic-conditioning-hybrid": [
+                  { label: "Explosive Power & Torque", desc: "Kettlebell swings, cleans, and rotational velocity." },
+                  { label: "Unbreakable Work Capacity", desc: "Blends sprint conditioning with functional structural carries." },
+                  { label: "Real-World Athleticism", desc: "Prevents sport-related injuries and corrects muscular imbalances." }
+                ],
+                "bodyweight-training": [
+                  { label: "Relative Strength Mastery", desc: "Progressions for push-ups, dips, levers, and pull-ups." },
+                  { label: "Zero Equipment Needed", desc: "Transform anywhere leveraging bodyweight physics." },
+                  { label: "Tendon & Scapular Health", desc: "Strengthens connective tissues and stabilizing joints." }
+                ],
+                "core-strength": [
+                  { label: "Spinal Decompression", desc: "Protects lower back, stabilizes lumbar, and corrects tilt." },
+                  { label: "Transverse Wall Bracing", desc: "Forms a rigid, functional anatomical weight belt." },
+                  { label: "Posture & Pelvic Balance", desc: "Eliminates anterior pelvic tilt and slouching habits." }
+                ],
+                "functional-mobility-longevity": [
+                  { label: "Hip & Thoracic Mobility", desc: "Unlocks stiff desk-bound hips and rigid thoracic spines." },
+                  { label: "Pain-Free Movement", desc: "Eliminates morning stiffness and reduces joint friction." },
+                  { label: "Parasympathetic Recovery", desc: "Lowers cortisol, relieves stress, and boosts sleep quality." }
+                ],
+                "beginner-muscle-building": [
+                  { label: "Foundational Hypertrophy", desc: "Constructs dense muscle tissue with proven compound lifts." },
+                  { label: "Kinetic Motor Patterns", desc: "Ingrains proper barbell and dumbbell lifting technique." },
+                  { label: "Joint & Tendon Armor", desc: "Safely strengthens connective tissues for heavy lifting." }
+                ],
+                "advanced-hypertrophy": [
+                  { label: "Maximum Fiber Recruitment", desc: "Slow eccentrics and mechanical tension to trigger growth." },
+                  { label: "Metabolic Stress & Pump", desc: "Dropsets and controlled fatigue for peak sarcoplasmic volume." },
+                  { label: "Symmetric Muscle Balance", desc: "Eliminates side-to-side imbalances and weaknesses." }
+                ],
+                "fat-loss": [
+                  { label: "Accelerated Caloric Burn", desc: "High metabolic output circuits to melt excess adipose tissue." },
+                  { label: "Lean Muscle Retention", desc: "Ensures weight loss comes strictly from body fat, not muscle." },
+                  { label: "Insulin Sensitivity", desc: "Optimizes nutrient partitioning and glucose handling." }
+                ],
+                "strength": [
+                  { label: "Neural Drive & Power", desc: "Maximizes motor unit recruitment on squat, bench, and deadlift." },
+                  { label: "Absolute 1RM Progression", desc: "Systematic percentage-based overload for elite personal records." },
+                  { label: "Bone Density & Rigidity", desc: "Heavy axial loading strengthens skeletal framework." }
+                ],
+                "womens-fitness": [
+                  { label: "Full Body Curve Toning", desc: "Sculpts athletic glutes, toned arms, and core definition." },
+                  { label: "Core & Pelvic Floor Strength", desc: "Functional stabilization for daily vitality." },
+                  { label: "Joint-Friendly Low Impact", desc: "Protects knees and lower back while sculpting shape." }
+                ],
+                "home-workouts": [
+                  { label: "Living Room Convenience", desc: "100% executable anywhere with zero equipment barriers." },
+                  { label: "Full Body Conditioning", desc: "Total body engagement in condensed, efficient sessions." },
+                  { label: "Metabolic Agility", desc: "Boosts cardiovascular capacity and day-to-day stamina." }
+                ],
+                "gym-workouts": [
+                  { label: "Machine & Free-Weight Mastery", desc: "Optimal joint setups for cables, barbells, and machines." },
+                  { label: "Progressive Overload Tracking", desc: "Calibrated micro-loading for continuous strength gains." },
+                  { label: "Comprehensive Muscle Split", desc: "Targeted push, pull, and leg divisions for complete build." }
+                ],
+                "military-training": [
+                  { label: "Tactical Combat Fitness", desc: "High-rep pull-ups, sprint drills, and endurance conditioning." },
+                  { label: "Mental Toughness & Grit", desc: "Builds unyielding psychological stamina under physical stress." },
+                  { label: "Aerobic & Anaerobic Mastery", desc: "Performs at peak across both sprints and long-duration rucks." }
+                ]
+              };
+
+              const currentBenefits = programBenefits[program.id] || [
+                { label: "Physiological Adaptation", desc: "Engineered for progressive overload and metabolic optimization." },
+                { label: "Joint Safety Protocol", desc: "Biomechanically verified movement angles prevent injury." },
+                { label: "Sustainable Habit Loop", desc: "Phased rotations ensure consistent, measurable weekly progress." }
+              ];
+
               return (
                 <div
                   key={program.id}
-                  className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group hover:border-[#D32F2F]/40"
+                  className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group hover:border-[#D32F2F]/40 text-left"
                 >
-                  <div>
-                    {/* Image / Header Media */}
-                    <div className="relative h-48 w-full overflow-hidden bg-slate-900">
-                      <OptimizedImage
-                        src={program.imageUrl || "https://img.magnific.com/free-photo/group-people-exercising-together-outdoors_23-2151061449.jpg?semt=ais_hybrid&w=740&q=80"}
-                        alt={program.name}
-                        aspectRatio="16/9"
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 filter brightness-95"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                      
-                      <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10">
-                        <span className="px-2.5 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider bg-white text-[#1C1C1C] shadow-sm">
+                  <div className="p-6 sm:p-7 space-y-5">
+                    {/* Program Meta Header Bar */}
+                    <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider bg-slate-100 text-[#1C1C1C] border border-slate-200">
                           {program.category}
                         </span>
                         {program.isPremium ? (
-                          <span className="px-2.5 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider bg-[#D32F2F] text-white flex items-center gap-1 shadow-sm">
+                          <span className="px-2 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider bg-[#D32F2F] text-white flex items-center gap-1 shadow-xs">
                             <Crown className="w-3 h-3 fill-current" />
                             Premium
                           </span>
                         ) : (
-                          <span className="px-2.5 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider bg-emerald-600 text-white shadow-sm">
+                          <span className="px-2 py-1 rounded-md text-[9px] font-mono font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
                             Free Access
                           </span>
                         )}
                       </div>
 
-                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white z-10">
-                        <span className="text-[11px] font-mono font-bold flex items-center gap-1">
+                      <div className="flex items-center gap-2 text-slate-500 font-mono text-[10px]">
+                        <span className="font-bold flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5 text-[#D32F2F]" />
                           {program.duration}
                         </span>
-                        <span className="text-[10px] font-mono font-bold uppercase bg-white/20 backdrop-blur-xs px-2 py-0.5 rounded">
+                        <span>•</span>
+                        <span className="font-bold uppercase text-slate-600">
                           {program.difficulty}
                         </span>
                       </div>
                     </div>
 
-                    {/* Program Information Content */}
-                    <div className="p-6 space-y-4 text-left">
-                      <div className="space-y-1">
-                        <h4 className="font-display font-black text-lg text-[#1C1C1C] uppercase leading-tight group-hover:text-[#D32F2F] transition-colors">
-                          {program.name}
-                        </h4>
-                        <p className="text-xs text-[#6B6B6B] leading-relaxed font-sans">
-                          {program.description}
-                        </p>
-                      </div>
+                    {/* Program Title */}
+                    <div className="space-y-1.5">
+                      <h4 className="font-display font-black text-xl text-[#1C1C1C] uppercase leading-tight group-hover:text-[#D32F2F] transition-colors">
+                        {program.name}
+                      </h4>
+                      <p className="text-xs text-[#6B6B6B] leading-relaxed font-sans font-normal">
+                        {program.description}
+                      </p>
+                    </div>
 
-                      {/* What this program does & how it helps */}
-                      <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-150 space-y-2">
-                        <div className="flex items-center gap-1.5 text-[#D32F2F] text-[10px] font-mono font-black uppercase tracking-wider">
-                          <Target className="w-3.5 h-3.5" />
-                          <span>Primary Outcomes & Benefits</span>
-                        </div>
-                        <ul className="space-y-1.5 text-[11px] text-slate-700 font-sans">
-                          {program.id === "5-month-belly-fat" && (
-                            <>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Visceral Fat Oxidation:</strong> Systematically attacks deep organ fat.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Transverse Core Strength:</strong> Flattens lower belly pouch and improves posture.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Zone 2 Incline Protocol:</strong> Preserves joints while optimizing resting metabolism.</span>
-                              </li>
-                            </>
-                          )}
-                          {program.id === "30-day-challenge" && (
-                            <>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Daily Consistency:</strong> Builds unbreakable 30-day exercise habits.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Cardiovascular Stamina:</strong> Enhances VO2 max and overall daily energy.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Low Friction:</strong> Minimal equipment needed for high-adherence home training.</span>
-                              </li>
-                            </>
-                          )}
-                          {program.id === "7-day-quick-burn" && (
-                            <>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Rapid Calorie Deficit:</strong> High-intensity bursts in just 15 minutes a day.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>EPOC Afterburn:</strong> Elevates metabolic rate for hours post-workout.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Time-Efficient:</strong> Engineered for busy executives and packed schedules.</span>
-                              </li>
-                            </>
-                          )}
-                          {program.id === "women-confidence-180" && (
-                            <>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Glute & Hip Shaping:</strong> Progressive overload targeting glute medius & maximus.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Hourglass Waist Toning:</strong> Vacuum holds and deep abdominal compression.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Scapular Alignment:</strong> Opens chest, pulls back shoulders, and elevates posture.</span>
-                              </li>
-                            </>
-                          )}
-                          {program.id === "athletic-conditioning-hybrid" && (
-                            <>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Explosive Power & Torque:</strong> Kettlebell swings, cleans, and rotational velocity.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Unbreakable Work Capacity:</strong> Blends sprint conditioning with functional carries.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Real-World Athleticism:</strong> Prevents sport-related injuries and joint imbalances.</span>
-                              </li>
-                            </>
-                          )}
-                          {program.id === "bodyweight-training" && (
-                            <>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Relative Strength Mastery:</strong> Planche, handstand, and lever progressions.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Zero Equipment Needed:</strong> Transform anywhere with bodyweight physics.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Tendon & Scapular Health:</strong> Strengthens connective tissues and stabilizing joints.</span>
-                              </li>
-                            </>
-                          )}
-                          {program.id === "core-strength" && (
-                            <>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Spinal Decompression:</strong> Bulletproofs lower back and lumbar vertebrae.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Transverse Wall Bracing:</strong> Creates a tight, functional natural weight belt.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Posture Stability:</strong> Eliminates anterior pelvic tilt and slouching habits.</span>
-                              </li>
-                            </>
-                          )}
-                          {program.id === "functional-mobility-longevity" && (
-                            <>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Hip & Thoracic Mobility:</strong> Unlocks tight desk-bound hips and stiff spines.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Pain-Free Movement:</strong> Eliminates morning stiffness and joint friction.</span>
-                              </li>
-                              <li className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                <span><strong>Parasympathetic Recovery:</strong> Reduces systemic stress and improves sleep.</span>
-                              </li>
-                            </>
-                          )}
-                        </ul>
+                    {/* Primary Outcomes & Benefits Section */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                      <div className="flex items-center gap-1.5 text-[#D32F2F] text-[10px] font-mono font-black uppercase tracking-wider">
+                        <Target className="w-3.5 h-3.5" />
+                        <span>Primary Outcomes & Benefits</span>
                       </div>
+                      <ul className="space-y-2 text-xs text-slate-700 font-sans">
+                        {currentBenefits.map((b, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                            <span className="leading-snug">
+                              <strong className="text-slate-900 font-bold">{b.label}:</strong> {b.desc}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
 
-                      {/* Schedule Breakdown Sneak Peek */}
-                      <div className="space-y-1.5">
-                        <div className="text-[10px] font-mono text-slate-400 font-bold uppercase">
-                          Curriculum Structure ({totalDays} Phased Rotations):
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {program.schedule.slice(0, 3).map((sch, sIdx) => (
-                            <span
-                              key={sIdx}
-                              className="px-2 py-0.5 rounded-md bg-slate-100 text-[9px] font-mono text-slate-600 border border-slate-200/60"
-                            >
-                              {sch.focus.split(":")[0]}
-                            </span>
-                          ))}
-                          {totalDays > 3 && (
-                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[9px] font-mono text-slate-400">
-                              +{totalDays - 3} more phases
-                            </span>
-                          )}
-                        </div>
+                    {/* Curriculum Structure Phased Rotations */}
+                    <div className="space-y-1.5 pt-1">
+                      <div className="text-[10px] font-mono text-slate-400 font-bold uppercase">
+                        Curriculum Structure ({totalDays} Phased Rotations):
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {program.schedule.slice(0, 3).map((sch, sIdx) => (
+                          <span
+                            key={sIdx}
+                            className="px-2 py-0.5 rounded-md bg-slate-100 text-[9px] font-mono text-slate-600 border border-slate-200/60"
+                          >
+                            {sch.focus.split(":")[0]}
+                          </span>
+                        ))}
+                        {totalDays > 3 && (
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[9px] font-mono text-slate-400">
+                            +{totalDays - 3} more phases
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {/* Program Action Button */}
-                  <div className="p-6 pt-0">
+                  <div className="p-6 sm:p-7 pt-0">
                     <button
                       onClick={() => {
                         if (isBellyFat) {
                           setView("belly-fat-shred");
                         } else if (program.id === "women-confidence-180") {
                           setView("women-confidence");
+                        } else if (program.id === "home-workout-challenge-180") {
+                          setView("home-workout-challenge");
                         } else if (program.id === "30-day-challenge" || program.id === "7-day-quick-burn" || program.id === "athletic-conditioning-hybrid") {
                           setView("challenges");
                         } else {
                           setView("library");
                         }
                       }}
-                      className={`w-full py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
+                      className={`w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
                         isBellyFat
                           ? "bg-[#D32F2F] hover:bg-[#B71C1C] text-white shadow-[#D32F2F]/20"
                           : "bg-[#1C1C1C] hover:bg-[#C0392B] text-white"
@@ -1894,26 +1858,38 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
           </div>
 
           {/* Trust Banner Callout */}
-          <div className="mt-16 p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white border border-slate-700 flex flex-col md:flex-row items-center justify-between gap-6 text-left shadow-lg">
-            <div className="space-y-2 max-w-2xl">
-              <div className="flex items-center gap-2 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider">
+          <div className="mt-16 p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white border border-slate-700 flex flex-col md:flex-row items-center justify-between gap-6 text-left shadow-xl relative overflow-hidden">
+            <div className="absolute right-0 top-0 w-72 h-72 bg-[#D32F2F]/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="space-y-2 max-w-2xl relative z-10">
+              <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono font-bold uppercase tracking-wider">
                 <Shield className="w-4 h-4 text-emerald-400" />
                 <span>100% Biomechanically Verified</span>
               </div>
-              <h4 className="text-xl font-display font-black uppercase tracking-tight">
+              <h4 className="text-xl sm:text-2xl font-display font-black uppercase tracking-tight text-white">
                 Not Sure Which Program Matches Your Goal?
               </h4>
-              <p className="text-xs text-slate-300 font-sans leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed">
                 Take our AI-assisted Physique Assessment or chat with our automated Gemini coach to formulate your ideal nutrition deficit, macro ratios, and program schedule.
               </p>
             </div>
-            <button
-              onClick={() => setView("bmiCalculator")}
-              className="py-3 px-6 rounded-2xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-sans font-black text-xs uppercase tracking-wider transition duration-200 shrink-0 shadow-lg cursor-pointer flex items-center gap-2 border-0"
-            >
-              <Activity className="w-4 h-4" />
-              <span>Calculate Body Stats & Macros</span>
-            </button>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 relative z-10 w-full md:w-auto">
+              <button
+                onClick={() => setView("bmiCalculator")}
+                className="w-full sm:w-auto py-3.5 px-6 rounded-2xl bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-sans font-black text-xs uppercase tracking-wider transition duration-200 shadow-lg cursor-pointer flex items-center justify-center gap-2 border-0"
+              >
+                <Activity className="w-4 h-4" />
+                <span>Calculate Body Stats & Macros</span>
+              </button>
+              <button
+                onClick={() => setView("coach")}
+                className="w-full sm:w-auto py-3.5 px-5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-mono font-bold text-xs uppercase tracking-wider transition duration-200 cursor-pointer flex items-center justify-center gap-2 border border-white/10"
+              >
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>Ask AI Coach</span>
+              </button>
+            </div>
           </div>
 
         </motion.div>
@@ -3135,18 +3111,18 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
           <div>
             <h4 className="text-[10px] font-sans font-black uppercase tracking-widest text-[#C0392B] mb-3">Training Solutions</h4>
             <ul className="space-y-1.5 text-xs text-slate-600 font-sans">
-              <li><button onClick={() => setView("library")} className="hover:text-[#C0392B]:text-[#C0392B] transition-colors cursor-pointer text-left">Treadmill Walk 12-30-3</button></li>
-              <li><button onClick={() => setView("library")} className="hover:text-[#C0392B]:text-[#C0392B] transition-colors cursor-pointer text-left">Chest Isolation Press</button></li>
-              <li><button onClick={() => setView("library")} className="hover:text-[#C0392B]:text-[#C0392B] transition-colors cursor-pointer text-left">Home Shred Workouts</button></li>
+              <li><button onClick={() => setView("library")} className="hover:text-[#C0392B] transition-colors cursor-pointer text-left">Treadmill Walk 12-30-3</button></li>
+              <li><button onClick={() => setView("library")} className="hover:text-[#C0392B] transition-colors cursor-pointer text-left">Chest Isolation Press</button></li>
+              <li><button onClick={() => setView("library")} className="hover:text-[#C0392B] transition-colors cursor-pointer text-left">Home Shred Workouts</button></li>
             </ul>
           </div>
 
           <div>
             <h4 className="text-[10px] font-sans font-black uppercase tracking-widest text-[#C0392B] mb-3">Premium Features</h4>
             <ul className="space-y-1.5 text-xs text-slate-600 font-sans">
-              <li><button onClick={() => setView("home")} className="hover:text-[#C0392B]:text-[#C0392B] transition-colors cursor-pointer text-left">Flexible Selectors</button></li>
-              <li><button onClick={() => setView("daily-plan")} className="hover:text-[#C0392B]:text-[#C0392B] transition-colors cursor-pointer text-left">Daily Training Schedule</button></li>
-              <li><button onClick={() => setView("coach")} className="hover:text-[#C0392B]:text-[#C0392B] transition-colors cursor-pointer text-left">Gemini AI Assistant</button></li>
+              <li><button onClick={() => setView("home")} className="hover:text-[#C0392B] transition-colors cursor-pointer text-left">Flexible Selectors</button></li>
+              <li><button onClick={() => setView("daily-plan")} className="hover:text-[#C0392B] transition-colors cursor-pointer text-left">Daily Training Schedule</button></li>
+              <li><button onClick={() => setView("coach")} className="hover:text-[#C0392B] transition-colors cursor-pointer text-left">Gemini AI Assistant</button></li>
             </ul>
           </div>
 

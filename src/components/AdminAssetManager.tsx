@@ -207,6 +207,12 @@ export const AdminAssetManager: React.FC = () => {
     }
   };
 
+  const [statusFilter, setStatusFilter] = useState<"all" | "uploaded" | "missing">("all");
+
+  const uploadedCount = exercises.filter((e) => !!e.customMediaUrl).length;
+  const remainingToUploadCount = Math.max(0, exercises.length - uploadedCount);
+  const uploadPercentage = exercises.length > 0 ? Math.round((uploadedCount / exercises.length) * 100) : 0;
+
   // Filter exercises list for target exercise picker
   const allCategoryTags = Array.from(
     new Set([
@@ -242,7 +248,11 @@ export const AdminAssetManager: React.FC = () => {
       selectedCategory === "all" || 
       ex.category === selectedCategory || 
       (ex.categories && ex.categories.includes(selectedCategory));
-    return matchesSearch && matchesCategory;
+    const matchesStatus =
+      statusFilter === "all" ? true :
+      statusFilter === "uploaded" ? !!ex.customMediaUrl :
+      !ex.customMediaUrl;
+    return matchesSearch && matchesCategory && matchesStatus;
   });
 
   if (!isAdminAuthorized) {
@@ -327,8 +337,21 @@ export const AdminAssetManager: React.FC = () => {
             )}
           </div>
 
-          {/* Search & Category Filter */}
-          <div className="space-y-2">
+          {/* Search & Category & Status Filter */}
+          <div className="space-y-2.5">
+            {/* Exact GIF Count Progress */}
+            <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-xs space-y-1.5">
+              <div className="flex justify-between items-center text-[10px] font-mono">
+                <span className="text-slate-600 font-bold">GIFs Uploaded: <strong className="text-emerald-600">{uploadedCount}</strong> / {exercises.length}</span>
+                <span className="text-amber-700 font-black bg-amber-100 px-1.5 py-0.5 rounded">
+                  {remainingToUploadCount} To Upload
+                </span>
+              </div>
+              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${uploadPercentage}%` }} />
+              </div>
+            </div>
+
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -338,6 +361,43 @@ export const AdminAssetManager: React.FC = () => {
                 placeholder="Search exercise name or muscle..."
                 className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
+            </div>
+
+            {/* Quick Status Filter Tabs */}
+            <div className="grid grid-cols-3 gap-1">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("all")}
+                className={`py-1 text-[9px] font-mono font-bold uppercase rounded-lg transition text-center cursor-pointer ${
+                  statusFilter === "all"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                All ({exercises.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("uploaded")}
+                className={`py-1 text-[9px] font-mono font-bold uppercase rounded-lg transition text-center cursor-pointer ${
+                  statusFilter === "uploaded"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-white text-emerald-700 hover:bg-emerald-50 border border-emerald-200"
+                }`}
+              >
+                Done ({uploadedCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("missing")}
+                className={`py-1 text-[9px] font-mono font-bold uppercase rounded-lg transition text-center cursor-pointer ${
+                  statusFilter === "missing"
+                    ? "bg-amber-600 text-white shadow-xs"
+                    : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
+                }`}
+              >
+                Need GIF ({remainingToUploadCount})
+              </button>
             </div>
 
             <div className="flex gap-1 overflow-x-auto pb-1 max-w-full no-scrollbar">

@@ -25,6 +25,8 @@ import FitnessChallenges from "./components/FitnessChallenges";
 import BellyFatShredView from "./components/BellyFatShredView";
 import LifestyleFitnessAcademy from "./components/LifestyleFitnessAcademy";
 import WomenConfidenceProgram from "./components/WomenConfidenceProgram";
+import HomeWorkoutChallengeView from "./components/HomeWorkoutChallengeView";
+import BodyStatsCalculatorView from "./components/BodyStatsCalculatorView";
 import PricingView from "./components/PricingView";
 import { TestimonialPopup } from "./components/TestimonialPopup";
 import DailyNotificationController from "./components/DailyNotificationController";
@@ -101,6 +103,10 @@ const PATH_TO_VIEW_MAP: Record<string, string> = {
   "/premium/belly-fat-shred": "belly-fat-shred",
   "/women-confidence": "women-confidence",
   "/premium/women-confidence": "women-confidence",
+  "/home-workout-challenge": "home-workout-challenge",
+  "/180-day-challenge": "home-workout-challenge",
+  "/home-challenge": "home-workout-challenge",
+  "/premium/home-workout-challenge": "home-workout-challenge",
   "/lifestyle-academy": "lifestyle-academy",
   "/pricing": "pricing",
   "/premium/pricing": "pricing",
@@ -251,14 +257,30 @@ function FitnessAppContent() {
     }
   }, [currentView, user, loading, setView]);
 
-  // General Guard to catch any unauthorized entries to protected views for unauthenticated guests
+  // General Guard to catch any unauthorized entries to protected views for unauthenticated guests or free-tier users
   React.useEffect(() => {
     if (!loading) {
+      const PREMIUM_PROGRAMS: Record<string, string> = {
+        "home-workout-challenge": "180 Day Home Workout Challenge",
+        "180-day-challenge": "180 Day Home Workout Challenge",
+        "home-challenge": "180 Day Home Workout Challenge",
+        "women-confidence": "Women Confidence Program",
+        "belly-fat-shred": "Belly Fat Shred System",
+        "challenges": "Monthly 90-Day Challenges",
+        "daily-plan": "My Daily Plan",
+        "coach": "AI Fitness Coach",
+        "dashboard": "Athlete Performance Desk",
+        "weight-trajectory": "Weight Trajectory Logs",
+        "daily-calibration-desk": "Biometric Calibration Desk",
+        "saved-exercises": "Saved Drills & Workouts",
+        "weekly-reports": "Weekly Progress Reports",
+        "handbook": "Athlete Handbook",
+        "workout-generator": "AI Workout Generator"
+      };
+
       const loginRequiredViews = [
-        "coach", "nutrition", "community", "challenges", "success-stories", 
-        "workout-generator", "daily-plan", "dashboard", "weekly-reports", 
-        "daily-habit-tracker", "daily-calibration-desk", "handbook", 
-        "weight-trajectory", "saved-exercises", "belly-fat-shred", "women-confidence"
+        ...Object.keys(PREMIUM_PROGRAMS),
+        "nutrition", "community", "success-stories"
       ];
 
       const activeUid = localStorage.getItem("fit_active_uid");
@@ -266,6 +288,18 @@ function FitnessAppContent() {
         console.log(`[DevOps Security] Unauthenticated user attempted to access protected view: ${currentView}. Saving destination and navigating to login.`);
         localStorage.setItem("fit_attempted_view", currentView);
         setView("login");
+        return;
+      }
+
+      // Check if user is signed in but on FREE tier trying to access a premium-only view directly
+      const isUserPrem = checkIsUserPremium(user);
+      if (user && !isUserPrem && PREMIUM_PROGRAMS[currentView]) {
+        const progName = PREMIUM_PROGRAMS[currentView];
+        console.log(`[Subscription Guard] Free tier user attempted to access premium view: ${currentView}. Redirecting to pricing.`);
+        localStorage.setItem("fit_upgrade_reason", progName);
+        setPremiumModalFeatureName(progName);
+        setIsPremiumModalOpen(true);
+        setView("pricing");
       }
     }
   }, [user, currentView, loading, setView]);
@@ -375,34 +409,46 @@ function FitnessAppContent() {
       resolvedView = PATH_TO_VIEW_MAP[targetView] || targetView.replace(/^\/premium\//, "").replace(/^\//, "");
     }
 
-    const FEATURE_NAMES: Record<string, string> = {
-      "library": "Workouts Library",
-      "coach": "AI Kinesiology Coach",
-      "nutrition": "Nutrition & Meal Matrix",
-      "workout-generator": "AI Workout Generator",
-      "daily-plan": "My Daily Plan",
-      "challenges": "90-Day Transformation Challenge",
-      "belly-fat-shred": "Belly Fat Shred System",
+    const PREMIUM_PROGRAMS_MAP: Record<string, string> = {
+      "home-workout-challenge": "180 Day Home Workout Challenge",
+      "180-day-challenge": "180 Day Home Workout Challenge",
+      "home-challenge": "180 Day Home Workout Challenge",
       "women-confidence": "Women Confidence Program (180 Days)",
+      "belly-fat-shred": "Belly Fat Shred System",
+      "challenges": "Monthly 90-Day Challenges",
+      "daily-plan": "My Daily Plan",
+      "coach": "AI Fitness Coach",
       "dashboard": "Athlete Performance Desk",
-      "weekly-reports": "Weekly Progress Reports",
-      "daily-habit-tracker": "Daily Habit Tracker",
-      "daily-calibration-desk": "Biometric Calibration Desk",
-      "handbook": "Athlete Handbook",
       "weight-trajectory": "Weight Trajectory Logs",
-      "community": "Community Arena"
+      "daily-calibration-desk": "Biometric Calibration Desk",
+      "saved-exercises": "Saved Drills & Workouts",
+      "weekly-reports": "Weekly Progress Reports",
+      "handbook": "Athlete Handbook",
+      "workout-generator": "AI Workout Generator"
     };
 
     const loginRequiredViews = [
-      "coach", "nutrition", "community", "challenges", "success-stories", 
-      "workout-generator", "daily-plan", "dashboard", "weekly-reports", 
-      "daily-habit-tracker", "daily-calibration-desk", "handbook", 
-      "weight-trajectory", "saved-exercises", "belly-fat-shred", "women-confidence"
+      ...Object.keys(PREMIUM_PROGRAMS_MAP),
+      "nutrition", "community", "success-stories"
     ];
 
+    const progName = PREMIUM_PROGRAMS_MAP[resolvedView] || resolvedView;
+
+    // 1. Unauthenticated guest trying to access protected program -> direct to login
     if (loginRequiredViews.includes(resolvedView) && !user) {
       localStorage.setItem("fit_attempted_view", resolvedView);
       setIsAuthOpen(true);
+      setView("login");
+      return;
+    }
+
+    // 2. Free-tier user trying to access premium program -> tell them to upgrade & direct to pricing
+    const isUserPrem = checkIsUserPremium(user);
+    if (user && !isUserPrem && PREMIUM_PROGRAMS_MAP[resolvedView]) {
+      localStorage.setItem("fit_upgrade_reason", progName);
+      setPremiumModalFeatureName(progName);
+      setIsPremiumModalOpen(true);
+      setView("pricing");
       return;
     }
 
@@ -629,11 +675,17 @@ function FitnessAppContent() {
               {currentView === "women-confidence" && (
                 <WomenConfidenceProgram />
               )}
+              {["home-workout-challenge", "180-day-challenge", "home-challenge"].includes(currentView) && (
+                <HomeWorkoutChallengeView />
+              )}
               {currentView === "lifestyle-academy" && (
                 <LifestyleFitnessAcademy />
               )}
               {currentView === "pricing" && (
                 <PricingView setView={handleSetView} onOpenAuth={() => handleSetView("login")} />
+              )}
+              {["bmiCalculator", "calculator", "body-calculator", "macro-calculator", "body-stats", "body-stats-calculator", "bmi-calculator", "assessment", "physique-assessment"].includes(currentView) && (
+                <BodyStatsCalculatorView />
               )}
               {["login", "signin", "signup", "register", "auth"].includes(currentView) && (
                 <AuthView initialMode={currentView === "signup" || currentView === "register" ? "signup" : "signin"} />

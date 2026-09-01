@@ -1434,6 +1434,24 @@ export const PROGRAMS: Program[] = [
     ]
   },
   {
+    id: "home-workout-challenge-180",
+    name: "180 Day Home Workout Challenge",
+    category: "Home Workout Programs",
+    description: "Build strength, improve your fitness, and transform your lifestyle from home with zero equipment. Includes 4 progressive phases, 2x weekly 5 KM cardio runs/walks, and 7:30 PM nutrition protocol for Men & Women.",
+    duration: "26 Weeks",
+    difficulty: "Beginner",
+    searchTags: ["home workout", "180 days", "zero equipment", "bodyweight", "calisthenics", "cardio", "5km"],
+    imageUrl: REAL_EXERCISE_MEDIA.core,
+    isPremium: true,
+    schedule: [
+      { day: "Phase 1 - Foundational Adaptation", focus: "Full Body Bodyweight & Isometric Base", exercises: ["Push-Ups (or Incline / Knee)", "Bodyweight Squats", "Forearm Plank", "Dynamic Jumping Jacks"] },
+      { day: "Weekly 5 KM Milestone Day", focus: "Aerobic Capacity: 5 KM Outdoor Run or Brisk Walk", exercises: ["Rope Jump", "Deep Diaphragmatic Box Breathing", "Primal Cat-Cow Spinal Waves"] },
+      { day: "Phase 2 - Hypertrophy & Work Capacity", focus: "Elevated Volume & Mechanical Tension", exercises: ["Decline / Diamond Push-Ups", "Reverse Lunges with Knee Drive", "Chair Tricep Dips", "Mountain Climbers"] },
+      { day: "Phase 3 - Calisthenics Strength", focus: "Explosive Power & Calisthenics", exercises: ["Pike Push-Ups", "Jump Squats", "Bicycle Crunches", "Doorframe Bodyweight Rows"] },
+      { day: "Phase 4 - Peak Transformation", focus: "Elite Density & Mastery", exercises: ["Push-Ups", "Bodyweight Squats", "Plank to Push-Up", "Burpees"] }
+    ]
+  },
+  {
     id: "women-confidence-180",
     name: "180-Day Women's Confidence & Posture Program",
     category: "Women's Programs",

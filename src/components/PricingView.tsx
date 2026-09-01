@@ -21,9 +21,16 @@ export default function PricingView({ setView, onOpenAuth }: PricingViewProps) {
   const [activePaymentModal, setActivePaymentModal] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
+  const [upgradeReason, setUpgradeReason] = useState<string | null>(() => {
+    return typeof window !== "undefined" ? localStorage.getItem("fit_upgrade_reason") : null;
+  });
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
+    const reason = localStorage.getItem("fit_upgrade_reason");
+    if (reason) {
+      setUpgradeReason(reason);
+    }
   }, []);
 
   useEffect(() => {
@@ -184,6 +191,35 @@ export default function PricingView({ setView, onOpenAuth }: PricingViewProps) {
       {/* Main Pricing Matrix Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-20">
         
+        {/* Dynamic Upgrade Reason Callout Banner for redirected users */}
+        {upgradeReason && !isPremium && (
+          <div className="mb-8 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white shadow-xl flex items-center justify-between gap-4 max-w-2xl mx-auto border border-red-400">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2.5 rounded-xl bg-white/20 text-white shrink-0 shadow-inner">
+                <Crown className="w-5 h-5 text-amber-300" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-xs sm:text-sm font-black uppercase tracking-tight truncate">
+                  Upgrade to Unlock {upgradeReason}
+                </h4>
+                <p className="text-[11px] sm:text-xs text-red-100 mt-0.5">
+                  Exclusive premium training program. Select a plan below to activate instant full access!
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.removeItem("fit_upgrade_reason");
+                setUpgradeReason(null);
+              }}
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/25 text-white transition-colors shrink-0 cursor-pointer"
+              title="Dismiss banner"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Plan Category Quick Selection Tabs */}
         <div className="flex flex-wrap justify-center gap-2 max-w-xl mx-auto mb-10 p-1.5 bg-white rounded-2xl border border-slate-200 shadow-md">
           <button

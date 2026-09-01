@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { getYoutubeVideoId } from "../../utils/getYoutubeVideoId";
 
 interface YouTubePlayerProps {
   videoId: string;
@@ -21,7 +22,7 @@ export default function YouTubePlayer({
 
   if (hasError) {
     return (
-      <div className="rounded-xl bg-red-55/10 border border-red-200 p-6 text-center">
+      <div className="rounded-xl bg-red-500/10 border border-red-200 p-6 text-center">
         <p className="text-sm font-bold text-red-600">
           Video temporarily unavailable.
         </p>
@@ -32,10 +33,8 @@ export default function YouTubePlayer({
     );
   }
 
-  // Sanitize video ID just in case an full URL slipped in
-  const cleanVideoId = videoId.includes("/") || videoId.includes("?") 
-    ? (videoId.split("v=")[1]?.split("&")[0] || videoId.split("/").pop()?.split("?")[0] || videoId)
-    : videoId;
+  // Sanitize video ID cleanly
+  const cleanVideoId = getYoutubeVideoId(videoId);
 
   if (!cleanVideoId) {
     return (

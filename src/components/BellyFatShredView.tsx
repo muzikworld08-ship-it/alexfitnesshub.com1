@@ -17,6 +17,7 @@ import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import { bellyFatCardioCircuit } from "../data/homeWorkouts";
 import HomeWorkoutPlayer from "./HomeWorkoutPlayer";
 import GlobalSkeletonLoader, { DashboardSkeleton } from "./SkeletonLoader";
+import bellyShredHeroImg from "../assets/images/belly_shred_hero_1784283617530.jpg";
 
 // High-fidelity local types
 interface WeightEntry {
@@ -1356,7 +1357,7 @@ export default function BellyFatShredView() {
         {/* Cinematic Hero Image Background */}
         <div className="absolute inset-0 z-0 select-none pointer-events-none">
           <img
-            src="/src/assets/images/belly_shred_hero_1784283617530.jpg"
+            src={bellyShredHeroImg}
             alt="Belly Shred Program Hero Background"
             referrerPolicy="no-referrer"
             className="w-full h-full object-cover opacity-100 object-center md:object-right filter brightness-125 contrast-110 saturate-105"

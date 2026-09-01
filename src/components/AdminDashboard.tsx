@@ -244,6 +244,8 @@ export default function AdminDashboard() {
   const totalUsers = allSystemUsers.length;
   const premiumCount = allSystemUsers.filter(u => u.subscriptionStatus === "premium").length;
   const totalCustomMedia = exercises.filter(e => !!e.customMediaUrl).length;
+  const remainingGifsToUpload = Math.max(0, exercises.length - totalCustomMedia);
+  const mediaCoveragePercent = exercises.length > 0 ? Math.round((totalCustomMedia / exercises.length) * 100) : 0;
 
   const categoriesList = Array.from(new Set(exercises.map(e => e.category))).filter(Boolean);
 
@@ -290,7 +292,7 @@ export default function AdminDashboard() {
             AlexFitnessHub Administrative Operations
           </h1>
           <p className="text-xs text-slate-500 max-w-2xl mt-1 leading-relaxed font-medium">
-            Centralized management console for workout prescriptions, challenge programs, athlete subscriptions, and Paystack live transaction monitoring.
+            Centralized management console for workout prescriptions, challenge programs, athlete subscriptions, and media library coverage.
           </p>
         </div>
         
@@ -300,50 +302,61 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* CORE STATS GRID - 4 Column Layout */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full">
+      {/* CORE STATS GRID - 5 Column Layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5 w-full">
         
-        <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">Total Workouts</span>
-            <h3 className="text-2xl sm:text-3xl font-black text-slate-900">{exercises.length}</h3>
+            <h3 className="text-2xl font-black text-slate-900">{exercises.length}</h3>
             <span className="text-[10px] text-slate-500 font-mono">Catalog database</span>
           </div>
-          <div className="h-12 w-12 rounded-2xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center shrink-0">
-            <Dumbbell className="w-6 h-6" />
+          <div className="h-11 w-11 rounded-2xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center shrink-0">
+            <Dumbbell className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">Custom Media Uploads</span>
-            <h3 className="text-2xl sm:text-3xl font-black text-emerald-600">{totalCustomMedia}</h3>
-            <span className="text-[10px] text-slate-500 font-mono">GIF & Video assets</span>
+            <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">GIFs Uploaded</span>
+            <h3 className="text-2xl font-black text-emerald-600">{totalCustomMedia}</h3>
+            <span className="text-[10px] text-emerald-600 font-mono font-bold">{mediaCoveragePercent}% catalog synced</span>
           </div>
-          <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
-            <ImageIcon className="w-6 h-6" />
+          <div className="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+            <ImageIcon className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="p-5 rounded-3xl bg-white border border-amber-200/80 bg-amber-50/30 shadow-xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] text-amber-700 uppercase font-mono font-bold tracking-wider block">GIFs To Upload</span>
+            <h3 className="text-2xl font-black text-amber-600">{remainingGifsToUpload}</h3>
+            <span className="text-[10px] text-amber-700/80 font-mono">Pending admin GIF</span>
+          </div>
+          <div className="h-11 w-11 rounded-2xl bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
+            <Upload className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">Active Athletes</span>
-            <h3 className="text-2xl sm:text-3xl font-black text-blue-600">{totalUsers}</h3>
+            <h3 className="text-2xl font-black text-blue-600">{totalUsers}</h3>
             <span className="text-[10px] text-slate-500 font-mono">Registered accounts</span>
           </div>
-          <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-            <Users className="w-6 h-6" />
+          <div className="h-11 w-11 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+            <Users className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">Premium Subscribers</span>
-            <h3 className="text-2xl sm:text-3xl font-black text-amber-600">{premiumCount}</h3>
+            <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">Premium Members</span>
+            <h3 className="text-2xl font-black text-purple-600">{premiumCount}</h3>
             <span className="text-[10px] text-slate-500 font-mono">Verified members</span>
           </div>
-          <div className="h-12 w-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
-            <Sparkles className="w-6 h-6" />
+          <div className="h-11 w-11 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
+            <Sparkles className="w-5 h-5" />
           </div>
         </div>
 
@@ -434,7 +447,7 @@ export default function AdminDashboard() {
           <AdminAssetManager />
           
           {/* Overview & Instructions Header */}
-          <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-4">
+          <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
@@ -442,18 +455,83 @@ export default function AdminDashboard() {
                   Global Workout Image & GIF Demonstrator
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-2xl font-medium">
-                  Upload an image, animated GIF, or MP4 video for any workout below. Updates broadcast live across every program, library, and 90-day challenge split immediately.
+                  Upload an animated GIF, MP4 video, or image for any workout. Files are permanently synced to Supabase Storage & Cloud Firestore and survive container resets.
                 </p>
               </div>
 
               <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-2xl text-xs font-bold flex items-center gap-2 shrink-0">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Instant Site-Wide Live Broadcast</span>
+                <span>Supabase & Firestore Sync Active</span>
+              </div>
+            </div>
+
+            {/* Exact GIF Count Progress Bar & Quick Status Pills */}
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold uppercase font-mono text-slate-700">GIF Catalog Coverage:</span>
+                  <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                    {totalCustomMedia} / {exercises.length} Workouts ({mediaCoveragePercent}%)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold uppercase font-mono text-amber-800">Pending Uploads:</span>
+                  <span className="font-black text-amber-800 bg-amber-200/80 px-2.5 py-0.5 rounded-full font-mono text-xs shadow-xs">
+                    {remainingGifsToUpload} GIFs to upload
+                  </span>
+                </div>
+              </div>
+
+              {/* Visual Progress Bar */}
+              <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                <div 
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-500" 
+                  style={{ width: `${mediaCoveragePercent}%` }}
+                />
+              </div>
+
+              {/* Quick Status Filter Pills */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  onClick={() => setMediaStatusFilter("all")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    mediaStatusFilter === "all"
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  All Catalog ({exercises.length})
+                </button>
+
+                <button
+                  onClick={() => setMediaStatusFilter("custom")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    mediaStatusFilter === "custom"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50"
+                  }`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Uploaded GIFs ({totalCustomMedia})
+                </button>
+
+                <button
+                  onClick={() => setMediaStatusFilter("default")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    mediaStatusFilter === "default"
+                      ? "bg-amber-600 text-white shadow-xs ring-2 ring-amber-500/30"
+                      : "bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 font-extrabold"
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5 text-amber-600" />
+                  Missing GIFs / Needs Upload ({remainingGifsToUpload})
+                </button>
               </div>
             </div>
 
             {/* Filter controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
               <div className="relative">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -486,7 +564,7 @@ export default function AdminDashboard() {
                 >
                   <option value="all">All Exercises ({exercises.length})</option>
                   <option value="custom">Custom Media Uploaded ({totalCustomMedia})</option>
-                  <option value="default">Default Demonstration Media ({exercises.length - totalCustomMedia})</option>
+                  <option value="default">Needs Custom GIF Upload ({remainingGifsToUpload})</option>
                 </select>
               </div>
             </div>

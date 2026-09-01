@@ -372,6 +372,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       "/register": "register",
       "/admin": "admin",
       "/premium/admin": "admin",
+      "/bmi-calculator": "bmiCalculator",
+      "/bmiCalculator": "bmiCalculator",
+      "/body-stats": "bmiCalculator",
+      "/body-stats-calculator": "bmiCalculator",
+      "/assessment": "bmiCalculator",
+      "/physique-assessment": "bmiCalculator",
     };
     if (pathToView[pathname]) {
       return pathToView[pathname];

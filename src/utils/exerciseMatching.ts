@@ -13,8 +13,16 @@ export function isExerciseMatch(
 
   if (targetRaw === candidateRaw) return true;
 
-  const normTarget = targetRaw.replace(/[^a-z0-9]/g, "");
-  const normCandidate = candidateRaw.replace(/[^a-z0-9]/g, "");
+  // Helper to strip standard 'exercise-' or 'exercise_' prefix
+  const stripPrefix = (str: string) => str.replace(/^exercise[-_]/, "").replace(/^exercise/, "");
+
+  const cleanTarget = stripPrefix(targetRaw);
+  const cleanCandidate = stripPrefix(candidateRaw);
+
+  if (cleanTarget === cleanCandidate) return true;
+
+  const normTarget = cleanTarget.replace(/[^a-z0-9]/g, "");
+  const normCandidate = cleanCandidate.replace(/[^a-z0-9]/g, "");
 
   if (!normTarget || !normCandidate) return false;
 

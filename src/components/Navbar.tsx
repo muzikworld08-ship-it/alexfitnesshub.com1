@@ -21,6 +21,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const isPremium = checkIsUserPremium(user);
+  const [upgradeToast, setUpgradeToast] = useState<{ message: string; visible: boolean } | null>(null);
 
   // Close hamburger menu on window resize to desktop
   useEffect(() => {
@@ -33,19 +34,61 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  const PREMIUM_PROGRAMS_MAP: Record<string, string> = {
+    "home-workout-challenge": "180 Day Home Workout Challenge",
+    "180-day-challenge": "180 Day Home Workout Challenge",
+    "home-challenge": "180 Day Home Workout Challenge",
+    "women-confidence": "Women Confidence Program",
+    "belly-fat-shred": "Belly Fat Shred System",
+    "challenges": "Monthly 90-Day Challenges",
+    "daily-plan": "My Daily Plan",
+    "coach": "AI Fitness Coach",
+    "dashboard": "Athlete Performance Desk",
+    "weight-trajectory": "Weight Trajectory Logs",
+    "daily-calibration-desk": "Biometric Calibration Desk",
+    "saved-exercises": "Saved Drills & Workouts",
+    "weekly-reports": "Weekly Progress Reports",
+    "handbook": "Athlete Handbook",
+    "workout-generator": "AI Workout Generator"
+  };
+
+  const GUEST_PROTECTED_VIEWS = [
+    ...Object.keys(PREMIUM_PROGRAMS_MAP),
+    "nutrition",
+    "community",
+    "success-stories"
+  ];
+
   const handleCustomNav = (targetView: string, subview?: string, elementId?: string) => {
     setIsMenuOpen(false);
     setIsDropdownOpen(false);
     
-    // Check if view requires login for guests
-    const guestRestrictedViews = ["daily-plan", "coach", "dashboard", "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", "handbook", "weight-trajectory", "challenges", "belly-fat-shred", "women-confidence", "saved-exercises", "nutrition"];
-    if (guestRestrictedViews.includes(targetView) && !user) {
-      localStorage.setItem("fit_attempted_view", targetView);
-      onOpenAuth();
+    if (targetView === "pricing") {
+      setView("pricing");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
-    if (targetView === "pricing") {
+    const progName = PREMIUM_PROGRAMS_MAP[targetView] || targetView;
+
+    // 1. Check if user is unauthenticated (guest / not signed up)
+    if (!user && GUEST_PROTECTED_VIEWS.includes(targetView)) {
+      localStorage.setItem("fit_attempted_view", targetView);
+      onOpenAuth();
+      setView("login");
+      return;
+    }
+
+    // 2. Check if logged-in user is on FREE TIER attempting a premium program
+    if (user && !isPremium && PREMIUM_PROGRAMS_MAP[targetView]) {
+      localStorage.setItem("fit_upgrade_reason", progName);
+      setUpgradeToast({
+        message: `👑 Upgrade Required: "${progName}" is exclusive to Premium Athletes. Redirecting to choose your membership plan...`,
+        visible: true
+      });
+      setTimeout(() => {
+        setUpgradeToast(null);
+      }, 4500);
       setView("pricing");
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
@@ -88,8 +131,10 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     { id: "home", label: "HOME", action: () => handleCustomNav("home") },
     { id: "dashboard", label: "DASHBOARD", action: () => handleCustomNav("dashboard") },
     { id: "daily-plan", label: "DAILY PLAN", action: () => handleCustomNav("daily-plan") },
+    { id: "home-workout-challenge", label: "180-DAY CHALLENGE", action: () => handleCustomNav("home-workout-challenge") },
     { id: "women-confidence", label: "WOMEN CONFIDENCE", action: () => handleCustomNav("women-confidence") },
     { id: "belly-fat-shred", label: "BELLY SHRED", action: () => handleCustomNav("belly-fat-shred") },
+    { id: "challenges", label: "90-DAY CHALLENGES", action: () => handleCustomNav("challenges") },
     { id: "lifestyle-academy", label: "PROGRAMS", action: () => handleCustomNav("lifestyle-academy") },
     { id: "library", label: "WORKOUTS", action: () => handleCustomNav("library") },
     { id: "nutrition", label: "NUTRITION", action: () => handleCustomNav("nutrition") },
@@ -97,20 +142,23 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     { id: "community", label: "COMMUNITY", action: () => handleCustomNav("community") }
   ] : [
     { id: "home", label: "HOME", action: () => handleCustomNav("home") },
-    { id: "women-confidence", label: "WOMEN CONFIDENCE", action: () => handleCustomNav("women-confidence") },
+    { id: "home-workout-challenge", label: "180-DAY CHALLENGE", action: () => handleCustomNav("home-workout-challenge"), isPro: true },
+    { id: "women-confidence", label: "WOMEN CONFIDENCE", action: () => handleCustomNav("women-confidence"), isPro: true },
+    { id: "belly-fat-shred", label: "BELLY SHRED", action: () => handleCustomNav("belly-fat-shred"), isPro: true },
+    { id: "challenges", label: "90-DAY CHALLENGES", action: () => handleCustomNav("challenges"), isPro: true },
     { id: "lifestyle-academy", label: "PROGRAMS", action: () => handleCustomNav("lifestyle-academy") },
     { id: "library", label: "WORKOUTS", action: () => handleCustomNav("library") },
     { id: "workout-videos", label: "EXERCISES", action: () => handleCustomNav("workout-videos") },
     { id: "nutrition", label: "NUTRITION", action: () => handleCustomNav("nutrition") },
-    { id: "calculators", label: "CALCULATORS", action: () => { if (user) { handleCustomNav("daily-calibration-desk"); } else { handleFreeInteractiveNav("calibration"); } } },
-    { id: "coach", label: "AI COACH", action: () => handleCustomNav("coach") },
-    { id: "community", label: "COMMUNITY", action: () => { if (user) { handleCustomNav("community"); } else { handleFreeInteractiveNav("community"); } } },
+    { id: "coach", label: "AI COACH", action: () => handleCustomNav("coach"), isPro: true },
+    { id: "community", label: "COMMUNITY", action: () => handleCustomNav("community") },
     { id: "pricing", label: "PRICING", action: () => handleCustomNav("pricing") }
   ];
 
   // Unified single drawer menu items (dynamic based on subscription)
   const drawerMenuItems = isPremium ? [
     { id: "dashboard", label: "Athlete Performance Desk", desc: "Your metrics, streaks & performance reports", icon: Shield, color: "text-sky-600 bg-sky-50" },
+    { id: "home-workout-challenge", label: "180 Day Home Workout Challenge", desc: "Zero equipment bodyweight transformation & 5KM cardio", icon: Dumbbell, color: "text-amber-600 bg-amber-50" },
     { id: "daily-plan", label: "My Daily Plan", desc: "Personalized daily schedule & drills", icon: Calendar, color: "text-red-600 bg-red-50" },
     { id: "women-confidence", label: "Women Confidence Program", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-50" },
     { id: "belly-fat-shred", label: "Belly Fat Shred System", desc: "5-Month core & metabolic shredding protocol", icon: Flame, color: "text-orange-600 bg-orange-50" },
@@ -130,14 +178,24 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
       { id: "admin", label: "Admin Management Console", desc: "System settings, analytics & user controls", icon: Shield, color: "text-red-700 bg-red-100" }
     ] : [])
   ] : [
+    { id: "home-workout-challenge", label: "180 Day Home Workout Challenge", desc: "Zero equipment bodyweight transformation & 5KM cardio", icon: Dumbbell, color: "text-amber-600 bg-amber-50", isProBadge: true },
+    { id: "women-confidence", label: "Women Confidence Program", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-50", isProBadge: true },
+    { id: "belly-fat-shred", label: "Belly Fat Shred System", desc: "5-Month core & metabolic shredding protocol", icon: Flame, color: "text-orange-600 bg-orange-50", isProBadge: true },
+    { id: "challenges", label: "Monthly 90-Day Challenges", desc: "Physical transformation competitions", icon: Award, color: "text-amber-600 bg-amber-50", isProBadge: true },
+    { id: "daily-plan", label: "My Daily Plan", desc: "Personalized daily schedule & drills", icon: Calendar, color: "text-red-600 bg-red-50", isProBadge: true },
+    { id: "coach", label: "AI Fitness Coach", desc: "Personalized Gemini AI consultations", icon: Sparkles, color: "text-indigo-600 bg-indigo-50", isProBadge: true },
+    { id: "dashboard", label: "Athlete Performance Desk", desc: "Your metrics, streaks & performance reports", icon: Shield, color: "text-sky-600 bg-sky-50", isProBadge: true },
     { id: "home", label: "Home Page", desc: "Main portal, features & workout search", icon: Dumbbell, color: "text-red-500 bg-red-50" },
     { id: "lifestyle-academy", label: "Programs & Academy", desc: "12-Week structured physique splits", icon: BookOpen, color: "text-blue-500 bg-blue-50" },
     { id: "library", label: "Workout Library & Drills", desc: "Full exercise directory with kinetic specs", icon: Activity, color: "text-emerald-500 bg-emerald-50" },
     { id: "workout-videos", label: "Exercise Video Vault", desc: "HD form demonstrations & workouts", icon: Video, color: "text-purple-500 bg-purple-50" },
+    { id: "saved-exercises", label: "Saved Drills & Workouts", desc: "Your bookmarked routine collection", icon: Bookmark, color: "text-amber-600 bg-amber-50", isProBadge: true },
     { id: "nutrition", label: "Nutrition & Macro Matrix", desc: "Macro calibrator & localized diet plans", icon: Heart, color: "text-rose-500 bg-rose-50" },
+    { id: "daily-calibration-desk", label: "Biometric Calibration Desk", desc: "Hydration, calories & sleep targets", icon: Calculator, color: "text-indigo-600 bg-indigo-50", isProBadge: true },
+    { id: "weight-trajectory", label: "Weight Trajectory Logs", desc: "Biometric weigh-in graph & checkpoints", icon: BarChart3, color: "text-emerald-600 bg-emerald-50", isProBadge: true },
     { id: "community", label: "Community Arena", desc: "Share updates & connect with athletes", icon: Users, color: "text-teal-500 bg-teal-50" },
     { id: "success-stories", label: "Transformation Stories", desc: "Verified athlete before/after reviews", icon: Star, color: "text-yellow-600 bg-yellow-50" },
-    { id: "pricing", label: "Upgrade to Premium Membership", desc: "Unlock Daily Plan, 90-Day Challenges & AI Coach", icon: Crown, color: "text-white bg-gradient-to-r from-red-600 to-rose-600", isHighlight: true }
+    { id: "pricing", label: "Upgrade to Premium Membership", desc: "Unlock All 4 Transformation Programs, Daily Plan & AI Coach", icon: Crown, color: "text-white bg-gradient-to-r from-red-600 to-rose-600", isHighlight: true }
   ];
 
   return (
@@ -170,13 +228,16 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                 <button
                   key={item.id}
                   onClick={item.action}
-                  className={`text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-250 cursor-pointer border-b-2 py-1 shrink-0 ${
+                  className={`text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-250 cursor-pointer border-b-2 py-1 shrink-0 flex items-center gap-1 ${
                     isActive 
                       ? "text-[#E53935] border-[#E53935]" 
                       : "text-[#2B2B2B] border-transparent hover:text-[#E53935]"
                   }`}
                 >
-                  {item.label}
+                  <span>{item.label}</span>
+                  {(item as any).isPro && !isPremium && (
+                    <Crown className="w-3 h-3 text-amber-500 shrink-0" />
+                  )}
                 </button>
               );
             })}
@@ -404,13 +465,20 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                           <IconComp className="w-4 h-4" />
                         </span>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between gap-1.5">
                             <span className="text-xs font-bold uppercase tracking-tight truncate">
                               {item.label}
                             </span>
-                            {isCurrent && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#E53935] shrink-0" />
-                            )}
+                            <div className="flex items-center gap-1 shrink-0">
+                              {item.isProBadge && !isPremium && (
+                                <span className="inline-flex items-center gap-0.5 text-[8px] font-mono font-black uppercase text-amber-700 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded">
+                                  <Crown className="w-2.5 h-2.5 text-amber-600" /> PRO
+                                </span>
+                              )}
+                              {isCurrent && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#E53935] shrink-0" />
+                              )}
+                            </div>
                           </div>
                           <p className="text-[10px] text-slate-500 truncate mt-0.5 font-sans">
                             {item.desc}
@@ -448,6 +516,38 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
 
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* Instant Upgrade Toast Notification */}
+      <AnimatePresence>
+        {upgradeToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="fixed top-22 left-1/2 -translate-x-1/2 z-50 max-w-md w-[calc(100%-2rem)] bg-slate-950 text-white border-2 border-red-500 rounded-2xl shadow-2xl p-4 flex items-center gap-3.5"
+          >
+            <div className="p-2 rounded-xl bg-red-600/20 border border-red-500/40 text-red-400 shrink-0">
+              <Crown className="w-5 h-5 text-amber-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h5 className="text-xs font-black uppercase tracking-tight text-white flex items-center gap-1">
+                <span>AlexFitnessHub Premium</span>
+                <span className="text-[9px] font-mono bg-red-500/30 text-red-300 px-1.5 py-0.2 rounded border border-red-500/40">VIP</span>
+              </h5>
+              <p className="text-[11px] text-slate-300 mt-0.5 leading-snug">
+                {upgradeToast.message}
+              </p>
+            </div>
+            <button
+              onClick={() => setUpgradeToast(null)}
+              className="p-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-400 hover:text-white transition-colors shrink-0 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
     </>

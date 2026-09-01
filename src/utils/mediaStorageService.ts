@@ -246,6 +246,16 @@ export async function saveExerciseMediaToDatabase(
 export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string, { customMediaUrl: string; customMediaType: "image" | "video" }>> {
   const result: Record<string, { customMediaUrl: string; customMediaType: "image" | "video" }> = {};
 
+  const setEntry = (key: string, url: string, type: "image" | "video") => {
+    if (!key || !url) return;
+    result[key] = { customMediaUrl: url, customMediaType: type };
+    
+    // Also save without exercise- prefix and with exercise- prefix for instant O(1) matching
+    const cleanKey = key.replace(/^exercise[-_]/, "").replace(/^exercise/, "");
+    result[cleanKey] = { customMediaUrl: url, customMediaType: type };
+    result[`exercise-${cleanKey}`] = { customMediaUrl: url, customMediaType: type };
+  };
+
   // 1. Query Supabase 'exercise_media' table
   try {
     const { data: sbData, error: sbErr } = await supabase
@@ -255,10 +265,7 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
     if (!sbErr && Array.isArray(sbData)) {
       for (const row of sbData) {
         if (row.exercise_id && row.media_url) {
-          result[row.exercise_id] = {
-            customMediaUrl: row.media_url,
-            customMediaType: row.media_type === "video" ? "video" : "image"
-          };
+          setEntry(row.exercise_id, row.media_url, row.media_type === "video" ? "video" : "image");
         }
       }
     }
@@ -266,24 +273,44 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
     console.warn("[MediaStorage] Supabase media fetch notice:", e);
   }
 
-  // 2. Query Cloud Firestore 'exercise_media' collection
+  // 2. Query Cloud Firestore collections ('exercise_media', 'exercises', 'assets_manifest')
   if (!isMockFirebase) {
     try {
-      const snap = await getDocs(collection(db, "exercise_media"));
-      snap.forEach((docSnap) => {
+      const mediaSnap = await getDocs(collection(db, "exercise_media"));
+      mediaSnap.forEach((docSnap) => {
         const d = docSnap.data();
-        if (d && docSnap.id && (d.originalUrlOrBase64 || d.customMediaUrl)) {
-          const url = d.originalUrlOrBase64 || d.customMediaUrl;
-          if (url) {
-            result[docSnap.id] = {
-              customMediaUrl: url,
-              customMediaType: d.customMediaType === "video" ? "video" : "image"
-            };
-          }
+        const url = d.originalUrlOrBase64 || d.customMediaUrl || d.url;
+        if (url) {
+          setEntry(docSnap.id, url, d.customMediaType === "video" ? "video" : "image");
         }
       });
     } catch (e) {
       console.warn("[MediaStorage] Firestore exercise_media fetch notice:", e);
+    }
+
+    try {
+      const exSnap = await getDocs(collection(db, "exercises"));
+      exSnap.forEach((docSnap) => {
+        const d = docSnap.data();
+        if (d && d.customMediaUrl) {
+          setEntry(docSnap.id, d.customMediaUrl, d.customMediaType === "video" ? "video" : "image");
+        }
+      });
+    } catch (e) {
+      console.warn("[MediaStorage] Firestore exercises fetch notice:", e);
+    }
+
+    try {
+      const manifestSnap = await getDocs(collection(db, "assets_manifest"));
+      manifestSnap.forEach((docSnap) => {
+        const d = docSnap.data();
+        const url = d.mediaUrl || d.url;
+        if (url) {
+          setEntry(d.assetId || docSnap.id, url, d.mediaType === "video" ? "video" : "image");
+        }
+      });
+    } catch (e) {
+      console.warn("[MediaStorage] Firestore assets_manifest fetch notice:", e);
     }
   }
 

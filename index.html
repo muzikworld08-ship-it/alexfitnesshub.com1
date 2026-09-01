@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval' data: blob:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; img-src 'self' https: data: blob:; media-src 'self' https: data: blob:; connect-src 'self' https:;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval' data: blob:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://*.tawk.to https://tawk.to; img-src 'self' https: data: blob:; media-src 'self' https: data: blob:; connect-src 'self' https: wss: ws: https://*.tawk.to wss://*.tawk.to;" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Surrogate-Control" content="no-store" />
@@ -135,6 +135,19 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!--Start of Tawk.to Script-->
+    <script type="text/javascript">
+      var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+      (function(){
+      var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+      s1.async=true;
+      s1.src='https://embed.tawk.to/6a967a9e19d20834439c4ed8/1k1dstuuo';
+      s1.charset='UTF-8';
+      s1.setAttribute('crossorigin','*');
+      s0.parentNode.insertBefore(s1,s0);
+      })();
+    </script>
+    <!--End of Tawk.to Script-->
   </body>
 </html>
 
