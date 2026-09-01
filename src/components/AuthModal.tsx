@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
-import { X, Mail, Lock, User, Shield, CheckCircle, AlertCircle, Eye, EyeOff, Award, ArrowRight } from "lucide-react";
+import { 
+  X, Mail, Lock, User, CheckCircle, AlertCircle, Eye, EyeOff, 
+  ArrowRight, ShieldCheck, Dumbbell, Sparkles, KeyRound, HelpCircle, Check
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -15,10 +19,17 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  const [touched, setTouched] = useState<{
+    email?: boolean;
+    password?: boolean;
+    name?: boolean;
+  }>({});
 
   const handleSuccessfulAuth = () => {
     const attempted = localStorage.getItem("fit_attempted_view");
@@ -38,52 +49,93 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     name?: string;
   }>({});
 
-  const validateEmail = (val: string) => {
+  const validateEmail = (val: string): string => {
     const clean = (val || "").trim();
     if (!clean) {
       return "Email address is required.";
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!clean.includes("@")) {
+      return "Email must include an '@' symbol (e.g. athlete@example.com).";
+    }
+    const parts = clean.split("@");
+    if (!parts[0] || parts[0].length === 0) {
+      return "Please enter a username before the '@' symbol.";
+    }
+    if (!parts[1] || !parts[1].includes(".")) {
+      return "Please enter a valid domain extension (e.g. gmail.com).";
+    }
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(clean)) {
-      return "Please enter a valid email address (e.g., user@example.com).";
+      return "Please enter a valid email address (e.g. athlete@example.com).";
     }
     return "";
   };
 
-  const validatePassword = (val: string) => {
+  const validatePassword = (val: string): string => {
     if (!val) {
       return "Password is required.";
     }
     if (val.length < 6) {
-      return "Password must be at least 6 characters long.";
+      return `Password does not meet requirements: must be at least 6 characters (${val.length}/6 entered).`;
     }
     return "";
   };
 
-  const validateName = (val: string) => {
+  const validateName = (val: string): string => {
     const clean = (val || "").trim();
     if (!clean) {
-      return "Name is required.";
+      return "Athlete name is required.";
     }
     if (clean.length < 2) {
-      return "Name must be at least 2 characters.";
+      return "Athlete name must be at least 2 characters.";
     }
     return "";
   };
+
+  const passHasMinLength = password.length >= 6;
+  const passHasLetter = /[a-zA-Z]/.test(password);
+  const passHasNumberOrSpecial = /[0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password);
+
+  const getPasswordStrength = () => {
+    if (!password) return { label: "None", color: "bg-slate-200", percent: 0, textColor: "text-slate-400" };
+    let score = 0;
+    if (passHasMinLength) score += 1;
+    if (passHasLetter) score += 1;
+    if (passHasNumberOrSpecial) score += 1;
+    if (password.length >= 10) score += 1;
+
+    if (score <= 1) return { label: "Weak (6+ chars required)", color: "bg-rose-500", percent: 30, textColor: "text-rose-600" };
+    if (score === 2 || score === 3) return { label: "Good", color: "bg-amber-500", percent: 70, textColor: "text-amber-600" };
+    return { label: "Strong", color: "bg-emerald-500", percent: 100, textColor: "text-emerald-600" };
+  };
+
+  const strength = getPasswordStrength();
 
   const handleEmailChange = (val: string) => {
     setEmail(val);
-    setValidation(prev => ({ ...prev, email: validateEmail(val) }));
+    setError("");
+    setErrorCode(null);
+    if (touched.email || val.length > 3) {
+      setValidation(prev => ({ ...prev, email: validateEmail(val) }));
+    }
   };
 
   const handlePasswordChange = (val: string) => {
     setPassword(val);
-    setValidation(prev => ({ ...prev, password: validatePassword(val) }));
+    setError("");
+    setErrorCode(null);
+    if (touched.password || val.length > 0) {
+      setValidation(prev => ({ ...prev, password: validatePassword(val) }));
+    }
   };
 
   const handleNameChange = (val: string) => {
     setName(val);
-    setValidation(prev => ({ ...prev, name: validateName(val) }));
+    setError("");
+    setErrorCode(null);
+    if (touched.name || val.length > 1) {
+      setValidation(prev => ({ ...prev, name: validateName(val) }));
+    }
   };
 
   React.useEffect(() => {
@@ -101,7 +153,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setErrorCode(null);
     setMessage("");
+
+    setTouched({ email: true, password: true, name: true });
 
     const cleanEmail = email.trim();
     const cleanPass = password;
@@ -112,12 +167,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     const passwordErr = !isForgot ? validatePassword(cleanPass) : "";
     const nameErr = (isSignUp && !isForgot) ? validateName(cleanName) : "";
 
+    setValidation({
+      email: emailErr,
+      password: passwordErr,
+      name: nameErr
+    });
+
     if (emailErr || passwordErr || nameErr) {
-      setValidation({
-        email: emailErr,
-        password: passwordErr,
-        name: nameErr
-      });
       setError(emailErr || passwordErr || nameErr || "Please verify your input before submitting.");
       return;
     }
@@ -127,7 +183,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     try {
       if (isForgot) {
         await sendPasswordReset(cleanEmail);
-        setMessage("A password recovery link has been pushed to your email.");
+        setMessage(`A password reset link has been dispatched to ${cleanEmail}. Please check your email.`);
       } else if (isSignUp) {
         await signUpEmail(cleanEmail, cleanPass, cleanName, rememberMe);
         handleSuccessfulAuth();
@@ -136,7 +192,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         handleSuccessfulAuth();
       }
     } catch (err: any) {
-      setError(err?.message || "An authentication error occurred. Please verify your credentials and try again.");
+      const code = err?.code || "";
+      setErrorCode(code);
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        setError("Incorrect credentials. The password you entered is incorrect, or no account exists with this email address.");
+      } else if (code === "auth/user-not-found") {
+        setError("No athlete account was found with this email address. Please check your spelling or register a new account.");
+      } else if (code === "auth/invalid-email") {
+        setError("The email address you entered is invalid. Please check your spelling.");
+      } else if (code === "auth/email-already-in-use") {
+        setError("An account with this email address is already registered. Please sign in with your password instead.");
+      } else if (code === "auth/weak-password") {
+        setError("Password does not meet security requirements. It must be at least 6 characters long.");
+      } else {
+        setError(err?.message || "An authentication error occurred. Please verify your credentials and try again.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -144,6 +214,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const handleOAuth = async (provider: "google" | "apple") => {
     setError("");
+    setErrorCode(null);
     setSubmitting(true);
     try {
       if (provider === "google") {
@@ -168,12 +239,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white border border-slate-200 shadow-2xl flex flex-col min-h-[500px] max-h-[90vh]">
         
         {/* ATHLETE PORTAL SIGN-IN/REGISTRATION */}
-        <div className="w-full p-6 sm:p-10 bg-white text-slate-900 flex flex-col justify-between overflow-y-auto max-h-[90vh] relative">
+        <div className="w-full p-6 sm:p-8 bg-white text-slate-900 flex flex-col justify-between overflow-y-auto max-h-[90vh] relative">
           
           {/* Close Button top-right */}
           <button 
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-slate-600:text-slate-300 hover:bg-slate-100:bg-slate-900 transition z-10 cursor-pointer border-0 bg-transparent"
+            className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition z-10 cursor-pointer border-0 bg-transparent"
             aria-label="Close portal"
           >
             <X className="w-5 h-5" />
@@ -181,9 +252,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
           <div className="space-y-5">
             <div>
-              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 text-[10px] font-mono uppercase tracking-wider text-slate-600 font-bold mb-2">
+                <Sparkles className="w-3 h-3 text-[#C0392B]" />
                 AlexFitnessHub
-              </span>
+              </div>
               <h3 className="text-xl font-bold font-sans text-slate-900 mt-1 uppercase tracking-tight">
                 {isForgot ? "Reset Password" : isSignUp ? "Create Account" : "Sign In"}
               </h3>
@@ -194,42 +266,94 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </p>
             </div>
 
-            {error && (
-              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex flex-col gap-2 font-semibold">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-                  <span>{error}</span>
-                </div>
-                {(error.toLowerCase().includes("already exists") || error.toLowerCase().includes("already in use")) && (
-                  <div className="pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsSignUp(false);
-                        setError("");
-                        setValidation({});
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C0392B] text-white text-[11px] font-bold uppercase tracking-wider hover:bg-[#A93226] transition shadow-xs cursor-pointer border-0"
-                    >
-                      <span>Sign In with this Email</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
+            {/* Error Notification Banner */}
+            <AnimatePresence>
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-2.5 font-semibold shadow-xs"
+                >
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-rose-950">Authentication Notice</p>
+                      <p className="leading-relaxed text-rose-800 text-[11px]">{error}</p>
+                    </div>
                   </div>
-                )}
-              </div>
-            )}
 
-            {message && (
-              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 font-semibold">
-                {message}
-              </div>
-            )}
+                  {(errorCode === "auth/email-already-in-use" || error.toLowerCase().includes("already registered") || error.toLowerCase().includes("already in use")) && (
+                    <div className="pt-1 pl-6">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSignUp(false);
+                          setError("");
+                          setErrorCode(null);
+                          setValidation({});
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C0392B] text-white text-[11px] font-bold uppercase tracking-wider hover:bg-[#A93226] transition shadow-xs cursor-pointer border-0"
+                      >
+                        <span>Sign In with this Email</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {(errorCode === "auth/wrong-password" || errorCode === "auth/invalid-credential" || error.toLowerCase().includes("incorrect credentials")) && !isSignUp && (
+                    <div className="pt-1 pl-6 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsForgot(true);
+                          setError("");
+                          setErrorCode(null);
+                          setValidation({});
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-rose-300 text-rose-700 hover:bg-rose-100 text-[10px] font-bold uppercase tracking-wider transition cursor-pointer"
+                      >
+                        <KeyRound className="w-3 h-3 text-[#C0392B]" />
+                        <span>Forgot Password?</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSignUp(true);
+                          setError("");
+                          setErrorCode(null);
+                          setValidation({});
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#C0392B] text-white text-[10px] font-bold uppercase tracking-wider hover:bg-[#A93226] transition cursor-pointer border-0"
+                      >
+                        <span>Create Account</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {message && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold flex items-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{message}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Primary Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               {isSignUp && !isForgot && (
                 <div>
-                  <label htmlFor="auth-name-input" className="block text-[10px] font-mono font-black text-slate-600 mb-1 uppercase">YOUR ATHLETE NAME</label>
+                  <label htmlFor="auth-name-input" className="block text-[10px] font-mono font-black text-slate-600 mb-1 uppercase">
+                    YOUR ATHLETE NAME <span className="text-[#C0392B]">*</span>
+                  </label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                       <User className="w-4 h-4" />
@@ -241,27 +365,28 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       placeholder="Alex Mercer"
                       value={name}
                       onChange={(e) => handleNameChange(e.target.value)}
-                      onBlur={() => setValidation(prev => ({ ...prev, name: validateName(name) }))}
-                      aria-invalid={!!validation.name}
-                      aria-describedby={validation.name ? "name-error" : undefined}
-                      className={`w-full pl-10 pr-10 py-2 text-sm rounded-lg bg-white border text-slate-950 placeholder:text-slate-400:text-slate-500 focus:outline-none font-semibold transition ${
-                        validation.name === "" && name.trim().length >= 3
-                          ? "border-emerald-500 focus:ring-emerald-500 focus:border-emerald-500"
-                          : validation.name
-                          ? "border-rose-500 focus:ring-rose-500 focus:border-rose-500"
-                          : "border-slate-200 focus:ring-[#C0392B] focus:border-[#C0392B]"
+                      onBlur={() => {
+                        setTouched(prev => ({ ...prev, name: true }));
+                        setValidation(prev => ({ ...prev, name: validateName(name) }));
+                      }}
+                      className={`w-full pl-10 pr-10 py-2 text-sm rounded-lg bg-white border text-slate-950 placeholder:text-slate-400 focus:outline-none font-semibold transition ${
+                        touched.name && !validation.name && name.trim().length >= 2
+                          ? "border-emerald-500 focus:ring-2 focus:ring-emerald-200 bg-emerald-50/20"
+                          : touched.name && validation.name
+                          ? "border-rose-500 focus:ring-2 focus:ring-rose-200 bg-rose-50/20"
+                          : "border-slate-200 focus:ring-2 focus:ring-rose-100 focus:border-[#C0392B]"
                       }`}
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      {validation.name === "" && name.trim().length >= 3 && (
+                      {touched.name && !validation.name && name.trim().length >= 2 && (
                         <CheckCircle className="w-4 h-4 text-emerald-500" />
                       )}
-                      {validation.name && (
+                      {touched.name && validation.name && (
                         <AlertCircle className="w-4 h-4 text-rose-500" />
                       )}
                     </div>
                   </div>
-                  {validation.name && (
+                  {touched.name && validation.name && (
                     <p id="name-error" className="mt-1 text-[10px] text-rose-500 font-bold flex items-center gap-1 animate-fade-in" aria-live="polite">
                       <AlertCircle className="w-3 h-3 shrink-0" />
                       {validation.name}
@@ -271,7 +396,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               )}
 
               <div>
-                <label htmlFor="auth-email-input" className="block text-[10px] font-mono font-black text-slate-600 mb-1 uppercase">EMAIL ADDRESS</label>
+                <label htmlFor="auth-email-input" className="block text-[10px] font-mono font-black text-slate-600 mb-1 uppercase">
+                  EMAIL ADDRESS <span className="text-[#C0392B]">*</span>
+                </label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                     <Mail className="w-4 h-4" />
@@ -280,30 +407,31 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     id="auth-email-input"
                     type="email"
                     required
-                    placeholder="name@email.com"
+                    placeholder="athlete@domain.com"
                     value={email}
                     onChange={(e) => handleEmailChange(e.target.value)}
-                    onBlur={() => setValidation(prev => ({ ...prev, email: validateEmail(email) }))}
-                    aria-invalid={!!validation.email}
-                    aria-describedby={validation.email ? "email-error" : undefined}
-                    className={`w-full pl-10 pr-10 py-2 text-sm rounded-lg bg-white border text-slate-950 placeholder:text-slate-400:text-slate-500 focus:outline-none font-semibold transition ${
-                      validation.email === "" && email.length > 0
-                        ? "border-emerald-500 focus:ring-emerald-500 focus:border-emerald-500"
-                        : validation.email
-                        ? "border-rose-500 focus:ring-rose-500 focus:border-rose-500"
-                        : "border-slate-200 focus:ring-[#C0392B] focus:border-[#C0392B]"
+                    onBlur={() => {
+                      setTouched(prev => ({ ...prev, email: true }));
+                      setValidation(prev => ({ ...prev, email: validateEmail(email) }));
+                    }}
+                    className={`w-full pl-10 pr-10 py-2 text-sm rounded-lg bg-white border text-slate-950 placeholder:text-slate-400 focus:outline-none font-semibold transition ${
+                      touched.email && !validation.email && email.trim()
+                        ? "border-emerald-500 focus:ring-2 focus:ring-emerald-200 bg-emerald-50/20"
+                        : (touched.email && validation.email) || (errorCode === "auth/invalid-email" || errorCode === "auth/user-not-found")
+                        ? "border-rose-500 focus:ring-2 focus:ring-rose-200 bg-rose-50/20"
+                        : "border-slate-200 focus:ring-2 focus:ring-rose-100 focus:border-[#C0392B]"
                     }`}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    {validation.email === "" && email.length > 0 && (
+                    {touched.email && !validation.email && email.trim() && (
                       <CheckCircle className="w-4 h-4 text-emerald-500" />
                     )}
-                    {validation.email && (
+                    {((touched.email && validation.email) || errorCode === "auth/invalid-email") && (
                       <AlertCircle className="w-4 h-4 text-rose-500" />
                     )}
                   </div>
                 </div>
-                {validation.email && (
+                {touched.email && validation.email && (
                   <p id="email-error" className="mt-1 text-[10px] text-rose-500 font-bold flex items-center gap-1 animate-fade-in" aria-live="polite">
                     <AlertCircle className="w-3 h-3 shrink-0" />
                     {validation.email}
@@ -314,10 +442,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               {!isForgot && (
                 <div>
                   <div className="flex justify-between mb-1">
-                    <label htmlFor="auth-password-input" className="block text-[10px] font-mono font-black text-slate-600 uppercase">PASSWORD</label>
+                    <label htmlFor="auth-password-input" className="block text-[10px] font-mono font-black text-slate-600 uppercase">
+                      PASSWORD <span className="text-[#C0392B]">*</span>
+                    </label>
                     <button
                       type="button"
-                      onClick={() => { setIsForgot(true); setError(""); setMessage(""); setValidation({}); }}
+                      onClick={() => { setIsForgot(true); setError(""); setErrorCode(null); setMessage(""); setValidation({}); }}
                       className="text-[10px] text-[#C0392B] hover:underline font-bold bg-transparent border-0 cursor-pointer"
                     >
                       Forgot Password?
@@ -334,30 +464,65 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => handlePasswordChange(e.target.value)}
-                      onBlur={() => setValidation(prev => ({ ...prev, password: validatePassword(password) }))}
-                      aria-invalid={!!validation.password}
-                      aria-describedby={validation.password ? "password-error" : undefined}
-                      className={`w-full pl-10 pr-10 py-2 text-sm rounded-lg bg-white border text-slate-950 placeholder:text-slate-400:text-slate-500 focus:outline-none font-semibold transition ${
-                        validation.password === "" && password.length >= 6
-                          ? "border-emerald-500 focus:ring-emerald-500 focus:border-emerald-500"
-                          : validation.password
-                          ? "border-rose-500 focus:ring-rose-500 focus:border-rose-500"
-                          : "border-slate-200 focus:ring-[#C0392B] focus:border-[#C0392B]"
+                      onBlur={() => {
+                        setTouched(prev => ({ ...prev, password: true }));
+                        setValidation(prev => ({ ...prev, password: validatePassword(password) }));
+                      }}
+                      className={`w-full pl-10 pr-10 py-2 text-sm rounded-lg bg-white border text-slate-950 placeholder:text-slate-400 focus:outline-none font-semibold transition ${
+                        touched.password && !validation.password && password.length >= 6
+                          ? "border-emerald-500 focus:ring-2 focus:ring-emerald-200 bg-emerald-50/20"
+                          : (touched.password && validation.password) || (errorCode === "auth/wrong-password" || errorCode === "auth/invalid-credential")
+                          ? "border-rose-500 focus:ring-2 focus:ring-rose-200 bg-rose-50/20"
+                          : "border-slate-200 focus:ring-2 focus:ring-rose-100 focus:border-[#C0392B]"
                       }`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600:text-slate-300 focus:outline-none cursor-pointer bg-transparent border-0"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer bg-transparent border-0"
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                  {validation.password && (
+
+                  {touched.password && validation.password && (
                     <p id="password-error" className="mt-1 text-[10px] text-rose-500 font-bold flex items-center gap-1 animate-fade-in" aria-live="polite">
                       <AlertCircle className="w-3 h-3 shrink-0" />
                       {validation.password}
+                    </p>
+                  )}
+
+                  {/* Real-time Checklist for Sign Up */}
+                  {isSignUp && password.length > 0 && (
+                    <div className="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+                      <div className="flex items-center justify-between text-[9px] font-mono font-bold text-slate-600">
+                        <span>STRENGTH</span>
+                        <span className={strength.textColor}>{strength.label}</span>
+                      </div>
+                      <div className="w-full bg-slate-200 h-1 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-300 ${strength.color}`} 
+                          style={{ width: `${strength.percent}%` }}
+                        />
+                      </div>
+                      <div className="pt-0.5 space-y-0.5 text-[10px]">
+                        <div className={`flex items-center gap-1 ${passHasMinLength ? "text-emerald-700 font-bold" : "text-slate-500"}`}>
+                          <Check className={`w-3 h-3 ${passHasMinLength ? "text-emerald-600" : "text-slate-300"}`} />
+                          <span>6+ characters ({password.length}/6)</span>
+                        </div>
+                        <div className={`flex items-center gap-1 ${passHasLetter ? "text-emerald-700 font-bold" : "text-slate-500"}`}>
+                          <Check className={`w-3 h-3 ${passHasLetter ? "text-emerald-600" : "text-slate-300"}`} />
+                          <span>Contains letter</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!isSignUp && password.length > 0 && password.length < 6 && (
+                    <p className="mt-1 text-[10px] text-amber-600 font-medium flex items-center gap-1">
+                      <HelpCircle className="w-3 h-3 text-amber-500 shrink-0" />
+                      <span>Passwords are at least 6 characters</span>
                     </p>
                   )}
                 </div>
@@ -370,7 +535,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 text-[#C0392B] border-slate-300 rounded focus:ring-[#C0392B] cursor-pointer"
+                    className="w-4 h-4 text-[#C0392B] border-slate-300 rounded focus:ring-[#C0392B] accent-[#C0392B] cursor-pointer"
                   />
                   <label htmlFor="remember-me" className="ml-2 text-[10px] font-mono font-bold text-slate-600 cursor-pointer uppercase select-none">
                     Remember Me
@@ -381,9 +546,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-2.5 rounded-lg text-xs font-black text-white uppercase tracking-wider bg-[#C0392B] hover:bg-[#A82E22] transition-colors duration-200 shadow-md flex items-center justify-center gap-2 cursor-pointer border-0"
+                className="w-full py-2.5 rounded-lg text-xs font-black text-white uppercase tracking-wider bg-[#C0392B] hover:bg-[#A82E22] transition-colors duration-200 shadow-md flex items-center justify-center gap-2 cursor-pointer border-0 disabled:opacity-60"
               >
-                {submitting ? "Processing..." : isForgot ? "Recover Account" : isSignUp ? "Build My Profile" : "Accredited Sign In"}
+                {submitting ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span>Processing...</span>
+                  </span>
+                ) : isForgot ? "Recover Account" : isSignUp ? "Build My Profile" : "Accredited Sign In"}
               </button>
             </form>
 
@@ -391,7 +561,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             {!isForgot && (
               <div className="space-y-2.5">
                 <div className="relative flex items-center justify-center">
-                  <div className="absolute w-full border-t border-slate-150" />
+                  <div className="absolute w-full border-t border-slate-200" />
                   <span className="relative px-3 bg-white text-[9px] text-slate-400 font-mono tracking-wider uppercase font-bold">OR ACCELERATE WITH</span>
                 </div>
 
@@ -400,7 +570,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   onClick={() => handleOAuth("google")}
                   type="button"
                   disabled={submitting}
-                  className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 rounded-lg text-xs font-bold transition cursor-pointer shadow-sm disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 rounded-lg text-xs font-bold transition cursor-pointer shadow-xs disabled:opacity-50"
                   aria-label="Continue with Google"
                 >
                   <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
@@ -429,7 +599,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   onClick={() => handleOAuth("apple")}
                   type="button"
                   disabled={submitting}
-                  className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 border border-slate-900 bg-black hover:bg-slate-900 rounded-lg text-xs font-bold text-white transition cursor-pointer shadow-sm disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 border border-slate-900 bg-black hover:bg-slate-900 rounded-lg text-xs font-bold text-white transition cursor-pointer shadow-xs disabled:opacity-50"
                   aria-label="Continue with Apple"
                 >
                   <svg className="w-4 h-4 shrink-0 fill-current text-white mb-0.5" viewBox="0 0 24 24">
@@ -446,7 +616,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             {isForgot ? (
               <button
                 type="button"
-                onClick={() => { setIsForgot(false); setError(""); setMessage(""); setValidation({}); }}
+                onClick={() => { setIsForgot(false); setError(""); setErrorCode(null); setMessage(""); setValidation({}); }}
                 className="text-xs text-[#C0392B] hover:underline font-bold bg-transparent border-0 cursor-pointer"
               >
                 Back to Sign In
@@ -456,7 +626,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 {isSignUp ? "Already have a profile?" : "New to AlexFitnessHub?"}{" "}
                 <button
                   type="button"
-                  onClick={() => { setIsSignUp(!isSignUp); setError(""); setMessage(""); setValidation({}); }}
+                  onClick={() => { setIsSignUp(!isSignUp); setError(""); setErrorCode(null); setMessage(""); setValidation({}); }}
                   className="font-bold text-[#C0392B] hover:underline cursor-pointer bg-transparent border-0"
                 >
                   {isSignUp ? "Sign In Instead" : "Create Account Now"}

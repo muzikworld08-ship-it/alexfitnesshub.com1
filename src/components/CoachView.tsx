@@ -275,7 +275,7 @@ export default function CoachView() {
         title="Coach Alex Premium AI"
         subtitle="Gemini 3.5 Flash Cognitive Core"
         description="Interact with Coach Alex, your direct kinesiologist and nutrition expert. Leverage custom biomechanics, rapid stance tuning, and real-time exercise feedback."
-        imageUrl="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=600&auto=format&fit=crop"
+        imageUrl="https://images.ctfassets.net/qw8ps43tg2ux/1LPfI8kPATAzojZMBalhli/7dbdddba786444110a762b75977a8fd8/how-it-works-issa-certified-personal-trainer.webp?fm=webp&w=1440&q=75"
         category="AI COGNITIVE COACH"
       />
 

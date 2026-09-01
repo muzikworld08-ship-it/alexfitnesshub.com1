@@ -1311,7 +1311,7 @@ function HabitTrackerView() {
         title="Daily Athletic Habits"
         subtitle="Bulletproof Compliance Engine"
         description="Build bulletproof athletic compliance and support testosterone or physical transformation goals by logging your priority baseline daily behaviors."
-        imageUrl="https://images.unsplash.com/photo-1552674605-db6ffd4facb5?q=80&w=600&auto=format&fit=crop"
+        imageUrl="https://cdn.prod.website-files.com/61f6a1f670934ed39d548853/64aa696d1c7d8e5587a8cfa1_The%20Bodybuilders.webp"
         category="ATHLETIC COMPLIANCE"
       />
 

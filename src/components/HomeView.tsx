@@ -1657,7 +1657,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                     {/* Image / Header Media */}
                     <div className="relative h-48 w-full overflow-hidden bg-slate-900">
                       <OptimizedImage
-                        src={program.imageUrl || "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1200&auto=format&fit=crop"}
+                        src={program.imageUrl || "https://img.magnific.com/free-photo/group-people-exercising-together-outdoors_23-2151061449.jpg?semt=ais_hybrid&w=740&q=80"}
                         alt={program.name}
                         aspectRatio="16/9"
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 filter brightness-95"

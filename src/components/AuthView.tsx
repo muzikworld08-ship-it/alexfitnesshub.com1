@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { Mail, Lock, User, CheckCircle, AlertCircle, Eye, EyeOff, ArrowRight, ShieldCheck, Dumbbell, Sparkles } from "lucide-react";
-import { motion } from "motion/react";
+import { 
+  Mail, Lock, User, CheckCircle, AlertCircle, Eye, EyeOff, 
+  ArrowRight, ShieldCheck, Dumbbell, Sparkles, KeyRound, HelpCircle, Check, X
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
 interface AuthViewProps {
   initialMode?: "signin" | "signup" | "forgot";
@@ -29,10 +32,18 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  // Field-specific touched state for natural progressive validation
+  const [touched, setTouched] = useState<{
+    email?: boolean;
+    password?: boolean;
+    name?: boolean;
+  }>({});
 
   // Sync mode if currentView changes externally
   useEffect(() => {
@@ -64,52 +75,94 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
     name?: string;
   }>({});
 
-  const validateEmail = (val: string) => {
+  const validateEmail = (val: string): string => {
     const clean = (val || "").trim();
     if (!clean) {
       return "Email address is required.";
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!clean.includes("@")) {
+      return "Email must include an '@' sign (e.g. athlete@example.com).";
+    }
+    const parts = clean.split("@");
+    if (!parts[0] || parts[0].length === 0) {
+      return "Please enter a username before the '@' sign.";
+    }
+    if (!parts[1] || !parts[1].includes(".")) {
+      return "Please enter a valid domain with an extension (e.g. gmail.com).";
+    }
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(clean)) {
-      return "Please enter a valid email address (e.g. name@example.com).";
+      return "Please enter a valid email address (e.g. athlete@example.com).";
     }
     return "";
   };
 
-  const validatePassword = (val: string) => {
+  const validatePassword = (val: string): string => {
     if (!val) {
       return "Password is required.";
     }
     if (val.length < 6) {
-      return "Password must be at least 6 characters long.";
+      return `Password does not meet requirements: must be at least 6 characters (${val.length}/6 entered).`;
     }
     return "";
   };
 
-  const validateName = (val: string) => {
+  const validateName = (val: string): string => {
     const clean = (val || "").trim();
     if (!clean) {
-      return "Name is required.";
+      return "Athlete name is required.";
     }
     if (clean.length < 2) {
-      return "Name must be at least 2 characters.";
+      return "Athlete name must be at least 2 characters.";
     }
     return "";
   };
+
+  // Live password requirements evaluation for sign-up guidance
+  const passHasMinLength = password.length >= 6;
+  const passHasLetter = /[a-zA-Z]/.test(password);
+  const passHasNumberOrSpecial = /[0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password);
+
+  const getPasswordStrength = () => {
+    if (!password) return { label: "None", color: "bg-slate-200", percent: 0, textColor: "text-slate-400" };
+    let score = 0;
+    if (passHasMinLength) score += 1;
+    if (passHasLetter) score += 1;
+    if (passHasNumberOrSpecial) score += 1;
+    if (password.length >= 10) score += 1;
+
+    if (score <= 1) return { label: "Weak (6+ chars required)", color: "bg-rose-500", percent: 30, textColor: "text-rose-600" };
+    if (score === 2 || score === 3) return { label: "Good", color: "bg-amber-500", percent: 70, textColor: "text-amber-600" };
+    return { label: "Strong", color: "bg-emerald-500", percent: 100, textColor: "text-emerald-600" };
+  };
+
+  const strength = getPasswordStrength();
 
   const handleEmailChange = (val: string) => {
     setEmail(val);
-    setValidation(prev => ({ ...prev, email: validateEmail(val) }));
+    setError("");
+    setErrorCode(null);
+    if (touched.email || val.length > 3) {
+      setValidation(prev => ({ ...prev, email: validateEmail(val) }));
+    }
   };
 
   const handlePasswordChange = (val: string) => {
     setPassword(val);
-    setValidation(prev => ({ ...prev, password: validatePassword(val) }));
+    setError("");
+    setErrorCode(null);
+    if (touched.password || val.length > 0) {
+      setValidation(prev => ({ ...prev, password: validatePassword(val) }));
+    }
   };
 
   const handleNameChange = (val: string) => {
     setName(val);
-    setValidation(prev => ({ ...prev, name: validateName(val) }));
+    setError("");
+    setErrorCode(null);
+    if (touched.name || val.length > 1) {
+      setValidation(prev => ({ ...prev, name: validateName(val) }));
+    }
   };
 
   const handleSuccessfulAuth = () => {
@@ -128,7 +181,10 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setErrorCode(null);
     setMessage("");
+
+    setTouched({ email: true, password: true, name: true });
 
     const cleanEmail = email.trim();
     const cleanPass = password;
@@ -138,12 +194,13 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
     const passwordErr = !isForgot ? validatePassword(cleanPass) : "";
     const nameErr = (isSignUp && !isForgot) ? validateName(cleanName) : "";
 
+    setValidation({
+      email: emailErr,
+      password: passwordErr,
+      name: nameErr
+    });
+
     if (emailErr || passwordErr || nameErr) {
-      setValidation({
-        email: emailErr,
-        password: passwordErr,
-        name: nameErr
-      });
       setError(emailErr || passwordErr || nameErr || "Please verify your input before submitting.");
       return;
     }
@@ -153,7 +210,7 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
     try {
       if (isForgot) {
         await sendPasswordReset(cleanEmail);
-        setMessage("A password recovery link has been sent to your email.");
+        setMessage(`A password reset link has been dispatched to ${cleanEmail}. Please check your inbox and spam folder.`);
       } else if (isSignUp) {
         await signUpEmail(cleanEmail, cleanPass, cleanName, rememberMe);
         handleSuccessfulAuth();
@@ -162,7 +219,22 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
         handleSuccessfulAuth();
       }
     } catch (err: any) {
-      setError(err?.message || "An authentication error occurred. Please verify your credentials and try again.");
+      const code = err?.code || "";
+      setErrorCode(code);
+      
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        setError("Incorrect credentials. The password you entered is incorrect, or no account exists with this email address.");
+      } else if (code === "auth/user-not-found") {
+        setError("No athlete account was found with this email address. Please double-check your spelling or create a new account.");
+      } else if (code === "auth/invalid-email") {
+        setError("The email address you entered is invalid. Please check your spelling.");
+      } else if (code === "auth/email-already-in-use") {
+        setError("An account with this email address is already registered. Please sign in with your password instead.");
+      } else if (code === "auth/weak-password") {
+        setError("Password does not meet security requirements. It must be at least 6 characters long.");
+      } else {
+        setError(err?.message || "An authentication error occurred. Please verify your credentials and try again.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -170,6 +242,7 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
 
   const handleOAuth = async (provider: "google" | "apple") => {
     setError("");
+    setErrorCode(null);
     setSubmitting(true);
     try {
       if (provider === "google") {
@@ -226,6 +299,7 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                   onClick={() => {
                     setIsSignUp(false);
                     setError("");
+                    setErrorCode(null);
                     setMessage("");
                     setValidation({});
                   }}
@@ -242,6 +316,7 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                   onClick={() => {
                     setIsSignUp(true);
                     setError("");
+                    setErrorCode(null);
                     setMessage("");
                     setValidation({});
                   }}
@@ -260,46 +335,111 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
           {/* Form Content */}
           <div className="p-6 sm:p-8 space-y-6">
             
-            {/* Notification Messages */}
-            {error && (
-              <motion.div 
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 space-y-2 font-semibold"
-              >
-                <div className="flex items-start gap-2.5">
-                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                  <span className="leading-relaxed">{error}</span>
-                </div>
-                {(error.toLowerCase().includes("already exists") || error.toLowerCase().includes("already in use")) && (
-                  <div className="pt-1 pl-6">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsSignUp(false);
-                        setError("");
-                        setValidation({});
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C0392B] text-white text-[11px] font-bold uppercase tracking-wider hover:bg-[#A93226] transition shadow-xs cursor-pointer border-0"
-                    >
-                      <span>Sign In with this Email</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
+            {/* Notification Messages with Contextual Help */}
+            <AnimatePresence>
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-200 text-xs text-rose-900 space-y-3 font-semibold shadow-xs"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="font-bold text-rose-950">Authentication Notice</p>
+                      <p className="leading-relaxed text-rose-800">{error}</p>
+                    </div>
                   </div>
-                )}
-              </motion.div>
-            )}
 
-            {message && (
-              <motion.div 
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 flex items-start gap-2.5 font-semibold"
-              >
-                <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                <span className="leading-relaxed">{message}</span>
-              </motion.div>
-            )}
+                  {/* Contextual Action: Email already exists -> Quick switch to Sign In */}
+                  {(errorCode === "auth/email-already-in-use" || error.toLowerCase().includes("already in use") || error.toLowerCase().includes("already registered")) && (
+                    <div className="pt-1 pl-6">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSignUp(false);
+                          setError("");
+                          setErrorCode(null);
+                          setValidation({});
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C0392B] text-white text-[11px] font-bold uppercase tracking-wider hover:bg-[#A93226] transition shadow-xs cursor-pointer border-0"
+                      >
+                        <span>Sign In with this Email</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Contextual Action: Wrong Password / Credential -> Direct Forgot Password / Create Account CTA */}
+                  {(errorCode === "auth/wrong-password" || errorCode === "auth/invalid-credential" || error.toLowerCase().includes("incorrect credentials") || error.toLowerCase().includes("incorrect password")) && !isSignUp && (
+                    <div className="pt-1 pl-6 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsForgot(true);
+                          setError("");
+                          setErrorCode(null);
+                          setValidation({});
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-rose-300 text-rose-700 hover:bg-rose-100 text-[11px] font-bold uppercase tracking-wider transition cursor-pointer"
+                      >
+                        <KeyRound className="w-3 h-3 text-[#C0392B]" />
+                        <span>Forgot Password?</span>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSignUp(true);
+                          setError("");
+                          setErrorCode(null);
+                          setValidation({});
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#C0392B] text-white text-[11px] font-bold uppercase tracking-wider hover:bg-[#A93226] transition cursor-pointer border-0"
+                      >
+                        <span>Create Account</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Contextual Action: User not found -> Direct Create Account CTA */}
+                  {(errorCode === "auth/user-not-found" || error.toLowerCase().includes("no athlete account") || error.toLowerCase().includes("no account found")) && !isSignUp && (
+                    <div className="pt-1 pl-6">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSignUp(true);
+                          setError("");
+                          setErrorCode(null);
+                          setValidation({});
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C0392B] text-white text-[11px] font-bold uppercase tracking-wider hover:bg-[#A93226] transition shadow-xs cursor-pointer border-0"
+                      >
+                        <span>Create Account with {email || "this email"}</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {message && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-200 text-xs text-emerald-900 flex items-start gap-2.5 font-semibold shadow-xs"
+                >
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold text-emerald-950">Email Dispatched</p>
+                    <p className="leading-relaxed text-emerald-800">{message}</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Social OAuth Providers */}
             {!isForgot && (
@@ -344,13 +484,13 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
             )}
 
             {/* Email Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               
               {/* Full Name (Sign Up only) */}
               {isSignUp && !isForgot && (
                 <div>
                   <label htmlFor="auth-view-name" className="block text-[10px] font-mono font-black text-slate-600 mb-1 uppercase">
-                    ATHLETE FULL NAME
+                    ATHLETE FULL NAME <span className="text-[#C0392B]">*</span>
                   </label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
@@ -363,28 +503,31 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                       placeholder="e.g. Alex Mercer"
                       value={name}
                       onChange={(e) => handleNameChange(e.target.value)}
-                      onBlur={() => setValidation(prev => ({ ...prev, name: validateName(name) }))}
+                      onBlur={() => {
+                        setTouched(prev => ({ ...prev, name: true }));
+                        setValidation(prev => ({ ...prev, name: validateName(name) }));
+                      }}
                       className={`w-full pl-10 pr-10 py-2.5 text-sm rounded-xl bg-white border text-slate-900 placeholder:text-slate-400 focus:outline-none font-semibold transition ${
-                        validation.name === "" && name.trim().length >= 2
-                          ? "border-emerald-500 focus:ring-2 focus:ring-emerald-200"
-                          : validation.name
-                          ? "border-rose-500 focus:ring-2 focus:ring-rose-200"
+                        touched.name && !validation.name && name.trim().length >= 2
+                          ? "border-emerald-500 focus:ring-2 focus:ring-emerald-200 bg-emerald-50/20"
+                          : touched.name && validation.name
+                          ? "border-rose-500 focus:ring-2 focus:ring-rose-200 bg-rose-50/20"
                           : "border-slate-200 focus:border-[#C0392B] focus:ring-2 focus:ring-rose-100"
                       }`}
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      {validation.name === "" && name.trim().length >= 2 && (
+                      {touched.name && !validation.name && name.trim().length >= 2 && (
                         <CheckCircle className="w-4 h-4 text-emerald-500" />
                       )}
-                      {validation.name && (
+                      {touched.name && validation.name && (
                         <AlertCircle className="w-4 h-4 text-rose-500" />
                       )}
                     </div>
                   </div>
-                  {validation.name && (
-                    <p className="mt-1 text-[10px] text-rose-500 font-bold flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3 shrink-0" />
-                      {validation.name}
+                  {touched.name && validation.name && (
+                    <p className="mt-1.5 text-[11px] text-rose-600 font-bold flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+                      <span>{validation.name}</span>
                     </p>
                   )}
                 </div>
@@ -393,7 +536,7 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
               {/* Email Address */}
               <div>
                 <label htmlFor="auth-view-email" className="block text-[10px] font-mono font-black text-slate-600 mb-1 uppercase">
-                  EMAIL ADDRESS
+                  EMAIL ADDRESS <span className="text-[#C0392B]">*</span>
                 </label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
@@ -406,28 +549,31 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                     placeholder="athlete@domain.com"
                     value={email}
                     onChange={(e) => handleEmailChange(e.target.value)}
-                    onBlur={() => setValidation(prev => ({ ...prev, email: validateEmail(email) }))}
+                    onBlur={() => {
+                      setTouched(prev => ({ ...prev, email: true }));
+                      setValidation(prev => ({ ...prev, email: validateEmail(email) }));
+                    }}
                     className={`w-full pl-10 pr-10 py-2.5 text-sm rounded-xl bg-white border text-slate-900 placeholder:text-slate-400 focus:outline-none font-semibold transition ${
-                      validation.email === "" && email.trim()
-                        ? "border-emerald-500 focus:ring-2 focus:ring-emerald-200"
-                        : validation.email
-                        ? "border-rose-500 focus:ring-2 focus:ring-rose-200"
+                      touched.email && !validation.email && email.trim()
+                        ? "border-emerald-500 focus:ring-2 focus:ring-emerald-200 bg-emerald-50/20"
+                        : (touched.email && validation.email) || (errorCode === "auth/invalid-email" || errorCode === "auth/user-not-found")
+                        ? "border-rose-500 focus:ring-2 focus:ring-rose-200 bg-rose-50/20"
                         : "border-slate-200 focus:border-[#C0392B] focus:ring-2 focus:ring-rose-100"
                     }`}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    {validation.email === "" && email.trim() && (
+                    {touched.email && !validation.email && email.trim() && (
                       <CheckCircle className="w-4 h-4 text-emerald-500" />
                     )}
-                    {validation.email && (
+                    {((touched.email && validation.email) || errorCode === "auth/invalid-email") && (
                       <AlertCircle className="w-4 h-4 text-rose-500" />
                     )}
                   </div>
                 </div>
-                {validation.email && (
-                  <p className="mt-1 text-[10px] text-rose-500 font-bold flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3 shrink-0" />
-                    {validation.email}
+                {touched.email && validation.email && (
+                  <p className="mt-1.5 text-[11px] text-rose-600 font-bold flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+                    <span>{validation.email}</span>
                   </p>
                 )}
               </div>
@@ -437,13 +583,14 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label htmlFor="auth-view-password" className="block text-[10px] font-mono font-black text-slate-600 uppercase">
-                      PASSWORD
+                      PASSWORD <span className="text-[#C0392B]">*</span>
                     </label>
                     <button
                       type="button"
                       onClick={() => {
                         setIsForgot(true);
                         setError("");
+                        setErrorCode(null);
                         setMessage("");
                         setValidation({});
                       }}
@@ -463,12 +610,15 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => handlePasswordChange(e.target.value)}
-                      onBlur={() => setValidation(prev => ({ ...prev, password: validatePassword(password) }))}
+                      onBlur={() => {
+                        setTouched(prev => ({ ...prev, password: true }));
+                        setValidation(prev => ({ ...prev, password: validatePassword(password) }));
+                      }}
                       className={`w-full pl-10 pr-10 py-2.5 text-sm rounded-xl bg-white border text-slate-900 placeholder:text-slate-400 focus:outline-none font-semibold transition ${
-                        validation.password === "" && password.length >= 6
-                          ? "border-emerald-500 focus:ring-2 focus:ring-emerald-200"
-                          : validation.password
-                          ? "border-rose-500 focus:ring-2 focus:ring-rose-200"
+                        touched.password && !validation.password && password.length >= 6
+                          ? "border-emerald-500 focus:ring-2 focus:ring-emerald-200 bg-emerald-50/20"
+                          : (touched.password && validation.password) || (errorCode === "auth/wrong-password" || errorCode === "auth/invalid-credential")
+                          ? "border-rose-500 focus:ring-2 focus:ring-rose-200 bg-rose-50/20"
                           : "border-slate-200 focus:border-[#C0392B] focus:ring-2 focus:ring-rose-100"
                       }`}
                     />
@@ -476,14 +626,71 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 cursor-pointer bg-transparent border-0"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                  {validation.password && (
-                    <p className="mt-1 text-[10px] text-rose-500 font-bold flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3 shrink-0" />
-                      {validation.password}
+
+                  {/* Inline Error Message for Password */}
+                  {touched.password && validation.password && (
+                    <p className="mt-1.5 text-[11px] text-rose-600 font-bold flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+                      <span>{validation.password}</span>
+                    </p>
+                  )}
+
+                  {/* Live Password Requirement Checklist & Strength (On Sign Up) */}
+                  {isSignUp && password.length > 0 && (
+                    <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between text-[10px] font-mono font-bold text-slate-600">
+                        <span>PASSWORD STRENGTH</span>
+                        <span className={strength.textColor}>{strength.label}</span>
+                      </div>
+                      
+                      {/* Strength Progress Bar */}
+                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-300 ${strength.color}`} 
+                          style={{ width: `${strength.percent}%` }}
+                        />
+                      </div>
+
+                      {/* Requirement Indicators */}
+                      <div className="pt-1 grid grid-cols-1 gap-1 text-[11px]">
+                        <div className={`flex items-center gap-1.5 ${passHasMinLength ? "text-emerald-700 font-bold" : "text-slate-500"}`}>
+                          {passHasMinLength ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          ) : (
+                            <X className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                          )}
+                          <span>At least 6 characters (current: {password.length})</span>
+                        </div>
+                        <div className={`flex items-center gap-1.5 ${passHasLetter ? "text-emerald-700 font-bold" : "text-slate-500"}`}>
+                          {passHasLetter ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          ) : (
+                            <X className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          )}
+                          <span>Contains at least one letter</span>
+                        </div>
+                        <div className={`flex items-center gap-1.5 ${passHasNumberOrSpecial ? "text-emerald-700 font-bold" : "text-slate-500"}`}>
+                          {passHasNumberOrSpecial ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          ) : (
+                            <X className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          )}
+                          <span>Contains a number or special character (recommended)</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sign In Minimum Length Helper */}
+                  {!isSignUp && password.length > 0 && password.length < 6 && (
+                    <p className="mt-1 text-[10px] text-amber-600 font-medium flex items-center gap-1">
+                      <HelpCircle className="w-3 h-3 text-amber-500 shrink-0" />
+                      <span>Passwords are at least 6 characters long</span>
                     </p>
                   )}
                 </div>
@@ -517,7 +724,7 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                 {submitting ? (
                   <span className="flex items-center gap-2">
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    <span>PROCESSING...</span>
+                    <span>VERIFYING CREDENTIALS...</span>
                   </span>
                 ) : (
                   <>
@@ -536,6 +743,7 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                   onClick={() => {
                     setIsForgot(false);
                     setError("");
+                    setErrorCode(null);
                     setMessage("");
                     setValidation({});
                   }}
@@ -551,6 +759,7 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                     onClick={() => {
                       setIsSignUp(!isSignUp);
                       setError("");
+                      setErrorCode(null);
                       setMessage("");
                       setValidation({});
                     }}

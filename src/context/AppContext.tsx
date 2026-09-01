@@ -1022,31 +1022,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (err && err.code) {
       switch (err.code) {
         case "auth/invalid-email":
-          message = "The email address format is invalid. Please check your spelling.";
+          message = "The email address format is invalid. Please check your spelling (e.g. athlete@example.com).";
+          break;
+        case "auth/missing-email":
+          message = "Email address is required.";
+          break;
+        case "auth/missing-password":
+          message = "Password is required.";
           break;
         case "auth/user-disabled":
-          message = "This user account has been disabled. Please contact support.";
+          message = "This user account has been disabled. Please contact customer support.";
           break;
         case "auth/user-not-found":
+          message = "No account found with this email address. Please double-check for typos or create an account.";
+          break;
         case "auth/wrong-password":
+          message = "Incorrect password. Please verify your password and try again, or click 'Forgot Password?' to reset it.";
+          break;
         case "auth/invalid-credential":
-          message = "Invalid email or password combination. Please try again.";
+          message = "Incorrect credentials. The password you entered is incorrect, or no account exists with this email address.";
           break;
         case "auth/email-already-in-use":
-          message = "An account with this email address already exists. Please sign in with your password.";
+          message = "An account with this email address already exists. Please sign in with your password instead.";
           break;
         case "auth/weak-password":
-          message = "The password provided is too weak. It must be at least 6 characters.";
+          message = "Password does not meet security requirements. It must be at least 6 characters long.";
+          break;
+        case "auth/too-many-requests":
+          message = "Access temporarily locked due to multiple failed login attempts. Please wait a few minutes or reset your password.";
           break;
         case "auth/popup-blocked":
         case "auth/cancelled-popup-request":
-          message = "The Google sign-in window was closed or blocked. Please click the Google button again, enable popups, or use the fast-login option.";
+          message = "The sign-in window was closed or blocked by your browser. Please allow popups or use Email/Password sign in.";
           break;
         case "auth/operation-not-allowed":
           message = "This sign-in method is not enabled. Please contact support.";
           break;
         case "auth/network-request-failed":
-          message = "Network error. Please check your internet connection and try again.";
+          message = "Network connection failed. Please check your internet connection and try again.";
           break;
         case "auth/iframe-directory-not-supported":
           message = "Google Sign-In is blocked inside this preview iframe. Please click 'Open in New Tab' at the top right of the application preview or use Email/Password login.";
@@ -1060,7 +1073,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else if (err && err.message) {
       message = err.message;
     }
-    return new Error(message);
+    const errorObj = new Error(message);
+    (errorObj as any).code = err?.code;
+    return errorObj;
   };
 
   const validateEmailAndPassword = (email: string, password?: string, name?: string, isSignUp: boolean = false) => {
@@ -1068,22 +1083,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!cleanEmail) {
       throw new Error("Email address is required.");
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(cleanEmail)) {
-      throw new Error("Invalid email address format. Example: user@domain.com");
+      throw new Error("Please enter a valid email address (e.g. athlete@example.com).");
     }
     if (password !== undefined) {
       if (!password) {
         throw new Error("Password is required.");
       }
       if (password.length < 6) {
-        throw new Error("Password must be at least 6 characters in length.");
+        throw new Error("Password does not meet requirement: must be at least 6 characters long.");
       }
     }
     if (isSignUp) {
       const cleanName = (name || "").trim();
       if (!cleanName) {
-        throw new Error("Please specify your athlete name.");
+        throw new Error("Please enter your athlete name.");
       }
       if (cleanName.length < 2) {
         throw new Error("Athlete name must be at least 2 characters long.");
@@ -2521,22 +2536,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const normalizedEmail = (email || "").trim().toLowerCase();
       validateEmailAndPassword(normalizedEmail, pass, name, true);
-      try {
-        const cred = await createUserWithEmailAndPassword(auth, normalizedEmail, pass);
-        await processAuthSuccess(cred.user, { displayName: name.trim() }, remember, true);
-      } catch (err: any) {
-        // If email already in use, attempt seamless sign-in with the provided password
-        if (err?.code === "auth/email-already-in-use") {
-          try {
-            const cred = await signInWithEmailAndPassword(auth, normalizedEmail, pass);
-            await processAuthSuccess(cred.user, { displayName: name.trim() }, remember, false);
-            return;
-          } catch (signInErr: any) {
-            throw handleAuthError(err);
-          }
-        }
-        throw handleAuthError(err);
-      }
+      const cred = await createUserWithEmailAndPassword(auth, normalizedEmail, pass);
+      await processAuthSuccess(cred.user, { displayName: name.trim() }, remember, true);
     } catch (err: any) {
       throw handleAuthError(err);
     } finally {
@@ -2550,26 +2551,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const normalizedEmail = (email || "").trim().toLowerCase();
       validateEmailAndPassword(normalizedEmail, pass);
-      try {
-        const cred = await signInWithEmailAndPassword(auth, normalizedEmail, pass);
-        await processAuthSuccess(cred.user, undefined, remember, false);
-      } catch (err: any) {
-        // If user account is not found, automatically register the user with these credentials so they can enter immediately
-        if (err?.code === "auth/user-not-found" || err?.code === "auth/invalid-credential") {
-          try {
-            const nameFromEmail = normalizedEmail.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase()) || "Athlete";
-            const cred = await createUserWithEmailAndPassword(auth, normalizedEmail, pass);
-            await processAuthSuccess(cred.user, { displayName: nameFromEmail }, remember, true);
-            return;
-          } catch (signUpErr: any) {
-            if (signUpErr?.code === "auth/email-already-in-use") {
-              throw new Error("Invalid password for this account. Please check your password or use Reset Password.");
-            }
-            throw handleAuthError(err);
-          }
-        }
-        throw handleAuthError(err);
-      }
+      const cred = await signInWithEmailAndPassword(auth, normalizedEmail, pass);
+      await processAuthSuccess(cred.user, undefined, remember, false);
     } catch (err: any) {
       throw handleAuthError(err);
     } finally {

@@ -40,7 +40,7 @@ export const PREMIUM_CHALLENGES: PremiumChallenge[] = [
     description: "Build premium lean muscle definition, optimize progressive load, and improve baseline metabolic body composition.",
     category: "Hypertrophy",
     goal: "Build lean muscle, increase strength, and improve body composition.",
-    image: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80",
+    image: "https://awtsuprints.com/cdn/shop/articles/90-day-challenge-how-can-i-transform-my-body-in-90-days_cf19eda2-ffc8-4ba0-9f5b-55139f77908a.jpg?v=1746016037",
     badgeId: "badge_muscle_champion",
     badgeName: "Lean Muscle Overlord",
     badgeColor: "from-red-500 to-amber-600"
@@ -51,7 +51,7 @@ export const PREMIUM_CHALLENGES: PremiumChallenge[] = [
     description: "Intense cardiorespiratory conditioning designed to burn stubborn adipose tissue while locking in lean muscle preservation.",
     category: "Conditioning",
     goal: "Burn body fat while preserving muscle.",
-    image: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80",
+    image: "https://i.ytimg.com/vi/GkEQdqRivdY/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLA_7HekIF4IOI27hZbpcKjVwayuNQ",
     badgeId: "badge_fat_burner",
     badgeName: "Adipose Vaporizer",
     badgeColor: "from-orange-500 to-red-600"
@@ -62,7 +62,7 @@ export const PREMIUM_CHALLENGES: PremiumChallenge[] = [
     description: "The ultimate recomposition blueprint. Simultaneously stimulate local muscular development and systemic body fat depletion.",
     category: "Recomposition",
     goal: "Lose fat while gaining muscle.",
-    image: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=600&auto=format&fit=crop&q=80",
+    image: "https://i.ytimg.com/vi/hhO3L6U9Q0o/maxresdefault.jpg",
     badgeId: "badge_transformation_master",
     badgeName: "Aesthetic Shapeshifter",
     badgeColor: "from-purple-500 to-indigo-600"
@@ -73,7 +73,7 @@ export const PREMIUM_CHALLENGES: PremiumChallenge[] = [
     description: "Enhance rate of force development, rotational power, agility vectors, and structural endurance for competitive dominance.",
     category: "Athleticism",
     goal: "Improve speed, power, endurance, and athletic ability.",
-    image: "https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=600&auto=format&fit=crop&q=80",
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRutWSqA0IX82EDPhMsWZLynmR3XDmhLFIYU5dyNWRm0RhMQPzTj6HTpWIS&s=10",
     badgeId: "badge_apex_athlete",
     badgeName: "Apex Predator Rank",
     badgeColor: "from-cyan-500 to-blue-600"
@@ -84,7 +84,7 @@ export const PREMIUM_CHALLENGES: PremiumChallenge[] = [
     description: "Command major barbell compound movements. Systematically overload neurological pathways to claim high personal records.",
     category: "Powerlifting",
     goal: "Increase overall strength and lifting performance.",
-    image: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=600&auto=format&fit=crop&q=80",
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ96jELV4NItB1LJeisSq8u5eUHM3SdHYIVutCpvIKWm2wpX2KicXkYyLVU&s=10",
     badgeId: "badge_strength_titan",
     badgeName: "Titanium Leviathan",
     badgeColor: "from-yellow-600 to-amber-700"
@@ -95,7 +95,7 @@ export const PREMIUM_CHALLENGES: PremiumChallenge[] = [
     description: "Maximal mechanical tension utilizing advanced bodyweight progressions and minimal load setups. Zero excuses.",
     category: "Calisthenics",
     goal: "Train effectively at home using bodyweight or minimal equipment.",
-    image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&auto=format&fit=crop&q=80",
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSoC2wFszVvraE9FywyRHE335dMXA7IpAsC4fYPnHvqD2Qi2oyq8R-iXk8&s=10",
     badgeId: "badge_home_elite",
     badgeName: "Sovereign Domestic Warrior",
     badgeColor: "from-emerald-500 to-teal-600"
@@ -106,7 +106,7 @@ export const PREMIUM_CHALLENGES: PremiumChallenge[] = [
     description: "Build deep anterior and posterior core stability, define the rectus abdominis, and strengthen vital bracing systems.",
     category: "Core Force",
     goal: "Build a stronger core and visible abdominal muscles.",
-    image: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80",
+    image: "https://i.ytimg.com/vi/4q2pqdEnbos/maxresdefault.jpg",
     badgeId: "badge_core_citadel",
     badgeName: "Citadel Core Overlord",
     badgeColor: "from-pink-500 to-rose-600"
@@ -807,7 +807,7 @@ export default function Premium90DayChallenge() {
         {/* Background Image */}
         <div className="absolute inset-0 z-0 select-none pointer-events-none">
           <img 
-            src="https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=1200&auto=format&fit=crop&q=80" 
+            src="https://i.ytimg.com/vi/TBsA_4Lg3KE/sddefault.jpg" 
             alt="Immortal 90-Day Challenge Hero"
             className="w-full h-full object-cover object-center scale-100"
             referrerPolicy="no-referrer"

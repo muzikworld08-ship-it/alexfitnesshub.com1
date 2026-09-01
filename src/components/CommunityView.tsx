@@ -103,7 +103,7 @@ export default function CommunityView() {
         title="Athlete Community Forum"
         subtitle="AlexFitnessHub Athle-Net"
         description="Discuss routines, share progress weights, motivate fellow warriors, and coordinate fitness challenges in real-time. Share your transformation journey with the world."
-        imageUrl="https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?q=80&w=600&auto=format&fit=crop"
+        imageUrl="https://domf5oio6qrcr.cloudfront.net/medialibrary/2293/conversions/l0908b16207233934035-thumb.jpg"
         category="COMMUNITY ARENA"
       />
 

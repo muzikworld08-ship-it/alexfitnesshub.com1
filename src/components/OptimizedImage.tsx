@@ -28,7 +28,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   format = "webp",
   resize = "cover",
   srcSetWidths,
-  fallbackSrc = "https://picsum.photos/seed/alexfitness/600/400",
+  fallbackSrc = "https://play-lh.googleusercontent.com/XoTUjDrSSiP__paNk62ZavhUgAEzYv1QZuihPeR9Clj9UBiXAQgyrxuH7dWUkJk5ZkOOKtQL9d0Ao9jjc1I9GA",
   fallbackType,
   showSkeleton = true,
   aspectRatio,
