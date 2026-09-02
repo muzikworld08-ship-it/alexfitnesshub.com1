@@ -342,13 +342,13 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                   initial={{ opacity: 0, y: -8, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-200 text-xs text-rose-900 space-y-3 font-semibold shadow-xs"
+                  className="p-4 rounded-2xl bg-red-50 border-2 border-red-300 text-xs text-red-700 space-y-3 font-bold shadow-xs"
                 >
                   <div className="flex items-start gap-2.5">
-                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                     <div className="space-y-1">
-                      <p className="font-bold text-rose-950">Authentication Notice</p>
-                      <p className="leading-relaxed text-rose-800">{error}</p>
+                      <p className="font-extrabold text-red-700 uppercase tracking-wide text-[11px]">Authentication Error</p>
+                      <p className="leading-relaxed text-red-600 font-bold text-xs">{error}</p>
                     </div>
                   </div>
 
@@ -525,8 +525,8 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                     </div>
                   </div>
                   {touched.name && validation.name && (
-                    <p className="mt-1.5 text-[11px] text-rose-600 font-bold flex items-center gap-1.5">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+                    <p className="mt-1.5 text-xs text-red-600 font-bold flex items-center gap-1.5 animate-fade-in">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600" />
                       <span>{validation.name}</span>
                     </p>
                   )}
@@ -557,7 +557,7 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                       touched.email && !validation.email && email.trim()
                         ? "border-emerald-500 focus:ring-2 focus:ring-emerald-200 bg-emerald-50/20"
                         : (touched.email && validation.email) || (errorCode === "auth/invalid-email" || errorCode === "auth/user-not-found")
-                        ? "border-rose-500 focus:ring-2 focus:ring-rose-200 bg-rose-50/20"
+                        ? "border-red-500 focus:ring-2 focus:ring-red-200 bg-red-50/20"
                         : "border-slate-200 focus:border-[#C0392B] focus:ring-2 focus:ring-rose-100"
                     }`}
                   />
@@ -566,13 +566,13 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                       <CheckCircle className="w-4 h-4 text-emerald-500" />
                     )}
                     {((touched.email && validation.email) || errorCode === "auth/invalid-email") && (
-                      <AlertCircle className="w-4 h-4 text-rose-500" />
+                      <AlertCircle className="w-4 h-4 text-red-600" />
                     )}
                   </div>
                 </div>
                 {touched.email && validation.email && (
-                  <p className="mt-1.5 text-[11px] text-rose-600 font-bold flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+                  <p className="mt-1.5 text-xs text-red-600 font-bold flex items-center gap-1.5 animate-fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600" />
                     <span>{validation.email}</span>
                   </p>
                 )}
@@ -618,7 +618,7 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                         touched.password && !validation.password && password.length >= 6
                           ? "border-emerald-500 focus:ring-2 focus:ring-emerald-200 bg-emerald-50/20"
                           : (touched.password && validation.password) || (errorCode === "auth/wrong-password" || errorCode === "auth/invalid-credential")
-                          ? "border-rose-500 focus:ring-2 focus:ring-rose-200 bg-rose-50/20"
+                          ? "border-red-500 focus:ring-2 focus:ring-red-200 bg-red-50/20"
                           : "border-slate-200 focus:border-[#C0392B] focus:ring-2 focus:ring-rose-100"
                       }`}
                     />
@@ -634,8 +634,8 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
 
                   {/* Inline Error Message for Password */}
                   {touched.password && validation.password && (
-                    <p className="mt-1.5 text-[11px] text-rose-600 font-bold flex items-center gap-1.5">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+                    <p className="mt-1.5 text-xs text-red-600 font-bold flex items-center gap-1.5 animate-fade-in">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600" />
                       <span>{validation.password}</span>
                     </p>
                   )}

@@ -254,3 +254,97 @@ export interface ChallengeItem {
   isCustom?: boolean;
 }
 
+// --- ALEXFITNESSHUB STORE TYPES ---
+export type ProductCategory = "Men" | "Women" | "ALEXFITNESSHUB Collections";
+
+export interface ProductColor {
+  name: string;
+  hex: string;
+  image?: string;
+}
+
+export interface ProductSizeGuide {
+  chest?: string;
+  waist?: string;
+  hips?: string;
+  length?: string;
+  inseam?: string;
+  fitType?: "Compression" | "Athletic Tapered" | "True to Size" | "Oversized Fit";
+  notes?: string;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  description: string;
+  category: ProductCategory;
+  price: number; // in NGN
+  originalPrice?: number; // optional strike-through price
+  frontImage: string;
+  backImage: string;
+  images?: string[];
+  sizes: string[]; // e.g. ["S", "M", "L", "XL", "XXL"]
+  colors: ProductColor[];
+  stock: number;
+  sizeStock?: Record<string, number>;
+  sizeGuide?: ProductSizeGuide;
+  fabric?: string;
+  features?: string[];
+  featured?: boolean;
+  isNewArrival?: boolean;
+  badge?: string;
+  rating?: number;
+  reviewsCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CartItem {
+  id: string; // unique item key e.g. `${productId}-${size}-${color}`
+  productId: string;
+  name: string;
+  category: ProductCategory;
+  price: number;
+  image: string;
+  size: string;
+  color: string;
+  colorHex?: string;
+  quantity: number;
+  maxStock: number;
+}
+
+export interface StoreDeliveryInfo {
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode?: string;
+  country: string;
+  deliveryNotes?: string;
+}
+
+export interface StoreOrder {
+  id: string;
+  orderNumber: string;
+  userId?: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  shippingAddress: StoreDeliveryInfo;
+  items: CartItem[];
+  subtotal: number;
+  shippingFee: number;
+  discount: number;
+  totalAmount: number;
+  currency: string;
+  paymentStatus: "pending" | "paid" | "failed";
+  paymentReference?: string;
+  orderStatus: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  trackingNumber?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+

@@ -4,12 +4,13 @@ import {
   Users, Sparkles, Dumbbell, ShieldCheck, UserCheck, Trash2, ArrowUpDown, Key, ToggleLeft, ToggleRight,
   Check, Copy, Link, Cpu, Globe, Activity, ChevronRight, AlertTriangle, Terminal, Settings, CreditCard, RefreshCw,
   Upload, Image as ImageIcon, Video, Search, Filter, Play, RotateCcw, CheckCircle2, Trophy, Layers, Edit3,
-  SlidersHorizontal, CheckSquare, Eye, ExternalLink
+  SlidersHorizontal, CheckSquare, Eye, ExternalLink, ShoppingBag
 } from "lucide-react";
 import { TestimonialAdminManager } from "./TestimonialAdminManager";
 import AdminAssetManager from "./AdminAssetManager";
 import AdminWorkoutEditor from "./admin/AdminWorkoutEditor";
 import AdminChallengeManager from "./admin/AdminChallengeManager";
+import { AdminStoreManager } from "./admin/AdminStoreManager";
 import { db } from "../lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { PREMIUM_CHALLENGES } from "./Premium90DayChallenge";
@@ -32,7 +33,7 @@ export default function AdminDashboard() {
   
   const [userQuery, setUserQuery] = useState("");
   const [exerciseQuery, setExerciseQuery] = useState("");
-  const [activeAdminTab, setActiveAdminTab] = useState<"workouts" | "challenges" | "media" | "directory" | "paystack">("workouts");
+  const [activeAdminTab, setActiveAdminTab] = useState<"workouts" | "challenges" | "media" | "directory" | "store" | "paystack">("workouts");
 
   // Media Manager Filters & Local Inputs
   const [mediaSearch, setMediaSearch] = useState("");
@@ -413,6 +414,18 @@ export default function AdminDashboard() {
         </button>
 
         <button
+          onClick={() => setActiveAdminTab("store")}
+          className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            activeAdminTab === "store"
+              ? "bg-white text-slate-900 shadow-xs"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <ShoppingBag className="w-4 h-4 text-red-600" />
+          Store & Merch
+        </button>
+
+        <button
           onClick={() => setActiveAdminTab("paystack")}
           className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeAdminTab === "paystack"
@@ -424,6 +437,13 @@ export default function AdminDashboard() {
           Paystack Live Setup
         </button>
       </div>
+
+      {/* VIEW 0: STORE & FITNESS WEAR MANAGEMENT */}
+      {activeAdminTab === "store" && (
+        <div className="space-y-6 animate-fade-in">
+          <AdminStoreManager />
+        </div>
+      )}
 
       {/* VIEW 1: WORKOUTS MANAGER */}
       {activeAdminTab === "workouts" && (

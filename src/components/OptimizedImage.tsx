@@ -86,9 +86,8 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     setCurrentSrc(resolvedUrl);
     setHasError(false);
 
-    if (isImageCached(src) || isImageCached(resolvedUrl)) {
-      setIsLoaded(true);
-    }
+    const isCached = isImageCached(src) || isImageCached(resolvedUrl);
+    setIsLoaded(isCached);
   }, [src, width, height, quality, format, resize, fallbackSrc]);
 
   // Check if image is already complete in DOM cache immediately
@@ -152,6 +151,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       {/* Rendered Image */}
       {currentSrc && currentSrc.trim() !== "" ? (
         <img
+          key={currentSrc}
           ref={handleRef}
           src={currentSrc}
           srcSet={computedSrcSet}

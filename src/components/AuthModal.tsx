@@ -273,13 +273,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
-                  className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-2.5 font-semibold shadow-xs"
+                  className="p-3.5 rounded-xl bg-red-50 border border-red-300 text-xs text-red-700 space-y-2.5 font-bold shadow-xs"
                 >
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-bold text-rose-950">Authentication Notice</p>
-                      <p className="leading-relaxed text-rose-800 text-[11px]">{error}</p>
+                      <p className="font-extrabold text-red-700 uppercase text-[11px] tracking-wide">Authentication Error</p>
+                      <p className="leading-relaxed text-red-600 font-bold text-xs mt-0.5">{error}</p>
                     </div>
                   </div>
 
@@ -387,8 +387,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     </div>
                   </div>
                   {touched.name && validation.name && (
-                    <p id="name-error" className="mt-1 text-[10px] text-rose-500 font-bold flex items-center gap-1 animate-fade-in" aria-live="polite">
-                      <AlertCircle className="w-3 h-3 shrink-0" />
+                    <p id="name-error" className="mt-1 text-xs text-red-600 font-bold flex items-center gap-1 animate-fade-in" aria-live="polite">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600" />
                       {validation.name}
                     </p>
                   )}
@@ -418,7 +418,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       touched.email && !validation.email && email.trim()
                         ? "border-emerald-500 focus:ring-2 focus:ring-emerald-200 bg-emerald-50/20"
                         : (touched.email && validation.email) || (errorCode === "auth/invalid-email" || errorCode === "auth/user-not-found")
-                        ? "border-rose-500 focus:ring-2 focus:ring-rose-200 bg-rose-50/20"
+                        ? "border-red-500 focus:ring-2 focus:ring-red-200 bg-red-50/20"
                         : "border-slate-200 focus:ring-2 focus:ring-rose-100 focus:border-[#C0392B]"
                     }`}
                   />
@@ -427,13 +427,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       <CheckCircle className="w-4 h-4 text-emerald-500" />
                     )}
                     {((touched.email && validation.email) || errorCode === "auth/invalid-email") && (
-                      <AlertCircle className="w-4 h-4 text-rose-500" />
+                      <AlertCircle className="w-4 h-4 text-red-600" />
                     )}
                   </div>
                 </div>
                 {touched.email && validation.email && (
-                  <p id="email-error" className="mt-1 text-[10px] text-rose-500 font-bold flex items-center gap-1 animate-fade-in" aria-live="polite">
-                    <AlertCircle className="w-3 h-3 shrink-0" />
+                  <p id="email-error" className="mt-1 text-xs text-red-600 font-bold flex items-center gap-1 animate-fade-in" aria-live="polite">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600" />
                     {validation.email}
                   </p>
                 )}
@@ -472,7 +472,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         touched.password && !validation.password && password.length >= 6
                           ? "border-emerald-500 focus:ring-2 focus:ring-emerald-200 bg-emerald-50/20"
                           : (touched.password && validation.password) || (errorCode === "auth/wrong-password" || errorCode === "auth/invalid-credential")
-                          ? "border-rose-500 focus:ring-2 focus:ring-rose-200 bg-rose-50/20"
+                          ? "border-red-500 focus:ring-2 focus:ring-red-200 bg-red-50/20"
                           : "border-slate-200 focus:ring-2 focus:ring-rose-100 focus:border-[#C0392B]"
                       }`}
                     />
@@ -487,8 +487,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   </div>
 
                   {touched.password && validation.password && (
-                    <p id="password-error" className="mt-1 text-[10px] text-rose-500 font-bold flex items-center gap-1 animate-fade-in" aria-live="polite">
-                      <AlertCircle className="w-3 h-3 shrink-0" />
+                    <p id="password-error" className="mt-1 text-xs text-red-600 font-bold flex items-center gap-1 animate-fade-in" aria-live="polite">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600" />
                       {validation.password}
                     </p>
                   )}

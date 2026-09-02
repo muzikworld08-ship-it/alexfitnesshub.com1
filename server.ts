@@ -4265,7 +4265,7 @@ app.get("/api/diagnostics/audit", requireAdmin, async (req: any, res: any) => {
     },
     cacheStatus: "BYPASS_CACHE_ACTIVE",
     serviceWorkerConfig: {
-      registeredScript: "/sw.js",
+      registeredScript: "/service-worker.js",
       cacheStrategy: "network-first-bypass-all",
       pwaManifest: "/manifest.json"
     }
@@ -4407,6 +4407,82 @@ app.post("/api/payments/initialize", async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Error contacting Paystack transaction initializer: " + error.message
+    });
+  }
+});
+
+// Securely initialize Store Checkout on Paystack
+app.post("/api/payments/store/initialize", async (req, res) => {
+  const { email, customerName, customerPhone, totalAmount, deliveryInfo, items } = req.body;
+
+  if (!email || !totalAmount) {
+    return res.status(400).json({ success: false, error: "email and totalAmount are required." });
+  }
+
+  const amountNGN = Math.round(Number(totalAmount));
+  const amountInKobo = amountNGN * 100;
+  const reference = "ref_afh_store_" + crypto.randomBytes(8).toString("hex").toUpperCase();
+
+  const requestBaseUrl = APP_URL || `${req.protocol}://${req.get("host")}`;
+  const resolvedCallbackUrl = `${requestBaseUrl.replace(/\/$/, "")}/store?success=true&ref=${reference}`;
+
+  if (!PAYSTACK_SECRET_KEY) {
+    console.warn("[Store Checkout] PAYSTACK_SECRET_KEY is not configured; returning simulated success reference.");
+    return res.json({
+      success: true,
+      reference,
+      simulated: true
+    });
+  }
+
+  try {
+    const response = await fetch("https://api.paystack.co/transaction/initialize", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email,
+        amount: amountInKobo,
+        reference,
+        callback_url: resolvedCallbackUrl,
+        metadata: {
+          type: "store_apparel_order",
+          customerName,
+          customerPhone,
+          deliveryAddress: deliveryInfo?.address,
+          city: deliveryInfo?.city,
+          state: deliveryInfo?.state,
+          itemCount: items?.length || 1,
+          custom_fields: [
+            { display_name: "Customer", variable_name: "customer_name", value: customerName },
+            { display_name: "Phone", variable_name: "customer_phone", value: customerPhone },
+            { display_name: "Delivery State", variable_name: "delivery_state", value: deliveryInfo?.state }
+          ]
+        }
+      })
+    });
+
+    const data = await response.json();
+    if (data && data.status && data.data) {
+      return res.json({
+        success: true,
+        authorization_url: data.data.authorization_url,
+        reference,
+        access_code: data.data.access_code
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: data?.message || "Paystack store initialization failed."
+      });
+    }
+  } catch (error: any) {
+    console.error("[Store Checkout Exception]", error);
+    return res.status(500).json({
+      success: false,
+      error: "Error contacting Paystack: " + error.message
     });
   }
 });
@@ -5075,7 +5151,7 @@ async function startServer() {
       maxAge: "1d",
       setHeaders: (res, filePath) => {
         const lowerPath = filePath.toLowerCase();
-        if (lowerPath.endsWith(".html") || filePath.includes("index.html") || lowerPath.endsWith("sw.js") || lowerPath.endsWith("manifest.json")) {
+        if (lowerPath.endsWith(".html") || filePath.includes("index.html") || lowerPath.endsWith("sw.js") || lowerPath.endsWith("service-worker.js") || lowerPath.endsWith("manifest.json")) {
           res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
           res.setHeader("Surrogate-Control", "no-store");
           res.setHeader("Pragma", "no-cache");

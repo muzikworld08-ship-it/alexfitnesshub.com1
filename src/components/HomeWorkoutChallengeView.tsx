@@ -24,6 +24,9 @@ import {
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import { saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
 import { DailyLifestyleChecklist, DailyLifestyleHabits } from "./DailyLifestyleChecklist";
+import { getExerciseGifUrl } from "../data/exercises";
+import { resolveAdminMediaUrl } from "../lib/mediaStorage";
+import { preloadImage } from "../utils/imageCache";
 
 interface HomeChallengeState {
   userId: string;
@@ -220,6 +223,61 @@ export default function HomeWorkoutChallengeView() {
   const currentWorkout: HomeDailyWorkout = useMemo(() => {
     return getHomeWorkoutForDay(selectedDayNumber);
   }, [selectedDayNumber]);
+
+  // Reset active exercise index when user switches day
+  useEffect(() => {
+    setActiveExerciseIndex(0);
+  }, [selectedDayNumber]);
+
+  // Preload next exercise GIFs in the background for instant transitions
+  useEffect(() => {
+    if (!currentWorkout || !currentWorkout.exercises || currentWorkout.exercises.length === 0) return;
+
+    // 1. Immediately preload the active and next exercise with high priority
+    const currentEx = currentWorkout.exercises[activeExerciseIndex];
+    const nextEx = currentWorkout.exercises[activeExerciseIndex + 1];
+
+    if (currentEx) {
+      const url = currentEx.gifUrl || getExerciseGifUrl(currentEx.name);
+      if (url) {
+        const resolved = resolveAdminMediaUrl(url);
+        if (resolved) preloadImage(resolved, true);
+      }
+    }
+
+    if (nextEx) {
+      const url = nextEx.gifUrl || getExerciseGifUrl(nextEx.name);
+      if (url) {
+        const resolved = resolveAdminMediaUrl(url);
+        if (resolved) preloadImage(resolved, true);
+      }
+    }
+
+    // 2. Preload the next-next exercise and remaining exercises in background on idle
+    const timer = setTimeout(() => {
+      const nextNextEx = currentWorkout.exercises[activeExerciseIndex + 2];
+      if (nextNextEx) {
+        const url = nextNextEx.gifUrl || getExerciseGifUrl(nextNextEx.name);
+        if (url) {
+          const resolved = resolveAdminMediaUrl(url);
+          if (resolved) preloadImage(resolved, false);
+        }
+      }
+
+      // Preload the rest of the daily workout exercises
+      currentWorkout.exercises.forEach((ex, idx) => {
+        if (idx !== activeExerciseIndex && idx !== activeExerciseIndex + 1 && idx !== activeExerciseIndex + 2) {
+          const url = ex.gifUrl || getExerciseGifUrl(ex.name);
+          if (url) {
+            const resolved = resolveAdminMediaUrl(url);
+            if (resolved) preloadImage(resolved, false);
+          }
+        }
+      });
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [currentWorkout, activeExerciseIndex]);
 
   // Onboarding completion
   const handleCompleteOnboarding = () => {
@@ -1178,211 +1236,347 @@ export default function HomeWorkoutChallengeView() {
 
           {/* Interactive Workout Timer & Active Exercise Showcase */}
           {currentWorkout.exercises.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="space-y-6">
               
-              {/* Left Column: Active Exercise Focus (7 cols) */}
-              <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-5">
-                {(() => {
-                  const currentEx = currentWorkout.exercises[activeExerciseIndex] || currentWorkout.exercises[0];
-                  return (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] font-mono text-slate-400 font-bold uppercase block">
-                            Active Exercise {activeExerciseIndex + 1} of {currentWorkout.exercises.length}
-                          </span>
-                          <h3 className="text-lg font-black text-slate-900">
-                            {currentEx.name}
-                          </h3>
-                        </div>
-                        <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono font-bold">
-                          {currentEx.difficulty}
-                        </span>
-                      </div>
-
-                      {/* GIF Video / Media Demonstration */}
-                      <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-200">
-                        <UnifiedExerciseMedia
-                          exerciseId={currentEx.id}
-                          exerciseName={currentEx.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-
-                      {/* Sets, Reps, Rest Pills */}
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                          <span className="text-[9px] font-mono text-slate-400 uppercase font-bold block">Sets</span>
-                          <span className="text-xs font-black text-slate-900 font-mono">{currentEx.sets}</span>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                          <span className="text-[9px] font-mono text-slate-400 uppercase font-bold block">Reps / Time</span>
-                          <span className="text-xs font-black text-slate-900 font-mono">{currentEx.repsOrDuration}</span>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                          <span className="text-[9px] font-mono text-slate-400 uppercase font-bold block">Rest Interval</span>
-                          <span className="text-xs font-black text-slate-900 font-mono">{currentEx.restPeriod}</span>
-                        </div>
-                      </div>
-
-                      {/* Beginner Friendly Modification Alert */}
-                      <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl text-xs space-y-1">
-                        <span className="font-extrabold text-emerald-900 uppercase font-mono text-[10px] flex items-center gap-1">
-                          <Smile className="w-3.5 h-3.5 text-emerald-600" />
-                          Beginner Friendly Modification:
-                        </span>
-                        <p className="text-emerald-800 text-[11px] font-medium leading-relaxed">
-                          {currentEx.beginnerModification}
-                        </p>
-                      </div>
-
-                      {/* Kinetic Form Instructions */}
-                      <div className="space-y-2">
-                        <span className="text-xs font-extrabold text-slate-900 uppercase tracking-tight block">
-                          Form Instructions & Coaching Cues:
-                        </span>
-                        <ul className="space-y-1.5 text-xs text-slate-600">
-                          {currentEx.instructions.map((step, idx) => (
-                            <li key={idx} className="flex items-start gap-2">
-                              <span className="h-4 w-4 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-[10px] font-mono font-bold shrink-0 mt-0.5">
-                                {idx + 1}
-                              </span>
-                              <span className="leading-relaxed">{step}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {/* Next / Previous Exercise Buttons */}
-                      <div className="flex justify-between pt-2 border-t border-slate-100">
-                        <button
-                          onClick={() => setActiveExerciseIndex((p) => Math.max(0, p - 1))}
-                          disabled={activeExerciseIndex === 0}
-                          className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-40 cursor-pointer"
-                        >
-                          Previous Movement
-                        </button>
-                        <button
-                          onClick={() => setActiveExerciseIndex((p) => Math.min(currentWorkout.exercises.length - 1, p + 1))}
-                          disabled={activeExerciseIndex === currentWorkout.exercises.length - 1}
-                          className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-white hover:bg-black disabled:opacity-40 cursor-pointer"
-                        >
-                          Next Movement
-                        </button>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-
-              {/* Right Column: Rest Timer & Full Daily Routine List (5 cols) */}
-              <div className="lg:col-span-5 space-y-6">
-                
-                {/* Built-in Interval Rest Timer */}
-                <div className="bg-slate-900 text-white p-6 rounded-3xl space-y-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold uppercase text-slate-400 flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-red-500" />
-                      Rest & Work Interval Timer
+              {/* Section Navigation Ribbon for Fast & Smooth Movement */}
+              {currentWorkout.sections && currentWorkout.sections.length > 0 && (
+                <div className="bg-white p-3 sm:p-4 rounded-3xl border border-slate-200 shadow-xs">
+                  <div className="flex items-center justify-between gap-2 mb-2 px-1">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-red-500" />
+                      Workout Sections ({currentWorkout.sections.length})
                     </span>
-                    <span className="text-xs font-mono font-bold text-red-400">
-                      {isTimerRunning ? "Running" : "Paused"}
+                    <span className="text-[10px] font-mono text-slate-400">
+                      Jump directly to any section
                     </span>
                   </div>
-
-                  <div className="text-center py-4">
-                    <span className="text-5xl font-black font-mono tracking-tight text-white">
-                      {String(Math.floor(timerSeconds / 60)).padStart(2, "0")}:{String(timerSeconds % 60).padStart(2, "0")}
-                    </span>
-                  </div>
-
-                  {/* Preset Timer Buttons */}
-                  <div className="grid grid-cols-4 gap-2">
-                    {[30, 45, 60, 90].map((sec) => (
-                      <button
-                        key={sec}
-                        onClick={() => startTimer(sec)}
-                        className={`py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
-                          timerInitial === sec && isTimerRunning 
-                            ? "bg-red-600 text-white" 
-                            : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                        }`}
-                      >
-                        {sec}s
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2 pt-2">
-                    {isTimerRunning ? (
-                      <button
-                        onClick={stopTimer}
-                        className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black uppercase cursor-pointer"
-                      >
-                        Pause Timer
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => startTimer(timerSeconds || 45)}
-                        className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Play className="w-3.5 h-3.5 fill-current" />
-                        <span>Start Interval</span>
-                      </button>
-                    )}
-                    <button
-                      onClick={resetTimer}
-                      className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Exercises List for Day */}
-                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-3">
-                  <span className="text-xs font-extrabold uppercase text-slate-900 tracking-tight block">
-                    Day {selectedDayNumber} Movements ({currentWorkout.exercises.length})
-                  </span>
-
-                  <div className="space-y-2">
-                    {currentWorkout.exercises.map((ex, idx) => {
-                      const isSelected = idx === activeExerciseIndex;
+                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                    {currentWorkout.sections.map((sec, secIdx) => {
+                      const isSecActive = sec.exerciseIndices.includes(activeExerciseIndex);
                       return (
-                        <div
-                          key={ex.id || idx}
-                          onClick={() => setActiveExerciseIndex(idx)}
-                          className={`p-3 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
-                            isSelected
-                              ? "bg-red-50/70 border-red-300 shadow-xs"
-                              : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                        <button
+                          key={sec.id || secIdx}
+                          type="button"
+                          onClick={() => {
+                            if (sec.exerciseIndices.length > 0) {
+                              setActiveExerciseIndex(sec.exerciseIndices[0]);
+                            }
+                          }}
+                          className={`px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-2 border ${
+                            isSecActive
+                              ? "bg-red-600 border-red-600 text-white shadow-xs"
+                              : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className={`h-7 w-7 rounded-xl flex items-center justify-center font-mono text-xs font-bold ${
-                              isSelected ? "bg-red-600 text-white" : "bg-slate-200 text-slate-700"
-                            }`}>
-                              {idx + 1}
-                            </span>
-                            <div>
-                              <p className={`text-xs font-bold ${isSelected ? "text-red-900" : "text-slate-800"}`}>
-                                {ex.name}
-                              </p>
-                              <span className="text-[10px] font-mono text-slate-500">
-                                {ex.sets} • {ex.repsOrDuration}
-                              </span>
-                            </div>
-                          </div>
-
-                          <ChevronRight className={`w-4 h-4 ${isSelected ? "text-red-600" : "text-slate-400"}`} />
-                        </div>
+                          <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold ${
+                            isSecActive ? "bg-white/25 text-white" : "bg-slate-200 text-slate-700"
+                          }`}>
+                            SEC {secIdx + 1}
+                          </span>
+                          <span>{sec.title || sec.name}</span>
+                          <span className={`text-[10px] font-mono ${isSecActive ? "text-red-100" : "text-slate-400"}`}>
+                            ({sec.exerciseIndices.length})
+                          </span>
+                        </button>
                       );
                     })}
                   </div>
                 </div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Left Column: Active Exercise Focus (7 cols) */}
+                <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-5">
+                  {(() => {
+                    const currentEx = currentWorkout.exercises[activeExerciseIndex] || currentWorkout.exercises[0];
+                    const currentSecIdx = currentWorkout.sections?.findIndex(s => s.exerciseIndices.includes(activeExerciseIndex)) ?? -1;
+                    const currentSec = currentSecIdx >= 0 && currentWorkout.sections ? currentWorkout.sections[currentSecIdx] : null;
+                    const indexInSec = currentSec ? currentSec.exerciseIndices.indexOf(activeExerciseIndex) : -1;
+                    const nextEx = currentWorkout.exercises[activeExerciseIndex + 1];
+                    const isLastExercise = activeExerciseIndex === currentWorkout.exercises.length - 1;
+
+                    return (
+                      <>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              {currentSec && (
+                                <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-[10px] font-mono font-bold uppercase border border-red-200">
+                                  Section {currentSecIdx + 1}: {currentSec.title || currentSec.name}
+                                </span>
+                              )}
+                              <span className="text-[10px] font-mono text-slate-400 font-bold uppercase">
+                                Movement {activeExerciseIndex + 1} of {currentWorkout.exercises.length}
+                                {indexInSec >= 0 && currentSec && ` (Step ${indexInSec + 1}/${currentSec.exerciseIndices.length})`}
+                              </span>
+                            </div>
+                            <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                              {currentEx.name}
+                            </h3>
+                          </div>
+                          <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono font-bold shrink-0">
+                            {currentEx.difficulty}
+                          </span>
+                        </div>
+
+                        {/* GIF Video / Media Demonstration with Explicit React Key */}
+                        <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-200">
+                          <UnifiedExerciseMedia
+                            key={`${currentEx.id}-${currentEx.name}-${activeExerciseIndex}`}
+                            exerciseId={currentEx.id}
+                            exerciseName={currentEx.name}
+                            className="w-full h-full object-cover"
+                            priority={true}
+                          />
+                        </div>
+
+                        {/* Sets, Reps/Time, Rest Interval - Strictly Distinguished */}
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                            <span className="text-[9px] font-mono text-slate-400 uppercase font-bold block">Sets</span>
+                            <span className="text-xs font-black text-slate-900 font-mono">{currentEx.sets}</span>
+                          </div>
+
+                          <div className={`p-2.5 rounded-xl border text-center ${
+                            currentEx.workoutType === "reps" 
+                              ? "bg-amber-50/70 border-amber-200 text-amber-950" 
+                              : "bg-blue-50/70 border-blue-200 text-blue-950"
+                          }`}>
+                            <span className="text-[9px] font-mono uppercase font-bold block">
+                              {currentEx.workoutType === "reps" ? "Target Reps" : "Target Duration"}
+                            </span>
+                            <span className="text-xs font-black font-mono">
+                              {currentEx.repsOrDuration}
+                            </span>
+                            <span className="text-[8px] font-mono font-bold uppercase tracking-wider block mt-0.5 opacity-80">
+                              {currentEx.workoutType === "reps" ? "Reps Based" : "Time Based"}
+                            </span>
+                          </div>
+
+                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                            <span className="text-[9px] font-mono text-slate-400 uppercase font-bold block">Rest Interval</span>
+                            <span className="text-xs font-black text-slate-900 font-mono">{currentEx.restPeriod}</span>
+                          </div>
+                        </div>
+
+                        {/* Beginner Friendly Modification Alert */}
+                        <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl text-xs space-y-1">
+                          <span className="font-extrabold text-emerald-900 uppercase font-mono text-[10px] flex items-center gap-1">
+                            <Smile className="w-3.5 h-3.5 text-emerald-600" />
+                            Beginner Friendly Modification:
+                          </span>
+                          <p className="text-emerald-800 text-[11px] font-medium leading-relaxed">
+                            {currentEx.beginnerModification}
+                          </p>
+                        </div>
+
+                        {/* Kinetic Form Instructions */}
+                        <div className="space-y-2">
+                          <span className="text-xs font-extrabold text-slate-900 uppercase tracking-tight block">
+                            Form Instructions & Coaching Cues:
+                          </span>
+                          <ul className="space-y-1.5 text-xs text-slate-600">
+                            {currentEx.instructions.map((step, idx) => (
+                              <li key={idx} className="flex items-start gap-2">
+                                <span className="h-4 w-4 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-[10px] font-mono font-bold shrink-0 mt-0.5">
+                                  {idx + 1}
+                                </span>
+                                <span className="leading-relaxed">{step}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* Fast & Smooth Navigation Controls */}
+                        <div className="flex items-center justify-between pt-3 border-t border-slate-100 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setActiveExerciseIndex((p) => Math.max(0, p - 1))}
+                            disabled={activeExerciseIndex === 0}
+                            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-40 cursor-pointer flex items-center gap-1.5 transition"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                            <span>Previous Movement</span>
+                          </button>
+
+                          {!isLastExercise ? (
+                            <button
+                              type="button"
+                              onClick={() => setActiveExerciseIndex((p) => Math.min(currentWorkout.exercises.length - 1, p + 1))}
+                              className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide bg-slate-900 text-white hover:bg-black cursor-pointer flex items-center gap-1.5 transition shadow-xs"
+                            >
+                              <span>Move to Next Movement</span>
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleWorkoutComplete(selectedDayNumber)}
+                              className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer flex items-center gap-1.5 transition shadow-xs"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>Finish Day {selectedDayNumber} Workout</span>
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Right Column: Rest Timer & Section-Grouped Routine List (5 cols) */}
+                <div className="lg:col-span-5 space-y-6">
+                  
+                  {/* Built-in Interval Rest Timer */}
+                  <div className="bg-slate-900 text-white p-6 rounded-3xl space-y-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono font-bold uppercase text-slate-400 flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 text-red-500" />
+                        Rest & Work Interval Timer
+                      </span>
+                      <span className="text-xs font-mono font-bold text-red-400">
+                        {isTimerRunning ? "Running" : "Paused"}
+                      </span>
+                    </div>
+
+                    <div className="text-center py-4">
+                      <span className="text-5xl font-black font-mono tracking-tight text-white">
+                        {String(Math.floor(timerSeconds / 60)).padStart(2, "0")}:{String(timerSeconds % 60).padStart(2, "0")}
+                      </span>
+                    </div>
+
+                    {/* Preset Timer Buttons */}
+                    <div className="grid grid-cols-4 gap-2">
+                      {[30, 45, 60, 90].map((sec) => (
+                        <button
+                          key={sec}
+                          onClick={() => startTimer(sec)}
+                          className={`py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                            timerInitial === sec && isTimerRunning 
+                              ? "bg-red-600 text-white" 
+                              : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                          }`}
+                        >
+                          {sec}s
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      {isTimerRunning ? (
+                        <button
+                          onClick={stopTimer}
+                          className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black uppercase cursor-pointer"
+                        >
+                          Pause Timer
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => startTimer(timerSeconds || 45)}
+                          className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <span>Start Interval</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={resetTimer}
+                        className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Section-Grouped Movements List */}
+                  <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold uppercase text-slate-900 tracking-tight block">
+                        Day {selectedDayNumber} Movements ({currentWorkout.exercises.length})
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400 font-bold">
+                        {currentWorkout.sections?.length || 1} Sections
+                      </span>
+                    </div>
+
+                    <div className="space-y-4 max-h-[580px] overflow-y-auto pr-1">
+                      {(currentWorkout.sections && currentWorkout.sections.length > 0
+                        ? currentWorkout.sections
+                        : [{ id: "all", title: "Routine Movements", name: "Routine Movements", description: "", exerciseIndices: currentWorkout.exercises.map((_, i) => i) }]
+                      ).map((section, secIdx) => {
+                        const isSecActive = section.exerciseIndices.includes(activeExerciseIndex);
+                        return (
+                          <div key={section.id || secIdx} className="space-y-2">
+                            {/* Section Header */}
+                            <div className={`px-3 py-1.5 rounded-xl flex items-center justify-between text-xs font-bold ${
+                              isSecActive ? "bg-red-50 text-red-900 border border-red-200" : "bg-slate-100 text-slate-700"
+                            }`}>
+                              <span className="flex items-center gap-1.5 uppercase font-mono text-[10px]">
+                                <span className="w-4 h-4 rounded-full bg-white flex items-center justify-center text-[9px] font-bold shadow-xs">
+                                  {secIdx + 1}
+                                </span>
+                                {section.title || section.name}
+                              </span>
+                              <span className="text-[10px] font-mono opacity-70">
+                                {section.exerciseIndices.length} movements
+                              </span>
+                            </div>
+
+                            {/* Exercises in this section */}
+                            <div className="space-y-1.5 pl-1">
+                              {section.exerciseIndices.map((idx) => {
+                                const ex = currentWorkout.exercises[idx];
+                                if (!ex) return null;
+                                const isSelected = idx === activeExerciseIndex;
+                                return (
+                                  <div
+                                    key={ex.id || idx}
+                                    onClick={() => setActiveExerciseIndex(idx)}
+                                    className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between gap-2.5 ${
+                                      isSelected
+                                        ? "bg-red-50/80 border-red-300 shadow-xs ring-1 ring-red-400"
+                                        : "bg-white border-slate-200 hover:bg-slate-50"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <span className={`h-6 w-6 rounded-lg flex items-center justify-center font-mono text-[11px] font-bold shrink-0 ${
+                                        isSelected ? "bg-red-600 text-white" : "bg-slate-100 text-slate-700"
+                                      }`}>
+                                        {idx + 1}
+                                      </span>
+                                      <div className="min-w-0">
+                                        <p className={`text-xs font-bold truncate ${isSelected ? "text-red-900" : "text-slate-800"}`}>
+                                          {ex.name}
+                                        </p>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className="text-[10px] font-mono text-slate-500">
+                                            {ex.sets}
+                                          </span>
+                                          <span className="text-[10px] text-slate-300">•</span>
+                                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                                            ex.workoutType === "reps" ? "bg-amber-100 text-amber-900" : "bg-blue-100 text-blue-900"
+                                          }`}>
+                                            {ex.repsOrDuration}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-red-600" : "text-slate-400"}`} />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                </div>
 
               </div>
-
             </div>
           )}
 

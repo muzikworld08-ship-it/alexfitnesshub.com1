@@ -17,109 +17,49 @@
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="ALEXFITNESSHUB | Premium Fitness Training Platform" />
-    <meta property="og:description" content="ALEXFITNESSHUB is a premium fitness platform offering personalized workout plans, AI coaching, nutrition guidance, progress tracking, and secure subscription management." />
-    <meta property="og:site_name" content="ALEXFITNESSHUB" />
+    <meta property="og:title" content="ALEX FITNESS HUB | Premium Fitness Training Platform" />
+    <meta property="og:description" content="ALEX FITNESS HUB is a premium fitness platform offering personalized workout plans, AI coaching, nutrition guidance, progress tracking, and secure subscription management." />
+    <meta property="og:site_name" content="ALEX FITNESS HUB" />
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="ALEXFITNESSHUB | Premium Fitness Training Platform" />
-    <meta name="twitter:description" content="ALEXFITNESSHUB is a premium fitness platform offering personalized workout plans, AI coaching, nutrition guidance, progress tracking, and secure subscription management." />
+    <meta name="twitter:title" content="ALEX FITNESS HUB | Premium Fitness Training Platform" />
+    <meta name="twitter:description" content="ALEX FITNESS HUB is a premium fitness platform offering personalized workout plans, AI coaching, nutrition guidance, progress tracking, and secure subscription management." />
 
+    <!-- Web App Manifest & PWA Configuration -->
     <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
-    <link rel="apple-touch-icon" href="/icon-192.jpg" />
-    <meta name="theme-color" content="#FFFFFF" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AFH" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
     <script src="https://js.paystack.co/v2/inline.js"></script>
     <script>
       // Build Hash Version Identifier
-      window.__APP_BUILD_ID__ = "2.5.0-20260728-RELEASE";
+      window.__APP_BUILD_ID__ = "2.6.0-20260902-RELEASE";
 
-      // 1. Build Version Sanity Check & Hard Refresh Trigger
-      (function() {
-        try {
-          var activeBuild = window.__APP_BUILD_ID__;
-          var storedBuild = localStorage.getItem("app_active_build_id");
-
-          if (storedBuild && storedBuild !== activeBuild) {
-            console.warn("[DevOps Sync] Stale build ID detected:", storedBuild, "-> New:", activeBuild);
-            localStorage.setItem("app_active_build_id", activeBuild);
-
-            // Flush all cache storage
-            if ("caches" in window) {
-              caches.keys().then(function(names) {
-                for (var name of names) {
-                  caches.delete(name);
-                }
-              });
-            }
-
-            // Force hard refresh immediately to load newest bundles
-            window.location.reload(true);
-            return;
-          } else {
-            localStorage.setItem("app_active_build_id", activeBuild);
-          }
-
-          // Cross-verify with Manifest version
-          fetch("/manifest.json?t=" + Date.now(), { cache: "no-store" })
-            .then(function(res) { return res.json(); })
-            .then(function(manifest) {
-              if (manifest && manifest.version && manifest.version !== activeBuild) {
-                console.warn("[DevOps Sync] Manifest version mismatch:", manifest.version, "vs Active:", activeBuild);
-                window.location.reload(true);
-              }
-            })
-            .catch(function(err) { /* silent catch */ });
-        } catch (e) {
-          console.error("[DevOps Sync] Build verification error:", e);
-        }
-      })();
-
-      // 2. Register Service Worker with active client claiming & skipWaiting
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-          navigator.serviceWorker.register('/sw.js?v=' + window.__APP_BUILD_ID__).then(function(registration) {
-            console.log('[DevOps SW] Registered with build:', window.__APP_BUILD_ID__);
-            
-            // Check for service worker updates
+      // Service Worker Registration
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/service-worker.js").then((registration) => {
+            console.log("[Service Worker] Registered successfully with scope:", registration.scope);
             registration.update();
-
-            registration.addEventListener('updatefound', function() {
-              var newWorker = registration.installing;
-              if (newWorker) {
-                newWorker.addEventListener('statechange', function() {
-                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    console.log('[DevOps SW] New ServiceWorker installed. Instructing skipWaiting...');
-                    newWorker.postMessage('SKIP_WAITING');
-                  }
-                });
-              }
-            });
-          }).catch(function(err) {
-            console.log('[DevOps SW] Registration failed:', err);
+          }).catch((err) => {
+            console.log("[Service Worker] Registration failed:", err);
           });
         });
-        
-        // Force hard refresh when new controlling service worker takes over clients
-        var isReloading = false;
-        navigator.serviceWorker.addEventListener('controllerchange', function() {
+
+        // Hard reload when new service worker takes control
+        let isReloading = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
           if (!isReloading) {
             isReloading = true;
-            console.log('[DevOps SW] Controller changed. Executing hard reload...');
-            window.location.reload(true);
-          }
-        });
-
-        // Unregister any legacy non-matching service workers
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for (var i = 0; i < registrations.length; i++) {
-            var reg = registrations[i];
-            if (reg.active && !reg.active.scriptURL.includes('/sw.js')) {
-              reg.unregister().then(function(success) {
-                if (success) console.log('[DevOps SW Cleanup] Unregistered outdated SW:', reg.scope);
-              });
-            }
+            console.log("[Service Worker] Controller changed. Refreshing view...");
+            window.location.reload();
           }
         });
       }

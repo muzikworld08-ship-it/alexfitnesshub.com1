@@ -37,16 +37,24 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
   const initialResolvedUrl = resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl;
 
   const [activeUrl, setActiveUrl] = useState<string>(initialResolvedUrl);
+  const [prevRawUrl, setPrevRawUrl] = useState<string>(rawMediaUrl);
   const [isLoaded, setIsLoaded] = useState<boolean>(() => isImageCached(initialResolvedUrl));
   const [hasError, setHasError] = useState(false);
+
+  // Synchronously update activeUrl on prop/exercise changes to prevent any stale GIF lingering
+  if (rawMediaUrl !== prevRawUrl) {
+    setPrevRawUrl(rawMediaUrl);
+    const nextUrl = resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl;
+    setActiveUrl(nextUrl);
+    setHasError(false);
+    setIsLoaded(isImageCached(nextUrl));
+  }
 
   useEffect(() => {
     const nextUrl = resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl;
     setActiveUrl(nextUrl);
     setHasError(false);
-    if (isImageCached(nextUrl)) {
-      setIsLoaded(true);
-    }
+    setIsLoaded(isImageCached(nextUrl));
   }, [rawMediaUrl, defaultFallbackUrl]);
 
   const resolvedMediaUrl = activeUrl || initialResolvedUrl;
@@ -123,6 +131,7 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
   return (
     <div className={`${className} workout-media-frameless flex items-center justify-center`}>
       <OptimizedImage
+        key={resolvedMediaUrl}
         src={resolvedMediaUrl}
         alt={exercise?.name || exerciseName || "Exercise Media"}
         className="w-full h-full object-contain workout-gif-display"

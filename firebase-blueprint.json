@@ -309,9 +309,70 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "assetId", "mediaUrl"]
+    },
+    "Product": {
+      "title": "Fitness Wear Product",
+      "description": "Apparel and fitness clothing item sold in the ALEXFITNESSHUB Store.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string", "enum": ["Men", "Women", "ALEXFITNESSHUB Collections"] },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "frontImage": { "type": "string" },
+        "backImage": { "type": "string" },
+        "images": { "type": "array" },
+        "sizes": { "type": "array" },
+        "colors": { "type": "array" },
+        "stock": { "type": "number" },
+        "sizeStock": { "type": "object" },
+        "sizeGuide": { "type": "object" },
+        "fabric": { "type": "string" },
+        "featured": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "category", "price", "frontImage", "sizes", "colors", "stock"]
+    },
+    "StoreOrder": {
+      "title": "Customer Store Order",
+      "description": "Order placed for ALEXFITNESSHUB branded fitness clothing and merchandise.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "userId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "shippingAddress": { "type": "object" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "shippingFee": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "currency": { "type": "string" },
+        "paymentStatus": { "type": "string", "enum": ["pending", "paid", "failed"] },
+        "paymentReference": { "type": "string" },
+        "orderStatus": { "type": "string", "enum": ["pending", "processing", "shipped", "delivered", "cancelled"] },
+        "trackingNumber": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "orderNumber", "customerName", "customerEmail", "customerPhone", "items", "totalAmount", "paymentStatus", "orderStatus"]
     }
   },
   "firestore": {
+    "products/{productId}": {
+      "schema": "Product",
+      "description": "Store products catalog with inventory, sizes, and images."
+    },
+    "orders/{orderId}": {
+      "schema": "StoreOrder",
+      "description": "Customer store orders, payment status, and shipping information."
+    },
     "assets_manifest/{assetId}": {
       "schema": "AssetManifest",
       "description": "Global registry mapping asset IDs to their synced custom media URLs and signatures."

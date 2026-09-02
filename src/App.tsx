@@ -35,7 +35,10 @@ import GlobalTransitionOverlay from "./components/GlobalTransitionOverlay";
 import PremiumUpgradeModal from "./components/PremiumUpgradeModal";
 import { preloadCriticalFitnessAssets } from "./utils/imageCache";
 import { WorkoutTimerProvider } from "./context/WorkoutTimerContext";
+import { StoreProvider } from "./context/StoreContext";
+import StoreView from "./components/StoreView";
 import FloatingWorkoutTimerOverlay from "./components/FloatingWorkoutTimerOverlay";
+import { OfflineIndicator } from "./components/OfflineIndicator";
 
 const pageTransitionVariants: Variants = {
   initial: {
@@ -110,6 +113,10 @@ const PATH_TO_VIEW_MAP: Record<string, string> = {
   "/lifestyle-academy": "lifestyle-academy",
   "/pricing": "pricing",
   "/premium/pricing": "pricing",
+  "/store": "store",
+  "/shop": "store",
+  "/apparel": "store",
+  "/merch": "store",
   "/onboarding": "onboarding",
   "/login": "login",
   "/signin": "signin",
@@ -691,6 +698,10 @@ function FitnessAppContent() {
                 <AuthView initialMode={currentView === "signup" || currentView === "register" ? "signup" : "signin"} />
               )}
 
+              {currentView === "store" && (
+                <StoreView setView={handleSetView} onOpenAuth={() => handleSetView("login")} />
+              )}
+
               {currentView === "admin" && (
                 <AdminDashboard />
               )}
@@ -726,6 +737,9 @@ function FitnessAppContent() {
       {/* Persistent Floating Workout Rest Timer Overlay */}
       <FloatingWorkoutTimerOverlay />
 
+      {/* Network Connectivity & PWA Offline Status Indicator */}
+      <OfflineIndicator />
+
     </div>
   );
 }
@@ -734,9 +748,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AppProvider>
-        <WorkoutTimerProvider>
-          <FitnessAppContent />
-        </WorkoutTimerProvider>
+        <StoreProvider>
+          <WorkoutTimerProvider>
+            <FitnessAppContent />
+          </WorkoutTimerProvider>
+        </StoreProvider>
       </AppProvider>
     </ErrorBoundary>
   );

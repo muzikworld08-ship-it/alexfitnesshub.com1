@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18202d"/>
+      <stop offset="50%" stop-color="#141a24"/>
+      <stop offset="100%" stop-color="#0f141d"/>
+    </linearGradient>
+
+    <!-- Orange Left Beam Gradient (Bright Vibrant Athletic Orange) -->
+    <linearGradient id="orangeLeftGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6315"/>
+      <stop offset="60%" stop-color="#FF4A00"/>
+      <stop offset="100%" stop-color="#E83D00"/>
+    </linearGradient>
+
+    <!-- Orange Right Beam Gradient (Dimensional Deeper Orange) -->
+    <linearGradient id="orangeRightGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F24700"/>
+      <stop offset="50%" stop-color="#DE3700"/>
+      <stop offset="100%" stop-color="#C22B00"/>
+    </linearGradient>
+
+    <!-- Silver Bar Gradient -->
+    <linearGradient id="silverBarGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="25%" stop-color="#E2E8F0"/>
+      <stop offset="70%" stop-color="#94A3B8"/>
+      <stop offset="100%" stop-color="#64748B"/>
+    </linearGradient>
+
+    <!-- Bar Support Legs Gradient -->
+    <linearGradient id="barLegsGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#64748B"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+
+    <!-- Drop Shadow Filters -->
+    <filter id="shadowA" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+
+    <filter id="shadowBar" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+
+    <filter id="legShadowOnBar" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#05080E" flood-opacity="0.75"/>
+    </filter>
+  </defs>
+
+  <!-- Squircle Base -->
+  <rect width="512" height="512" rx="116" ry="116" fill="url(#bgGrad)"/>
+
+  <!-- Subtle Inner Border Highlight -->
+  <rect width="508" height="508" x="2" y="2" rx="114" ry="114" fill="none" stroke="#2a3649" stroke-width="2" stroke-opacity="0.4"/>
+
+  <!-- Group with Drop Shadow for Entire Workout Logo -->
+  <g filter="url(#shadowA)">
+
+    <!-- Barbell / Bench Press Bar Underneath -->
+    <g filter="url(#shadowBar)">
+      <!-- Left Support Leg Bracket -->
+      <path d="M 200 286 L 200 316 Q 200 320 204 320 L 210 320 Q 214 320 214 316 L 214 286 Z" fill="url(#barLegsGrad)"/>
+      <rect x="198" y="316" width="18" height="4" rx="2" fill="#475569"/>
+
+      <!-- Right Support Leg Bracket -->
+      <path d="M 298 286 L 298 316 Q 298 320 302 320 L 308 320 Q 312 320 312 316 L 312 286 Z" fill="url(#barLegsGrad)"/>
+      <rect x="296" y="316" width="18" height="4" rx="2" fill="#475569"/>
+
+      <!-- Main Horizontal Bar -->
+      <rect x="156" y="278" width="200" height="18" rx="7" fill="url(#silverBarGrad)"/>
+
+      <!-- Bar Left & Right Outer Collars / Stoppers -->
+      <rect x="164" y="274" width="8" height="26" rx="3" fill="#E2E8F0"/>
+      <rect x="166" y="275" width="4" height="24" rx="2" fill="#94A3B8"/>
+
+      <rect x="340" y="274" width="8" height="26" rx="3" fill="#E2E8F0"/>
+      <rect x="342" y="275" width="4" height="24" rx="2" fill="#94A3B8"/>
+    </g>
+
+    <!-- Athletic "A" Form Passing Over The Bar -->
+    <!-- Left Leg (Passing Over Bar with Shadow) -->
+    <g filter="url(#legShadowOnBar)">
+      <!-- Left Angled Beam -->
+      <polygon points="256,98 256,162 165,392 120,392" fill="url(#orangeLeftGrad)"/>
+    </g>
+
+    <!-- Right Leg (Overlapping at apex with dimensional tone) -->
+    <g filter="url(#legShadowOnBar)">
+      <!-- Right Angled Beam -->
+      <polygon points="256,98 256,162 347,392 392,392" fill="url(#orangeRightGrad)"/>
+    </g>
+
+    <!-- Apex Precision Center Shading / Highlight Line -->
+    <polygon points="256,98 256,162 260,154 260,105" fill="#FFA366" opacity="0.3"/>
+  </g>
+</svg>

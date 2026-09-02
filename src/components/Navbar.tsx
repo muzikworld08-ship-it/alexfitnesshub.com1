@@ -3,11 +3,14 @@ import { useApp, isEmailAdmin, checkIsUserPremium } from "../context/AppContext"
 import { 
   Menu, X, Shield, Lock, Award, ChevronDown, Calendar, Flame, 
   Dumbbell, Sparkles, BookOpen, Activity, Heart, Users, Video, 
-  Bookmark, BarChart3, Calculator, Crown, Star, ArrowRight, LogOut
+  Bookmark, BarChart3, Calculator, Crown, Star, ArrowRight, LogOut,
+  ShoppingBag
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import Logo from "./Logo";
 import { OptimizedImage } from "./OptimizedImage";
+import { PWAInstallButton } from "./PWAInstallButton";
+import { useStore } from "../context/StoreContext";
 
 interface NavbarProps {
   currentView: string;
@@ -17,6 +20,7 @@ interface NavbarProps {
 
 export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps) {
   const { user, logout } = useApp();
+  const { cartCount, setIsCartOpen } = useStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -130,6 +134,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
   const topMenuItems = isPremium ? [
     { id: "home", label: "HOME", action: () => handleCustomNav("home") },
     { id: "dashboard", label: "DASHBOARD", action: () => handleCustomNav("dashboard") },
+    { id: "store", label: "STORE", action: () => handleCustomNav("store") },
     { id: "daily-plan", label: "DAILY PLAN", action: () => handleCustomNav("daily-plan") },
     { id: "home-workout-challenge", label: "180-DAY CHALLENGE", action: () => handleCustomNav("home-workout-challenge") },
     { id: "women-confidence", label: "WOMEN CONFIDENCE", action: () => handleCustomNav("women-confidence") },
@@ -142,6 +147,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     { id: "community", label: "COMMUNITY", action: () => handleCustomNav("community") }
   ] : [
     { id: "home", label: "HOME", action: () => handleCustomNav("home") },
+    { id: "store", label: "STORE", action: () => handleCustomNav("store") },
     { id: "home-workout-challenge", label: "180-DAY CHALLENGE", action: () => handleCustomNav("home-workout-challenge"), isPro: true },
     { id: "women-confidence", label: "WOMEN CONFIDENCE", action: () => handleCustomNav("women-confidence"), isPro: true },
     { id: "belly-fat-shred", label: "BELLY SHRED", action: () => handleCustomNav("belly-fat-shred"), isPro: true },
@@ -158,6 +164,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
   // Unified single drawer menu items (dynamic based on subscription)
   const drawerMenuItems = isPremium ? [
     { id: "dashboard", label: "Athlete Performance Desk", desc: "Your metrics, streaks & performance reports", icon: Shield, color: "text-sky-600 bg-sky-50" },
+    { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
     { id: "home-workout-challenge", label: "180 Day Home Workout Challenge", desc: "Zero equipment bodyweight transformation & 5KM cardio", icon: Dumbbell, color: "text-amber-600 bg-amber-50" },
     { id: "daily-plan", label: "My Daily Plan", desc: "Personalized daily schedule & drills", icon: Calendar, color: "text-red-600 bg-red-50" },
     { id: "women-confidence", label: "Women Confidence Program", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-50" },
@@ -178,6 +185,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
       { id: "admin", label: "Admin Management Console", desc: "System settings, analytics & user controls", icon: Shield, color: "text-red-700 bg-red-100" }
     ] : [])
   ] : [
+    { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
     { id: "home-workout-challenge", label: "180 Day Home Workout Challenge", desc: "Zero equipment bodyweight transformation & 5KM cardio", icon: Dumbbell, color: "text-amber-600 bg-amber-50", isProBadge: true },
     { id: "women-confidence", label: "Women Confidence Program", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-50", isProBadge: true },
     { id: "belly-fat-shred", label: "Belly Fat Shred System", desc: "5-Month core & metabolic shredding protocol", icon: Flame, color: "text-orange-600 bg-orange-50", isProBadge: true },
@@ -243,8 +251,10 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
             })}
           </nav>
 
-          {/* Right Control Bar (Auth + Prominent Hamburger Toggle) */}
+          {/* Right Control Bar (Auth + PWA Install + Prominent Hamburger Toggle) */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <PWAInstallButton variant="compact" className="hidden sm:inline-flex" />
+
             {!user ? (
               <div className="flex items-center gap-2">
                 <button
@@ -301,6 +311,24 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                 </button>
               </div>
             )}
+
+            {/* QUICK STORE / CART ACCESS BUTTON */}
+            <button
+              onClick={() => {
+                setView("store");
+                setIsCartOpen(true);
+              }}
+              className="relative p-2.5 rounded-xl border border-slate-200 hover:border-red-200 bg-slate-50 hover:bg-red-50 text-slate-700 hover:text-[#E53935] transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
+              title="Shopping Cart & Fitness Apparel Store"
+              aria-label="Open Shopping Cart"
+            >
+              <ShoppingBag className="w-5 h-5 stroke-[2.2]" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-[#E53935] text-white text-[10px] font-black flex items-center justify-center shadow-sm animate-scale-in">
+                  {cartCount}
+                </span>
+              )}
+            </button>
 
             {/* EFFECTIVE HAMBURGER MENU BUTTON TOGGLE */}
             <button
@@ -488,6 +516,20 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* In-App Mobile PWA Install Prompt */}
+              <div className="px-4 py-3 border-t border-slate-100 bg-orange-50/40">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <img src="/icons/icon-192.png" alt="AFH" className="w-8 h-8 rounded-lg shadow-2xs" />
+                    <div>
+                      <span className="text-[11px] font-black uppercase text-slate-900 block leading-tight">Install AFH App</span>
+                      <span className="text-[10px] text-slate-500 block leading-tight">Instant 1-tap home screen access</span>
+                    </div>
+                  </div>
+                  <PWAInstallButton variant="compact" />
                 </div>
               </div>
 
