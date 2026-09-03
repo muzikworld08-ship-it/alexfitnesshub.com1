@@ -4,8 +4,10 @@ import {
   Tag, Check, Truck, ArrowLeft
 } from "lucide-react";
 import { useStore } from "../../context/StoreContext";
+import { useApp } from "../../context/AppContext";
 
 export const CartDrawer: React.FC = () => {
+  const { setView } = useApp();
   const { 
     cart, 
     isCartOpen, 
@@ -121,10 +123,14 @@ export const CartDrawer: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsCartOpen(false)}
-                  className="mt-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                  onClick={() => {
+                    setIsCartOpen(false);
+                    setView("store");
+                  }}
+                  className="mt-2 px-5 py-2.5 bg-[#E53935] hover:bg-[#C62828] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-md shadow-red-500/20 flex items-center gap-1.5"
                 >
-                  Start Shopping
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>Start Shopping</span>
                 </button>
               </div>
             ) : (

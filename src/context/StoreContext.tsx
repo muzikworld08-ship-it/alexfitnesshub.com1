@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { 
   collection, 
   doc, 
@@ -29,11 +29,13 @@ interface StoreContextType {
   setSelectedProductForBuyNow: (product: Product | null) => void;
   
   // Cart Actions
-  addToCart: (product: Product, size: string, color: string, quantity?: number) => void;
+  addToCart: (product: Product, size: string, color: string, quantity?: number, openCart?: boolean) => void;
   buyNow: (product: Product, size: string, color: string, quantity?: number) => void;
   removeFromCart: (cartItemId: string) => void;
   updateQuantity: (cartItemId: string, delta: number) => void;
   clearCart: () => void;
+  lastAddedItem: { product: Product; size: string; color: string; quantity: number } | null;
+  clearLastAddedItem: () => void;
   cartSubtotal: number;
   cartCount: number;
   shippingFee: number;
@@ -96,6 +98,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [orders, setOrders] = useState<StoreOrder[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [lastCompletedOrder, setLastCompletedOrder] = useState<StoreOrder | null>(null);
+  const [lastAddedItem, setLastAddedItem] = useState<{ product: Product; size: string; color: string; quantity: number } | null>(null);
+  const toastTimerRef = useRef<any>(null);
 
   // Sync cart to localStorage
   useEffect(() => {
@@ -240,8 +244,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.removeItem(PROMO_STORAGE_KEY);
   };
 
-  // Add to Cart
-  const addToCart = useCallback((product: Product, size: string, color: string, quantity = 1) => {
+  const clearLastAddedItem = useCallback(() => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    setLastAddedItem(null);
+  }, []);
+
+  // Add to Cart - Keeps user on the store view seamlessly
+  const addToCart = useCallback((product: Product, size: string, color: string, quantity = 1, openCart = false) => {
     const colorObj = product.colors.find(c => c.name === color) || product.colors[0];
     const itemKey = `${product.id}-${size}-${color}`;
     
@@ -278,12 +290,26 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
-    setIsCartOpen(true);
+    // Provide non-intrusive feedback toast without disrupting store navigation
+    setLastAddedItem({ product, size, color, quantity });
+
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = setTimeout(() => {
+      setLastAddedItem(null);
+      toastTimerRef.current = null;
+    }, 4500);
+
+    // Only open cart drawer if explicitly commanded (defaults to false so user stays on store view)
+    if (openCart) {
+      setIsCartOpen(true);
+    }
   }, []);
 
   // Buy Now: adds to cart and opens checkout directly
   const buyNow = useCallback((product: Product, size: string, color: string, quantity = 1) => {
-    addToCart(product, size, color, quantity);
+    addToCart(product, size, color, quantity, false);
     setIsCartOpen(false);
     setIsCheckoutOpen(true);
   }, [addToCart]);
@@ -475,6 +501,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         removeFromCart,
         updateQuantity,
         clearCart,
+        lastAddedItem,
+        clearLastAddedItem,
         cartSubtotal,
         cartCount,
         shippingFee,

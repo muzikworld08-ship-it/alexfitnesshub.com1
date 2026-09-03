@@ -870,7 +870,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ setView })
         Permanently affixed to the bottom of the viewport at all times!
         =======================================================================
       */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-3.5 flex items-center justify-between gap-3">
           
           {/* Left: Product Thumbnail & Live Selected Specs */}

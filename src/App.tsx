@@ -40,6 +40,7 @@ import StoreView from "./components/StoreView";
 import { ProductDetailView } from "./components/ProductDetailView";
 import { ProductDetailModal } from "./components/store/ProductDetailModal";
 import { CartDrawer } from "./components/store/CartDrawer";
+import { CartAddedToast } from "./components/store/CartAddedToast";
 import { CheckoutModal } from "./components/store/CheckoutModal";
 import FloatingWorkoutTimerOverlay from "./components/FloatingWorkoutTimerOverlay";
 import { OfflineIndicator } from "./components/OfflineIndicator";
@@ -47,25 +48,22 @@ import { OfflineIndicator } from "./components/OfflineIndicator";
 const pageTransitionVariants: Variants = {
   initial: {
     opacity: 0,
-    y: 12,
-    filter: "blur(4px)",
+    y: 8,
   },
   animate: {
     opacity: 1,
     y: 0,
-    filter: "blur(0px)",
     transition: {
-      duration: 0.28,
-      ease: [0.22, 1, 0.36, 1],
+      duration: 0.22,
+      ease: [0.16, 1, 0.3, 1],
       when: "beforeChildren",
     },
   },
   exit: {
     opacity: 0,
-    y: -8,
-    filter: "blur(2px)",
+    y: -6,
     transition: {
-      duration: 0.18,
+      duration: 0.15,
       ease: [0.22, 1, 0.36, 1],
     },
   },
@@ -469,6 +467,7 @@ function FitnessAppContent() {
     }
 
     setView(resolvedView);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
 
@@ -736,6 +735,8 @@ function FitnessAppContent() {
       )}
 
       <CartDrawer />
+
+      <CartAddedToast />
 
       <CheckoutModal />
 

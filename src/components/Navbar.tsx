@@ -315,7 +315,6 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
             {/* QUICK STORE / CART ACCESS BUTTON */}
             <button
               onClick={() => {
-                setView("store");
                 setIsCartOpen(true);
               }}
               className="relative p-2.5 rounded-xl border border-slate-200 hover:border-red-200 bg-slate-50 hover:bg-red-50 text-slate-700 hover:text-[#E53935] transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
