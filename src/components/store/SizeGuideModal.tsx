@@ -22,7 +22,7 @@ export const SizeGuideModal: React.FC<SizeGuideModalProps> = ({
   const isWomen = category === "Women";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-fade-in" onClick={onClose}>
       <div 
         className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}

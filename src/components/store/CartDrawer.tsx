@@ -50,9 +50,9 @@ export const CartDrawer: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-fade-in">
-      {/* Backdrop */}
+      {/* Backdrop - Solid Clean Normal Backdrop, No Blur */}
       <div 
-        className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity cursor-pointer"
+        className="fixed inset-0 bg-black/60 transition-opacity cursor-pointer"
         onClick={() => setIsCartOpen(false)}
       />
 

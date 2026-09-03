@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
+import { useStore } from "../context/StoreContext";
+import { Product } from "../types";
 import { 
   Shield, CheckCircle, ArrowRight, Zap, Flame, 
   Play, Users, X, HelpCircle, Clipboard, ChevronDown, Star, Lock, MessageCircle, ChevronLeft,
   Mail, Bell, Heart, Sparkles, Activity, Crown,
-  Scale, Clock, Plus, TrendingUp, Droplet, ChevronRight, Target, Award, Dumbbell, Compass
+  Scale, Clock, Plus, TrendingUp, Droplet, ChevronRight, Target, Award, Dumbbell, Compass,
+  ShoppingBag, Eye, RotateCcw, Truck, Check
 } from "lucide-react";
 import { motion } from "motion/react";
 import { NewsletterSubscription } from "./NewsletterSubscription";
@@ -291,6 +294,17 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
     likePost, 
     commentOnPost 
   } = useApp();
+
+  const { products, setSelectedProductForDetail, setIsCartOpen, addToCart, buyNow } = useStore();
+  const [storeFlipState, setStoreFlipState] = useState<Record<string, boolean>>({});
+  const [homeStoreSizes, setHomeStoreSizes] = useState<Record<string, string>>({});
+  const [homeStoreAdded, setHomeStoreAdded] = useState<Record<string, boolean>>({});
+
+  const handleSelectProduct = (product: Product) => {
+    setSelectedProductForDetail(product);
+    setView("product-detail");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // Public Interactive Preview Widgets state
   const [activeDemoTab, setActiveDemoTab] = useState<"trajectory" | "community" | "calibration" | "habits">(() => {
@@ -867,7 +881,259 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
         </div>
       </section>
 
-      {/* 1.1 INTERACTIVE ENGINE & PREMIUM SLIDESHOW - PLACED DIRECTLY BELOW THE HERO */}
+      {/* 1.1 OFFICIAL ALEXFITNESSHUB APPAREL STORE SHOWCASE - INTEGRATED DIRECTLY ON HOMEPAGE */}
+      <section id="official-store-showcase" className="py-10 sm:py-12 bg-slate-950 text-white border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          {/* Section Header */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-red-950/80 border border-red-500/40 text-[#E53935] text-[10px] font-black uppercase tracking-wider">
+                <Flame className="w-3.5 h-3.5 fill-current" />
+                <span>Official Athletic Apparel & Store</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black uppercase tracking-tight text-white">
+                ALEXFITNESSHUB <span className="text-[#E53935]">MERCHANDISE</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 font-medium max-w-xl">
+                High-performance pump covers, seamless contour leggings & squat-proof gear engineered for intense lifting.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsCartOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 border border-slate-700 shadow-sm"
+              >
+                <ShoppingBag className="w-4 h-4 text-red-500" />
+                <span>Cart</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("store")}
+                className="px-5 py-2.5 rounded-xl bg-[#E53935] hover:bg-[#C62828] text-white font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-md"
+              >
+                <span>Shop All Store Gear</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Value Highlights */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-6 text-[11px] font-bold text-slate-300">
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+              <Truck className="w-4 h-4 text-red-500 shrink-0" />
+              <span>Free Delivery &gt; ₦25,000</span>
+            </div>
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+              <Shield className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>100% Squat-Proof Tested</span>
+            </div>
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+              <RotateCcw className="w-4 h-4 text-amber-500 shrink-0" />
+              <span>7-Day Sizing Exchanges</span>
+            </div>
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+              <Zap className="w-4 h-4 text-indigo-500 shrink-0" />
+              <span>Dispatched within 24h</span>
+            </div>
+          </div>
+
+          {/* Showcase Cards Grid (Top 4 Flagship Items) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            {products.slice(0, 4).map((product) => {
+              const isFlipped = storeFlipState[product.id];
+              const displayImage = (isFlipped && product.backImage) ? product.backImage : product.frontImage;
+              const discountPercent = product.originalPrice && product.originalPrice > product.price
+                ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+                : null;
+
+              return (
+                <div
+                  key={product.id}
+                  onClick={() => handleSelectProduct(product)}
+                  className="group bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col cursor-pointer text-slate-900 select-none"
+                >
+                  {/* Image Stage */}
+                  <div className="relative aspect-4/5 w-full bg-slate-100 overflow-hidden">
+                    {/* Badges */}
+                    <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
+                      {product.badge && (
+                        <span className="px-2 py-0.5 bg-[#E53935] text-white font-black text-[9px] uppercase tracking-wider rounded-md shadow-xs">
+                          {product.badge}
+                        </span>
+                      )}
+                      {discountPercent && (
+                        <span className="px-2 py-0.5 bg-slate-900 text-white font-black text-[9px] uppercase tracking-wider rounded-md shadow-xs">
+                          -{discountPercent}%
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Flip Button */}
+                    {product.backImage && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setStoreFlipState(prev => ({ ...prev, [product.id]: !prev[product.id] }));
+                        }}
+                        className="absolute top-3 right-3 z-10 p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 shadow-md border border-slate-200 text-[9px] font-black uppercase flex items-center gap-1 cursor-pointer"
+                        title="Flip View"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>{isFlipped ? "Front" : "Back"}</span>
+                      </button>
+                    )}
+
+                    <img
+                      src={displayImage}
+                      alt={product.name}
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+
+                    {/* Quick View Bar */}
+                    <div className="absolute inset-x-3 bottom-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <div className="w-full py-2 bg-slate-950 text-white rounded-xl text-xs font-black uppercase tracking-wider text-center shadow-md flex items-center justify-center gap-1.5 border border-white/10">
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Select & View Full Page</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-2.5">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="font-black uppercase tracking-wider text-[#E53935]">
+                          {product.category}
+                        </span>
+                        <div className="flex items-center gap-1 font-bold text-slate-700">
+                          <Star className="w-3 h-3 text-amber-400 fill-current" />
+                          <span>{product.rating || 4.9}</span>
+                          <span className="text-slate-400 font-normal">({product.reviewsCount || 128})</span>
+                        </div>
+                      </div>
+
+                      <h3 className="text-xs font-black text-slate-900 line-clamp-1 group-hover:text-red-600 transition-colors">
+                        {product.name}
+                      </h3>
+                    </div>
+
+                    {/* Quick Size Selector Chips */}
+                    {product.sizes && product.sizes.length > 0 && (
+                      <div className="pt-0.5">
+                        <div className="flex flex-wrap gap-1">
+                          {product.sizes.map((sz) => {
+                            const isSzActive = (homeStoreSizes[product.id] || product.sizes[0] || "M") === sz;
+                            return (
+                              <button
+                                key={sz}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setHomeStoreSizes(prev => ({ ...prev, [product.id]: sz }));
+                                }}
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase transition-all cursor-pointer border ${
+                                  isSzActive
+                                    ? "bg-slate-900 text-white border-slate-900"
+                                    : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                                }`}
+                              >
+                                {sz}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Temu-style price & action */}
+                    <div className="pt-2 border-t border-slate-100 space-y-2">
+                      <div className="flex items-baseline justify-between">
+                        <div className="text-sm font-black text-[#E53935] font-mono">
+                          ₦{product.price.toLocaleString()}
+                        </div>
+                        {product.originalPrice && product.originalPrice > product.price && (
+                          <span className="text-[10px] text-slate-400 line-through font-mono">
+                            ₦{product.originalPrice.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Select Button for Full Detail Page */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectProduct(product);
+                        }}
+                        className="w-full py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                      >
+                        <Eye className="w-3 h-3 text-[#E53935]" />
+                        <span>Select & View Full Details</span>
+                      </button>
+
+                      {/* Dual Action Buttons */}
+                      <div className="grid grid-cols-2 gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const chosenSize = homeStoreSizes[product.id] || product.sizes[0] || "M";
+                            const chosenColor = product.colors?.[0]?.name || "Default";
+                            addToCart(product, chosenSize, chosenColor, 1);
+                            setHomeStoreAdded(prev => ({ ...prev, [product.id]: true }));
+                            setTimeout(() => {
+                              setHomeStoreAdded(prev => ({ ...prev, [product.id]: false }));
+                            }, 1400);
+                          }}
+                          className={`py-1.5 px-1 rounded-lg text-[10px] font-black transition-all cursor-pointer flex items-center justify-center gap-1 border ${
+                            homeStoreAdded[product.id]
+                              ? "bg-emerald-600 text-white border-emerald-600"
+                              : "bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200"
+                          }`}
+                        >
+                          {homeStoreAdded[product.id] ? (
+                            <>
+                              <Check className="w-3 h-3" />
+                              <span>Added</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShoppingBag className="w-3 h-3 text-[#E53935]" />
+                              <span>Add</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const chosenSize = homeStoreSizes[product.id] || product.sizes[0] || "M";
+                            const chosenColor = product.colors?.[0]?.name || "Default";
+                            buyNow(product, chosenSize, chosenColor, 1);
+                          }}
+                          className="py-1.5 px-1 rounded-lg bg-[#E53935] hover:bg-[#C62828] text-white text-[10px] font-black transition-all cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                        >
+                          <Zap className="w-3 h-3 fill-white" />
+                          <span>Buy Now</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+        </div>
+      </section>
+
+      {/* 1.2 INTERACTIVE ENGINE & PREMIUM SLIDESHOW - PLACED DIRECTLY BELOW THE HERO */}
       <section id="hero-carousel-segment" className="py-12 sm:py-16 lg:py-20 bg-background border-b border-border relative overflow-hidden">
         {/* Decorative background visual accents */}
         <div className="absolute top-1/4 -left-32 w-80 h-80 bg-red-500/5 rounded-full filter blur-3xl pointer-events-none select-none" />

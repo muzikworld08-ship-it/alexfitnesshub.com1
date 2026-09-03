@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { 
   X, Star, ShoppingBag, Zap, Ruler, ShieldCheck, 
-  RotateCcw, Truck, Check, AlertCircle, Eye
+  RotateCcw, Truck, Check, AlertCircle, Eye, Flame,
+  Sparkles, CheckCircle2, ChevronRight, Info
 } from "lucide-react";
 import { Product } from "../../types";
 import { useStore } from "../../context/StoreContext";
@@ -65,18 +66,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   return (
     <>
+      {/* 1. SOLID CLEAN BACKDROP - ZERO BLUR */}
       <div 
-        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-xs animate-fade-in"
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 animate-fade-in overflow-y-auto"
         onClick={onClose}
       >
         <div 
-          className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col md:flex-row"
+          className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col md:flex-row max-h-[94vh]"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Close Button */}
+          {/* Close Button - Crisp Solid Button, No Blur */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-20 p-2 text-slate-500 hover:text-slate-900 bg-white/80 hover:bg-white backdrop-blur-xs rounded-full shadow-md transition-all cursor-pointer"
+            className="absolute top-4 right-4 z-30 p-2 text-slate-500 hover:text-slate-900 bg-white hover:bg-slate-100 rounded-full shadow-md border border-slate-200 transition-all cursor-pointer"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
@@ -84,22 +86,26 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
           {/* LEFT: Dynamic Product Images & Front/Back Switcher */}
           <div className="w-full md:w-1/2 bg-slate-100 p-6 flex flex-col justify-between relative select-none">
-            {/* Badge */}
+            {/* Badges Strip */}
             <div className="flex items-center gap-2 mb-3">
               {product.badge && (
-                <span className="px-3 py-1 bg-red-600 text-white font-black text-[10px] uppercase tracking-wider rounded-full shadow-xs">
+                <span className="px-3 py-1 bg-[#E53935] text-white font-black text-[10px] uppercase tracking-wider rounded-md shadow-xs flex items-center gap-1">
+                  <Flame className="w-3 h-3 fill-white" />
                   {product.badge}
                 </span>
               )}
               {discountPercent && (
-                <span className="px-2.5 py-1 bg-emerald-600 text-white font-black text-[10px] uppercase tracking-wider rounded-full shadow-xs">
+                <span className="px-2.5 py-1 bg-amber-500 text-slate-950 font-black text-[10px] uppercase tracking-wider rounded-md shadow-xs">
                   SAVE {discountPercent}%
                 </span>
               )}
+              <span className="px-2 py-1 bg-white text-slate-700 font-bold text-[10px] uppercase tracking-wider rounded-md border border-slate-200 shadow-xs">
+                Official AFH
+              </span>
             </div>
 
             {/* Main Stage Image */}
-            <div className="relative aspect-4/5 w-full rounded-2xl overflow-hidden shadow-inner bg-slate-200">
+            <div className="relative aspect-4/5 w-full rounded-2xl overflow-hidden shadow-sm bg-slate-200 border border-slate-200">
               <img
                 src={currentImage}
                 alt={`${product.name} - ${activeView} view`}
@@ -107,14 +113,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 loading="eager"
               />
 
-              {/* Quick Front / Back Flip Pill */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 bg-slate-900/80 backdrop-blur-md rounded-full shadow-lg border border-white/20">
+              {/* Quick Front / Back Flip Pill - Solid Crisp Pill, No Blur */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 bg-slate-900 rounded-full shadow-lg border border-white/20">
                 <button
                   type="button"
                   onClick={() => setActiveView("front")}
                   className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                     activeView === "front" 
-                      ? "bg-red-600 text-white shadow-xs" 
+                      ? "bg-[#E53935] text-white shadow-xs" 
                       : "text-slate-300 hover:text-white"
                   }`}
                 >
@@ -126,7 +132,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   onClick={() => setActiveView("back")}
                   className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                     activeView === "back" 
-                      ? "bg-red-600 text-white shadow-xs" 
+                      ? "bg-[#E53935] text-white shadow-xs" 
                       : "text-slate-300 hover:text-white"
                   }`}
                 >
@@ -146,7 +152,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 }`}
               >
                 <img src={product.frontImage} alt="Front" className="w-full h-full object-cover" />
-                <span className="absolute bottom-0 inset-x-0 bg-slate-900/75 text-[9px] text-white font-bold text-center py-0.5">FRONT</span>
+                <span className="absolute bottom-0 inset-x-0 bg-slate-900 text-[9px] text-white font-bold text-center py-0.5">FRONT</span>
               </button>
 
               {product.backImage && (
@@ -158,30 +164,41 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   }`}
                 >
                   <img src={product.backImage} alt="Back" className="w-full h-full object-cover" />
-                  <span className="absolute bottom-0 inset-x-0 bg-slate-900/75 text-[9px] text-white font-bold text-center py-0.5">BACK</span>
+                  <span className="absolute bottom-0 inset-x-0 bg-slate-900 text-[9px] text-white font-bold text-center py-0.5">BACK</span>
                 </button>
               )}
             </div>
           </div>
 
-          {/* RIGHT: Product Specifications & Purchase Actions */}
-          <div className="w-full md:w-1/2 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto max-h-[92vh]">
-            <div className="space-y-6">
+          {/* RIGHT: TEMU-STYLE PRODUCT SPECIFICATIONS & PURCHASE ACTIONS */}
+          <div className="w-full md:w-1/2 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto max-h-[94vh]">
+            <div className="space-y-5">
               
-              {/* Category & Rating */}
-              <div className="space-y-2">
+              {/* Temu Lightning Deal / Social Proof Strip */}
+              <div className="flex items-center justify-between bg-gradient-to-r from-red-600 via-red-500 to-orange-500 text-white px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-sm">
+                <div className="flex items-center gap-1.5">
+                  <Flame className="w-3.5 h-3.5 fill-white text-white" />
+                  <span>Flash Deal</span>
+                </div>
+                <div className="flex items-center gap-1 font-mono text-[11px] font-bold">
+                  <span>⚡ 94% Claimed</span>
+                </div>
+              </div>
+
+              {/* Title & Category */}
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-red-600 bg-red-50 px-2.5 py-1 rounded-md">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-red-600 bg-red-50 px-2 py-0.5 rounded-md">
                     {product.category}
                   </span>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                  <div className="flex items-center gap-1 text-xs font-bold text-slate-700">
                     <div className="flex text-amber-400">
                       {[...Array(5)].map((_, i) => (
                         <Star key={i} className="w-3.5 h-3.5 fill-current" />
                       ))}
                     </div>
                     <span>{product.rating || 4.9}</span>
-                    <span className="text-slate-400 font-normal">({product.reviewsCount || 85} reviews)</span>
+                    <span className="text-slate-400 font-normal">({product.reviewsCount || 128} reviews)</span>
                   </div>
                 </div>
 
@@ -189,33 +206,57 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   {product.name}
                 </h2>
 
-                {/* Price Display */}
+                {/* Big Temu-Style Price Display */}
                 <div className="flex items-baseline gap-3 pt-1">
-                  <span className="text-2xl sm:text-3xl font-black text-slate-900 font-mono">
+                  <span className="text-2xl sm:text-3xl font-black text-[#E53935] font-mono tracking-tight">
                     ₦{product.price.toLocaleString()}
                   </span>
                   {product.originalPrice && product.originalPrice > product.price && (
-                    <span className="text-base text-slate-400 line-through font-mono">
+                    <span className="text-sm sm:text-base text-slate-400 line-through font-mono">
                       ₦{product.originalPrice.toLocaleString()}
                     </span>
                   )}
+                  {discountPercent && (
+                    <span className="px-2 py-0.5 bg-red-100 text-red-700 font-black text-xs uppercase rounded-md">
+                      -{discountPercent}%
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-slate-500 font-bold">
+                  🔥 1,240+ sold in Activewear &bull; <span className="text-emerald-600">Verified Authentic</span>
+                </p>
+              </div>
+
+              {/* Temu Trust & Delivery Highlights */}
+              <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-200/80 text-[11px]">
+                <div className="flex items-center gap-2 text-slate-700">
+                  <Truck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span><strong>Free Shipping</strong> &gt; ₦25k</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-700">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span><strong>Purchase Guarantee</strong></span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-700">
+                  <RotateCcw className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span><strong>7-Day Free Swaps</strong></span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-700">
+                  <Zap className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span><strong>24h Fast Dispatch</strong></span>
                 </div>
               </div>
 
-              {/* Description */}
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                {product.description}
-              </p>
-
               {/* Color Swatch Selection */}
               {product.colors && product.colors.length > 0 && (
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-slate-900 uppercase tracking-wider">Colour:</span>
-                    <span className="font-semibold text-slate-600">{selectedColor}</span>
+                    <span className="font-semibold text-slate-700">{selectedColor}</span>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
                     {product.colors.map((c) => {
                       const isSelected = selectedColor === c.name;
                       return (
@@ -242,7 +283,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               )}
 
               {/* Size Selector + Size Guide Link */}
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-900 uppercase tracking-wider">Select Size:</span>
                   <button
@@ -267,11 +308,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                         type="button"
                         disabled={isSizeSoldOut}
                         onClick={() => setSelectedSize(sz)}
-                        className={`py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex flex-col items-center justify-center border ${
+                        className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex flex-col items-center justify-center border ${
                           isSizeSoldOut
                             ? "bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed line-through"
                             : isSelected
-                              ? "bg-red-600 text-white border-red-600 shadow-sm"
+                              ? "bg-[#E53935] text-white border-[#E53935] shadow-xs"
                               : "bg-white text-slate-800 border-slate-200 hover:border-slate-400"
                         }`}
                       >
@@ -282,7 +323,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
 
                 {/* Stock Indicator Status */}
-                <div className="pt-1 flex items-center gap-2 text-xs">
+                <div className="pt-0.5 flex items-center gap-2 text-xs">
                   {isOutOfStock ? (
                     <span className="text-red-600 font-bold flex items-center gap-1">
                       <AlertCircle className="w-3.5 h-3.5" />
@@ -310,59 +351,95 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     type="button"
                     onClick={() => setQuantity(q => Math.max(1, q - 1))}
                     disabled={quantity <= 1}
-                    className="px-3 py-1.5 text-slate-600 hover:text-slate-900 font-black disabled:opacity-40 cursor-pointer"
+                    className="px-3 py-1 text-slate-600 hover:text-slate-900 font-black disabled:opacity-40 cursor-pointer"
                   >
                     -
                   </button>
-                  <span className="px-4 py-1.5 text-xs font-black text-slate-900 font-mono">
+                  <span className="px-4 py-1 text-xs font-black text-slate-900 font-mono">
                     {quantity}
                   </span>
                   <button
                     type="button"
                     onClick={() => setQuantity(q => Math.min(sizeStockCount, q + 1))}
                     disabled={quantity >= sizeStockCount}
-                    className="px-3 py-1.5 text-slate-600 hover:text-slate-900 font-black disabled:opacity-40 cursor-pointer"
+                    className="px-3 py-1 text-slate-600 hover:text-slate-900 font-black disabled:opacity-40 cursor-pointer"
                   >
                     +
                   </button>
                 </div>
               </div>
 
-              {/* Performance / Fabric Details Accordion */}
-              {product.features && (
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
-                  <div className="text-[11px] font-black uppercase tracking-wider text-slate-700">
-                    Fabric & Kinetic Specs
+              {/* TEMU-STYLE ITEM DETAILS & SPECIFICATIONS TABLE */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-red-600" />
+                    Item Details & Specifications
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">Temu-Standard Specs</span>
+                </div>
+
+                {/* Structured Specifications Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                  <div className="flex flex-col">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold">Material</span>
+                    <span className="font-semibold text-slate-800">
+                      {product.fabric || "Breathable Poly-Mesh / 4-Way Spandex"}
+                    </span>
                   </div>
-                  {product.fabric && (
-                    <p className="text-xs text-slate-600 font-medium">{product.fabric}</p>
-                  )}
+
+                  <div className="flex flex-col">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold">Fit Type</span>
+                    <span className="font-semibold text-slate-800">
+                      {product.sizeGuide?.fitType || "Athletic Tapered / Kinetic Ergonomic"}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold">Elasticity</span>
+                    <span className="font-semibold text-slate-800">
+                      4-Way Kinetic High Stretch
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold">Care Instructions</span>
+                    <span className="font-semibold text-slate-800">
+                      Machine Wash Cold &bull; Hang Dry
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col sm:col-span-2">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold">Special Performance Features</span>
+                    <span className="font-semibold text-slate-800">
+                      Squat-Proof &bull; Anti-Chafe Flatlock Seams &bull; Moisture Wicking
+                    </span>
+                  </div>
+                </div>
+
+                {/* Detailed Description */}
+                <div className="pt-2 border-t border-slate-200/80">
+                  <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                    {product.description}
+                  </p>
+                </div>
+
+                {/* Bulleted Highlights */}
+                {product.features && product.features.length > 0 && (
                   <ul className="grid grid-cols-1 gap-1.5 pt-1">
                     {product.features.map((feat, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-xs text-slate-600">
-                        <Check className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
+                      <li key={idx} className="flex items-start gap-2 text-xs text-slate-700 font-medium">
+                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                         <span>{feat}</span>
                       </li>
                     ))}
                   </ul>
-                </div>
-              )}
-
-              {/* Guarantees */}
-              <div className="grid grid-cols-2 gap-3 text-[11px] text-slate-500 pt-1">
-                <div className="flex items-center gap-2">
-                  <Truck className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>Nationwide Express Delivery</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>100% Squat-Proof & Verified</span>
-                </div>
+                )}
               </div>
 
             </div>
 
-            {/* Bottom Actions: Add to Cart + Buy Now */}
+            {/* Bottom Actions: Add to Cart + Buy Now (Dual action bar) */}
             <div className="pt-6 border-t border-slate-100 mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"

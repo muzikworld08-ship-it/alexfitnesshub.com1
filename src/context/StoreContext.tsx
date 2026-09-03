@@ -156,6 +156,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Load orders from Firestore
   useEffect(() => {
+    if (!user) {
+      setOrders([]);
+      setIsLoadingOrders(false);
+      return;
+    }
+
     setIsLoadingOrders(true);
     let unsubscribe: () => void = () => {};
 

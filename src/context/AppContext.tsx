@@ -7,7 +7,6 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   OAuthProvider,
-  signInWithPopup,
   signInWithRedirect,
   getRedirectResult
 } from "firebase/auth";
@@ -117,6 +116,16 @@ export const DEFAULT_PROGRAM_PROGRESS: Record<string, ProgramProgressItem> = {
   }
 };
 
+// Structured info describing why a sign-in / login attempt failed, surfaced to the UI
+// so users (and support) can see a specific, human-readable reason instead of a silent
+// fallback to another screen.
+export interface AuthErrorInfo {
+  code: string;
+  message: string;
+  provider?: "google" | "apple" | "email";
+  timestamp: string;
+}
+
 interface AppContextType {
   user: UserProfile | null;
   loading: boolean;
@@ -131,6 +140,8 @@ interface AppContextType {
   isBlockedUser: boolean;
   authDatabaseError: string | null;
   setAuthDatabaseError: (err: string | null) => void;
+  authError: AuthErrorInfo | null;
+  clearAuthError: () => void;
   
   // Custom interactive models
   communityPosts: CommunityPost[];
@@ -464,15 +475,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const user = userState;
-  const [loading, setLoading] = useState(() => {
-    try {
-      const activeUid = localStorage.getItem("fit_active_uid");
-      if (activeUid && localStorage.getItem(`fit_user_${activeUid}`)) {
-        return false;
-      }
-    } catch (e) {}
-    return true;
-  });
+  const [loading, setLoading] = useState(false);
   const [theme, setThemeState] = useState<"light" | "dark">("light");
   const setTheme = (t: "light" | "dark") => {
     // Completely locked to light theme
@@ -508,6 +511,50 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [customPrograms, setCustomPrograms] = useState<CustomProgram[]>([]);
   const [isBlockedUser, setIsBlockedUser] = useState(false);
   const [authDatabaseError, setAuthDatabaseError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<AuthErrorInfo | null>(null);
+  const clearAuthError = () => setAuthError(null);
+
+  // Builds a structured, user-facing explanation for any Firebase Auth (or generic) error.
+  const describeAuthError = (err: any, provider: "google" | "apple" | "email"): AuthErrorInfo => {
+    const code = err?.code || "unknown";
+    let message = "An authentication error occurred. Please try again.";
+    switch (code) {
+      case "auth/unauthorized-domain":
+        message = "This website's domain isn't authorized for Google/Apple sign-in yet. Please use Email/Password, or contact support.";
+        break;
+      case "auth/operation-not-allowed":
+        message = `${provider === "google" ? "Google" : provider === "apple" ? "Apple" : "This"} sign-in isn't enabled for this app yet. Please contact support.`;
+        break;
+      case "auth/account-exists-with-different-credential":
+        message = "An account already exists with this email using a different sign-in method. Try signing in with Email/Password instead.";
+        break;
+      case "auth/popup-blocked":
+      case "auth/popup-closed-by-user":
+      case "auth/cancelled-popup-request":
+        message = "The sign-in window was closed or blocked before it could finish. Please try again.";
+        break;
+      case "auth/web-storage-unsupported":
+      case "auth/operation-not-supported-in-this-environment":
+        message = "Your browser is blocking the storage this sign-in method needs (common in Safari with 'Prevent Cross-Site Tracking' or Private Browsing). Please disable that setting for this site, or use Email/Password.";
+        break;
+      case "auth/network-request-failed":
+        message = "Network connection failed while signing in. Please check your internet connection and try again.";
+        break;
+      case "auth/user-disabled":
+        message = "This account has been disabled. Please contact support.";
+        break;
+      case "auth/invalid-credential":
+        message = "Your sign-in session expired or was invalid. Please try again.";
+        break;
+      case "auth/too-many-requests":
+        message = "Too many attempts. Please wait a few minutes before trying again.";
+        break;
+      default:
+        message = err?.message || message;
+    }
+    console.warn(`[Auth Failure][${provider}] code=${code}`, err);
+    return { code, message, provider, timestamp: new Date().toISOString() };
+  };
 
   const [workoutFilters, setWorkoutFiltersState] = useState<WorkoutLibraryFilters>(() => {
     const defaults = {
@@ -1081,6 +1128,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     const errorObj = new Error(message);
     (errorObj as any).code = err?.code;
+    setAuthError({ code: err?.code || "unknown", message, provider: "email", timestamp: new Date().toISOString() });
     return errorObj;
   };
 
@@ -1425,37 +1473,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Sync state data on Auth State Transitions
   useEffect(() => {
-    // Check if we have a cached user profile to prevent any visual blocking / flashing
-    const activeUid = localStorage.getItem("fit_active_uid");
-    if (!activeUid || !localStorage.getItem(`fit_user_${activeUid}`)) {
-      setLoading(true);
-    }
-    
-    // Safety timeout to prevent hanging on initial load if Firebase Auth is slow or blocked
-    const safetyTimer = setTimeout(() => {
-      setLoading(false);
-    }, 1500);
-
     // Clean up any legacy saved passwords if present
     localStorage.removeItem("fit_saved_password");
 
-    // Check if user has returned from a Google OAuth Redirect
+    // Check if user has returned from a Google/Apple OAuth redirect (this is now the
+    // ONLY code path that completes an OAuth sign-in — see loginWithGoogle/loginWithApple).
+    const pendingProvider = localStorage.getItem("fit_pending_oauth_provider") as "google" | "apple" | null;
     getRedirectResult(auth)
       .then(async (result) => {
+        localStorage.removeItem("fit_pending_oauth_provider");
         if (result?.user) {
           console.log("[Redirect Auth Sync] Successfully retrieved redirect login results:", result.user);
+          setAuthError(null);
           await processAuthSuccess(result.user, undefined, true);
+        } else if (pendingProvider) {
+          // We left for the OAuth provider but came back with no user and no thrown
+          // error — Safari/iOS sometimes drops the session silently instead of
+          // raising an error.
+          setAuthError(describeAuthError({ code: "auth/web-storage-unsupported" }, pendingProvider));
         }
       })
       .catch((err) => {
-        console.warn("[Redirect Auth Sync] Redirect sign-in notice:", err?.message || err);
+        localStorage.removeItem("fit_pending_oauth_provider");
+        setAuthError(describeAuthError(err, pendingProvider || "email"));
       });
     
     // Primary Firebase Session Management
     let userDocUnsubscribe: (() => void) | null = null;
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      clearTimeout(safetyTimer);
       if (userDocUnsubscribe) {
         userDocUnsubscribe();
         userDocUnsubscribe = null;
@@ -1791,7 +1837,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadPopupTestimonials();
 
     return () => {
-      clearTimeout(safetyTimer);
       unsubscribe();
       if (userDocUnsubscribe) userDocUnsubscribe();
     };
@@ -2494,7 +2539,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // --- AUTH SERVICES ---
   
   const loginWithGoogle = async () => {
-    setLoading(true);
+    setAuthError(null);
     const provider = new GoogleAuthProvider();
     if (firebaseConfig.oAuthClientId) {
       provider.setCustomParameters({
@@ -2503,36 +2548,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     }
     try {
-      const cred = await signInWithPopup(auth, provider);
-      await processAuthSuccess(cred.user, undefined, true);
+      localStorage.setItem("fit_pending_oauth_provider", "google");
+      await signInWithRedirect(auth, provider);
+      // Execution stops here: the browser navigates away. Anything after this
+      // line only runs if the redirect call itself failed synchronously.
     } catch (err: any) {
-      console.warn("Google authentication error:", err?.code || err?.message || err);
-      if (err?.code === "auth/popup-blocked") {
-        throw new Error("Google popup was blocked by your browser. Please allow popups or use Email login.");
-      }
-      if (err?.code === "auth/unauthorized-domain") {
-        throw new Error("This domain is not authorized in Firebase OAuth settings. Please use Email/Password sign in.");
-      }
-      throw handleAuthError(err);
-    } finally {
-      setLoading(false);
+      localStorage.removeItem("fit_pending_oauth_provider");
+      const info = describeAuthError(err, "google");
+      setAuthError(info);
+      throw new Error(info.message);
     }
   };
 
   const loginWithApple = async () => {
-    setLoading(true);
+    setAuthError(null);
     try {
       const provider = new OAuthProvider('apple.com');
-      const cred = await signInWithPopup(auth, provider);
-      await processAuthSuccess(cred.user, undefined, true);
+      localStorage.setItem("fit_pending_oauth_provider", "apple");
+      await signInWithRedirect(auth, provider);
     } catch (err: any) {
-      console.warn("Apple authentication error:", err?.code || err?.message || err);
-      if (err?.code === "auth/popup-blocked") {
-        throw new Error("Apple popup was blocked by your browser. Please allow popups or use Email login.");
-      }
-      throw handleAuthError(err);
-    } finally {
-      setLoading(false);
+      localStorage.removeItem("fit_pending_oauth_provider");
+      const info = describeAuthError(err, "apple");
+      setAuthError(info);
+      throw new Error(info.message);
     }
   };
 
@@ -4232,6 +4270,8 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       isBlockedUser,
       authDatabaseError,
       setAuthDatabaseError,
+      authError,
+      clearAuthError,
       
       communityPosts,
       testimonials,

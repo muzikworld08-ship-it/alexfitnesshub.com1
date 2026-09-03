@@ -20,7 +20,9 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
     loginWithApple, 
     sendPasswordReset, 
     setView,
-    currentView 
+    currentView,
+    authError,
+    clearAuthError
   } = useApp();
 
   const [isSignUp, setIsSignUp] = useState<boolean>(
@@ -55,6 +57,21 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
       setIsForgot(false);
     }
   }, [currentView]);
+
+  // Surface why a Google/Apple sign-in failed. This is the page the browser lands
+  // back on after an OAuth redirect, so this is the primary place a redirect-flow
+  // failure becomes visible to the user instead of silently reverting to sign-up.
+  useEffect(() => {
+    if (authError) {
+      setError(authError.message);
+      setErrorCode(authError.code);
+      if (authError.provider === "google" || authError.provider === "apple") {
+        setIsSignUp(false);
+        setIsForgot(false);
+      }
+      clearAuthError();
+    }
+  }, [authError, clearAuthError]);
 
   // If user is already authenticated, redirect to dashboard or attempted destination
   useEffect(() => {
@@ -243,6 +260,7 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
   const handleOAuth = async (provider: "google" | "apple") => {
     setError("");
     setErrorCode(null);
+    clearAuthError();
     setSubmitting(true);
     try {
       if (provider === "google") {
@@ -250,10 +268,8 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
       } else {
         await loginWithApple();
       }
-      handleSuccessfulAuth();
     } catch (err: any) {
-      setError(err?.message || `${provider === "google" ? "Google" : "Apple"} sign in was cancelled or encountered an error.`);
-    } finally {
+      setError(err?.message || `${provider === "google" ? "Google" : "Apple"} sign-in failed to start.`);
       setSubmitting(false);
     }
   };

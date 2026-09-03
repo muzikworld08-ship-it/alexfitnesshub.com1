@@ -35,8 +35,12 @@ import GlobalTransitionOverlay from "./components/GlobalTransitionOverlay";
 import PremiumUpgradeModal from "./components/PremiumUpgradeModal";
 import { preloadCriticalFitnessAssets } from "./utils/imageCache";
 import { WorkoutTimerProvider } from "./context/WorkoutTimerContext";
-import { StoreProvider } from "./context/StoreContext";
+import { StoreProvider, useStore } from "./context/StoreContext";
 import StoreView from "./components/StoreView";
+import { ProductDetailView } from "./components/ProductDetailView";
+import { ProductDetailModal } from "./components/store/ProductDetailModal";
+import { CartDrawer } from "./components/store/CartDrawer";
+import { CheckoutModal } from "./components/store/CheckoutModal";
 import FloatingWorkoutTimerOverlay from "./components/FloatingWorkoutTimerOverlay";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 
@@ -117,6 +121,9 @@ const PATH_TO_VIEW_MAP: Record<string, string> = {
   "/shop": "store",
   "/apparel": "store",
   "/merch": "store",
+  "/product": "product-detail",
+  "/product-detail": "product-detail",
+  "/item": "product-detail",
   "/onboarding": "onboarding",
   "/login": "login",
   "/signin": "signin",
@@ -141,6 +148,8 @@ function FitnessAppContent() {
     currentView,
     setView
   } = useApp();
+
+  const { selectedProductForDetail, setSelectedProductForDetail } = useStore();
 
   const renderSkeletonForView = (view: string) => {
     if (["dashboard", "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", "handbook", "weight-trajectory"].includes(view)) {
@@ -462,14 +471,7 @@ function FitnessAppContent() {
     setView(resolvedView);
   };
 
-  if (loading) {
-    return (
-      <>
-        <GlobalTransitionOverlay isVisible={true} />
-        <GlobalSkeletonLoader />
-      </>
-    );
-  }
+
 
   if (isBlockedUser) {
     return (
@@ -702,6 +704,10 @@ function FitnessAppContent() {
                 <StoreView setView={handleSetView} onOpenAuth={() => handleSetView("login")} />
               )}
 
+              {currentView === "product-detail" && (
+                <ProductDetailView setView={handleSetView} />
+              )}
+
               {currentView === "admin" && (
                 <AdminDashboard />
               )}
@@ -720,6 +726,18 @@ function FitnessAppContent() {
 
       {/* Customer Reviews & Testimonial Popup */}
       <TestimonialPopup />
+
+      {/* Official Merchandise & Store Modals (Fallback modal when not on dedicated product-detail page) */}
+      {currentView !== "product-detail" && (
+        <ProductDetailModal
+          product={selectedProductForDetail}
+          onClose={() => setSelectedProductForDetail(null)}
+        />
+      )}
+
+      <CartDrawer />
+
+      <CheckoutModal />
 
       {/* Daily Reminders & System Compliance Alerts Desk */}
       <DailyNotificationController />

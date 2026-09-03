@@ -37,31 +37,33 @@
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <script src="https://js.paystack.co/v2/inline.js"></script>
+    <script async src="https://js.paystack.co/v2/inline.js"></script>
     <script>
       // Build Hash Version Identifier
-      window.__APP_BUILD_ID__ = "2.6.0-20260902-RELEASE";
+      window.__APP_BUILD_ID__ = "2.6.0-20260903-RELEASE";
 
-      // Service Worker Registration
+      // Service Worker Handling: avoid cache conflicts in dev/preview environments
       if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker.register("/service-worker.js").then((registration) => {
-            console.log("[Service Worker] Registered successfully with scope:", registration.scope);
-            registration.update();
-          }).catch((err) => {
-            console.log("[Service Worker] Registration failed:", err);
+        const isDevHost = window.location.hostname === "localhost" || 
+                          window.location.hostname.includes("ais-dev") ||
+                          window.location.hostname.includes("run.app");
+        
+        if (isDevHost) {
+          // In development/preview container, unregister any stale workers to prevent blank-screen cache locking
+          navigator.serviceWorker.getRegistrations().then((registrations) => {
+            for (const reg of registrations) {
+              reg.unregister();
+            }
           });
-        });
-
-        // Hard reload when new service worker takes control
-        let isReloading = false;
-        navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (!isReloading) {
-            isReloading = true;
-            console.log("[Service Worker] Controller changed. Refreshing view...");
-            window.location.reload();
-          }
-        });
+        } else {
+          window.addEventListener("load", () => {
+            navigator.serviceWorker.register("/service-worker.js").then((registration) => {
+              console.log("[Service Worker] Registered with scope:", registration.scope);
+            }).catch((err) => {
+              console.warn("[Service Worker] Registration failed:", err);
+            });
+          });
+        }
       }
 
       // Force pure white light theme across all devices

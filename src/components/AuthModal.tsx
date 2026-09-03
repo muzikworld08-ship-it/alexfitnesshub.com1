@@ -12,7 +12,7 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const { loginEmail, signUpEmail, loginWithGoogle, loginWithApple, sendPasswordReset, setView } = useApp();
+  const { loginEmail, signUpEmail, loginWithGoogle, loginWithApple, sendPasswordReset, setView, authError, clearAuthError } = useApp();
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgot, setIsForgot] = useState(false);
   const [email, setEmail] = useState("");
@@ -148,6 +148,16 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   }, [isOpen]);
 
+  // Surface any OAuth failure that happened during a redirect (e.g. Google/Apple
+  // sign-in blocked by Safari) once the modal is open, instead of failing silently.
+  React.useEffect(() => {
+    if (isOpen && authError) {
+      setError(authError.message);
+      setErrorCode(authError.code);
+      clearAuthError();
+    }
+  }, [isOpen, authError, clearAuthError]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -215,18 +225,17 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const handleOAuth = async (provider: "google" | "apple") => {
     setError("");
     setErrorCode(null);
+    clearAuthError();
     setSubmitting(true);
     try {
       if (provider === "google") {
         await loginWithGoogle();
-        handleSuccessfulAuth();
       } else {
         await loginWithApple();
-        handleSuccessfulAuth();
       }
     } catch (err: any) {
-      setError(err?.message || `${provider === "google" ? "Google" : "Apple"} Authentication failed.`);
-    } finally {
+      // Only reached if the redirect itself couldn't start (e.g. misconfiguration).
+      setError(err?.message || `${provider === "google" ? "Google" : "Apple"} sign-in failed to start.`);
       setSubmitting(false);
     }
   };
