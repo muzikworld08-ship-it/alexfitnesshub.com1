@@ -45,11 +45,8 @@ export const StoreView: React.FC<StoreViewProps> = ({ setView }) => {
   };
 
   const handleSelectProduct = (product: Product) => {
+    // Keep user on the store view and open product details modal seamlessly without page reload
     setSelectedProductForDetail(product);
-    if (setView) {
-      setView("product-detail");
-    }
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Filter & Sort products
@@ -290,7 +287,7 @@ export const StoreView: React.FC<StoreViewProps> = ({ setView }) => {
                     <div className="absolute inset-x-3 bottom-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       <div className="w-full py-2.5 bg-slate-950 text-white rounded-xl text-xs font-black uppercase tracking-wider text-center shadow-lg flex items-center justify-center gap-1.5 border border-white/10">
                         <Eye className="w-3.5 h-3.5" />
-                        <span>Select & View Full Page</span>
+                        <span>Quick View Details</span>
                       </div>
                     </div>
                   </div>
@@ -408,7 +405,7 @@ export const StoreView: React.FC<StoreViewProps> = ({ setView }) => {
                         className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
                       >
                         <Eye className="w-3.5 h-3.5 text-[#E53935]" />
-                        <span>Select & View Full Page</span>
+                        <span>Quick View Details</span>
                       </button>
 
                       {/* Dual Action Buttons: Add to Cart & Buy Now */}

@@ -275,12 +275,12 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div id="admin_dashboard_root" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 bg-slate-50 min-h-screen text-slate-900">
+    <div id="admin_dashboard_root" className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50 min-h-screen text-slate-900 overflow-x-hidden">
       
       {/* Admin Title Panel - Athlete Performance Desk Header Style */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 text-slate-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+      <div className="p-5 sm:p-8 rounded-3xl bg-white border border-slate-200 text-slate-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
         <div>
-          <div className="flex items-center gap-2 mb-1.5">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 text-[10px] font-mono font-black uppercase px-2.5 py-1 rounded-full border border-red-200">
               <ShieldCheck className="w-3.5 h-3.5 text-red-600" />
               Executive Admin Control
@@ -289,7 +289,7 @@ export default function AdminDashboard() {
               Live Gateway Active
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight font-sans text-slate-900">
+          <h1 className="text-xl sm:text-3xl font-black tracking-tight font-sans text-slate-900">
             AlexFitnessHub Administrative Operations
           </h1>
           <p className="text-xs text-slate-500 max-w-2xl mt-1 leading-relaxed font-medium">
@@ -297,14 +297,14 @@ export default function AdminDashboard() {
           </p>
         </div>
         
-        <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-100 text-slate-800 border border-slate-200 rounded-2xl text-xs font-mono font-bold shrink-0">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-slate-900">{user?.email || "alexfitnesshub@gmail.com"}</span>
+        <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-100 text-slate-800 border border-slate-200 rounded-2xl text-xs font-mono font-bold shrink-0 max-w-full truncate">
+          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <span className="text-slate-900 truncate">{user?.email || "alexfitnesshub@gmail.com"}</span>
         </div>
       </div>
 
       {/* CORE STATS GRID - 5 Column Layout */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5 w-full">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-5 w-full">
         
         <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
@@ -363,79 +363,89 @@ export default function AdminDashboard() {
 
       </div>
 
-      {/* TAB NAVIGATION SELECTOR - Athlete Performance Desk Pill Strip */}
-      <div className="flex bg-slate-200/80 p-1.5 rounded-2xl overflow-x-auto gap-1 border border-slate-200 scrollbar-none">
-        <button
-          onClick={() => setActiveAdminTab("workouts")}
-          className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-            activeAdminTab === "workouts"
-              ? "bg-white text-slate-900 shadow-xs"
-              : "text-slate-600 hover:text-slate-900"
-          }`}
+      {/* TAB NAVIGATION SELECTOR - Responsive Touch-Friendly Horizontal Pill Strip */}
+      <div className="w-full min-w-0 bg-slate-200/90 p-1.5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div 
+          className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 pb-1 -mb-1 touch-pan-x" 
+          style={{ WebkitOverflowScrolling: "touch" }}
         >
-          <Dumbbell className="w-4 h-4 text-red-600" />
-          Workouts & Reps Manager ({exercises.length})
-        </button>
+          <button
+            onClick={() => setActiveAdminTab("workouts")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "workouts"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Dumbbell className="w-4 h-4 text-red-600 shrink-0" />
+            <span>Workouts & Reps ({exercises.length})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveAdminTab("challenges")}
-          className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-            activeAdminTab === "challenges"
-              ? "bg-white text-slate-900 shadow-xs"
-              : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <Trophy className="w-4 h-4 text-amber-500" />
-          Challenges Engine ({allChallenges?.length || 7})
-        </button>
+          <button
+            onClick={() => setActiveAdminTab("challenges")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "challenges"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
+            <span>Challenges ({allChallenges?.length || 7})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveAdminTab("media")}
-          className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-            activeAdminTab === "media"
-              ? "bg-white text-slate-900 shadow-xs"
-              : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <Video className="w-4 h-4 text-emerald-600" />
-          Media Hub & Asset Library
-        </button>
+          <button
+            onClick={() => setActiveAdminTab("media")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "media"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Video className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Media Hub</span>
+          </button>
 
-        <button
-          onClick={() => setActiveAdminTab("directory")}
-          className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-            activeAdminTab === "directory"
-              ? "bg-white text-slate-900 shadow-xs"
-              : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <Users className="w-4 h-4 text-blue-600" />
-          Athletes & Subscriptions ({totalUsers})
-        </button>
+          <button
+            onClick={() => setActiveAdminTab("directory")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "directory"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Users className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>Athletes ({totalUsers})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveAdminTab("store")}
-          className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-            activeAdminTab === "store"
-              ? "bg-white text-slate-900 shadow-xs"
-              : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <ShoppingBag className="w-4 h-4 text-red-600" />
-          Store & Merch
-        </button>
+          <button
+            onClick={() => setActiveAdminTab("store")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "store"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <ShoppingBag className="w-4 h-4 text-red-600 shrink-0" />
+            <span>Store & Merch</span>
+          </button>
 
-        <button
-          onClick={() => setActiveAdminTab("paystack")}
-          className={`py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-            activeAdminTab === "paystack"
-              ? "bg-white text-slate-900 shadow-xs"
-              : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <CreditCard className="w-4 h-4 text-indigo-600" />
-          Paystack Live Setup
-        </button>
+          <button
+            onClick={() => setActiveAdminTab("paystack")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "paystack"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <CreditCard className="w-4 h-4 text-indigo-600 shrink-0" />
+            <span>Paystack Setup</span>
+          </button>
+        </div>
+
+        <div className="sm:hidden text-[10px] text-slate-500 font-mono flex items-center justify-between px-2 pt-1">
+          <span>← Swipe horizontally to view all management tabs</span>
+          <span>6 Modules →</span>
+        </div>
       </div>
 
       {/* VIEW 0: STORE & FITNESS WEAR MANAGEMENT */}
@@ -747,19 +757,19 @@ export default function AdminDashboard() {
                   filteredUsers.map((userProfile) => {
                     const isUserPremium = userProfile.subscriptionStatus === "premium";
                     return (
-                      <div key={userProfile.uid} className="p-3.5 border border-slate-200 rounded-2xl bg-slate-50/70 flex justify-between items-center gap-4 hover:border-slate-300 transition">
-                        <div>
-                          <h5 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                            {userProfile.displayName || "Athlete"}
+                      <div key={userProfile.uid} className="p-3.5 border border-slate-200 rounded-2xl bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-300 transition">
+                        <div className="min-w-0 flex-1">
+                          <h5 className="text-xs font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                            <span className="truncate">{userProfile.displayName || "Athlete"}</span>
                             {userProfile.role === "admin" && (
                               <span className="text-[8px] font-bold bg-red-100 text-red-700 px-1.5 py-0.5 rounded uppercase font-mono">ADMIN</span>
                             )}
                           </h5>
-                          <span className="text-[10px] text-slate-500 font-mono tracking-wide">{userProfile.email}</span>
+                          <span className="text-[10px] text-slate-500 font-mono tracking-wide block truncate">{userProfile.email}</span>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[9px] font-mono uppercase font-bold py-0.5 px-2 rounded-md ${
+                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between sm:justify-end w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
+                          <span className={`text-[9px] font-mono uppercase font-bold py-0.5 px-2 rounded-md shrink-0 ${
                             isUserPremium 
                               ? "bg-emerald-500/15 text-emerald-700 border border-emerald-200" 
                               : "bg-slate-200 text-slate-600"

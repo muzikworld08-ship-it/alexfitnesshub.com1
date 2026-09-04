@@ -43,6 +43,17 @@ export interface Exercise {
   trainerTips?: string;
   safetyNotes?: string;
   variations?: string[];
+
+  // ALEXFITNESSHUB Intelligent Program Categorization & Classification
+  secondaryMuscles?: string[];
+  exerciseType?: string;
+  genderSuitability?: "Unisex" | "Women" | "Men";
+  locationSuitability?: "Gym" | "Home" | "Both";
+  goals?: string[];
+  programAssignments?: string[];
+  womenCategories?: string[];
+  homeCategories?: string[];
+  durationMinutes?: number;
 }
 
 export function getExerciseGifUrl(name: string, category: string = ""): string {
@@ -1157,11 +1168,126 @@ const generateExercises = (): Exercise[] => {
 
     const ytVideoId = getExerciseYouTubeVideoId(displayName, raw.primary);
 
+    // Classification: Location suitability
+    const isGymOnly = raw.equipment.some(eq => 
+      ["Barbell", "Machine", "Cable Machine", "Smith Machine", "Leg Press Machine", "Stair Climber", "Rowing Machine"].includes(eq)
+    );
+    const locationSuitability: "Gym" | "Home" | "Both" = isGymOnly ? "Gym" : "Both";
+
+    // Classification: Exercise type
+    let exerciseType = "Hypertrophy";
+    const nameLower = displayName.toLowerCase();
+    if (raw.category === "Cardio Workouts" || raw.primary === "Cardio" || nameLower.includes("run") || nameLower.includes("walk") || nameLower.includes("jump rope") || nameLower.includes("hiit")) {
+      exerciseType = "Cardio";
+    } else if (raw.category === "Calisthenics Workouts") {
+      exerciseType = "Calisthenics";
+    } else if (raw.primary === "Mobility" || nameLower.includes("stretch") || nameLower.includes("yoga") || nameLower.includes("mobility")) {
+      exerciseType = "Mobility";
+    } else if (raw.diff === "Advanced" && (nameLower.includes("deadlift") || nameLower.includes("squat") || nameLower.includes("bench press") || nameLower.includes("overhead press"))) {
+      exerciseType = "Compound Strength";
+    }
+
+    // Goals mapping (Build Muscle, Lose Weight, Build Abs, Build Glutes, Get Stronger, Improve Fitness, Beginner Fitness, Home Fitness)
+    const computedGoals: string[] = [];
+    if (exerciseType !== "Mobility") computedGoals.push("Build Muscle");
+    if (exerciseType === "Cardio" || raw.diff === "Beginner" || nameLower.includes("hiit") || nameLower.includes("burn") || nameLower.includes("burpee")) {
+      computedGoals.push("Lose Weight");
+    }
+    if (raw.primary === "Abs" || raw.secondary.includes("Core") || raw.secondary.includes("Abs") || nameLower.includes("plank") || nameLower.includes("crunch") || nameLower.includes("sit-up")) {
+      computedGoals.push("Build Abs");
+    }
+    if (raw.primary === "Glutes" || raw.secondary.includes("Glutes") || nameLower.includes("glute") || nameLower.includes("hip thrust") || nameLower.includes("squat") || nameLower.includes("lunge")) {
+      computedGoals.push("Build Glutes");
+    }
+    if (exerciseType === "Compound Strength" || raw.equipment.includes("Barbell") || raw.equipment.includes("Dumbbell")) {
+      computedGoals.push("Get Stronger");
+    }
+    computedGoals.push("Improve Fitness");
+    if (raw.diff === "Beginner") computedGoals.push("Beginner Fitness");
+    if (locationSuitability !== "Gym") computedGoals.push("Home Fitness");
+
+    // Women's Confidence Categories mapping (15 categories)
+    const womenCategories: string[] = [];
+    if (computedGoals.includes("Lose Weight")) {
+      womenCategories.push("Weight Loss", "Fat Loss");
+    }
+    if (raw.primary === "Glutes" || raw.secondary.includes("Glutes") || nameLower.includes("glute") || nameLower.includes("hip thrust")) {
+      womenCategories.push("Glutes", "Glutes + Legs");
+    } else if (raw.primary === "Legs" || raw.primary === "Quadriceps" || raw.primary === "Hamstrings") {
+      womenCategories.push("Glutes + Legs");
+    }
+    womenCategories.push("Toning");
+    if (["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Forearms"].includes(raw.primary)) {
+      womenCategories.push("Upper Body");
+    }
+    if (["Legs", "Quadriceps", "Hamstrings", "Calves", "Glutes"].includes(raw.primary)) {
+      womenCategories.push("Lower Body");
+    }
+    if (raw.primary === "Abs" || raw.secondary.includes("Core")) {
+      womenCategories.push("Core");
+    }
+    if (raw.primary === "Full Body" || (womenCategories.includes("Upper Body") && womenCategories.includes("Lower Body"))) {
+      womenCategories.push("Full Body");
+    }
+    if (raw.diff === "Beginner") womenCategories.push("Beginner");
+    if (raw.diff === "Intermediate") womenCategories.push("Intermediate");
+    if (raw.diff === "Advanced") womenCategories.push("Advanced");
+    if (locationSuitability !== "Gym") womenCategories.push("Home Workouts");
+    womenCategories.push("Gym Workouts");
+    if (exerciseType === "Mobility" || nameLower.includes("stretch") || nameLower.includes("posture") || nameLower.includes("mobility")) {
+      womenCategories.push("Posture and Mobility");
+    }
+
+    // Home Workout Categories mapping (19 categories)
+    const homeCategories: string[] = [];
+    if (locationSuitability !== "Gym") {
+      if (raw.primary === "Chest") homeCategories.push("Chest");
+      if (raw.primary === "Back") homeCategories.push("Back");
+      if (["Biceps", "Triceps", "Forearms", "Arms"].includes(raw.primary)) homeCategories.push("Arms");
+      if (raw.primary === "Shoulders") homeCategories.push("Shoulders");
+      if (["Legs", "Quadriceps", "Hamstrings", "Calves"].includes(raw.primary)) homeCategories.push("Legs");
+      if (raw.primary === "Glutes") homeCategories.push("Glutes");
+      if (raw.primary === "Abs" || raw.secondary.includes("Core")) homeCategories.push("Abs and Core");
+      if (raw.primary === "Full Body") homeCategories.push("Full Body");
+      if (exerciseType === "Cardio") homeCategories.push("Cardio");
+      if (nameLower.includes("hiit") || nameLower.includes("burpee") || nameLower.includes("jump")) homeCategories.push("HIIT");
+      if (exerciseType === "Mobility") homeCategories.push("Mobility");
+      homeCategories.push("Muscle Building");
+      if (computedGoals.includes("Lose Weight")) {
+        homeCategories.push("Weight Loss", "Fat Loss");
+      }
+      if (raw.diff === "Beginner") homeCategories.push("Beginner");
+      if (raw.diff === "Intermediate") homeCategories.push("Intermediate");
+      if (raw.diff === "Advanced") homeCategories.push("Advanced");
+      if (raw.equipment.includes("Bodyweight") || raw.equipment.length === 0) homeCategories.push("No Equipment");
+      if (raw.equipment.includes("Dumbbell")) homeCategories.push("Dumbbell");
+      if (raw.equipment.includes("Resistance Band")) homeCategories.push("Resistance Band");
+    }
+
+    // Program assignments
+    const programAssignments: string[] = [];
+    if (["Chest", "Triceps", "Back", "Biceps", "Legs", "Shoulders", "Forearms", "Cardio"].includes(raw.primary)) {
+      programAssignments.push("90-days-immortal");
+    }
+    if (locationSuitability !== "Gym") {
+      programAssignments.push("home-programs");
+    }
+    programAssignments.push("gym-programs");
+    programAssignments.push("women-programs");
+
     return {
       id,
       name: displayName,
       muscleGroups: [raw.primary, ...raw.secondary],
+      secondaryMuscles: raw.secondary,
       difficulty: raw.diff,
+      exerciseType,
+      genderSuitability: "Unisex",
+      locationSuitability,
+      goals: Array.from(new Set(computedGoals)),
+      womenCategories: Array.from(new Set(womenCategories)),
+      homeCategories: Array.from(new Set(homeCategories)),
+      programAssignments,
       instructions,
       equipment: raw.equipment,
       category: raw.originalCategories[0] || raw.category,

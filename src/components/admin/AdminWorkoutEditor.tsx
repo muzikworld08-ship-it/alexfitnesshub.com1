@@ -30,6 +30,31 @@ const CATEGORIES = [
 
 const DIFFICULTIES = ["All", "Beginner", "Intermediate", "Advanced"];
 
+const MUSCLE_OPTIONS = [
+  "Chest", "Back", "Biceps", "Triceps", "Shoulders", "Quads", "Hamstrings", "Glutes", "Abs/Core", "Calves", "Full Body"
+];
+
+const EQUIPMENT_OPTIONS = [
+  "Dumbbells", "Barbell", "Cable", "Machine", "Resistance Bands", "Bodyweight", "Kettlebell", "Pull-up Bar", "None"
+];
+
+const GOAL_OPTIONS = [
+  "Build Muscle", "Lose Weight", "Build Abs", "Build Glutes", "Get Stronger", "Improve Fitness", "Beginner Fitness", "Home Fitness"
+];
+
+const WOMEN_CATEGORY_OPTIONS = [
+  "Full Body Tone", "Glute & Lower Body Shaping", "Upper Body Sculpt", "Core & Waist Slimming", "Walking & Running"
+];
+
+const PROGRAM_OPTIONS = [
+  "90 Days Immortal Challenge",
+  "Gym Workout Programs",
+  "Women’s Workout Programs",
+  "Home Workout Programs",
+  "Goal Based Programs",
+  "Workout Library"
+];
+
 export default function AdminWorkoutEditor() {
   const { exercises, editExercise, addWorkout, deleteWorkout, uploadExerciseMedia } = useApp();
 
@@ -47,10 +72,15 @@ export default function AdminWorkoutEditor() {
     name: "",
     recommendedSets: "3-4",
     recommendedReps: "10-12",
+    durationMinutes: 10,
     category: "Gym Workouts",
     difficulty: "Intermediate",
     muscleGroups: ["Chest"],
     equipment: ["Dumbbells"],
+    locationSuitability: "Gym",
+    goals: ["Build Muscle"],
+    womenCategories: [],
+    programAssignments: ["Gym Workout Programs"],
     isPremium: true,
     customMediaUrl: "",
     customMediaType: "image",
@@ -126,10 +156,15 @@ export default function AdminWorkoutEditor() {
       name: ex.name,
       recommendedSets: ex.recommendedSets || "3-4",
       recommendedReps: ex.recommendedReps || "10-12",
+      durationMinutes: ex.durationMinutes || 10,
       category: ex.category,
       difficulty: ex.difficulty || "Intermediate",
-      muscleGroups: ex.muscleGroups || [ex.category],
-      equipment: ex.equipment || ["Dumbbells"],
+      muscleGroups: ex.muscleGroups && ex.muscleGroups.length > 0 ? ex.muscleGroups : [ex.category],
+      equipment: ex.equipment && ex.equipment.length > 0 ? ex.equipment : ["Dumbbells"],
+      locationSuitability: ex.locationSuitability || (ex.equipment?.includes("Bodyweight") ? "Home" : "Gym"),
+      goals: ex.goals && ex.goals.length > 0 ? ex.goals : ["Build Muscle"],
+      womenCategories: ex.womenCategories || [],
+      programAssignments: ex.programAssignments || ["Gym Workout Programs"],
       isPremium: ex.isPremium !== undefined ? ex.isPremium : true,
       customMediaUrl: ex.customMediaUrl || ex.gifUrl || ex.imageUrl || "",
       customMediaType: ex.customMediaType || "image",
@@ -423,8 +458,12 @@ export default function AdminWorkoutEditor() {
           ========================================================================= */}
       {viewMode === "table" && (
         <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="sm:hidden px-4 py-2.5 bg-slate-100/90 border-b border-slate-200 text-[11px] font-mono text-slate-600 flex items-center justify-between">
+            <span>← Scroll horizontally to see full workout row</span>
+            <span>Edit / Delete at far right →</span>
+          </div>
           <div className="overflow-x-auto max-h-[750px] scrollbar-thin">
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full min-w-[780px] text-left border-collapse text-xs">
               <thead className="bg-slate-50 text-[10px] uppercase font-mono tracking-wider text-slate-500 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
                   <th className="py-3.5 px-4 font-bold">#</th>
@@ -845,8 +884,8 @@ export default function AdminWorkoutEditor() {
                 </div>
               </div>
 
-              {/* Category & Difficulty */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Category, Difficulty & Estimated Duration */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Category</label>
                   <select
@@ -870,6 +909,201 @@ export default function AdminWorkoutEditor() {
                     <option value="Intermediate">Intermediate</option>
                     <option value="Advanced">Advanced</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Duration (Mins)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={editForm.durationMinutes || 10}
+                    onChange={(e) => setEditForm({ ...editForm, durationMinutes: parseInt(e.target.value) || 10 })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600"
+                  />
+                </div>
+              </div>
+
+              {/* Location Suitability (Gym vs Home) */}
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Training Facility Suitability</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["Gym", "Home", "Both"] as const).map(loc => {
+                    const isSelected = (editForm.locationSuitability || "Gym") === loc;
+                    return (
+                      <button
+                        key={loc}
+                        type="button"
+                        onClick={() => setEditForm({ ...editForm, locationSuitability: loc })}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        {loc === "Both" ? "Gym & Home (Both)" : loc}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Muscle Groups Assignment */}
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">
+                  Target Muscle Groups <span className="text-[10px] text-slate-400 font-normal font-mono">(Multi-Select)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {MUSCLE_OPTIONS.map(muscle => {
+                    const selectedMuscles = editForm.muscleGroups || [];
+                    const isSelected = selectedMuscles.includes(muscle);
+                    return (
+                      <button
+                        key={muscle}
+                        type="button"
+                        onClick={() => {
+                          const updated = isSelected 
+                            ? selectedMuscles.filter(m => m !== muscle)
+                            : [...selectedMuscles, muscle];
+                          setEditForm({ ...editForm, muscleGroups: updated });
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                          isSelected
+                            ? "bg-red-600 text-white border-red-600 shadow-xs"
+                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        {muscle}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Equipment Assignment */}
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">
+                  Equipment Required <span className="text-[10px] text-slate-400 font-normal font-mono">(Multi-Select)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {EQUIPMENT_OPTIONS.map(eq => {
+                    const selectedEq = editForm.equipment || [];
+                    const isSelected = selectedEq.includes(eq);
+                    return (
+                      <button
+                        key={eq}
+                        type="button"
+                        onClick={() => {
+                          const updated = isSelected 
+                            ? selectedEq.filter(item => item !== eq)
+                            : [...selectedEq, eq];
+                          setEditForm({ ...editForm, equipment: updated });
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                          isSelected
+                            ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        {eq}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Program Assignments */}
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">
+                  Program Category Inclusions <span className="text-[10px] text-slate-400 font-normal font-mono">(Multi-Select)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {PROGRAM_OPTIONS.map(prog => {
+                    const selectedProgs = editForm.programAssignments || [];
+                    const isSelected = selectedProgs.includes(prog);
+                    return (
+                      <button
+                        key={prog}
+                        type="button"
+                        onClick={() => {
+                          const updated = isSelected 
+                            ? selectedProgs.filter(p => p !== prog)
+                            : [...selectedProgs, prog];
+                          setEditForm({ ...editForm, programAssignments: updated });
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                          isSelected
+                            ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        {prog}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Women's Categories Assignment */}
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">
+                  Women's Workout Focus <span className="text-[10px] text-slate-400 font-normal font-mono">(Multi-Select)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {WOMEN_CATEGORY_OPTIONS.map(wCat => {
+                    const selectedWCats = editForm.womenCategories || [];
+                    const isSelected = selectedWCats.includes(wCat);
+                    return (
+                      <button
+                        key={wCat}
+                        type="button"
+                        onClick={() => {
+                          const updated = isSelected 
+                            ? selectedWCats.filter(w => w !== wCat)
+                            : [...selectedWCats, wCat];
+                          setEditForm({ ...editForm, womenCategories: updated });
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                          isSelected
+                            ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        {wCat}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Goal Assignment */}
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">
+                  Target Goals <span className="text-[10px] text-slate-400 font-normal font-mono">(Multi-Select)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {GOAL_OPTIONS.map(goal => {
+                    const selectedGoals = editForm.goals || [];
+                    const isSelected = selectedGoals.includes(goal);
+                    return (
+                      <button
+                        key={goal}
+                        type="button"
+                        onClick={() => {
+                          const updated = isSelected 
+                            ? selectedGoals.filter(g => g !== goal)
+                            : [...selectedGoals, goal];
+                          setEditForm({ ...editForm, goals: updated });
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                          isSelected
+                            ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        {goal}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1008,8 +1242,8 @@ export default function AdminWorkoutEditor() {
                 </div>
               </div>
 
-              {/* Category & Difficulty */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Category, Difficulty & Duration */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Category</label>
                   <select
@@ -1033,6 +1267,201 @@ export default function AdminWorkoutEditor() {
                     <option value="Intermediate">Intermediate</option>
                     <option value="Advanced">Advanced</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Duration (Mins)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={newWorkout.durationMinutes || 10}
+                    onChange={(e) => setNewWorkout({ ...newWorkout, durationMinutes: parseInt(e.target.value) || 10 })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600"
+                  />
+                </div>
+              </div>
+
+              {/* Location Suitability (Gym vs Home) */}
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Training Facility Suitability</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["Gym", "Home", "Both"] as const).map(loc => {
+                    const isSelected = (newWorkout.locationSuitability || "Gym") === loc;
+                    return (
+                      <button
+                        key={loc}
+                        type="button"
+                        onClick={() => setNewWorkout({ ...newWorkout, locationSuitability: loc })}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        {loc === "Both" ? "Gym & Home (Both)" : loc}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Muscle Groups Assignment */}
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">
+                  Target Muscle Groups <span className="text-[10px] text-slate-400 font-normal font-mono">(Multi-Select)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {MUSCLE_OPTIONS.map(muscle => {
+                    const selectedMuscles = newWorkout.muscleGroups || [];
+                    const isSelected = selectedMuscles.includes(muscle);
+                    return (
+                      <button
+                        key={muscle}
+                        type="button"
+                        onClick={() => {
+                          const updated = isSelected 
+                            ? selectedMuscles.filter(m => m !== muscle)
+                            : [...selectedMuscles, muscle];
+                          setNewWorkout({ ...newWorkout, muscleGroups: updated });
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                          isSelected
+                            ? "bg-red-600 text-white border-red-600 shadow-xs"
+                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        {muscle}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Equipment Assignment */}
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">
+                  Equipment Required <span className="text-[10px] text-slate-400 font-normal font-mono">(Multi-Select)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {EQUIPMENT_OPTIONS.map(eq => {
+                    const selectedEq = newWorkout.equipment || [];
+                    const isSelected = selectedEq.includes(eq);
+                    return (
+                      <button
+                        key={eq}
+                        type="button"
+                        onClick={() => {
+                          const updated = isSelected 
+                            ? selectedEq.filter(item => item !== eq)
+                            : [...selectedEq, eq];
+                          setNewWorkout({ ...newWorkout, equipment: updated });
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                          isSelected
+                            ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        {eq}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Program Assignments */}
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">
+                  Program Category Inclusions <span className="text-[10px] text-slate-400 font-normal font-mono">(Multi-Select)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {PROGRAM_OPTIONS.map(prog => {
+                    const selectedProgs = newWorkout.programAssignments || [];
+                    const isSelected = selectedProgs.includes(prog);
+                    return (
+                      <button
+                        key={prog}
+                        type="button"
+                        onClick={() => {
+                          const updated = isSelected 
+                            ? selectedProgs.filter(p => p !== prog)
+                            : [...selectedProgs, prog];
+                          setNewWorkout({ ...newWorkout, programAssignments: updated });
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                          isSelected
+                            ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        {prog}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Women's Categories Assignment */}
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">
+                  Women's Workout Focus <span className="text-[10px] text-slate-400 font-normal font-mono">(Multi-Select)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {WOMEN_CATEGORY_OPTIONS.map(wCat => {
+                    const selectedWCats = newWorkout.womenCategories || [];
+                    const isSelected = selectedWCats.includes(wCat);
+                    return (
+                      <button
+                        key={wCat}
+                        type="button"
+                        onClick={() => {
+                          const updated = isSelected 
+                            ? selectedWCats.filter(w => w !== wCat)
+                            : [...selectedWCats, wCat];
+                          setNewWorkout({ ...newWorkout, womenCategories: updated });
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                          isSelected
+                            ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        {wCat}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Goal Assignment */}
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">
+                  Target Goals <span className="text-[10px] text-slate-400 font-normal font-mono">(Multi-Select)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {GOAL_OPTIONS.map(goal => {
+                    const selectedGoals = newWorkout.goals || [];
+                    const isSelected = selectedGoals.includes(goal);
+                    return (
+                      <button
+                        key={goal}
+                        type="button"
+                        onClick={() => {
+                          const updated = isSelected 
+                            ? selectedGoals.filter(g => g !== goal)
+                            : [...selectedGoals, goal];
+                          setNewWorkout({ ...newWorkout, goals: updated });
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                          isSelected
+                            ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        {goal}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

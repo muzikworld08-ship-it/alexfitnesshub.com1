@@ -272,8 +272,12 @@ export const AdminStoreManager: React.FC = () => {
 
           {/* Products Table */}
           <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+            <div className="sm:hidden px-4 py-2 bg-slate-100/90 border-b border-slate-200 text-[11px] font-mono text-slate-600 flex items-center justify-between">
+              <span>← Scroll horizontally to see all columns</span>
+              <span>Edit / Delete at right →</span>
+            </div>
+            <div className="overflow-x-auto scrollbar-thin">
+              <table className="w-full min-w-[680px] text-left text-xs">
                 <thead className="bg-slate-50 text-slate-700 font-bold uppercase tracking-wider border-b border-slate-200">
                   <tr>
                     <th className="py-3.5 px-4">Views</th>
