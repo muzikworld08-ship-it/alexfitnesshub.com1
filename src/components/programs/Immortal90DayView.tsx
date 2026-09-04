@@ -31,6 +31,7 @@ import {
   Heart
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import WorkoutCelebrationModal from "../WorkoutCelebrationModal";
 
 interface Immortal90DayViewProps {
   onBackToPrograms?: () => void;
@@ -82,6 +83,14 @@ export default function Immortal90DayView({ onBackToPrograms, onNavigateToCatego
   const [timerRunning, setTimerRunning] = useState<boolean>(false);
   const [customRestTarget, setCustomRestTarget] = useState<number>(60);
   const timerRef = useRef<any>(null);
+  const [celebrationModalData, setCelebrationModalData] = useState<{
+    isOpen: boolean;
+    completedDay: number;
+    totalDays: number;
+    streakCount: number;
+    caloriesBurned: number;
+    exercisesCount: number;
+  } | null>(null);
 
   // Persist progress to localStorage whenever it changes
   useEffect(() => {
@@ -173,10 +182,15 @@ export default function Immortal90DayView({ onBackToPrograms, onNavigateToCatego
 
   // Mark entire day as complete and advance
   const markDayComplete = () => {
+    let wasAlreadyCompleted = false;
+    let nextCount = progress.completedDays.length;
+
     setProgress(prev => {
-      const newCompletedDays = prev.completedDays.includes(selectedDay)
+      wasAlreadyCompleted = prev.completedDays.includes(selectedDay);
+      const newCompletedDays = wasAlreadyCompleted
         ? prev.completedDays
         : [...prev.completedDays, selectedDay];
+      nextCount = newCompletedDays.length;
       
       const nextDay = selectedDay < 90 ? selectedDay + 1 : 90;
       
@@ -190,6 +204,15 @@ export default function Immortal90DayView({ onBackToPrograms, onNavigateToCatego
         completedDays: newCompletedDays,
         completedExercisesByDay: newMap
       };
+    });
+
+    setCelebrationModalData({
+      isOpen: true,
+      completedDay: selectedDay,
+      totalDays: 90,
+      streakCount: nextCount,
+      caloriesBurned: 380,
+      exercisesCount: dayPlan.exercises.length
     });
 
     if (selectedDay < 90) {
@@ -704,6 +727,24 @@ export default function Immortal90DayView({ onBackToPrograms, onNavigateToCatego
           </div>
         </div>
       </div>
+
+      {/* Celebratory Completion Modal */}
+      {celebrationModalData && (
+        <WorkoutCelebrationModal
+          isOpen={celebrationModalData.isOpen}
+          onClose={() => setCelebrationModalData(null)}
+          programId="immortal_90"
+          programName="90-Day Immortal Transformation Challenge"
+          completedDay={celebrationModalData.completedDay}
+          totalDays={celebrationModalData.totalDays}
+          streakCount={celebrationModalData.streakCount}
+          caloriesBurned={celebrationModalData.caloriesBurned}
+          exercisesCompletedCount={celebrationModalData.exercisesCount}
+          onContinue={() => {
+            setCelebrationModalData(null);
+          }}
+        />
+      )}
     </div>
   );
 }

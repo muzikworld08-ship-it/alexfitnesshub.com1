@@ -201,6 +201,20 @@ body, input, select, textarea, button, p, span, div, h1, h2, h3, h4, h5, h6, li,
   image-rendering: crisp-edges;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   display: block;
+  filter: contrast(1.08) saturate(1.1);
+}
+
+/* Bold GIF presentation in any frame or container */
+.workout-gif-bold {
+  filter: contrast(1.15) saturate(1.15) brightness(1.02);
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  transform: scale(1.01);
+}
+
+.workout-frame-bold {
+  border: 2px solid rgba(229, 57, 53, 0.5) !important;
+  box-shadow: 0 12px 30px -8px rgba(229, 57, 53, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
 }
 
 .workout-card-bold {

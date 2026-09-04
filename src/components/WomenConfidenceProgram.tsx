@@ -24,6 +24,7 @@ import {
   WOMEN_EXERCISE_CATALOG
 } from "../data/womenConfidenceProgramData";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
+import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
 
 interface WomenConfidenceProgressState {
   userId: string;
@@ -141,6 +142,14 @@ export default function WomenConfidenceProgram() {
 
   // Completion Celebration Modal
   const [showCompletionModal, setShowCompletionModal] = useState<boolean>(false);
+  const [celebrationModalData, setCelebrationModalData] = useState<{
+    isOpen: boolean;
+    completedDay: number;
+    totalDays: number;
+    streakCount: number;
+    caloriesBurned: number;
+    exercisesCount: number;
+  } | null>(null);
 
   // Onboarding Form State (Step 1 of 8)
   const [onboardingStep, setOnboardingStep] = useState<number>(1);
@@ -493,11 +502,19 @@ export default function WomenConfidenceProgram() {
 
     persistState(newState);
 
+    setCelebrationModalData({
+      isOpen: true,
+      completedDay: dayNum,
+      totalDays: 180,
+      streakCount: currentStreak,
+      caloriesBurned: 320,
+      exercisesCount: currentWorkout.exercises?.length || 6
+    });
+
     if (dayNum === 180) {
       setShowCompletionModal(true);
     } else {
       setSelectedDayNumber(nextDay);
-      setActiveTab("dashboard");
     }
   };
 
@@ -2215,6 +2232,25 @@ export default function WomenConfidenceProgram() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Celebratory Completion Modal */}
+      {celebrationModalData && (
+        <WorkoutCelebrationModal
+          isOpen={celebrationModalData.isOpen}
+          onClose={() => setCelebrationModalData(null)}
+          programId="women_confidence"
+          programName="Women 180-Day Confidence & Glute Sculpt"
+          completedDay={celebrationModalData.completedDay}
+          totalDays={celebrationModalData.totalDays}
+          streakCount={celebrationModalData.streakCount}
+          caloriesBurned={celebrationModalData.caloriesBurned}
+          exercisesCompletedCount={celebrationModalData.exercisesCount}
+          onContinue={() => {
+            setCelebrationModalData(null);
+            setActiveTab("dashboard");
+          }}
+        />
+      )}
     </div>
   );
 }

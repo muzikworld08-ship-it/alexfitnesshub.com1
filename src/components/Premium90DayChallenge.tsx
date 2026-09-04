@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import PersistentDashboardTabs from "./PersistentDashboardTabs";
 import { getChallengeWorkouts } from "../data/challenges";
+import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
 
 
 // 1. Definition of the 7 Flagship Premium Challenges
@@ -113,14 +114,14 @@ export const PREMIUM_CHALLENGES: PremiumChallenge[] = [
   }
 ];
 
-// Presets for splits
+// Presets for splits - Day 3 (index 2) integrates Cardio across all challenge tracks
 const CHALLENGE_SPLITS: Record<string, string[]> = {
-  lean_muscle: ["Chest + Triceps", "Back + Biceps", "Legs", "Shoulders + Core", "Upper Body", "Conditioning", "Recovery"],
-  fat_burning: ["HIIT Cardio", "Lower Body Conditioning", "Aerobic Cardio", "Upper Body Circuit", "Full Body Shred", "HIIT Endurance", "Recovery"],
-  body_transformation: ["Upper Body Strength", "Lower Body Strength", "Core + Mobility", "Full Body Hypertrophy", "HIIT Cardio", "Core + Conditioning", "Recovery"],
-  athletic_performance: ["Plyometrics & Speed", "Lower Body Power", "Conditioning", "Upper Body Power", "Agility + Core", "Endurance Running", "Recovery"],
-  strength_challenge: ["Squats & Legs", "Bench Press & Chest", "Active Recovery", "Deadlifts & Back", "Overhead Press & Shoulders", "Heavy Bracing Core", "Recovery"],
-  home_fitness: ["Bodyweight Full Body", "Core & Mobility", "Home HIIT Cardio", "Bodyweight Upper Body", "Bodyweight Lower Body", "Home Conditioning", "Recovery"],
+  lean_muscle: ["Chest + Triceps", "Back + Biceps", "Cardio + Legs & Lower Body Conditioning", "Shoulders + Core", "Upper Body", "Conditioning", "Recovery"],
+  fat_burning: ["HIIT Cardio", "Lower Body Conditioning", "Aerobic Cardio & Core Shred", "Upper Body Circuit", "Full Body Shred", "HIIT Endurance", "Recovery"],
+  body_transformation: ["Upper Body Strength", "Lower Body Strength", "Cardio + Core & Mobility", "Full Body Hypertrophy", "HIIT Cardio", "Core + Conditioning", "Recovery"],
+  athletic_performance: ["Plyometrics & Speed", "Lower Body Power", "Cardio & Speed Conditioning", "Upper Body Power", "Agility + Core", "Endurance Running", "Recovery"],
+  strength_challenge: ["Squats & Legs", "Bench Press & Chest", "Cardio & Active Recovery", "Deadlifts & Back", "Overhead Press & Shoulders", "Heavy Bracing Core", "Recovery"],
+  home_fitness: ["Bodyweight Full Body", "Core & Mobility", "Home HIIT Cardio & Core", "Bodyweight Upper Body", "Bodyweight Lower Body", "Home Conditioning", "Recovery"],
   six_pack_core: ["Upper Abs + Obliques", "Lower Abs + Deep Core", "Cardio + Core Burn", "Planks & Isometrics", "Rotational Core Strength", "Full Core Circuit", "Recovery"]
 };
 
@@ -216,6 +217,14 @@ export default function Premium90DayChallenge() {
 
   const [loadingDb, setLoadingDb] = useState(false);
   const [dbState, setDbState] = useState<Premium90DayState | null>(null);
+  const [celebrationModalData, setCelebrationModalData] = useState<{
+    isOpen: boolean;
+    completedDay: number;
+    totalDays: number;
+    streakCount: number;
+    caloriesBurned: number;
+    exercisesCount: number;
+  } | null>(null);
 
   // Admin Coach Assignment State
   const [selectedAdminUserUid, setSelectedAdminUserUid] = useState<string>("");
@@ -674,6 +683,16 @@ export default function Premium90DayChallenge() {
           Math.ceil(currentDay / 7)
         );
       }
+
+      // Display completed day with celebratory animation and next day morning alert
+      setCelebrationModalData({
+        isOpen: true,
+        completedDay: currentDay,
+        totalDays: 90,
+        streakCount: newStreak,
+        caloriesBurned: completedWorkout.estCalories || 360,
+        exercisesCount: completedWorkout.exercises?.length || 8
+      });
     } catch (err) {
       console.error("Error logging workout completion:", err);
     } finally {
@@ -1926,6 +1945,25 @@ export default function Premium90DayChallenge() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Celebratory Completion Modal */}
+      {celebrationModalData && (
+        <WorkoutCelebrationModal
+          isOpen={celebrationModalData.isOpen}
+          onClose={() => setCelebrationModalData(null)}
+          programId="90_day_immortal"
+          programName={PREMIUM_CHALLENGES.find(c => c.id === dbState?.challengeId)?.title || "90 Day Immortal Challenge"}
+          completedDay={celebrationModalData.completedDay}
+          totalDays={celebrationModalData.totalDays}
+          streakCount={celebrationModalData.streakCount}
+          caloriesBurned={celebrationModalData.caloriesBurned}
+          exercisesCompletedCount={celebrationModalData.exercisesCount}
+          onContinue={() => {
+            setCelebrationModalData(null);
+            setActiveSubTab("workout");
+          }}
+        />
       )}
     </div>
   );

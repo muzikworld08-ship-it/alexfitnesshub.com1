@@ -874,7 +874,7 @@ export const GYM_WORKOUT_PROGRAMS: GymProgram[] = [
     splits: [
       { dayName: "Day 1", focus: "Push (Chest, Shoulders, Triceps)", targetMuscles: ["Chest", "Shoulders", "Triceps"] },
       { dayName: "Day 2", focus: "Pull (Back, Rear Delts, Biceps)", targetMuscles: ["Back", "Biceps"] },
-      { dayName: "Day 3", focus: "Legs (Quads, Hamstrings, Calves)", targetMuscles: ["Legs", "Quadriceps", "Hamstrings", "Calves"] },
+      { dayName: "Day 3", focus: "Cardio + Legs (Quads, Hamstrings, Calves)", targetMuscles: ["Cardio", "Legs", "Quadriceps", "Hamstrings", "Calves"] },
       { dayName: "Day 4", focus: "Push Hypertrophy", targetMuscles: ["Chest", "Shoulders", "Triceps"] },
       { dayName: "Day 5", focus: "Pull Thickness", targetMuscles: ["Back", "Biceps"] },
       { dayName: "Day 6", focus: "Legs & Posterior Chain", targetMuscles: ["Glutes", "Hamstrings", "Legs"] },
@@ -893,7 +893,7 @@ export const GYM_WORKOUT_PROGRAMS: GymProgram[] = [
     splits: [
       { dayName: "Day 1", focus: "Upper Body Heavy Strength", targetMuscles: ["Chest", "Back", "Shoulders"] },
       { dayName: "Day 2", focus: "Lower Body Heavy Squat / Deadlift", targetMuscles: ["Legs", "Glutes"] },
-      { dayName: "Day 3", focus: "Recovery & Zone 2 Walk", targetMuscles: ["Cardio", "Recovery"] },
+      { dayName: "Day 3", focus: "Cardio Recovery & Zone 2 Walk", targetMuscles: ["Cardio", "Recovery"] },
       { dayName: "Day 4", focus: "Upper Body Hypertrophy Volume", targetMuscles: ["Chest", "Back", "Arms"] },
       { dayName: "Day 5", focus: "Lower Body Unilateral Volume", targetMuscles: ["Legs", "Hamstrings", "Calves"] },
       { dayName: "Day 6", focus: "Active Recovery", targetMuscles: ["Recovery"] },
@@ -912,7 +912,7 @@ export const GYM_WORKOUT_PROGRAMS: GymProgram[] = [
     splits: [
       { dayName: "Day 1", focus: "Chest + Back Antagonists", targetMuscles: ["Chest", "Back"] },
       { dayName: "Day 2", focus: "Shoulders + Biceps + Triceps", targetMuscles: ["Shoulders", "Biceps", "Triceps"] },
-      { dayName: "Day 3", focus: "Legs + Abs", targetMuscles: ["Legs", "Abs"] },
+      { dayName: "Day 3", focus: "Cardio + Legs & Abs", targetMuscles: ["Cardio", "Legs", "Abs"] },
       { dayName: "Day 4", focus: "Chest + Back Overload", targetMuscles: ["Chest", "Back"] },
       { dayName: "Day 5", focus: "Shoulders + Arms Pump", targetMuscles: ["Shoulders", "Arms"] },
       { dayName: "Day 6", focus: "Legs + Core Intensity", targetMuscles: ["Legs", "Abs"] },
@@ -931,7 +931,7 @@ export const GYM_WORKOUT_PROGRAMS: GymProgram[] = [
     splits: [
       { dayName: "Day 1", focus: "Full Body Foundation A", targetMuscles: ["Chest", "Back", "Legs", "Core"] },
       { dayName: "Day 2", focus: "Rest / Light Walk", targetMuscles: ["Recovery"] },
-      { dayName: "Day 3", focus: "Full Body Foundation B", targetMuscles: ["Shoulders", "Arms", "Legs", "Abs"] },
+      { dayName: "Day 3", focus: "Cardio + Full Body Foundation B", targetMuscles: ["Cardio", "Shoulders", "Arms", "Legs", "Abs"] },
       { dayName: "Day 4", focus: "Rest / Light Walk", targetMuscles: ["Recovery"] },
       { dayName: "Day 5", focus: "Full Body Foundation C", targetMuscles: ["Back", "Chest", "Legs", "Core"] },
       { dayName: "Day 6", focus: "Weekend Recovery", targetMuscles: ["Recovery"] },

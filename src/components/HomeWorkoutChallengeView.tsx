@@ -27,6 +27,7 @@ import { DailyLifestyleChecklist, DailyLifestyleHabits } from "./DailyLifestyleC
 import { getExerciseGifUrl } from "../data/exercises";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
 import { preloadImage } from "../utils/imageCache";
+import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
 
 interface HomeChallengeState {
   userId: string;
@@ -117,6 +118,14 @@ export default function HomeWorkoutChallengeView() {
   const [adminMediaUrl, setAdminMediaUrl] = useState<string>("");
   const [adminMediaType, setAdminMediaType] = useState<"image" | "video">("image");
   const [adminUploadStatus, setAdminUploadStatus] = useState<string>("");
+  const [celebrationModalData, setCelebrationModalData] = useState<{
+    isOpen: boolean;
+    completedDay: number;
+    totalDays: number;
+    streakCount: number;
+    caloriesBurned: number;
+    exercisesCount: number;
+  } | null>(null);
 
   const todayDateStr = useMemo(() => new Date().toISOString().split("T")[0], []);
 
@@ -370,6 +379,17 @@ export default function HomeWorkoutChallengeView() {
     };
 
     saveState(newState);
+
+    if (!isCompleted) {
+      setCelebrationModalData({
+        isOpen: true,
+        completedDay: dayNum,
+        totalDays: 180,
+        streakCount: newStreak,
+        caloriesBurned: 350,
+        exercisesCount: currentWorkout.exercises?.length || 12
+      });
+    }
   };
 
   // Cardio Logging
@@ -2165,6 +2185,25 @@ export default function HomeWorkoutChallengeView() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Celebratory Completion Modal */}
+      {celebrationModalData && (
+        <WorkoutCelebrationModal
+          isOpen={celebrationModalData.isOpen}
+          onClose={() => setCelebrationModalData(null)}
+          programId="home_180_challenge"
+          programName="180 Day Home Workout Challenge"
+          completedDay={celebrationModalData.completedDay}
+          totalDays={celebrationModalData.totalDays}
+          streakCount={celebrationModalData.streakCount}
+          caloriesBurned={celebrationModalData.caloriesBurned}
+          exercisesCompletedCount={celebrationModalData.exercisesCount}
+          onContinue={() => {
+            setCelebrationModalData(null);
+            setActiveTab("workout");
+          }}
+        />
       )}
 
     </div>

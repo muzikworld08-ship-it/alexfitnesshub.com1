@@ -43,6 +43,7 @@ import { CartDrawer } from "./components/store/CartDrawer";
 import { CartAddedToast } from "./components/store/CartAddedToast";
 import { CheckoutModal } from "./components/store/CheckoutModal";
 import FloatingWorkoutTimerOverlay from "./components/FloatingWorkoutTimerOverlay";
+import MorningWorkoutBanner from "./components/MorningWorkoutBanner";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 
 const pageTransitionVariants: Variants = {
@@ -625,6 +626,21 @@ function FitnessAppContent() {
 
       {/* Main Switchboard Route Mounting with Staggered Transitions */}
       <main className="pt-20 lg:pt-24 pb-16 min-h-screen w-full max-w-full flex flex-col justify-start overflow-x-hidden">
+        {/* Next Day Morning Notification Banner across all programs */}
+        <MorningWorkoutBanner 
+          onNavigateToProgram={(programId) => {
+            if (programId === "belly_fat_shred") {
+              handleSetView("belly-fat-shred");
+            } else if (programId === "women_confidence") {
+              handleSetView("women-confidence");
+            } else if (programId === "home_180_challenge") {
+              handleSetView("home-workout-challenge");
+            } else {
+              handleSetView("challenges");
+            }
+          }}
+        />
+
         <AnimatePresence mode="wait">
           <motion.div
             key={currentView}

@@ -18,6 +18,7 @@ import { bellyFatCardioCircuit } from "../data/homeWorkouts";
 import HomeWorkoutPlayer from "./HomeWorkoutPlayer";
 import GlobalSkeletonLoader, { DashboardSkeleton } from "./SkeletonLoader";
 import bellyShredHeroImg from "../assets/images/belly_shred_hero_1784283617530.jpg";
+import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
 
 // High-fidelity local types
 interface WeightEntry {
@@ -301,8 +302,8 @@ const getWorkoutForWeekAndDay = (week: number, dayNum: number) => {
     title = `Active Recovery: 12-3-30 Incline Treadmill Walk & Core Reset`;
     exercises = ["12-3-30 Treadmill Walk", "Dead Bug", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing", "Plank", "Side Plank"];
   } else if (dayNum === 3) {
-    title = `Compound Calorie Crusher & Legs`;
-    exercises = ["Squats", "Burpees", "Lunges", "12-3-30 Treadmill Walk", "Dead Bug", "Glute Bridges", "Jump Squats", "Bear Crawl", "Side Plank"];
+    title = `Cardio Blast & Compound Calorie Crusher`;
+    exercises = ["12-3-30 Treadmill Walk", "Rope Jump", "High Knees", "Burpees", "Mountain Climbers", "Squats", "Lunges", "Jump Squats", "Dead Bug", "Side Plank"];
   } else if (dayNum === 4) {
     title = `Active Recovery: Zone 2 Kinetic Walking & Aerobic Base`;
     exercises = ["12-3-30 Treadmill Walk", "Rope Jump", "Mountain Climbers", "Side Plank", "Dead Bug", "Child's Pose Spinal Reach"];
@@ -399,7 +400,7 @@ const BoldDrillCard: React.FC<BoldDrillCardProps> = ({
       <div className="relative w-full aspect-[16/10] workout-media-frameless flex items-center justify-center overflow-hidden">
         <UnifiedExerciseMedia
           exerciseName={details.libName}
-          className="w-full h-full object-contain workout-gif-display group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-contain workout-gif-display workout-gif-bold group-hover:scale-105 transition-transform duration-500"
         />
 
         {/* Subtle Bottom Vignette */}
@@ -511,6 +512,14 @@ export default function BellyFatShredView() {
   const { exercises: centralizedExercises } = useCentralizedExercises();
   const [activeTab, setActiveTab] = useState<"dashboard" | "workouts" | "home-workouts" | "running" | "nutrition" | "analytics" | "coaching">("dashboard");
   const [isPlayingHomeWorkout, setIsPlayingHomeWorkout] = useState(false);
+  const [celebrationModalData, setCelebrationModalData] = useState<{
+    isOpen: boolean;
+    completedDay: number;
+    totalDays: number;
+    streakCount: number;
+    caloriesBurned: number;
+    exercisesCount: number;
+  } | null>(null);
   const [favoriteExercises, setFavoriteExercises] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem("alex_fitness_favorite_home_exercises");
@@ -960,15 +969,25 @@ export default function BellyFatShredView() {
     updated.achievements = checkStreaksAndUnlock(updated);
     syncProgress(updated);
 
-    if (isCompleted && markProgramWorkoutComplete) {
+    if (isCompleted) {
       const daySeq = (progress.currentWeek - 1) * 7 + progress.currentDay;
-      markProgramWorkoutComplete(
-        "belly_fat_shred",
-        wKey,
-        daySeq,
-        progress.currentDay,
-        progress.currentWeek
-      );
+      if (markProgramWorkoutComplete) {
+        markProgramWorkoutComplete(
+          "belly_fat_shred",
+          wKey,
+          daySeq,
+          progress.currentDay,
+          progress.currentWeek
+        );
+      }
+      setCelebrationModalData({
+        isOpen: true,
+        completedDay: daySeq,
+        totalDays: 140,
+        streakCount: nextWorkoutStreak,
+        caloriesBurned: 380,
+        exercisesCount: 8
+      });
     }
   };
 
@@ -3731,6 +3750,24 @@ export default function BellyFatShredView() {
 
       </div>
 
+      {/* Celebratory Completion Modal */}
+      {celebrationModalData && (
+        <WorkoutCelebrationModal
+          isOpen={celebrationModalData.isOpen}
+          onClose={() => setCelebrationModalData(null)}
+          programId="belly_fat_shred"
+          programName="5-Month Belly Fat Shred Program"
+          completedDay={celebrationModalData.completedDay}
+          totalDays={celebrationModalData.totalDays}
+          streakCount={celebrationModalData.streakCount}
+          caloriesBurned={celebrationModalData.caloriesBurned}
+          exercisesCompletedCount={celebrationModalData.exercisesCount}
+          onContinue={() => {
+            setCelebrationModalData(null);
+            setActiveTab("dashboard");
+          }}
+        />
+      )}
     </div>
   );
 }

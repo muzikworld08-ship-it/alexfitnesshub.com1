@@ -59,6 +59,21 @@ export interface Exercise {
 export function getExerciseGifUrl(name: string, category: string = ""): string {
   const nameLower = name.toLowerCase();
   
+  // Dedicated Belly Fat Shred, Metabolic Core & Abdominal Melt GIF
+  if (
+    nameLower.includes("belly fat") ||
+    nameLower.includes("belly shred") ||
+    nameLower.includes("fat shred") ||
+    nameLower.includes("belly") ||
+    nameLower.includes("shred") ||
+    nameLower.includes("waist trim") ||
+    nameLower.includes("fat burn") ||
+    nameLower.includes("metabolic blast") ||
+    nameLower.includes("calorie crusher")
+  ) {
+    return "https://media.giphy.com/media/13sc1CHidbO6S4/giphy.gif";
+  }
+
   // Specific Chest exercises
   if (
     nameLower.includes("bench press") ||
