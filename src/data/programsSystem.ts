@@ -134,16 +134,16 @@ export const IMMORTAL_7_DAY_CYCLE_INFO = [
   },
   {
     cycleDay: 3,
-    title: "Cardio + Recovery",
-    focus: "5 to 10 KM Walk or Run + Metabolic Active Recovery",
-    targetMuscles: ["Cardio", "Mobility", "Full Body"],
+    title: "5-10 KM Cardio & Complete Rest",
+    focus: "5 to 10 KM Aerobic Run or Walk + Full Post-Cardio Muscular Rest",
+    targetMuscles: ["Cardio", "Recovery"],
     isCardioRecovery: true,
     isRestDay: false,
     walkRunDistance: "5 to 10 km Walk or Run",
     guidelines: [
-      "Walk or run 5 to 10 kilometers at an aerobic, conversational pace (Zone 2).",
-      "Keep this day focused strictly on cardio and recovery. Do not perform heavy resistance training.",
-      "Perform mobility drills to flush lactic acid and hydrate thoroughly."
+      "Walk or run 5 to 10 kilometers at a steady aerobic pace (Zone 2).",
+      "No workout on cardio days: After completing your 5 to 10 KM cardio, rest your muscles completely.",
+      "Rehydrate with electrolytes and allow full nervous system and muscular rest to recharge."
     ]
   },
   {
@@ -284,25 +284,92 @@ export function getImmortalChallengeDayPlan(dayNumber: number, allExercises: Exe
     }
     dayExercises = selected;
   } else if (cycleDay === 3) {
-    // Day 3: Cardio + Recovery (5 to 10 km Walk or Run)
-    // ONLY Cardio & Recovery, NO heavy resistance
-    const cardioRecoveryExercises = allExercises.filter(e => {
-      const p = e.muscleGroups[0]?.toLowerCase() || "";
-      const n = e.name.toLowerCase();
-      const cat = e.category.toLowerCase();
-      return (p.includes("cardio") || p.includes("mobility") || cat.includes("cardio") || n.includes("walk") || n.includes("run") || n.includes("treadmill") || n.includes("rope") || n.includes("stretch") || n.includes("cat-cow") || n.includes("breathing") || n.includes("pose")) &&
-             !n.includes("bench") && !n.includes("press") && !n.includes("deadlift") && !n.includes("squat");
-    });
-
-    const seen = new Set<string>();
-    const selected: Exercise[] = [];
-    for (const ex of cardioRecoveryExercises) {
-      if (!seen.has(ex.id) && selected.length < 6) {
-        seen.add(ex.id);
-        selected.push(ex);
+    // Day 3: Cardio & Complete Rest (5 to 10 km Walk or Run)
+    // NO resistance or workout - they rest completely after the cardio
+    const cardioRestDrills: Exercise[] = [
+      {
+        id: "5-10km-aerobic-run-walk",
+        name: "5 to 10 KM Aerobic Run / Walk",
+        muscleGroups: ["Cardio"],
+        difficulty: "Beginner",
+        instructions: [
+          "Maintain a rhythmic, conversational aerobic pacing (Zone 2).",
+          "Breathe steadily through your nose and diaphragm.",
+          "Complete the 5 to 10 KM distance outdoors or on a treadmill.",
+          "Once finished, discontinue all workouts and begin complete rest."
+        ],
+        equipment: ["Bodyweight"],
+        category: "Cardio Workouts",
+        categories: ["Cardio Workouts"],
+        commonMistakes: ["Sprinting too fast and spiking cortisol", "Adding heavy weight training on cardio day"],
+        safetyTips: ["Wear cushioned running shoes", "Hydrate with water and electrolytes"],
+        alternativeExercises: ["12-3-30 Treadmill Walk"],
+        progressionVariations: ["Increase distance toward 10 km", "Increase incline"],
+        isPremium: false,
+        startingPosition: "Upright athletic posture.",
+        movementExecution: "Smooth aerobic strides.",
+        finishingPosition: "Gradual cooldown walk.",
+        regressionVariations: ["5 km power walk"],
+        musclesWorked: ["Cardiovascular System", "Legs"],
+        gifUrl: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=800&auto=format&fit=crop&q=80",
+        imageUrl: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=800&auto=format&fit=crop&q=80",
+        description: "Pure cardiovascular pacing engine. Build aerobic base and burn fat while sparing muscular joints.",
+        duration: "45-60 min",
+        tags: ["Cardio", "Zone 2", "Fat Burn"],
+        breathingInstructions: "Rhythmic nasal and diaphragmatic breathing.",
+        recommendedSetsReps: "5 to 10 KM Continuous Distance",
+        recommendedSets: "1",
+        recommendedReps: "5-10 KM",
+        restTime: "Complete Rest Post-Cardio",
+        caloriesBurned: 450,
+        benefits: ["Maximizes fat oxidation", "Expands lung VO2 max", "Allows muscular recovery from lifting"],
+        trainerTips: "No workout today. Just complete your cardio and rest!",
+        safetyNotes: "Stay hydrated.",
+        bodyPart: "Cardio"
+      },
+      {
+        id: "post-cardio-complete-rest",
+        name: "Post-Cardio Full Rest & Muscle Recovery",
+        muscleGroups: ["Recovery"],
+        difficulty: "Beginner",
+        instructions: [
+          "Lie down or relax comfortably with elevated legs.",
+          "Perform slow diaphragmatic breathing (4s in, 4s hold, 4s out).",
+          "Allow muscle fibers and central nervous system to enter deep parasympathetic rest.",
+          "Hydrate thoroughly and refuel with clean protein and complex carbs."
+        ],
+        equipment: ["Bodyweight"],
+        category: "Recovery & Mobility",
+        categories: ["Recovery & Mobility"],
+        commonMistakes: ["Trying to do extra pushups or squats", "Not drinking enough electrolytes"],
+        safetyTips: ["Relax completely and avoid physical strain"],
+        alternativeExercises: ["Primal Cat-Cow Spinal Waves"],
+        progressionVariations: ["Cold-warm alternating shower"],
+        isPremium: false,
+        startingPosition: "Relaxed supine or seated rest.",
+        movementExecution: "Deep restorative breathing and full muscle relaxation.",
+        finishingPosition: "Refreshed and recharged.",
+        regressionVariations: ["Seated meditation"],
+        musclesWorked: ["Full Body Recovery", "Parasympathetic System"],
+        gifUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&auto=format&fit=crop&q=80",
+        imageUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&auto=format&fit=crop&q=80",
+        description: "Mandatory complete rest protocol following your cardio session. No workout is performed today so muscles recover fully.",
+        duration: "Full Rest",
+        tags: ["Rest", "Recovery", "Hydration"],
+        breathingInstructions: "Slow diaphragmatic box breathing.",
+        recommendedSetsReps: "Complete Muscular Rest",
+        recommendedSets: "1",
+        recommendedReps: "Full Rest",
+        restTime: "Until Next Morning",
+        caloriesBurned: 50,
+        benefits: ["Lowers systemic inflammation", "Replenishes glycogen", "Prevents overtraining"],
+        trainerTips: "Respect the recovery. You will come back stronger tomorrow.",
+        safetyNotes: "Rest is essential for muscular growth.",
+        bodyPart: "Full Body"
       }
-    }
-    dayExercises = selected;
+    ];
+
+    dayExercises = cardioRestDrills;
   } else if (cycleDay === 4) {
     // Day 4: Legs + Shoulders
     const legExercises = allExercises.filter(e => {
@@ -874,7 +941,7 @@ export const GYM_WORKOUT_PROGRAMS: GymProgram[] = [
     splits: [
       { dayName: "Day 1", focus: "Push (Chest, Shoulders, Triceps)", targetMuscles: ["Chest", "Shoulders", "Triceps"] },
       { dayName: "Day 2", focus: "Pull (Back, Rear Delts, Biceps)", targetMuscles: ["Back", "Biceps"] },
-      { dayName: "Day 3", focus: "Cardio + Legs (Quads, Hamstrings, Calves)", targetMuscles: ["Cardio", "Legs", "Quadriceps", "Hamstrings", "Calves"] },
+      { dayName: "Day 3", focus: "5-10 KM Cardio & Complete Rest", targetMuscles: ["Cardio", "Recovery"] },
       { dayName: "Day 4", focus: "Push Hypertrophy", targetMuscles: ["Chest", "Shoulders", "Triceps"] },
       { dayName: "Day 5", focus: "Pull Thickness", targetMuscles: ["Back", "Biceps"] },
       { dayName: "Day 6", focus: "Legs & Posterior Chain", targetMuscles: ["Glutes", "Hamstrings", "Legs"] },
@@ -912,7 +979,7 @@ export const GYM_WORKOUT_PROGRAMS: GymProgram[] = [
     splits: [
       { dayName: "Day 1", focus: "Chest + Back Antagonists", targetMuscles: ["Chest", "Back"] },
       { dayName: "Day 2", focus: "Shoulders + Biceps + Triceps", targetMuscles: ["Shoulders", "Biceps", "Triceps"] },
-      { dayName: "Day 3", focus: "Cardio + Legs & Abs", targetMuscles: ["Cardio", "Legs", "Abs"] },
+      { dayName: "Day 3", focus: "5-10 KM Cardio & Complete Rest", targetMuscles: ["Cardio", "Recovery"] },
       { dayName: "Day 4", focus: "Chest + Back Overload", targetMuscles: ["Chest", "Back"] },
       { dayName: "Day 5", focus: "Shoulders + Arms Pump", targetMuscles: ["Shoulders", "Arms"] },
       { dayName: "Day 6", focus: "Legs + Core Intensity", targetMuscles: ["Legs", "Abs"] },
@@ -931,7 +998,7 @@ export const GYM_WORKOUT_PROGRAMS: GymProgram[] = [
     splits: [
       { dayName: "Day 1", focus: "Full Body Foundation A", targetMuscles: ["Chest", "Back", "Legs", "Core"] },
       { dayName: "Day 2", focus: "Rest / Light Walk", targetMuscles: ["Recovery"] },
-      { dayName: "Day 3", focus: "Cardio + Full Body Foundation B", targetMuscles: ["Cardio", "Shoulders", "Arms", "Legs", "Abs"] },
+      { dayName: "Day 3", focus: "5-10 KM Cardio & Complete Rest", targetMuscles: ["Cardio", "Recovery"] },
       { dayName: "Day 4", focus: "Rest / Light Walk", targetMuscles: ["Recovery"] },
       { dayName: "Day 5", focus: "Full Body Foundation C", targetMuscles: ["Back", "Chest", "Legs", "Core"] },
       { dayName: "Day 6", focus: "Weekend Recovery", targetMuscles: ["Recovery"] },

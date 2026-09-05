@@ -104,6 +104,31 @@ export default function HomeWorkoutChallengeView() {
   const [timerSeconds, setTimerSeconds] = useState<number>(45);
   const [timerInitial, setTimerInitial] = useState<number>(45);
 
+  // Drill completed state for workouts in straight line
+  const [completedDrills, setCompletedDrills] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem("fit_home_completed_drills");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleDrillComplete = (drillKey: string) => {
+    setCompletedDrills(prev => {
+      const next = { ...prev, [drillKey]: !prev[drillKey] };
+      try {
+        localStorage.setItem("fit_home_completed_drills", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const parseRestSeconds = (restStr: string): number => {
+    const match = (restStr || "").match(/(\d+)/);
+    return match ? parseInt(match[1], 10) : 45;
+  };
+
   // Cardio logging modal
   const [cardioType, setCardioType] = useState<"5 KM Run" | "5 KM Walk">("5 KM Walk");
   const [cardioDuration, setCardioDuration] = useState<number>(40);
@@ -1254,48 +1279,59 @@ export default function HomeWorkoutChallengeView() {
             ) : null}
           </div>
 
-          {/* Interactive Workout Timer & Active Exercise Showcase */}
+          {/* Interactive Workout Timer & Straight-Line Exercise Feed */}
           {currentWorkout.exercises.length > 0 && (
             <div className="space-y-6">
               
-              {/* Section Navigation Ribbon for Fast & Smooth Movement */}
+              {/* Section Navigation Ribbon with Smooth Jump Anchors & Progress */}
               {currentWorkout.sections && currentWorkout.sections.length > 0 && (
-                <div className="bg-white p-3 sm:p-4 rounded-3xl border border-slate-200 shadow-xs">
-                  <div className="flex items-center justify-between gap-2 mb-2 px-1">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-red-500" />
-                      Workout Sections ({currentWorkout.sections.length})
+                <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-red-600" />
+                      Workout Flow ({currentWorkout.exercises.length} Movements in Straight Line)
                     </span>
-                    <span className="text-[10px] font-mono text-slate-400">
-                      Jump directly to any section
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-slate-600">
+                        {currentWorkout.exercises.filter((ex, i) => completedDrills[`${selectedDayNumber}_${ex.id || ex.name}_${i}`]).length} of {currentWorkout.exercises.length} Completed
+                      </span>
+                      <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                          style={{
+                            width: `${(currentWorkout.exercises.filter((ex, i) => completedDrills[`${selectedDayNumber}_${ex.id || ex.name}_${i}`]).length / Math.max(1, currentWorkout.exercises.length)) * 100}%`
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Section Jump Anchors */}
                   <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
                     {currentWorkout.sections.map((sec, secIdx) => {
-                      const isSecActive = sec.exerciseIndices.includes(activeExerciseIndex);
+                      const completedCountInSec = sec.exerciseIndices.filter(idx => {
+                        const ex = currentWorkout.exercises[idx];
+                        return ex && completedDrills[`${selectedDayNumber}_${ex.id || ex.name}_${idx}`];
+                      }).length;
+
                       return (
                         <button
                           key={sec.id || secIdx}
                           type="button"
                           onClick={() => {
-                            if (sec.exerciseIndices.length > 0) {
-                              setActiveExerciseIndex(sec.exerciseIndices[0]);
+                            const target = document.getElementById(`section-anchor-${secIdx}`);
+                            if (target) {
+                              target.scrollIntoView({ behavior: "smooth", block: "start" });
                             }
                           }}
-                          className={`px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-2 border ${
-                            isSecActive
-                              ? "bg-red-600 border-red-600 text-white shadow-xs"
-                              : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                          }`}
+                          className="px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-2 border bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300"
                         >
-                          <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold ${
-                            isSecActive ? "bg-white/25 text-white" : "bg-slate-200 text-slate-700"
-                          }`}>
+                          <span className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold bg-slate-200 text-slate-700">
                             SEC {secIdx + 1}
                           </span>
                           <span>{sec.title || sec.name}</span>
-                          <span className={`text-[10px] font-mono ${isSecActive ? "text-red-100" : "text-slate-400"}`}>
-                            ({sec.exerciseIndices.length})
+                          <span className="text-[10px] font-mono text-slate-400">
+                            ({completedCountInSec}/{sec.exerciseIndices.length})
                           </span>
                         </button>
                       );
@@ -1304,298 +1340,294 @@ export default function HomeWorkoutChallengeView() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                
-                {/* Left Column: Active Exercise Focus (7 cols) */}
-                <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-5">
-                  {(() => {
-                    const currentEx = currentWorkout.exercises[activeExerciseIndex] || currentWorkout.exercises[0];
-                    const currentSecIdx = currentWorkout.sections?.findIndex(s => s.exerciseIndices.includes(activeExerciseIndex)) ?? -1;
-                    const currentSec = currentSecIdx >= 0 && currentWorkout.sections ? currentWorkout.sections[currentSecIdx] : null;
-                    const indexInSec = currentSec ? currentSec.exerciseIndices.indexOf(activeExerciseIndex) : -1;
-                    const nextEx = currentWorkout.exercises[activeExerciseIndex + 1];
-                    const isLastExercise = activeExerciseIndex === currentWorkout.exercises.length - 1;
+              {/* Built-in Interval Rest & Work Timer Bar */}
+              <div className="bg-slate-900 text-white p-5 sm:p-6 rounded-3xl shadow-sm flex flex-col md:flex-row items-center justify-between gap-5 sticky top-2 z-20 backdrop-blur-md bg-slate-900/95 border border-slate-800">
+                <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+                  <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase text-slate-300">
+                    <Clock className="w-4 h-4 text-red-500" />
+                    <span>Interval Timer</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                      isTimerRunning ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-slate-800 text-slate-400"
+                    }`}>
+                      {isTimerRunning ? "Running" : "Ready"}
+                    </span>
+                  </div>
 
-                    return (
-                      <>
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <div className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-white">
+                    {String(Math.floor(timerSeconds / 60)).padStart(2, "0")}:{String(timerSeconds % 60).padStart(2, "0")}
+                  </div>
+                </div>
+
+                {/* Preset Timer Buttons & Controls */}
+                <div className="flex items-center gap-2 flex-wrap justify-center w-full md:w-auto">
+                  <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl">
+                    {[30, 45, 60, 90].map((sec) => (
+                      <button
+                        key={sec}
+                        type="button"
+                        onClick={() => startTimer(sec)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                          timerInitial === sec && isTimerRunning 
+                            ? "bg-red-600 text-white shadow-xs" 
+                            : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                        }`}
+                      >
+                        {sec}s
+                      </button>
+                    ))}
+                  </div>
+
+                  {isTimerRunning ? (
+                    <button
+                      type="button"
+                      onClick={stopTimer}
+                      className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer transition shadow-xs"
+                    >
+                      Pause
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => startTimer(timerSeconds || 45)}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition shadow-xs"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>Start</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={resetTimer}
+                    className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer transition"
+                    title="Reset Timer"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* ALL WORKOUTS ARRANGED IN A STRAIGHT LINE */}
+              <div className="flex flex-col space-y-8 max-w-4xl mx-auto w-full pt-2">
+                {currentWorkout.exercises.map((ex, exIdx) => {
+                  const drillKey = `${selectedDayNumber}_${ex.id || ex.name}_${exIdx}`;
+                  const isCompleted = !!completedDrills[drillKey];
+                  const restSecs = parseRestSeconds(ex.restPeriod);
+
+                  // Find section info for this drill
+                  const currentSecIdx = currentWorkout.sections?.findIndex(s => s.exerciseIndices.includes(exIdx)) ?? -1;
+                  const currentSec = currentSecIdx >= 0 && currentWorkout.sections ? currentWorkout.sections[currentSecIdx] : null;
+                  const isFirstInSec = currentSec ? currentSec.exerciseIndices[0] === exIdx : false;
+
+                  return (
+                    <div key={`${ex.id || ex.name}-${exIdx}`} className="space-y-4">
+                      
+                      {/* Section Header Divider when a new section begins */}
+                      {isFirstInSec && currentSec && (
+                        <div 
+                          id={`section-anchor-${currentSecIdx}`}
+                          className="pt-6 pb-2 scroll-mt-24 border-t-2 border-dashed border-slate-200"
+                        >
+                          <div className="flex items-center justify-between gap-3 bg-red-50/80 border border-red-200/80 px-4 py-3 rounded-2xl">
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center text-xs font-black font-mono">
+                                {currentSecIdx + 1}
+                              </span>
+                              <div>
+                                <h4 className="text-sm font-black uppercase text-red-950 tracking-tight">
+                                  Section {currentSecIdx + 1}: {currentSec.title || currentSec.name}
+                                </h4>
+                                {currentSec.description && (
+                                  <p className="text-xs text-red-800/80">{currentSec.description}</p>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-xs font-mono font-bold text-red-700 bg-white px-2.5 py-1 rounded-lg border border-red-200">
+                              {currentSec.exerciseIndices.length} Movements
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Movement Card in Straight Line Flow */}
+                      <div
+                        id={`exercise-card-${exIdx}`}
+                        className={`bg-white p-6 sm:p-8 rounded-3xl border transition-all duration-200 shadow-xs space-y-6 w-full relative ${
+                          isCompleted 
+                            ? "border-emerald-300 bg-emerald-50/15 shadow-sm" 
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        {/* Header: Movement Number, Name, Difficulty & Checkmark */}
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                          <div className="space-y-1.5 flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white text-xs font-mono font-black">
+                                Drill #{String(exIdx + 1).padStart(2, "0")}
+                              </span>
                               {currentSec && (
                                 <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-[10px] font-mono font-bold uppercase border border-red-200">
-                                  Section {currentSecIdx + 1}: {currentSec.title || currentSec.name}
+                                  {currentSec.title || currentSec.name}
                                 </span>
                               )}
-                              <span className="text-[10px] font-mono text-slate-400 font-bold uppercase">
-                                Movement {activeExerciseIndex + 1} of {currentWorkout.exercises.length}
-                                {indexInSec >= 0 && currentSec && ` (Step ${indexInSec + 1}/${currentSec.exerciseIndices.length})`}
+                              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-mono font-bold">
+                                {ex.difficulty}
                               </span>
                             </div>
-                            <h3 className="text-xl font-black text-slate-900 tracking-tight">
-                              {currentEx.name}
+
+                            <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                              {ex.name}
                             </h3>
                           </div>
-                          <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono font-bold shrink-0">
-                            {currentEx.difficulty}
-                          </span>
+
+                          {/* Completed Drill Toggle */}
+                          <button
+                            type="button"
+                            onClick={() => toggleDrillComplete(drillKey)}
+                            className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition cursor-pointer shrink-0 border ${
+                              isCompleted
+                                ? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
+                                : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
+                            }`}
+                          >
+                            <CheckCircle2 className={`w-4 h-4 ${isCompleted ? "text-white" : "text-slate-400"}`} />
+                            <span>{isCompleted ? "Completed ✓" : "Mark as Done"}</span>
+                          </button>
                         </div>
 
-                        {/* GIF Video / Media Demonstration with Explicit React Key */}
-                        <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-200">
+                        {/* Frameless GIF Display - Centered, Crisp, Seamless */}
+                        <div className="relative aspect-video sm:aspect-[16/10] w-full max-w-2xl mx-auto overflow-hidden workout-media-frameless workout-gif-frameless flex items-center justify-center bg-transparent py-2">
                           <UnifiedExerciseMedia
-                            key={`${currentEx.id}-${currentEx.name}-${activeExerciseIndex}`}
-                            exerciseId={currentEx.id}
-                            exerciseName={currentEx.name}
-                            className="w-full h-full object-cover"
-                            priority={true}
+                            key={`${ex.id}-${ex.name}-${exIdx}`}
+                            exerciseId={ex.id}
+                            exerciseName={ex.name}
+                            className="w-full h-full object-contain workout-gif-display workout-gif-frameless"
+                            priority={exIdx < 2}
                           />
                         </div>
 
-                        {/* Sets, Reps/Time, Rest Interval - Strictly Distinguished */}
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                            <span className="text-[9px] font-mono text-slate-400 uppercase font-bold block">Sets</span>
-                            <span className="text-xs font-black text-slate-900 font-mono">{currentEx.sets}</span>
+                        {/* Sets, Reps/Duration, Rest Interval */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                            <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block">Sets</span>
+                            <span className="text-sm font-black text-slate-900 font-mono">{ex.sets} Sets</span>
                           </div>
 
-                          <div className={`p-2.5 rounded-xl border text-center ${
-                            currentEx.workoutType === "reps" 
+                          <div className={`p-3 rounded-2xl border text-center ${
+                            ex.workoutType === "reps" 
                               ? "bg-amber-50/70 border-amber-200 text-amber-950" 
                               : "bg-blue-50/70 border-blue-200 text-blue-950"
                           }`}>
-                            <span className="text-[9px] font-mono uppercase font-bold block">
-                              {currentEx.workoutType === "reps" ? "Target Reps" : "Target Duration"}
+                            <span className="text-[10px] font-mono uppercase font-bold block">
+                              {ex.workoutType === "reps" ? "Target Reps" : "Target Duration"}
                             </span>
-                            <span className="text-xs font-black font-mono">
-                              {currentEx.repsOrDuration}
+                            <span className="text-sm font-black font-mono">
+                              {ex.repsOrDuration}
                             </span>
-                            <span className="text-[8px] font-mono font-bold uppercase tracking-wider block mt-0.5 opacity-80">
-                              {currentEx.workoutType === "reps" ? "Reps Based" : "Time Based"}
+                            <span className="text-[9px] font-mono font-bold uppercase tracking-wider block mt-0.5 opacity-80">
+                              {ex.workoutType === "reps" ? "Reps Based" : "Time Based"}
                             </span>
                           </div>
 
-                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                            <span className="text-[9px] font-mono text-slate-400 uppercase font-bold block">Rest Interval</span>
-                            <span className="text-xs font-black text-slate-900 font-mono">{currentEx.restPeriod}</span>
+                          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center flex flex-col justify-between items-center">
+                            <div>
+                              <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block">Rest Interval</span>
+                              <span className="text-sm font-black text-slate-900 font-mono">{ex.restPeriod}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => startTimer(restSecs)}
+                              className="mt-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-mono font-bold uppercase flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                            >
+                              <Play className="w-2.5 h-2.5 fill-current" />
+                              Start {restSecs}s Rest
+                            </button>
                           </div>
                         </div>
 
                         {/* Beginner Friendly Modification Alert */}
-                        <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl text-xs space-y-1">
-                          <span className="font-extrabold text-emerald-900 uppercase font-mono text-[10px] flex items-center gap-1">
-                            <Smile className="w-3.5 h-3.5 text-emerald-600" />
-                            Beginner Friendly Modification:
-                          </span>
-                          <p className="text-emerald-800 text-[11px] font-medium leading-relaxed">
-                            {currentEx.beginnerModification}
-                          </p>
-                        </div>
+                        {ex.beginnerModification && (
+                          <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-xs space-y-1">
+                            <span className="font-black text-emerald-900 uppercase font-mono text-[10px] flex items-center gap-1.5">
+                              <Smile className="w-4 h-4 text-emerald-600" />
+                              Beginner Friendly Modification:
+                            </span>
+                            <p className="text-emerald-800 text-xs font-medium leading-relaxed">
+                              {ex.beginnerModification}
+                            </p>
+                          </div>
+                        )}
 
-                        {/* Kinetic Form Instructions */}
-                        <div className="space-y-2">
-                          <span className="text-xs font-extrabold text-slate-900 uppercase tracking-tight block">
-                            Form Instructions & Coaching Cues:
-                          </span>
-                          <ul className="space-y-1.5 text-xs text-slate-600">
-                            {currentEx.instructions.map((step, idx) => (
-                              <li key={idx} className="flex items-start gap-2">
-                                <span className="h-4 w-4 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-[10px] font-mono font-bold shrink-0 mt-0.5">
-                                  {idx + 1}
-                                </span>
-                                <span className="leading-relaxed">{step}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
+                        {/* Kinetic Form Instructions & Coaching Cues */}
+                        {ex.instructions && ex.instructions.length > 0 && (
+                          <div className="space-y-2 pt-2">
+                            <span className="text-xs font-extrabold text-slate-900 uppercase tracking-tight block">
+                              Form Instructions & Kinetic Execution:
+                            </span>
+                            <ul className="space-y-2 text-xs text-slate-600">
+                              {ex.instructions.map((step, idx) => (
+                                <li key={idx} className="flex items-start gap-2.5">
+                                  <span className="h-4 w-4 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-[10px] font-mono font-bold shrink-0 mt-0.5">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="leading-relaxed">{step}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
 
-                        {/* Fast & Smooth Navigation Controls */}
-                        <div className="flex items-center justify-between pt-3 border-t border-slate-100 gap-2">
+                        {/* Quick Action Footer */}
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-100 gap-3">
                           <button
                             type="button"
-                            onClick={() => setActiveExerciseIndex((p) => Math.max(0, p - 1))}
-                            disabled={activeExerciseIndex === 0}
-                            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-40 cursor-pointer flex items-center gap-1.5 transition"
+                            onClick={() => startTimer(restSecs)}
+                            className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer flex items-center gap-1.5 transition"
                           >
-                            <ChevronLeft className="w-4 h-4" />
-                            <span>Previous Movement</span>
+                            <Clock className="w-3.5 h-3.5 text-red-500" />
+                            <span>Start Rest Timer ({restSecs}s)</span>
                           </button>
 
-                          {!isLastExercise ? (
-                            <button
-                              type="button"
-                              onClick={() => setActiveExerciseIndex((p) => Math.min(currentWorkout.exercises.length - 1, p + 1))}
-                              className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide bg-slate-900 text-white hover:bg-black cursor-pointer flex items-center gap-1.5 transition shadow-xs"
-                            >
-                              <span>Move to Next Movement</span>
-                              <ChevronRight className="w-4 h-4" />
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleWorkoutComplete(selectedDayNumber)}
-                              className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer flex items-center gap-1.5 transition shadow-xs"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                              <span>Finish Day {selectedDayNumber} Workout</span>
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => toggleDrillComplete(drillKey)}
+                            className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer shadow-xs ${
+                              isCompleted
+                                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                : "bg-slate-900 text-white hover:bg-black"
+                            }`}
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>{isCompleted ? "Done ✓" : "Mark Done"}</span>
+                          </button>
                         </div>
-                      </>
-                    );
-                  })()}
-                </div>
-
-                {/* Right Column: Rest Timer & Section-Grouped Routine List (5 cols) */}
-                <div className="lg:col-span-5 space-y-6">
-                  
-                  {/* Built-in Interval Rest Timer */}
-                  <div className="bg-slate-900 text-white p-6 rounded-3xl space-y-4 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-bold uppercase text-slate-400 flex items-center gap-1.5">
-                        <Clock className="w-4 h-4 text-red-500" />
-                        Rest & Work Interval Timer
-                      </span>
-                      <span className="text-xs font-mono font-bold text-red-400">
-                        {isTimerRunning ? "Running" : "Paused"}
-                      </span>
+                      </div>
                     </div>
+                  );
+                })}
 
-                    <div className="text-center py-4">
-                      <span className="text-5xl font-black font-mono tracking-tight text-white">
-                        {String(Math.floor(timerSeconds / 60)).padStart(2, "0")}:{String(timerSeconds % 60).padStart(2, "0")}
-                      </span>
-                    </div>
-
-                    {/* Preset Timer Buttons */}
-                    <div className="grid grid-cols-4 gap-2">
-                      {[30, 45, 60, 90].map((sec) => (
-                        <button
-                          key={sec}
-                          onClick={() => startTimer(sec)}
-                          className={`py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
-                            timerInitial === sec && isTimerRunning 
-                              ? "bg-red-600 text-white" 
-                              : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                          }`}
-                        >
-                          {sec}s
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex gap-2 pt-2">
-                      {isTimerRunning ? (
-                        <button
-                          onClick={stopTimer}
-                          className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black uppercase cursor-pointer"
-                        >
-                          Pause Timer
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => startTimer(timerSeconds || 45)}
-                          className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                          <span>Start Interval</span>
-                        </button>
-                      )}
-                      <button
-                        onClick={resetTimer}
-                        className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                      </button>
-                    </div>
+                {/* Day Routine Completion Section at bottom of Straight Line */}
+                <div className="p-8 rounded-3xl bg-slate-900 text-white border border-slate-800 text-center space-y-4 shadow-md mt-6">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
+                    <Trophy className="w-7 h-7" />
                   </div>
-
-                  {/* Section-Grouped Movements List */}
-                  <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-extrabold uppercase text-slate-900 tracking-tight block">
-                        Day {selectedDayNumber} Movements ({currentWorkout.exercises.length})
-                      </span>
-                      <span className="text-[10px] font-mono text-slate-400 font-bold">
-                        {currentWorkout.sections?.length || 1} Sections
-                      </span>
-                    </div>
-
-                    <div className="space-y-4 max-h-[580px] overflow-y-auto pr-1">
-                      {(currentWorkout.sections && currentWorkout.sections.length > 0
-                        ? currentWorkout.sections
-                        : [{ id: "all", title: "Routine Movements", name: "Routine Movements", description: "", exerciseIndices: currentWorkout.exercises.map((_, i) => i) }]
-                      ).map((section, secIdx) => {
-                        const isSecActive = section.exerciseIndices.includes(activeExerciseIndex);
-                        return (
-                          <div key={section.id || secIdx} className="space-y-2">
-                            {/* Section Header */}
-                            <div className={`px-3 py-1.5 rounded-xl flex items-center justify-between text-xs font-bold ${
-                              isSecActive ? "bg-red-50 text-red-900 border border-red-200" : "bg-slate-100 text-slate-700"
-                            }`}>
-                              <span className="flex items-center gap-1.5 uppercase font-mono text-[10px]">
-                                <span className="w-4 h-4 rounded-full bg-white flex items-center justify-center text-[9px] font-bold shadow-xs">
-                                  {secIdx + 1}
-                                </span>
-                                {section.title || section.name}
-                              </span>
-                              <span className="text-[10px] font-mono opacity-70">
-                                {section.exerciseIndices.length} movements
-                              </span>
-                            </div>
-
-                            {/* Exercises in this section */}
-                            <div className="space-y-1.5 pl-1">
-                              {section.exerciseIndices.map((idx) => {
-                                const ex = currentWorkout.exercises[idx];
-                                if (!ex) return null;
-                                const isSelected = idx === activeExerciseIndex;
-                                return (
-                                  <div
-                                    key={ex.id || idx}
-                                    onClick={() => setActiveExerciseIndex(idx)}
-                                    className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between gap-2.5 ${
-                                      isSelected
-                                        ? "bg-red-50/80 border-red-300 shadow-xs ring-1 ring-red-400"
-                                        : "bg-white border-slate-200 hover:bg-slate-50"
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                      <span className={`h-6 w-6 rounded-lg flex items-center justify-center font-mono text-[11px] font-bold shrink-0 ${
-                                        isSelected ? "bg-red-600 text-white" : "bg-slate-100 text-slate-700"
-                                      }`}>
-                                        {idx + 1}
-                                      </span>
-                                      <div className="min-w-0">
-                                        <p className={`text-xs font-bold truncate ${isSelected ? "text-red-900" : "text-slate-800"}`}>
-                                          {ex.name}
-                                        </p>
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                          <span className="text-[10px] font-mono text-slate-500">
-                                            {ex.sets}
-                                          </span>
-                                          <span className="text-[10px] text-slate-300">•</span>
-                                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
-                                            ex.workoutType === "reps" ? "bg-amber-100 text-amber-900" : "bg-blue-100 text-blue-900"
-                                          }`}>
-                                            {ex.repsOrDuration}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-red-600" : "text-slate-400"}`} />
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight">
+                      Ready to Finish Day {selectedDayNumber}?
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto mt-1">
+                      You've reviewed all {currentWorkout.exercises.length} movements in sequence. Log your completion to increment your streak and unlock Day {selectedDayNumber + 1}!
+                    </p>
                   </div>
-
+                  <button
+                    type="button"
+                    onClick={() => handleToggleWorkoutComplete(selectedDayNumber)}
+                    className="px-8 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-sm tracking-wider cursor-pointer transition shadow-lg inline-flex items-center gap-2"
+                  >
+                    <CheckCircle2 className="w-5 h-5" />
+                    <span>Finish Day {selectedDayNumber} Workout</span>
+                  </button>
                 </div>
-
               </div>
             </div>
           )}

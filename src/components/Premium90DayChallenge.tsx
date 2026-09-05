@@ -114,15 +114,15 @@ export const PREMIUM_CHALLENGES: PremiumChallenge[] = [
   }
 ];
 
-// Presets for splits - Day 3 (index 2) integrates Cardio across all challenge tracks
+// Presets for splits - Day 3 (index 2) is Cardio & Complete Rest (workouts removed entirely, rest after cardio)
 const CHALLENGE_SPLITS: Record<string, string[]> = {
-  lean_muscle: ["Chest + Triceps", "Back + Biceps", "Cardio + Legs & Lower Body Conditioning", "Shoulders + Core", "Upper Body", "Conditioning", "Recovery"],
-  fat_burning: ["HIIT Cardio", "Lower Body Conditioning", "Aerobic Cardio & Core Shred", "Upper Body Circuit", "Full Body Shred", "HIIT Endurance", "Recovery"],
-  body_transformation: ["Upper Body Strength", "Lower Body Strength", "Cardio + Core & Mobility", "Full Body Hypertrophy", "HIIT Cardio", "Core + Conditioning", "Recovery"],
-  athletic_performance: ["Plyometrics & Speed", "Lower Body Power", "Cardio & Speed Conditioning", "Upper Body Power", "Agility + Core", "Endurance Running", "Recovery"],
-  strength_challenge: ["Squats & Legs", "Bench Press & Chest", "Cardio & Active Recovery", "Deadlifts & Back", "Overhead Press & Shoulders", "Heavy Bracing Core", "Recovery"],
-  home_fitness: ["Bodyweight Full Body", "Core & Mobility", "Home HIIT Cardio & Core", "Bodyweight Upper Body", "Bodyweight Lower Body", "Home Conditioning", "Recovery"],
-  six_pack_core: ["Upper Abs + Obliques", "Lower Abs + Deep Core", "Cardio + Core Burn", "Planks & Isometrics", "Rotational Core Strength", "Full Core Circuit", "Recovery"]
+  lean_muscle: ["Chest + Triceps", "Back + Biceps", "5-10 KM Cardio & Complete Rest", "Shoulders + Core", "Upper Body", "Conditioning", "Recovery"],
+  fat_burning: ["HIIT Cardio", "Lower Body Conditioning", "5-10 KM Cardio & Complete Rest", "Upper Body Circuit", "Full Body Shred", "HIIT Endurance", "Recovery"],
+  body_transformation: ["Upper Body Strength", "Lower Body Strength", "5-10 KM Cardio & Complete Rest", "Full Body Hypertrophy", "HIIT Cardio", "Core + Conditioning", "Recovery"],
+  athletic_performance: ["Plyometrics & Speed", "Lower Body Power", "5-10 KM Cardio & Complete Rest", "Upper Body Power", "Agility + Core", "Endurance Running", "Recovery"],
+  strength_challenge: ["Squats & Legs", "Bench Press & Chest", "5-10 KM Cardio & Complete Rest", "Deadlifts & Back", "Overhead Press & Shoulders", "Heavy Bracing Core", "Recovery"],
+  home_fitness: ["Bodyweight Full Body", "Core & Mobility", "5-10 KM Cardio & Complete Rest", "Bodyweight Upper Body", "Bodyweight Lower Body", "Home Conditioning", "Recovery"],
+  six_pack_core: ["Upper Abs + Obliques", "Lower Abs + Deep Core", "5-10 KM Cardio & Complete Rest", "Planks & Isometrics", "Rotational Core Strength", "Full Core Circuit", "Recovery"]
 };
 
 // 2. Types for challenge persistence state
@@ -476,6 +476,65 @@ export default function Premium90DayChallenge() {
 
     const currentSplit = CHALLENGE_SPLITS[challengeId] || CHALLENGE_SPLITS["lean_muscle"];
     const focusLabel = currentSplit[dayOfWeekIdx];
+
+    // Day 3 / Cardio Days: Remove workout entirely - users only do cardio and rest after cardio
+    const isCardioDay = dayOfWeekIdx === 2 || focusLabel.toLowerCase().includes("cardio & complete rest") || focusLabel.toLowerCase().includes("5-10 km cardio");
+    if (isCardioDay) {
+      const cardioDayExercises = [
+        {
+          id: "challenge-cardio-5-10km",
+          name: "5 to 10 KM Aerobic Run / Walk",
+          category: "Cardio Workouts",
+          muscleGroups: ["Cardio"],
+          equipment: ["Bodyweight"],
+          sets: 1,
+          reps: "5 to 10 KM Continuous",
+          weight: "Bodyweight",
+          rest: "Full Rest Post-Cardio",
+          calories: 460,
+          instruction: "Complete 5 to 10 KM at a steady aerobic pace (Zone 2). All workouts and weight exercises are removed today so your muscles can rest completely.",
+          mistake: "Adding heavy lifting or intense calisthenics on cardio day.",
+          safety: "Wear proper running shoes and maintain steady hydration."
+        },
+        {
+          id: "challenge-cardio-rest-recovery",
+          name: "Post-Cardio Full Rest & Muscle Recovery",
+          category: "Recovery & Mobility",
+          muscleGroups: ["Recovery"],
+          equipment: ["Bodyweight"],
+          sets: 1,
+          reps: "Complete Rest Protocol",
+          weight: "None",
+          rest: "Until Next Day",
+          calories: 50,
+          instruction: "Lie down or relax comfortably. No workout is performed today. Rehydrate, replenish glycogen with nutritious food, and let your body recover.",
+          mistake: "Forcing extra exercises when the schedule calls for rest.",
+          safety: "Elevate your legs and practice slow diaphragmatic breathing."
+        }
+      ];
+
+      return {
+        dayNum,
+        weekNum,
+        phase,
+        phaseDesc: "Pure Aerobic Engine & Total Muscular Rest. Workouts removed entirely today; rest and rehydrate after your 5-10 KM cardio session.",
+        focus: focusLabel,
+        isRecoveryDay: true,
+        restTime: "Full Rest",
+        intensityLabel: "Aerobic Zone 2 (Conversational Pace)",
+        exercises: cardioDayExercises,
+        estTime: 50,
+        estCalories: 510,
+        warmUp: [
+          { name: "Ankle & Calf Rotations", duration: "3 Mins", desc: "Gentle joint lubrication before cardio." },
+          { name: "Light Walking Warm-Up", duration: "3 Mins", desc: "Gradual elevation of heart rate." }
+        ],
+        coolDown: [
+          { name: "Deep Diaphragmatic Box Breathing", duration: "4 Mins", desc: "Lower heart rate and initiate parasympathetic nervous system recovery." },
+          { name: "Complete Post-Cardio Rest", duration: "Full Rest", desc: "Rest muscles completely; no lifting or workout." }
+        ]
+      };
+    }
 
     // Pick dynamic exercises based on focusLabel
     let targetCategory = "Gym Workouts";
@@ -1262,7 +1321,7 @@ export default function Premium90DayChallenge() {
                             <Droplet className="w-4 h-4 text-cyan-400" />
                             Warm-up Routine (10-15 Minutes)
                           </h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="flex flex-col space-y-3 w-full">
                             {todayWorkoutDetail.warmUp.map((wu, idx) => (
                               <div key={idx} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl text-left space-y-1">
                                 <span className="text-[9px] text-cyan-500 font-mono font-bold uppercase">{wu.duration}</span>
@@ -1290,7 +1349,7 @@ export default function Premium90DayChallenge() {
                                     <div className="flex flex-wrap gap-2 text-[10px] font-mono font-bold uppercase mt-1 text-slate-400">
                                       <span>Target: {ex.muscleGroups?.join(", ") || "General Body"}</span>
                                       <span>•</span>
-                                      <span>{ex.difficulty || "Intermediate"}</span>
+                                      <span>{(ex as any).difficulty || "Intermediate"}</span>
                                     </div>
                                   </div>
 
@@ -1339,7 +1398,7 @@ export default function Premium90DayChallenge() {
                             <Clock className="w-4 h-4 text-indigo-400" />
                             Cool Down & Stretching (5-10 Minutes)
                           </h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="flex flex-col space-y-3 w-full">
                             {todayWorkoutDetail.coolDown.map((cd, idx) => (
                               <div key={idx} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl text-left space-y-1">
                                 <span className="text-[9px] text-indigo-500 font-mono font-bold uppercase">{cd.duration}</span>

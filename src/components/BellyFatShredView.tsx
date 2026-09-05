@@ -302,8 +302,8 @@ const getWorkoutForWeekAndDay = (week: number, dayNum: number) => {
     title = `Active Recovery: 12-3-30 Incline Treadmill Walk & Core Reset`;
     exercises = ["12-3-30 Treadmill Walk", "Dead Bug", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing", "Plank", "Side Plank"];
   } else if (dayNum === 3) {
-    title = `Cardio Blast & Compound Calorie Crusher`;
-    exercises = ["12-3-30 Treadmill Walk", "Rope Jump", "High Knees", "Burpees", "Mountain Climbers", "Squats", "Lunges", "Jump Squats", "Dead Bug", "Side Plank"];
+    title = `5-10 KM Cardio Session & Complete Rest`;
+    exercises = ["12-3-30 Treadmill Walk", "Dead Bug", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing"];
   } else if (dayNum === 4) {
     title = `Active Recovery: Zone 2 Kinetic Walking & Aerobic Base`;
     exercises = ["12-3-30 Treadmill Walk", "Rope Jump", "Mountain Climbers", "Side Plank", "Dead Bug", "Child's Pose Spinal Reach"];
@@ -340,7 +340,10 @@ const getWorkoutForWeekAndDay = (week: number, dayNum: number) => {
       `Burpees: 3 rounds x ${week <= 4 ? "10 reps" : week <= 12 ? "15 reps" : "20 reps with push-up"}`,
       `Rope Jump intervals: ${week <= 8 ? "3 mins continuous" : "5 mins high intensity double-unders"}`
     ],
-    strength: [
+    strength: dayNum === 3 ? [
+      "Workout Removed: All strength exercises are removed on cardio days.",
+      "Post-Cardio Rest: Lie down or relax, hydrate, and let your body recover completely after cardio."
+    ] : [
       `Squats: ${strengthReps}`,
       `Push-ups (Knee or Full): 3 sets x ${week <= 4 ? "8 reps" : "15 reps with slow negatives"}`,
       `Reverse Lunges: 3 sets x 12 reps per side ${week > 8 ? "(Hold dumbbells)" : ""}`
@@ -2584,7 +2587,7 @@ export default function BellyFatShredView() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="flex flex-col space-y-6 max-w-3xl mx-auto w-full">
                 {workoutInfo.warmup.map((drill, idx) => {
                   const drillId = `step_0_drill_${idx}`;
                   return (
@@ -2620,7 +2623,7 @@ export default function BellyFatShredView() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="flex flex-col space-y-6 max-w-3xl mx-auto w-full">
                 {workoutInfo.core.map((drill, idx) => {
                   const drillId = `step_1_drill_${idx}`;
                   return (
@@ -2656,7 +2659,7 @@ export default function BellyFatShredView() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="flex flex-col space-y-6 max-w-3xl mx-auto w-full">
                 {workoutInfo.hiit.map((drill, idx) => {
                   const drillId = `step_2_drill_${idx}`;
                   return (
@@ -2692,7 +2695,7 @@ export default function BellyFatShredView() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="flex flex-col space-y-6 max-w-3xl mx-auto w-full">
                 {workoutInfo.strength.map((drill, idx) => {
                   const drillId = `step_3_drill_${idx}`;
                   return (
@@ -2728,7 +2731,7 @@ export default function BellyFatShredView() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="flex flex-col space-y-6 max-w-3xl mx-auto w-full">
                 {workoutInfo.fullBodyCircuit.map((drill, idx) => {
                   const drillId = `step_4_drill_${idx}`;
                   return (
@@ -2764,7 +2767,7 @@ export default function BellyFatShredView() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="flex flex-col space-y-6 max-w-3xl mx-auto w-full">
                 {workoutInfo.cooldown.map((drill, idx) => {
                   const drillId = `step_5_drill_${idx}`;
                   return (

@@ -815,22 +815,16 @@ export function getDailyWorkoutForDay(
       "plank_dips"
     ];
   } else if (dayInWeek === 3) {
-    dayType = daysPerWeek >= 4 ? "conditioning" : "active_recovery";
-    title += "Low-Impact Fat Burn & Kinetic Core Flow";
-    subtitle = "Elevate metabolic heart rate without joint impact or systemic cortisol spikes.";
-    focus = "Cardiovascular Conditioning & Core Tightening";
-    intensity = "Moderate";
+    dayType = "active_recovery";
+    title += "5-10 KM Cardio Session & Complete Rest";
+    subtitle = "Complete your 5-10 KM aerobic run or walk. Workouts are removed today so you can rest and recover completely after your cardio.";
+    focus = "5-10 KM Cardio & Complete Muscular Rest";
+    intensity = "Low";
     dayExerciseTemplates = [
-      "goblet_squat",
-      "sumo_squat",
-      "step_ups",
-      "curtsy_lunge",
-      "dead_bug_core",
-      "bicycle_crunches",
-      "plank_dips",
       "stomach_vacuum",
-      "lateral_band_walk",
-      "face_pulls_or_band_pullaparts"
+      "dead_bug_core",
+      "cat_cow_breathing_reset",
+      "childs_pose_stretch"
     ];
   } else if (dayInWeek === 4) {
     dayType = "strength";

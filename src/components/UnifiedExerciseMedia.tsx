@@ -84,16 +84,16 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
 
   if (hookLoading && !exercise) {
     return (
-      <div className={`flex flex-col items-center justify-center bg-slate-900/90 rounded-xl ${className}`}>
+      <div className={`flex flex-col items-center justify-center bg-transparent workout-gif-frameless ${className}`}>
         <Dumbbell className="w-5 h-5 text-slate-400 animate-spin" />
-        <span className="text-[10px] font-mono font-bold text-slate-400 mt-2">LOADING MEDIA</span>
+        <span className="text-[10px] font-mono font-bold text-slate-400 mt-2">LOADING DEMO</span>
       </div>
     );
   }
 
   if (!resolvedMediaUrl || hasError) {
     return (
-      <div className={`flex flex-col items-center justify-center bg-slate-900/90 rounded-xl ${className}`}>
+      <div className={`flex flex-col items-center justify-center bg-transparent workout-gif-frameless ${className}`}>
         <Dumbbell className="w-5 h-5 text-slate-400 animate-pulse" />
         <span className="text-[10px] font-mono font-bold text-slate-400 mt-2 uppercase tracking-tight text-center px-2 truncate w-full">
           {exerciseName || exercise?.name || "EXERCISE DEMO"}
@@ -104,19 +104,19 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
 
   if (resolvedMediaType === "video") {
     return (
-      <div className={`relative ${className} workout-media-frameless flex items-center justify-center`}>
+      <div className={`relative ${className} workout-media-frameless workout-gif-frameless flex items-center justify-center`}>
         <video
           src={resolvedMediaUrl}
           autoPlay
           loop
           muted
           playsInline
-          className="w-full h-full object-contain workout-gif-display"
+          className="w-full h-full object-contain workout-gif-display workout-gif-frameless"
           onCanPlay={() => setIsLoaded(true)}
           onError={handleMediaError}
         />
         {!isLoaded && (
-          <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center space-y-1.5 z-10 animate-pulse">
+          <div className="absolute inset-0 bg-transparent flex flex-col items-center justify-center space-y-1.5 z-10 animate-pulse">
             <Dumbbell className="w-5 h-5 text-slate-400 animate-spin" />
             <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">STREAM LOADING</span>
           </div>
@@ -129,12 +129,12 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
   }
 
   return (
-    <div className={`${className} workout-media-frameless flex items-center justify-center`}>
+    <div className={`${className} workout-media-frameless workout-gif-frameless flex items-center justify-center`}>
       <OptimizedImage
         key={resolvedMediaUrl}
         src={resolvedMediaUrl}
         alt={exercise?.name || exerciseName || "Exercise Media"}
-        className="w-full h-full object-contain workout-gif-display"
+        className="w-full h-full object-contain workout-gif-display workout-gif-frameless"
         format={resolvedMediaUrl?.toLowerCase()?.includes(".gif") ? "origin" : "webp"}
         fallbackType={fallbackType}
         aspectRatio={aspectRatio}

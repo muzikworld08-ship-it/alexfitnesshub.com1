@@ -77,6 +77,30 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Defensive polyfill for Tawk.to i18next to prevent third-party script crashes -->
+    <script type="text/javascript">
+      (function() {
+        var fallbackI18n = function(key, opts) {
+          if (typeof key === 'string') return key;
+          return '';
+        };
+        fallbackI18n.t = function(k) { return k; };
+        fallbackI18n.exists = function() { return true; };
+        fallbackI18n.changeLanguage = function(l, cb) { if (cb) cb(); return Promise.resolve(); };
+
+        window.$_Tawk = window.$_Tawk || {};
+        window.$_Tawk.i18next = fallbackI18n;
+
+        // Catch and suppress unhandled third-party tawk script errors
+        window.addEventListener('error', function(event) {
+          if (event && event.message && (event.message.indexOf('i18next') !== -1 || event.message.indexOf('Tawk') !== -1 || (event.filename && event.filename.indexOf('tawk.to') !== -1))) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+      })();
+    </script>
     <!--Start of Tawk.to Script-->
     <script type="text/javascript">
       var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();

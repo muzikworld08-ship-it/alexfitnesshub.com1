@@ -138,12 +138,12 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
     return (
       <div 
         id={`visual-card-${(exerciseName || exercise?.name || "exercise").replace(/\s+/g, '-').toLowerCase()}`} 
-        className={`relative w-full ${className} workout-media-frameless rounded-xl overflow-hidden flex flex-col items-center justify-center`}
+        className={`relative w-full ${className} workout-media-frameless workout-gif-frameless overflow-hidden flex flex-col items-center justify-center bg-transparent`}
       >
         {resolvedMediaUrl && !hasError ? (
-          <div className="relative w-full h-full flex items-center justify-center">
+          <div className="relative w-full h-full flex items-center justify-center bg-transparent">
             {loading && (
-              <div className="absolute inset-0 bg-slate-900 animate-pulse z-10 flex flex-col items-center justify-center space-y-2 min-h-[160px]">
+              <div className="absolute inset-0 bg-transparent animate-pulse z-10 flex flex-col items-center justify-center space-y-2 min-h-[160px]">
                 <Dumbbell className="w-5 h-5 text-slate-400 animate-spin" />
                 <span className="text-[8px] font-mono font-bold text-slate-400 tracking-wider">LOADING</span>
               </div>
@@ -155,7 +155,7 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
                 loop
                 muted
                 playsInline
-                className={`w-full h-full block object-contain workout-gif-display transition-opacity duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}
+                className={`w-full h-full block object-contain workout-gif-display workout-gif-frameless transition-opacity duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}
                 onCanPlay={() => setLoading(false)}
                 onError={handleMediaError}
               />
@@ -164,7 +164,7 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
                 ref={handleImageRef}
                 src={formatMediaSrc(resolvedMediaUrl, retryCount)} 
                 alt={exerciseName || "Exercise Preview"} 
-                className={`w-full h-full block object-contain workout-gif-display transition-opacity duration-200 ${loading ? 'opacity-0' : 'opacity-100'}`} 
+                className={`w-full h-full block object-contain workout-gif-display workout-gif-frameless transition-opacity duration-200 ${loading ? 'opacity-0' : 'opacity-100'}`} 
                 referrerPolicy="no-referrer"
                 loading={priority ? "eager" : "lazy"}
                 decoding="async"
@@ -175,9 +175,9 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
             ) : null}
           </div>
         ) : (
-          <div className="flex flex-col h-full min-h-[180px] justify-center items-center relative z-10 p-4 w-full">
+          <div className="flex flex-col h-full min-h-[180px] justify-center items-center relative z-10 p-4 w-full bg-transparent">
             <div className="flex flex-col items-center justify-center space-y-2 py-4">
-              <div className="h-12 w-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
                 <Dumbbell className="w-5 h-5 text-[#C0392B]" />
               </div>
               <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider">
@@ -193,12 +193,12 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
   return (
     <div id="workout-visual-root" className="w-full max-w-full overflow-hidden flex flex-col space-y-3 min-w-0">
       {/* Manually uploaded GIF / custom media display */}
-      <div id="exercise-demo-media-box" className="relative w-full aspect-video rounded-xl overflow-hidden workout-media-frameless flex items-center justify-center">
+      <div id="exercise-demo-media-box" className="relative w-full aspect-video overflow-hidden workout-media-frameless workout-gif-frameless flex items-center justify-center bg-transparent">
         {resolvedMediaUrl && !hasError ? (
           <>
             {loading && (
-              <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-xs animate-pulse z-20 flex flex-col items-center justify-center space-y-2">
-                <div className="relative z-30 flex flex-col items-center justify-center space-y-1.5 p-3 bg-slate-900/60 backdrop-blur-xs rounded-xl text-white">
+              <div className="absolute inset-0 bg-transparent animate-pulse z-20 flex flex-col items-center justify-center space-y-2">
+                <div className="relative z-30 flex flex-col items-center justify-center space-y-1.5 p-3 bg-black/40 backdrop-blur-xs rounded-xl text-white">
                   <Dumbbell className="w-6 h-6 text-slate-400 animate-spin" />
                   <span className="text-[9px] font-mono font-bold text-slate-400 tracking-wider">LOADING STREAM</span>
                 </div>
@@ -211,7 +211,7 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
                 loop
                 muted
                 playsInline
-                className={`w-full h-full object-contain workout-gif-display transition-all duration-300 ease-out ${loading ? 'opacity-0' : 'opacity-100'}`}
+                className={`w-full h-full object-contain workout-gif-display workout-gif-frameless transition-all duration-300 ease-out ${loading ? 'opacity-0' : 'opacity-100'}`}
                 onCanPlay={() => setLoading(false)}
                 onError={handleMediaError}
               />

@@ -93,6 +93,38 @@ export const WORKOUT_CATEGORIES_INFO = [
     name: "Cardio",
     desc: "Boost lung capacity, heart health, and endurance with high-stamina fat-burning exercises.",
     img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrvRjmXYGr4ScWcYhRHIfOSA8izGD8gzBUGHx5Lf_iB0BZA0s6lujN7OiT&s=10"
+  },
+  {
+    id: "90-Day-Immortal",
+    name: "90-Day Immortal Challenge",
+    desc: "Elite kinesiology exercises, progressive overload push/pull/legs splits, and total body transformation.",
+    img: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&auto=format&fit=crop&q=80",
+    isProgram: true,
+    programViewId: "challenges"
+  },
+  {
+    id: "Belly-Fat-Shred",
+    name: "5-Month Belly Fat Shred",
+    desc: "Targeted abdominal, metabolic, and core exercises designed to incinerate visceral belly fat and sculpt your midsection.",
+    img: "https://i.ytimg.com/vi/T2de9yQv-yc/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLDXYdVILMIN7nnFzJLRsAXDN7vQXQ",
+    isProgram: true,
+    programViewId: "belly-fat-shred"
+  },
+  {
+    id: "Home-Workout-180",
+    name: "180-Day Home Workout Challenge",
+    desc: "Zero-equipment calisthenics, living room core circuits, and explosive bodyweight endurance drills.",
+    img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-89uZaleE8506y-CMEmQT9-GMnzZVZidcyy7NO1UhF6z5d3I9NJaXf-Q&s=10",
+    isProgram: true,
+    programViewId: "home-workout-challenge"
+  },
+  {
+    id: "Womens-Confidence-180",
+    name: "Women's 180-Day Confidence & Sculpt",
+    desc: "Specialized glute hypertrophy, posture correction, waist sculpting, and toned curves designed for women.",
+    img: "https://i.pinimg.com/236x/d0/39/8d/d0398d92f60f14a045675fbc5f2c16ac.jpg",
+    isProgram: true,
+    programViewId: "women-confidence"
   }
 ];
 
@@ -976,6 +1008,11 @@ export function getWorkoutMappedCategory(workout: Workout): string {
   const muscleLower = workout.targetMuscle.toLowerCase();
   const descLower = workout.description.toLowerCase();
   
+  if (nameLower.includes("immortal") || nameLower.includes("90-day")) return "90-Day-Immortal";
+  if (nameLower.includes("belly fat") || nameLower.includes("shred") && nameLower.includes("belly")) return "Belly-Fat-Shred";
+  if (nameLower.includes("180-day") && nameLower.includes("home")) return "Home-Workout-180";
+  if (nameLower.includes("women") || nameLower.includes("confidence")) return "Womens-Confidence-180";
+
   if (nameLower.includes("chest") || muscleLower.includes("chest") || muscleLower.includes("pectoralis")) return "Chest";
   if (nameLower.includes("back") || muscleLower.includes("back") || muscleLower.includes("lats") || muscleLower.includes("rhomboids")) return "Back";
   if (nameLower.includes("glute") || muscleLower.includes("glute")) return "Glutes";

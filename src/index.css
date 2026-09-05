@@ -180,17 +180,25 @@ body, input, select, textarea, button, p, span, div, h1, h2, h3, h4, h5, h6, li,
 
 /* =========================================================================
    CUSTOM WORKOUT GIF & EXERCISE MEDIA DISPLAY CSS ENGINE
-   Frameless, Full-Width, Bold Grid High-Impact Presentation
+   Frameless, Full-Width, Bold Straight-Line High-Impact Presentation
    ========================================================================= */
 
 .workout-media-frameless {
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
-  background-color: #050811;
+  background-color: transparent !important;
   overflow: hidden;
   position: relative;
   width: 100%;
+}
+
+.workout-gif-frameless {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
 }
 
 .workout-gif-display {
@@ -201,7 +209,18 @@ body, input, select, textarea, button, p, span, div, h1, h2, h3, h4, h5, h6, li,
   image-rendering: crisp-edges;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   display: block;
-  filter: contrast(1.08) saturate(1.1);
+  filter: contrast(1.06) saturate(1.08);
+}
+
+/* Straight line layout helpers */
+.workout-straight-line-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  width: 100%;
+  max-width: 56rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Bold GIF presentation in any frame or container */

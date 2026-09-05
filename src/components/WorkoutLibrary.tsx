@@ -205,6 +205,106 @@ function getOrCreateExercise(name: string, exercisesList: Exercise[]): Exercise 
   };
 }
 
+export function getExercisesForWorkoutCategory(categoryId: string, allExercises: Exercise[]): Exercise[] {
+  const normCat = categoryId.toLowerCase();
+  
+  if (normCat === "90-day-immortal") {
+    return allExercises.filter(e => {
+      const mg = (e.muscleGroups || []).map(m => m.toLowerCase());
+      const name = e.name.toLowerCase();
+      const bodyPart = (e.bodyPart || "").toLowerCase();
+      return mg.includes("chest") || mg.includes("back") || mg.includes("legs") || 
+             mg.includes("shoulders") || mg.includes("biceps") || mg.includes("triceps") ||
+             bodyPart.includes("chest") || bodyPart.includes("back") || bodyPart.includes("legs") ||
+             name.includes("bench") || name.includes("squat") || name.includes("deadlift") ||
+             name.includes("press") || name.includes("row") || name.includes("curl") || name.includes("pull");
+    });
+  }
+
+  if (normCat === "belly-fat-shred") {
+    return allExercises.filter(e => {
+      const mg = (e.muscleGroups || []).map(m => m.toLowerCase());
+      const cat = (e.category || "").toLowerCase();
+      const name = e.name.toLowerCase();
+      return mg.includes("core") || mg.includes("abs") || mg.includes("obliques") || mg.includes("cardio") ||
+             cat.includes("hiit") || cat.includes("fat") || cat.includes("core") ||
+             name.includes("plank") || name.includes("treadmill") || name.includes("climber") ||
+             name.includes("twist") || name.includes("crunch") || name.includes("vacuum") || name.includes("burn");
+    });
+  }
+
+  if (normCat === "home-workout-180") {
+    return allExercises.filter(e => {
+      const eq = (e.equipment || []).map(item => item.toLowerCase());
+      const cat = (e.category || "").toLowerCase();
+      const name = e.name.toLowerCase();
+      return eq.includes("bodyweight") || eq.includes("none") || cat.includes("bodyweight") || cat.includes("home") ||
+             name.includes("push-up") || name.includes("squat") || name.includes("lunge") ||
+             name.includes("plank") || name.includes("jack") || name.includes("stretch") || name.includes("dip");
+    });
+  }
+
+  if (normCat === "womens-confidence-180") {
+    return allExercises.filter(e => {
+      const mg = (e.muscleGroups || []).map(m => m.toLowerCase());
+      const name = e.name.toLowerCase();
+      const bodyPart = (e.bodyPart || "").toLowerCase();
+      return mg.includes("glutes") || mg.includes("core") || mg.includes("posture") || bodyPart.includes("glutes") ||
+             name.includes("thrust") || name.includes("bridge") || name.includes("lunge") ||
+             name.includes("squat") || name.includes("kickback") || name.includes("vacuum") ||
+             name.includes("pull-apart") || name.includes("band") || name.includes("sumo");
+    });
+  }
+
+  // Standard Muscle & Training Categories
+  return allExercises.filter(e => {
+    const mg = (e.muscleGroups || []).map(m => m.toLowerCase());
+    const cat = (e.category || "").toLowerCase();
+    const bodyPart = (e.bodyPart || "").toLowerCase();
+    const name = e.name.toLowerCase();
+    const eq = (e.equipment || []).map(item => item.toLowerCase());
+
+    if (normCat === "chest") {
+      return mg.includes("chest") || bodyPart.includes("chest") || cat.includes("chest") || name.includes("press") || name.includes("fly") || name.includes("push-up");
+    }
+    if (normCat === "back") {
+      return mg.includes("back") || mg.includes("lats") || mg.includes("traps") || bodyPart.includes("back") || cat.includes("back") || name.includes("row") || name.includes("pull");
+    }
+    if (normCat === "legs") {
+      return mg.includes("legs") || mg.includes("quadriceps") || mg.includes("hamstrings") || mg.includes("calves") || bodyPart.includes("legs") || cat.includes("leg") || name.includes("squat") || name.includes("lunge") || name.includes("calf");
+    }
+    if (normCat === "shoulders") {
+      return mg.includes("shoulders") || mg.includes("deltoids") || bodyPart.includes("shoulders") || cat.includes("shoulder") || name.includes("raise") || name.includes("overhead") || name.includes("press");
+    }
+    if (normCat === "arms") {
+      return mg.includes("biceps") || mg.includes("triceps") || mg.includes("arms") || mg.includes("forearms") || bodyPart.includes("arms") || cat.includes("arm") || name.includes("curl") || name.includes("dip") || name.includes("pushdown") || name.includes("extension");
+    }
+    if (normCat === "core") {
+      return mg.includes("core") || mg.includes("abs") || mg.includes("obliques") || bodyPart.includes("core") || cat.includes("core") || cat.includes("abs") || name.includes("plank") || name.includes("crunch") || name.includes("vacuum") || name.includes("hollow");
+    }
+    if (normCat === "glutes") {
+      return mg.includes("glutes") || bodyPart.includes("glutes") || cat.includes("glute") || name.includes("thrust") || name.includes("bridge") || name.includes("kickback") || name.includes("abduction");
+    }
+    if (normCat === "bodyweight") {
+      return eq.includes("bodyweight") || eq.includes("none") || cat.includes("bodyweight") || cat.includes("calisthenics") || name.includes("push-up") || name.includes("pull-up") || name.includes("dip");
+    }
+    if (normCat === "hiit") {
+      return cat.includes("hiit") || mg.includes("hiit") || name.includes("burpee") || name.includes("climber") || name.includes("jack") || name.includes("jump");
+    }
+    if (normCat === "fat burning") {
+      return cat.includes("fat") || cat.includes("hiit") || mg.includes("cardio") || name.includes("jump") || name.includes("sprint") || name.includes("treadmill") || name.includes("burpee");
+    }
+    if (normCat === "strength") {
+      return cat.includes("strength") || eq.includes("barbell") || name.includes("deadlift") || name.includes("squat") || name.includes("bench");
+    }
+    if (normCat === "cardio") {
+      return mg.includes("cardio") || cat.includes("cardio") || name.includes("walk") || name.includes("run") || name.includes("treadmill") || name.includes("rope") || name.includes("cycle");
+    }
+
+    return cat.includes(normCat) || mg.some(m => m.includes(normCat)) || name.includes(normCat);
+  });
+}
+
 export default function WorkoutLibrary({ setView }: { setView?: (view: string) => void }) {
   const { exercises } = useCentralizedExercises();
   const { 
@@ -276,10 +376,20 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
   };
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [categoryExercisePage, setCategoryExercisePage] = useState(1);
+  const [categoryViewTab, setCategoryViewTab] = useState<"exercises" | "routines" | "all">("exercises");
+  const [categoryExerciseSearch, setCategoryExerciseSearch] = useState("");
+  const [categoryDifficultyFilter, setCategoryDifficultyFilter] = useState<string>("All");
+  const [categorySectionFilter, setCategorySectionFilter] = useState<"all" | "programs" | "muscle" | "styles">("all");
+
   const [selectedWorkoutCategoryState, setSelectedWorkoutCategoryState] = useState<string | null>(null);
   const setSelectedWorkoutCategory = (cat: string | null) => {
     setSelectedWorkoutCategoryState(cat);
     setCurrentPage(1);
+    setCategoryExercisePage(1);
+    setCategoryExerciseSearch("");
+    setCategoryDifficultyFilter("All");
+    setCategoryViewTab("exercises");
   };
   const selectedWorkoutCategory = selectedWorkoutCategoryState;
   const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
@@ -2504,246 +2614,699 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
               {/* If no Category has been selected yet */}
               {!selectedWorkoutCategory ? (
                 <div className="space-y-8 max-w-[1400px] mx-auto">
-                  <div className="text-left">
-                    <h2 className="text-3xl font-bold uppercase tracking-tight text-[#2B2B2B]">
-                      Workout Categories
-                    </h2>
-                    <p className="text-lg text-[#707070] mt-1.5 leading-relaxed max-w-3xl">
-                      Choose a targeted curriculum calibrated to build absolute strength, aesthetic posture, and maximum conditioning.
-                    </p>
+                  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                    <div className="text-left">
+                      <h2 className="text-3xl font-bold uppercase tracking-tight text-[#2B2B2B]">
+                        Workout Categories & Programs
+                      </h2>
+                      <p className="text-base text-[#707070] mt-1.5 leading-relaxed max-w-3xl">
+                        Explore complete exercise libraries for every muscle group, discipline, and flagship training program. Select any category to view all exercises and curated routines.
+                      </p>
+                    </div>
+
+                    {/* Filter Pills */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCategorySectionFilter("all")}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                          categorySectionFilter === "all"
+                            ? "bg-[#E53935] text-white shadow-xs"
+                            : "bg-white border border-[#E8E8E8] text-[#707070] hover:text-[#2B2B2B]"
+                        }`}
+                      >
+                        All ({WORKOUT_CATEGORIES_INFO.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCategorySectionFilter("programs")}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                          categorySectionFilter === "programs"
+                            ? "bg-[#E53935] text-white shadow-xs"
+                            : "bg-white border border-[#E8E8E8] text-[#707070] hover:text-[#2B2B2B]"
+                        }`}
+                      >
+                        <Award className="w-3.5 h-3.5" />
+                        Flagship Programs (4)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCategorySectionFilter("muscle")}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                          categorySectionFilter === "muscle"
+                            ? "bg-[#E53935] text-white shadow-xs"
+                            : "bg-white border border-[#E8E8E8] text-[#707070] hover:text-[#2B2B2B]"
+                        }`}
+                      >
+                        <Dumbbell className="w-3.5 h-3.5" />
+                        Target Muscles (7)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCategorySectionFilter("styles")}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                          categorySectionFilter === "styles"
+                            ? "bg-[#E53935] text-white shadow-xs"
+                            : "bg-white border border-[#E8E8E8] text-[#707070] hover:text-[#2B2B2B]"
+                        }`}
+                      >
+                        <Activity className="w-3.5 h-3.5" />
+                        Disciplines (5)
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {WORKOUT_CATEGORIES_INFO.map((cat) => (
-                      <motion.div
-                        key={cat.id}
-                        whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setSelectedWorkoutCategory(cat.id)}
-                        className="group bg-white border border-[#E8E8E8] hover:border-[#E53935]/50 rounded-[18px] overflow-hidden shadow-xs hover:shadow-md transition-all duration-250 cursor-pointer flex flex-col justify-between"
-                      >
-                        <div className="relative h-44 w-full bg-slate-950 overflow-hidden">
-                          <OptimizedImage
-                            src={cat.img}
-                            alt={cat.name}
-                            aspectRatio="16/9"
-                            className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
-                          <div className="absolute bottom-4 left-4 right-4 text-white">
-                            <h3 className="text-xl font-bold uppercase tracking-tight">
-                              {cat.name}
-                            </h3>
-                          </div>
-                        </div>
-                        <div className="p-5 flex-1 flex flex-col justify-between">
-                          <p className="text-sm text-[#707070] leading-relaxed mb-4 line-clamp-3">
-                            {cat.desc}
-                          </p>
-                          <span className="text-[13px] font-bold text-[#E53935] flex items-center gap-1 group-hover:translate-x-1.5 transition-transform">
-                            Browse Routines
-                            <ArrowRight className="w-4 h-4" />
-                          </span>
-                        </div>
-                      </motion.div>
-                    ))}
+                    {WORKOUT_CATEGORIES_INFO
+                      .filter((cat) => {
+                        if (categorySectionFilter === "programs") return cat.isProgram;
+                        if (categorySectionFilter === "muscle") return !cat.isProgram && ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Glutes"].includes(cat.id);
+                        if (categorySectionFilter === "styles") return !cat.isProgram && ["Bodyweight", "HIIT", "Fat Burning", "Strength", "Cardio"].includes(cat.id);
+                        return true;
+                      })
+                      .map((cat) => {
+                        const catExCount = getExercisesForWorkoutCategory(cat.id, exercises).length;
+                        const catRoutinesCount = WORKOUTS_DATABASE.filter(w => getWorkoutMappedCategory(w) === cat.id).length;
+
+                        return (
+                          <motion.div
+                            key={cat.id}
+                            whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => setSelectedWorkoutCategory(cat.id)}
+                            className={`group bg-white border rounded-[18px] overflow-hidden shadow-xs hover:shadow-md transition-all duration-250 cursor-pointer flex flex-col justify-between ${
+                              cat.isProgram ? "border-[#E53935]/40 hover:border-[#E53935]" : "border-[#E8E8E8] hover:border-[#E53935]/50"
+                            }`}
+                          >
+                            <div className="relative h-44 w-full bg-slate-950 overflow-hidden">
+                              <OptimizedImage
+                                src={cat.img}
+                                alt={cat.name}
+                                aspectRatio="16/9"
+                                className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+                              
+                              {/* Program or Muscle Tag */}
+                              <div className="absolute top-3 right-3">
+                                {cat.isProgram ? (
+                                  <span className="bg-[#E53935] text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1">
+                                    <Crown className="w-3 h-3" />
+                                    Flagship Program
+                                  </span>
+                                ) : (
+                                  <span className="bg-black/60 backdrop-blur-xs text-white/90 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border border-white/10">
+                                    {["Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Glutes"].includes(cat.id) ? "Muscle Target" : "Training Style"}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="absolute bottom-3 left-4 right-4 text-white">
+                                <h3 className="text-xl font-bold uppercase tracking-tight">
+                                  {cat.name}
+                                </h3>
+                                <p className="text-[11px] text-white/80 font-mono mt-0.5">
+                                  {catExCount} Exercises • {catRoutinesCount} Curated Routines
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="p-5 flex-1 flex flex-col justify-between">
+                              <p className="text-sm text-[#707070] leading-relaxed mb-4 line-clamp-3">
+                                {cat.desc}
+                              </p>
+                              <div className="flex items-center justify-between pt-2 border-t border-[#F0F0F0]">
+                                <span className="text-xs font-mono font-bold text-slate-500">
+                                  {catExCount} Total Moves
+                                </span>
+                                <span className="text-[13px] font-bold text-[#E53935] flex items-center gap-1 group-hover:translate-x-1.5 transition-transform">
+                                  View Category
+                                  <ArrowRight className="w-4 h-4" />
+                                </span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                   </div>
                 </div>
               ) : (
                 /* If a Category has been selected */
                 <div className="space-y-8 max-w-[1400px] mx-auto">
-                  {/* Category Header */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-6 border-b border-[#E8E8E8]">
-                    <div className="text-left">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedWorkoutCategory(null)}
-                        className="flex items-center gap-1.5 text-xs font-bold uppercase text-[#707070] hover:text-[#E53935] mb-3 transition-colors cursor-pointer"
-                      >
-                        <ArrowLeft className="w-4 h-4" />
-                        Back to Categories
-                      </button>
-                      <h2 className="text-3xl font-bold uppercase text-[#2B2B2B] tracking-tight">
-                        {WORKOUT_CATEGORIES_INFO.find(c => c.id === selectedWorkoutCategory)?.name} Routines
-                      </h2>
-                      <p className="text-lg text-[#707070] mt-1.5 leading-relaxed max-w-3xl">
-                        {WORKOUT_CATEGORIES_INFO.find(c => c.id === selectedWorkoutCategory)?.desc}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedWorkoutCategory(null)}
-                      className="px-5 py-2.5 bg-white border border-[#E8E8E8] hover:border-[#E53935] hover:text-[#E53935] rounded-[10px] text-xs font-bold uppercase tracking-wider text-[#2B2B2B] transition-all cursor-pointer shadow-xs"
-                    >
-                      All Categories
-                    </button>
-                  </div>
-
-                  {/* Workouts Grid (Single Workout Cards) with Pagination */}
                   {(() => {
+                    const currentCat = WORKOUT_CATEGORIES_INFO.find(c => c.id === selectedWorkoutCategory);
+                    const allCatExercises = getExercisesForWorkoutCategory(selectedWorkoutCategory, exercises);
                     const categoryWorkouts = WORKOUTS_DATABASE.filter(w => getWorkoutMappedCategory(w) === selectedWorkoutCategory);
+                    
+                    // Filter exercises within this category by search & difficulty
+                    const filteredCatExercises = allCatExercises.filter(ex => {
+                      const matchesSearch = !categoryExerciseSearch.trim() || 
+                        ex.name.toLowerCase().includes(categoryExerciseSearch.toLowerCase()) ||
+                        (ex.muscleGroups || []).some(m => m.toLowerCase().includes(categoryExerciseSearch.toLowerCase())) ||
+                        (ex.equipment || []).some(eq => eq.toLowerCase().includes(categoryExerciseSearch.toLowerCase()));
+                      const matchesDifficulty = categoryDifficultyFilter === "All" || ex.difficulty === categoryDifficultyFilter;
+                      return matchesSearch && matchesDifficulty;
+                    });
+
+                    const EXERCISES_PER_PAGE = 12;
+                    const totalExPages = Math.ceil(filteredCatExercises.length / EXERCISES_PER_PAGE);
+                    const paginatedCatExercises = filteredCatExercises.slice(
+                      (categoryExercisePage - 1) * EXERCISES_PER_PAGE,
+                      categoryExercisePage * EXERCISES_PER_PAGE
+                    );
+
                     const WORKOUTS_PER_PAGE = 8;
                     const totalPages = Math.ceil(categoryWorkouts.length / WORKOUTS_PER_PAGE);
                     const paginatedWorkouts = categoryWorkouts.slice((currentPage - 1) * WORKOUTS_PER_PAGE, currentPage * WORKOUTS_PER_PAGE);
 
                     return (
-                      <div className="space-y-10">
-                        {paginatedWorkouts.length === 0 ? (
-                          <div className="p-12 text-center border-2 border-dashed border-[#E8E8E8] rounded-[18px] bg-white">
-                            <h4 className="text-lg font-bold text-[#2B2B2B] uppercase">No routines available</h4>
-                            <p className="text-sm text-[#707070] max-w-sm mx-auto mt-2">We are constantly adding new professional routines to this folder. Check back soon!</p>
+                      <div className="space-y-8">
+                        {/* Top Category Info */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-6 border-b border-[#E8E8E8]">
+                          <div className="text-left">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedWorkoutCategory(null)}
+                              className="flex items-center gap-1.5 text-xs font-bold uppercase text-[#707070] hover:text-[#E53935] mb-3 transition-colors cursor-pointer"
+                            >
+                              <ArrowLeft className="w-4 h-4" />
+                              Back to All Categories
+                            </button>
+                            <div className="flex items-center gap-3">
+                              <h2 className="text-3xl font-bold uppercase text-[#2B2B2B] tracking-tight">
+                                {currentCat?.name || selectedWorkoutCategory}
+                              </h2>
+                              {currentCat?.isProgram && (
+                                <span className="px-3 py-1 bg-[#E53935] text-white text-[10px] font-bold uppercase tracking-wider rounded-full shadow-xs">
+                                  Flagship Program
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-base text-[#707070] mt-1.5 leading-relaxed max-w-3xl">
+                              {currentCat?.desc}
+                            </p>
                           </div>
-                        ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {paginatedWorkouts.map((workout) => {
-                              const isBookmarked = savedWorkouts.includes(workout.id);
-                              
-                              return (
-                                <motion.div
-                                  key={workout.id}
-                                  whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
-                                  whileTap={{ scale: 0.99 }}
-                                  className="group bg-white border border-[#ECECEC] hover:border-[#C0392B]/40 hover:shadow-lg rounded-2xl p-6 transition-all duration-200 flex flex-col justify-between text-left"
-                                  style={{
-                                    background: "#FFFFFF",
-                                    borderRadius: "16px",
-                                    padding: "24px"
-                                  }}
-                                >
-                                  {/* Workout Image */}
-                                  <div className="relative h-44 w-full bg-[#FAFAFA] overflow-hidden rounded-xl border border-[#ECECEC] mb-4">
-                                    <OptimizedImage
-                                      src={workout.imageUrl}
-                                      alt={workout.name}
-                                      aspectRatio="16/9"
-                                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                                    />
-                                    
-                                    {/* Bookmark/Heart trigger floating top-right */}
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleSaveWorkout(workout.id);
-                                      }}
-                                      className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors shadow-sm border border-[#ECECEC] cursor-pointer"
-                                      aria-label="Bookmark Workout"
-                                    >
-                                      <Heart className={`w-4 h-4 ${isBookmarked ? "text-red-500 fill-red-500" : "text-slate-400"}`} />
-                                    </button>
 
-                                    {/* Target Muscle overlay */}
-                                    <div className="absolute bottom-3 left-3 bg-white/95 border border-[#ECECEC] px-2.5 py-0.5 rounded-full text-[10px] font-bold text-slate-700 uppercase">
-                                      {workout.targetMuscle}
-                                    </div>
-                                  </div>
+                          <div className="flex items-center gap-3">
+                            {currentCat?.isProgram && currentCat.programViewId && setView && (
+                              <button
+                                type="button"
+                                onClick={() => setView(currentCat.programViewId!)}
+                                className="px-5 py-2.5 bg-[#E53935] hover:bg-[#C0392B] text-white rounded-[10px] text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-xs flex items-center gap-2"
+                              >
+                                <Play className="w-3.5 h-3.5 fill-white" />
+                                Launch Full Program
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedWorkoutCategory(null)}
+                              className="px-5 py-2.5 bg-white border border-[#E8E8E8] hover:border-[#E53935] hover:text-[#E53935] rounded-[10px] text-xs font-bold uppercase tracking-wider text-[#2B2B2B] transition-all cursor-pointer shadow-xs"
+                            >
+                              All Categories
+                            </button>
+                          </div>
+                        </div>
 
-                                  {/* Info */}
-                                  <div className="flex-grow flex flex-col justify-between space-y-3">
-                                    <div className="space-y-1">
-                                      <h3 className="text-base font-bold text-slate-905 uppercase line-clamp-2 leading-tight">
-                                        {workout.name}
-                                      </h3>
-                                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                                        {workout.description}
-                                      </p>
-                                    </div>
-
-                                    {/* Metas: Difficulty, Duration, Calories */}
-                                    <div className="grid grid-cols-3 gap-2 py-3 border-y border-[#ECECEC] text-[10px] font-mono text-slate-500 uppercase tracking-wider">
-                                      <div>
-                                        <span className="text-slate-400 block mb-0.5">Difficulty</span>
-                                        <span className="font-bold text-slate-800">{workout.difficulty}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-slate-400 block mb-0.5">Duration</span>
-                                        <span className="font-bold text-slate-800">{workout.duration}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-slate-400 block mb-0.5">Calories</span>
-                                        <span className="font-bold text-[#E53935]">{workout.caloriesBurned} kcal</span>
-                                      </div>
-                                    </div>
-
-                                    {/* Details & Start Action Buttons */}
-                                    <div className="grid grid-cols-2 gap-3 pt-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => setActiveWorkout(workout)}
-                                        className="w-full py-2 bg-white border border-[#ECECEC] hover:border-[#C0392B] text-slate-705 hover:text-[#C0392B] rounded-xl text-xs font-bold uppercase transition-all cursor-pointer flex items-center justify-center gap-1 bg-white"
-                                      >
-                                        Details
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const workoutExs = workout.exercises.map(we => getOrCreateExercise(we.name, exercises));
-                                          setActivePlayerSession({
-                                            exercises: workoutExs,
-                                            title: workout.name
-                                          });
-                                        }}
-                                        className="w-full py-2 bg-[#C0392B] hover:bg-[#A82E22] text-white rounded-xl text-xs font-bold uppercase transition-all cursor-pointer flex items-center justify-center gap-1 border-0"
-                                      >
-                                        Start
-                                      </button>
-                                    </div>
-                                  </div>
-                                </motion.div>
-                              );
-                            })}
+                        {/* If Program Category: Featured Program Banner */}
+                        {currentCat?.isProgram && (
+                          <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 rounded-2xl border border-slate-700 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="bg-[#E53935] text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                                  Program Curriculum
+                                </span>
+                                <span className="text-xs text-slate-300 font-mono">
+                                  {allCatExercises.length} Target Exercises • {categoryWorkouts.length} Multi-Move Routines
+                                </span>
+                              </div>
+                              <h3 className="text-xl font-bold uppercase tracking-tight">
+                                Integrated {currentCat.name} Exercise Library
+                              </h3>
+                              <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
+                                Every exercise calibrated for this program is cataloged below with biomechanical cues, GIFs, target sets, and difficulty levels. You can train each exercise individually or start the interactive curriculum.
+                              </p>
+                            </div>
+                            {currentCat.programViewId && setView && (
+                              <button
+                                type="button"
+                                onClick={() => setView(currentCat.programViewId!)}
+                                className="px-6 py-3 bg-[#E53935] hover:bg-[#D32F2F] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer shadow-md flex items-center gap-2 shrink-0"
+                              >
+                                <Award className="w-4 h-4" />
+                                Open Program View
+                              </button>
+                            )}
                           </div>
                         )}
 
-                        {/* Pagination controls with 1, 2, 3, Next */}
-                        {totalPages > 1 && (
-                          <div className="flex items-center justify-center gap-2 mt-10 pt-6 border-t border-[#E8E8E8]">
+                        {/* View Tabs: Category Exercises vs Curated Routines vs All */}
+                        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E8E8E8] pb-3">
+                          <div className="flex items-center gap-2">
                             <button
                               type="button"
                               onClick={() => {
-                                setCurrentPage(prev => Math.max(prev - 1, 1));
-                                const grid = document.getElementById("exercise-catalog-grid");
-                                if (grid) grid.scrollIntoView({ behavior: "smooth", block: "start" });
+                                setCategoryViewTab("exercises");
+                                setCategoryExercisePage(1);
                               }}
-                              disabled={currentPage === 1}
-                              className="px-4 py-2 bg-white border border-[#E8E8E8] hover:border-[#E53935] hover:text-[#E53935] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#E8E8E8] disabled:hover:text-[#707070] rounded-[10px] text-xs font-bold uppercase text-[#707070] transition-all cursor-pointer shadow-xs"
+                              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+                                categoryViewTab === "exercises"
+                                  ? "bg-[#E53935] text-white shadow-xs"
+                                  : "bg-white border border-[#E8E8E8] text-[#707070] hover:text-[#2B2B2B]"
+                              }`}
                             >
-                              Prev
+                              <Dumbbell className="w-4 h-4" />
+                              Category Exercises ({filteredCatExercises.length})
                             </button>
-                            {[...Array(totalPages)].map((_, i) => {
-                              const pageNum = i + 1;
-                              return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCategoryViewTab("routines");
+                                setCurrentPage(1);
+                              }}
+                              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+                                categoryViewTab === "routines"
+                                  ? "bg-[#E53935] text-white shadow-xs"
+                                  : "bg-white border border-[#E8E8E8] text-[#707070] hover:text-[#2B2B2B]"
+                              }`}
+                            >
+                              <Clipboard className="w-4 h-4" />
+                              Curated Routines ({categoryWorkouts.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCategoryViewTab("all")}
+                              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+                                categoryViewTab === "all"
+                                  ? "bg-[#E53935] text-white shadow-xs"
+                                  : "bg-white border border-[#E8E8E8] text-[#707070] hover:text-[#2B2B2B]"
+                              }`}
+                            >
+                              <SlidersHorizontal className="w-4 h-4" />
+                              Show All
+                            </button>
+                          </div>
+
+                          {/* Exercise quick search and difficulty when exercises are displayed */}
+                          {(categoryViewTab === "exercises" || categoryViewTab === "all") && (
+                            <div className="flex flex-wrap items-center gap-3">
+                              <div className="relative min-w-[220px]">
+                                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                  type="text"
+                                  value={categoryExerciseSearch}
+                                  onChange={(e) => {
+                                    setCategoryExerciseSearch(e.target.value);
+                                    setCategoryExercisePage(1);
+                                  }}
+                                  placeholder={`Filter ${currentCat?.name || "category"}...`}
+                                  className="w-full pl-9 pr-3 py-1.5 bg-white border border-[#E8E8E8] focus:border-[#E53935] rounded-[10px] text-xs outline-hidden text-[#2B2B2B] placeholder:text-slate-400"
+                                />
+                                {categoryExerciseSearch && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCategoryExerciseSearch("");
+                                      setCategoryExercisePage(1);
+                                    }}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1">
+                                {["All", "Beginner", "Intermediate", "Advanced"].map((diff) => (
+                                  <button
+                                    key={diff}
+                                    type="button"
+                                    onClick={() => {
+                                      setCategoryDifficultyFilter(diff);
+                                      setCategoryExercisePage(1);
+                                    }}
+                                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                                      categoryDifficultyFilter === diff
+                                        ? "bg-slate-800 text-white"
+                                        : "bg-white border border-[#E8E8E8] text-slate-600 hover:border-slate-400"
+                                    }`}
+                                  >
+                                    {diff}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* SECTION 1: CATEGORY EXERCISES GRID */}
+                        {(categoryViewTab === "exercises" || categoryViewTab === "all") && (
+                          <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-bold uppercase text-[#2B2B2B] tracking-tight flex items-center gap-2">
+                                <Dumbbell className="w-5 h-5 text-[#E53935]" />
+                                Exercises in {currentCat?.name || selectedWorkoutCategory}
+                                <span className="text-xs font-mono font-normal text-slate-500 lowercase">
+                                  ({filteredCatExercises.length} found)
+                                </span>
+                              </h3>
+                              <span className="text-xs font-mono text-slate-500">
+                                Page {categoryExercisePage} of {Math.max(1, totalExPages)}
+                              </span>
+                            </div>
+
+                            {filteredCatExercises.length === 0 ? (
+                              <div className="p-12 text-center border-2 border-dashed border-[#E8E8E8] rounded-[18px] bg-white">
+                                <Dumbbell className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                                <h4 className="text-base font-bold text-[#2B2B2B] uppercase">No exercises match filter</h4>
+                                <p className="text-xs text-[#707070] max-w-sm mx-auto mt-1">
+                                  Try clearing the search query or selecting a different difficulty level.
+                                </p>
                                 <button
-                                  key={pageNum}
                                   type="button"
                                   onClick={() => {
-                                    setCurrentPage(pageNum);
-                                    const grid = document.getElementById("exercise-catalog-grid");
-                                    if (grid) grid.scrollIntoView({ behavior: "smooth", block: "start" });
+                                    setCategoryExerciseSearch("");
+                                    setCategoryDifficultyFilter("All");
                                   }}
-                                  className={`w-10 h-10 rounded-[10px] text-xs font-bold transition-all cursor-pointer ${
-                                    currentPage === pageNum
-                                      ? "bg-[#E53935] text-white shadow-sm"
-                                      : "bg-white border border-[#E8E8E8] hover:border-[#E53935] hover:text-[#E53935] text-[#707070]"
-                                  }`}
+                                  className="mt-3 px-4 py-1.5 bg-[#E53935] text-white text-xs font-bold uppercase rounded-lg cursor-pointer"
                                 >
-                                  {pageNum}
+                                  Reset Filters
                                 </button>
-                              );
-                            })}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCurrentPage(prev => Math.min(prev + 1, totalPages));
-                                const grid = document.getElementById("exercise-catalog-grid");
-                                if (grid) grid.scrollIntoView({ behavior: "smooth", block: "start" });
-                              }}
-                              disabled={currentPage === totalPages}
-                              className="px-4 py-2 bg-white border border-[#E8E8E8] hover:border-[#E53935] hover:text-[#E53935] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#E8E8E8] disabled:hover:text-[#707070] rounded-[10px] text-xs font-bold uppercase text-[#707070] transition-all cursor-pointer shadow-xs"
-                            >
-                              Next
-                            </button>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col space-y-6 max-w-4xl mx-auto w-full">
+                                {paginatedCatExercises.map((exercise) => {
+                                  const isBookmarked = savedWorkouts.includes(exercise.id);
+
+                                  return (
+                                    <motion.div
+                                      key={exercise.id}
+                                      whileHover={{ y: -2, transition: { duration: 0.2, ease: "easeOut" } }}
+                                      className="group bg-white border border-[#ECECEC] hover:border-[#E53935]/50 hover:shadow-md rounded-2xl p-5 sm:p-6 transition-all duration-200 flex flex-col md:flex-row gap-6 items-center text-left w-full"
+                                    >
+                                      {/* Frameless Edge-to-Edge GIF Media */}
+                                      <div className="relative w-full md:w-80 aspect-[16/10] workout-media-frameless workout-gif-frameless overflow-hidden rounded-2xl bg-transparent shrink-0 flex items-center justify-center">
+                                        <WorkoutVisual
+                                          exerciseId={exercise.id}
+                                          category={exercise.category}
+                                          muscleGroups={exercise.muscleGroups}
+                                          exerciseName={exercise.name}
+                                          className="w-full h-full object-contain"
+                                          customMediaUrl={exercise.customMediaUrl}
+                                          customMediaType={exercise.customMediaType}
+                                          isCard={true}
+                                        />
+
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleSaveWorkout(exercise.id);
+                                          }}
+                                          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors shadow-xs border border-[#ECECEC] cursor-pointer z-10"
+                                          aria-label="Bookmark Exercise"
+                                        >
+                                          <Heart className={`w-4 h-4 ${isBookmarked ? "text-red-500 fill-red-500" : "text-slate-400"}`} />
+                                        </button>
+
+                                        {/* Difficulty badge */}
+                                        <div className="absolute bottom-3 left-3 z-10">
+                                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                            exercise.difficulty === "Beginner"
+                                              ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                              : exercise.difficulty === "Intermediate"
+                                              ? "bg-amber-100 text-amber-800 border border-amber-200"
+                                              : "bg-rose-100 text-rose-800 border border-rose-200"
+                                          }`}>
+                                            {exercise.difficulty}
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      {/* Details & Actions */}
+                                      <div className="flex-1 w-full flex flex-col justify-between space-y-3">
+                                        <div>
+                                          <div className="space-y-1.5 mb-2">
+                                            <h4 className="text-lg font-bold text-slate-900 uppercase leading-tight">
+                                              {exercise.name}
+                                            </h4>
+                                            <div className="flex flex-wrap gap-1.5">
+                                              {(exercise.muscleGroups || []).slice(0, 3).map((mg, i) => (
+                                                <span key={i} className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-md uppercase">
+                                                  {mg}
+                                                </span>
+                                              ))}
+                                              {(exercise.equipment || []).slice(0, 2).map((eq, i) => (
+                                                <span key={i} className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md">
+                                                  {eq}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </div>
+
+                                          {/* Sets, Reps & Cues */}
+                                          <div className="py-2.5 border-y border-[#ECECEC] text-xs font-mono text-slate-600 space-y-1">
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-slate-400 uppercase text-[10px]">Prescription</span>
+                                              <span className="font-bold text-[#E53935]">{exercise.recommendedSetsReps || "3 sets x 10-12 reps"}</span>
+                                            </div>
+                                            {exercise.movementExecution && (
+                                              <p className="text-xs text-slate-500 font-sans line-clamp-2 leading-relaxed pt-1">
+                                                {exercise.movementExecution}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        {/* Action Buttons */}
+                                        <div className="flex items-center gap-3 pt-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => setSelectedExerciseId(exercise.id)}
+                                            className="flex-1 py-2.5 bg-white border border-[#ECECEC] hover:border-[#E53935] text-slate-700 hover:text-[#E53935] rounded-xl text-xs font-bold uppercase transition-all cursor-pointer flex items-center justify-center gap-1"
+                                          >
+                                            View Guide
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setActivePlayerSession({
+                                                exercises: [exercise],
+                                                title: exercise.name
+                                              });
+                                            }}
+                                            className="flex-1 py-2.5 bg-[#E53935] hover:bg-[#C0392B] text-white rounded-xl text-xs font-bold uppercase transition-all cursor-pointer flex items-center justify-center gap-1.5 border-0 shadow-xs"
+                                          >
+                                            <Play className="w-3.5 h-3.5 fill-white" />
+                                            Start Exercise
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </motion.div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* Pagination for exercises */}
+                            {totalExPages > 1 && (
+                              <div className="flex items-center justify-center gap-2 mt-8 pt-6 border-t border-[#E8E8E8]">
+                                <button
+                                  type="button"
+                                  onClick={() => setCategoryExercisePage(prev => Math.max(prev - 1, 1))}
+                                  disabled={categoryExercisePage === 1}
+                                  className="px-4 py-2 bg-white border border-[#E8E8E8] hover:border-[#E53935] hover:text-[#E53935] disabled:opacity-40 disabled:cursor-not-allowed rounded-[10px] text-xs font-bold uppercase text-[#707070] transition-all cursor-pointer shadow-xs"
+                                >
+                                  Prev
+                                </button>
+                                {[...Array(totalExPages)].map((_, i) => {
+                                  const pageNum = i + 1;
+                                  return (
+                                    <button
+                                      key={pageNum}
+                                      type="button"
+                                      onClick={() => setCategoryExercisePage(pageNum)}
+                                      className={`w-9 h-9 rounded-[10px] text-xs font-bold transition-all cursor-pointer ${
+                                        categoryExercisePage === pageNum
+                                          ? "bg-[#E53935] text-white shadow-xs"
+                                          : "bg-white border border-[#E8E8E8] hover:border-[#E53935] hover:text-[#E53935] text-[#707070]"
+                                      }`}
+                                    >
+                                      {pageNum}
+                                    </button>
+                                  );
+                                })}
+                                <button
+                                  type="button"
+                                  onClick={() => setCategoryExercisePage(prev => Math.min(prev + 1, totalExPages))}
+                                  disabled={categoryExercisePage === totalExPages}
+                                  className="px-4 py-2 bg-white border border-[#E8E8E8] hover:border-[#E53935] hover:text-[#E53935] disabled:opacity-40 disabled:cursor-not-allowed rounded-[10px] text-xs font-bold uppercase text-[#707070] transition-all cursor-pointer shadow-xs"
+                                >
+                                  Next
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* SECTION 2: CURATED WORKOUT ROUTINES GRID */}
+                        {(categoryViewTab === "routines" || categoryViewTab === "all") && (
+                          <div className="space-y-6 pt-6">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-bold uppercase text-[#2B2B2B] tracking-tight flex items-center gap-2">
+                                <Clipboard className="w-5 h-5 text-[#E53935]" />
+                                Curated Routines for {currentCat?.name || selectedWorkoutCategory}
+                                <span className="text-xs font-mono font-normal text-slate-500 lowercase">
+                                  ({categoryWorkouts.length} available)
+                                </span>
+                              </h3>
+                              {totalPages > 0 && (
+                                <span className="text-xs font-mono text-slate-500">
+                                  Page {currentPage} of {totalPages}
+                                </span>
+                              )}
+                            </div>
+
+                            {paginatedWorkouts.length === 0 ? (
+                              <div className="p-12 text-center border-2 border-dashed border-[#E8E8E8] rounded-[18px] bg-white">
+                                <h4 className="text-base font-bold text-[#2B2B2B] uppercase">No multi-exercise routines yet</h4>
+                                <p className="text-xs text-[#707070] max-w-sm mx-auto mt-1">
+                                  You can browse all individual exercises above or launch the program challenge!
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col space-y-6 max-w-4xl mx-auto w-full">
+                                {paginatedWorkouts.map((workout) => {
+                                  const isBookmarked = savedWorkouts.includes(workout.id);
+                                  
+                                  return (
+                                    <motion.div
+                                      key={workout.id}
+                                      whileHover={{ y: -2, transition: { duration: 0.2, ease: "easeOut" } }}
+                                      className="group bg-white border border-[#ECECEC] hover:border-[#E53935]/50 hover:shadow-md rounded-2xl p-5 sm:p-6 transition-all duration-200 flex flex-col md:flex-row gap-6 items-center text-left w-full"
+                                    >
+                                      {/* Frameless Media */}
+                                      <div className="relative w-full md:w-80 h-48 bg-transparent overflow-hidden rounded-2xl workout-media-frameless shrink-0 flex items-center justify-center">
+                                        <OptimizedImage
+                                          src={workout.imageUrl}
+                                          alt={workout.name}
+                                          aspectRatio="16/9"
+                                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                                        />
+                                        
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleSaveWorkout(workout.id);
+                                          }}
+                                          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors shadow-xs border border-[#ECECEC] cursor-pointer z-10"
+                                          aria-label="Bookmark Workout"
+                                        >
+                                          <Heart className={`w-4 h-4 ${isBookmarked ? "text-red-500 fill-red-500" : "text-slate-400"}`} />
+                                        </button>
+
+                                        <div className="absolute bottom-3 left-3 bg-white/95 border border-[#ECECEC] px-2.5 py-0.5 rounded-full text-[10px] font-bold text-slate-700 uppercase z-10">
+                                          {workout.targetMuscle}
+                                        </div>
+                                      </div>
+
+                                      {/* Details & Action */}
+                                      <div className="flex-1 w-full flex flex-col justify-between space-y-3">
+                                        <div>
+                                          <div className="space-y-1 mb-2">
+                                            <h4 className="text-lg font-bold text-slate-900 uppercase leading-tight">
+                                              {workout.name}
+                                            </h4>
+                                            <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                                              {workout.description}
+                                            </p>
+                                          </div>
+
+                                          <div className="grid grid-cols-3 gap-2 py-2.5 border-y border-[#ECECEC] text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+                                            <div>
+                                              <span className="text-slate-400 block mb-0.5">Level</span>
+                                              <span className="font-bold text-slate-800">{workout.difficulty}</span>
+                                            </div>
+                                            <div>
+                                              <span className="text-slate-400 block mb-0.5">Time</span>
+                                              <span className="font-bold text-slate-800">{workout.duration}</span>
+                                            </div>
+                                            <div>
+                                              <span className="text-slate-400 block mb-0.5">Burn</span>
+                                              <span className="font-bold text-[#E53935]">{workout.caloriesBurned} kcal</span>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 pt-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => setActiveWorkout(workout)}
+                                            className="flex-1 py-2.5 bg-white border border-[#ECECEC] hover:border-[#E53935] text-slate-700 hover:text-[#E53935] rounded-xl text-xs font-bold uppercase transition-all cursor-pointer flex items-center justify-center gap-1"
+                                          >
+                                            Details
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const workoutExs = workout.exercises.map(we => getOrCreateExercise(we.name, exercises));
+                                              setActivePlayerSession({
+                                                exercises: workoutExs,
+                                                title: workout.name
+                                              });
+                                            }}
+                                            className="flex-1 py-2.5 bg-[#E53935] hover:bg-[#C0392B] text-white rounded-xl text-xs font-bold uppercase transition-all cursor-pointer flex items-center justify-center gap-1.5 border-0 shadow-xs"
+                                          >
+                                            <Play className="w-3.5 h-3.5 fill-white" />
+                                            Start Routine
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </motion.div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* Pagination for routines */}
+                            {totalPages > 1 && (
+                              <div className="flex items-center justify-center gap-2 mt-8 pt-6 border-t border-[#E8E8E8]">
+                                <button
+                                  type="button"
+                                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                  disabled={currentPage === 1}
+                                  className="px-4 py-2 bg-white border border-[#E8E8E8] hover:border-[#E53935] hover:text-[#E53935] disabled:opacity-40 disabled:cursor-not-allowed rounded-[10px] text-xs font-bold uppercase text-[#707070] transition-all cursor-pointer shadow-xs"
+                                >
+                                  Prev
+                                </button>
+                                {[...Array(totalPages)].map((_, i) => {
+                                  const pageNum = i + 1;
+                                  return (
+                                    <button
+                                      key={pageNum}
+                                      type="button"
+                                      onClick={() => setCurrentPage(pageNum)}
+                                      className={`w-9 h-9 rounded-[10px] text-xs font-bold transition-all cursor-pointer ${
+                                        currentPage === pageNum
+                                          ? "bg-[#E53935] text-white shadow-xs"
+                                          : "bg-white border border-[#E8E8E8] hover:border-[#E53935] hover:text-[#E53935] text-[#707070]"
+                                      }`}
+                                    >
+                                      {pageNum}
+                                    </button>
+                                  );
+                                })}
+                                <button
+                                  type="button"
+                                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                  disabled={currentPage === totalPages}
+                                  className="px-4 py-2 bg-white border border-[#E8E8E8] hover:border-[#E53935] hover:text-[#E53935] disabled:opacity-40 disabled:cursor-not-allowed rounded-[10px] text-xs font-bold uppercase text-[#707070] transition-all cursor-pointer shadow-xs"
+                                >
+                                  Next
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

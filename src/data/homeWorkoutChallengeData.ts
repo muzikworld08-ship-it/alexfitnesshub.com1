@@ -1199,39 +1199,25 @@ export function getHomeWorkoutForDay(dayNumber: number): HomeDailyWorkout {
   }
 
   // -------------------------------------------------------------------------
-  // DAY 3 & 6 OF WEEK: 5 KM CARDIO CIRCUIT + ATHLETIC CALISTHENICS (12 EXERCISES)
+  // DAY 3 & 6 OF WEEK: 5 KM CARDIO & POST-CARDIO COMPLETE REST (WORKOUTS REMOVED)
   // -------------------------------------------------------------------------
   if (dayInWeek === 3 || dayInWeek === 6) {
     const isMidWeek = dayInWeek === 3;
-    const cardioTitle = isMidWeek ? "Mid-Week 5 KM Aerobic Engine" : "Weekend 5 KM Aerobic Milestone";
+    const cardioTitle = isMidWeek ? "Mid-Week 5 KM Cardio & Rest" : "Weekend 5 KM Cardio & Rest";
 
     const rawList: HomeExercise[] = [
-      // Section 1: Dynamic Warm-Up & Ankle Prep (3 movements)
+      // Section 1: Gentle Warm-Up Before Cardio (2 movements)
       HOME_EXERCISES_CATALOG.step_jacks,
       HOME_EXERCISES_CATALOG.arm_circles,
-      HOME_EXERCISES_CATALOG.butt_kicks,
 
-      // Section 2: Aerobic Calisthenics & Core (3 movements)
-      HOME_EXERCISES_CATALOG.mountain_climbers,
-      HOME_EXERCISES_CATALOG.high_knees,
-      HOME_EXERCISES_CATALOG.jumping_jacks,
-
-      // Section 3: Lower Body Kinetic Stamina (3 movements)
-      HOME_EXERCISES_CATALOG.calf_raises,
-      HOME_EXERCISES_CATALOG.bodyweight_squats,
-      HOME_EXERCISES_CATALOG.glute_bridges,
-
-      // Section 4: Post-Cardio Core Armor & Mobility (3 movements)
-      HOME_EXERCISES_CATALOG.plank,
-      HOME_EXERCISES_CATALOG.superman_holds,
-      HOME_EXERCISES_CATALOG.standing_quad_stretch
+      // Section 2: Post-Cardio Rest, Gentle Breath & Spinal Reset (2 movements)
+      HOME_EXERCISES_CATALOG.childs_pose,
+      HOME_EXERCISES_CATALOG.cat_cow_stretch
     ];
 
     const { exercises, sections } = attachSections(rawList, [
-      { id: "s1", title: "Warm-Up & Ankle Preparation", description: "Increase heart rate and prep joints for the 5 KM session.", count: 3 },
-      { id: "s2", title: "Aerobic Rhythm & Footwork", description: "Build cadence, cardiovascular endurance, and coordination.", count: 3 },
-      { id: "s3", title: "Kinetic Leg Durability", description: "Protect knees, shins, and ankles with bodyweight calisthenics.", count: 3 },
-      { id: "s4", title: "Core Pillar & Postural Cooldown", description: "Strengthen deep core armor and elongate working muscles.", count: 3 }
+      { id: "s1", title: "Gentle Warm-Up", description: "Easy ankle and shoulder prep before logging your 5 KM cardio.", count: 2 },
+      { id: "s2", title: "Post-Cardio Complete Rest & Recovery", description: "Workout removed entirely today. Rest your muscles completely, rehydrate, and recharge after the cardio session.", count: 2 }
     ]);
 
     return {
@@ -1239,14 +1225,14 @@ export function getHomeWorkoutForDay(dayNumber: number): HomeDailyWorkout {
       phaseNumber,
       phaseName,
       title: `Day ${day}: ${cardioTitle}`,
-      focus: "5 KM Run or Walk + Dynamic Bodyweight Calisthenics & Core Armor",
+      focus: "5 KM Run or Walk + Complete Post-Cardio Rest (Workouts Removed)",
       isRestDay: false,
       is5KmCardioDay: true,
       cardioTypeRecommended: day <= 60 ? "5 KM Walk" : "5 KM Run",
       estimatedMinutes: 45,
       exercises,
       sections,
-      motivationalQuote: `Day ${day} of 180: Complete your 5 KM session today at your own pace. Aerobic capacity accelerates all home strength adaptations!`
+      motivationalQuote: `Day ${day} of 180: Complete your 5 KM cardio session today. Calisthenics and strength workouts are removed entirely today so you can rest and recover fully after your cardio!`
     };
   }
 
