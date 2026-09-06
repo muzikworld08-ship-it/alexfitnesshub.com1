@@ -7,6 +7,8 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   OAuthProvider,
+  signInWithPopup,
+  updateProfile,
   signInWithRedirect,
   getRedirectResult
 } from "firebase/auth";
@@ -1314,6 +1316,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const isAdmin = isEmailAdmin(email);
 
     // Standardize default profile fields with seamless dashboard access
+    const isNewUser = isNewSignUp || (profile ? profile.onboarded === false : false);
+
     const baseProfile: UserProfile = {
       uid,
       email,
@@ -1328,11 +1332,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       freeTrialStatus: isAdmin ? "none" : "active",
       freeTrialDaysRemaining: isAdmin ? 0 : 7,
       createdAt: new Date().toISOString(),
-      onboarded: true,
+      onboarded: !isNewUser,
       ...profile, // overlay cached attributes if any
     };
 
-    baseProfile.onboarded = true;
+    if (isNewUser) {
+      baseProfile.onboarded = false;
+    }
 
     // Keep state updated immediately to trigger immediate UI reactivity
     setUser(baseProfile);
@@ -1340,12 +1346,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIsBlockedUser(false);
 
     // Determine target redirect view immediately
-    const attempted = localStorage.getItem("fit_attempted_view");
-    if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
-      localStorage.removeItem("fit_attempted_view");
-      setView(attempted);
-    } else if (currentView === "home" || currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register" || !currentView) {
-      setView("dashboard");
+    if (isNewUser || baseProfile.onboarded === false) {
+      setView("onboarding");
+    } else {
+      const attempted = localStorage.getItem("fit_attempted_view");
+      if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
+        localStorage.removeItem("fit_attempted_view");
+        setView(attempted);
+      } else if (currentView === "home" || currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register" || !currentView) {
+        setView("dashboard");
+      }
     }
 
     if (!isMockFirebase) {
@@ -1372,7 +1382,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             premiumAccess: isUserPremium,
             accountType: isUserPremium ? (userIsAdmin ? "Admin Athlete" : "Premium Athlete") : "Free Athlete",
             badge: isUserPremium ? (userIsAdmin ? "Admin Athlete" : "Premium Athlete") : "Free Athlete",
-            onboarded: true
+            onboarded: fetchedData.onboarded !== undefined ? fetchedData.onboarded : !isNewUser
           };
         } else {
           // Check Supabase profiles table as persistent backend database source
@@ -1476,27 +1486,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Clean up any legacy saved passwords if present
     localStorage.removeItem("fit_saved_password");
 
-    // Check if user has returned from a Google/Apple OAuth redirect (this is now the
-    // ONLY code path that completes an OAuth sign-in — see loginWithGoogle/loginWithApple).
+    // Check if user has returned from an OAuth redirect
     const pendingProvider = localStorage.getItem("fit_pending_oauth_provider") as "google" | "apple" | null;
-    getRedirectResult(auth)
-      .then(async (result) => {
-        localStorage.removeItem("fit_pending_oauth_provider");
-        if (result?.user) {
-          console.log("[Redirect Auth Sync] Successfully retrieved redirect login results:", result.user);
-          setAuthError(null);
-          await processAuthSuccess(result.user, undefined, true);
-        } else if (pendingProvider) {
-          // We left for the OAuth provider but came back with no user and no thrown
-          // error — Safari/iOS sometimes drops the session silently instead of
-          // raising an error.
-          setAuthError(describeAuthError({ code: "auth/web-storage-unsupported" }, pendingProvider));
-        }
-      })
-      .catch((err) => {
-        localStorage.removeItem("fit_pending_oauth_provider");
-        setAuthError(describeAuthError(err, pendingProvider || "email"));
-      });
+    if (pendingProvider) {
+      getRedirectResult(auth)
+        .then(async (result) => {
+          localStorage.removeItem("fit_pending_oauth_provider");
+          if (result?.user) {
+            console.log("[Redirect Auth Sync] Successfully retrieved redirect login results:", result.user);
+            setAuthError(null);
+            let isNewSignUp = false;
+            try {
+              const snap = await getDoc(doc(db, "users", result.user.uid));
+              if (!snap.exists() || snap.data()?.onboarded === false) {
+                isNewSignUp = true;
+              }
+            } catch (e) {}
+            await processAuthSuccess(result.user, undefined, true, isNewSignUp);
+          }
+        })
+        .catch((err) => {
+          localStorage.removeItem("fit_pending_oauth_provider");
+          if (err?.code !== "auth/null-user") {
+            setAuthError(describeAuthError(err, pendingProvider || "email"));
+          }
+        });
+    }
     
     // Primary Firebase Session Management
     let userDocUnsubscribe: (() => void) | null = null;
@@ -2541,19 +2556,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loginWithGoogle = async () => {
     setAuthError(null);
     const provider = new GoogleAuthProvider();
-    if (firebaseConfig.oAuthClientId) {
-      provider.setCustomParameters({
-        client_id: firebaseConfig.oAuthClientId,
-        prompt: 'select_account'
-      });
-    }
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
     try {
-      localStorage.setItem("fit_pending_oauth_provider", "google");
-      await signInWithRedirect(auth, provider);
-      // Execution stops here: the browser navigates away. Anything after this
-      // line only runs if the redirect call itself failed synchronously.
+      const result = await signInWithPopup(auth, provider);
+      if (result && result.user) {
+        let isNewSignUp = false;
+        try {
+          const userDocRef = doc(db, "users", result.user.uid);
+          const snap = await getDoc(userDocRef);
+          if (!snap.exists() || snap.data()?.onboarded === false) {
+            isNewSignUp = true;
+          }
+        } catch (e) {
+          console.warn("Could not check user doc during Google login:", e);
+        }
+        return await processAuthSuccess(result.user, undefined, true, isNewSignUp);
+      }
     } catch (err: any) {
-      localStorage.removeItem("fit_pending_oauth_provider");
+      console.warn("[Google Auth Warning]:", err?.code, err?.message);
+      if (err?.code === "auth/popup-blocked" || err?.code === "auth/cancelled-popup-request") {
+        try {
+          localStorage.setItem("fit_pending_oauth_provider", "google");
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectErr) {
+          console.warn("Redirect fallback failed:", redirectErr);
+        }
+      }
       const info = describeAuthError(err, "google");
       setAuthError(info);
       throw new Error(info.message);
@@ -2562,12 +2593,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithApple = async () => {
     setAuthError(null);
+    const provider = new OAuthProvider('apple.com');
     try {
-      const provider = new OAuthProvider('apple.com');
-      localStorage.setItem("fit_pending_oauth_provider", "apple");
-      await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      if (result && result.user) {
+        let isNewSignUp = false;
+        try {
+          const userDocRef = doc(db, "users", result.user.uid);
+          const snap = await getDoc(userDocRef);
+          if (!snap.exists() || snap.data()?.onboarded === false) {
+            isNewSignUp = true;
+          }
+        } catch (e) {
+          console.warn("Could not check user doc during Apple login:", e);
+        }
+        return await processAuthSuccess(result.user, undefined, true, isNewSignUp);
+      }
     } catch (err: any) {
-      localStorage.removeItem("fit_pending_oauth_provider");
+      if (err?.code === "auth/popup-blocked" || err?.code === "auth/cancelled-popup-request") {
+        try {
+          localStorage.setItem("fit_pending_oauth_provider", "apple");
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectErr) {
+          console.warn("Apple redirect fallback failed:", redirectErr);
+        }
+      }
       const info = describeAuthError(err, "apple");
       setAuthError(info);
       throw new Error(info.message);
@@ -2581,7 +2632,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const normalizedEmail = (email || "").trim().toLowerCase();
       validateEmailAndPassword(normalizedEmail, pass, name, true);
       const cred = await createUserWithEmailAndPassword(auth, normalizedEmail, pass);
-      await processAuthSuccess(cred.user, { displayName: name.trim() }, remember, true);
+      
+      try {
+        await updateProfile(cred.user, { displayName: name.trim() });
+      } catch (profileErr) {
+        console.warn("Could not update Firebase displayName:", profileErr);
+      }
+
+      return await processAuthSuccess(cred.user, { displayName: name.trim() }, remember, true);
     } catch (err: any) {
       throw handleAuthError(err);
     } finally {
@@ -2596,7 +2654,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const normalizedEmail = (email || "").trim().toLowerCase();
       validateEmailAndPassword(normalizedEmail, pass);
       const cred = await signInWithEmailAndPassword(auth, normalizedEmail, pass);
-      await processAuthSuccess(cred.user, undefined, remember, false);
+      
+      let isNewSignUp = false;
+      try {
+        const userDocRef = doc(db, "users", cred.user.uid);
+        const snap = await getDoc(userDocRef);
+        if (!snap.exists() || snap.data()?.onboarded === false) {
+          isNewSignUp = true;
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      return await processAuthSuccess(cred.user, undefined, remember, isNewSignUp);
     } catch (err: any) {
       throw handleAuthError(err);
     } finally {

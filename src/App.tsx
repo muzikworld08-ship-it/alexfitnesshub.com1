@@ -234,14 +234,18 @@ function FitnessAppContent() {
     // Transition: Logged out -> Logged in
     if (currentUid && !previousUid) {
       setIsAuthOpen(false);
-      const attempted = localStorage.getItem("fit_attempted_view");
-      if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
-        localStorage.removeItem("fit_attempted_view");
-        console.log(`[DevOps Auth Sync] Redirecting to attempted view: ${attempted}`);
-        setView(attempted);
+      if (user && user.onboarded === false) {
+        setView("onboarding");
       } else {
-        console.log("[DevOps Auth Sync] Successfully authenticated. Redirecting user to dashboard.");
-        setView("dashboard");
+        const attempted = localStorage.getItem("fit_attempted_view");
+        if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
+          localStorage.removeItem("fit_attempted_view");
+          console.log(`[DevOps Auth Sync] Redirecting to attempted view: ${attempted}`);
+          setView(attempted);
+        } else {
+          console.log("[DevOps Auth Sync] Successfully authenticated. Redirecting user to dashboard.");
+          setView("dashboard");
+        }
       }
     } else if (!currentUid && previousUid) {
       // Transition: Logged in -> Logged out
@@ -257,14 +261,18 @@ function FitnessAppContent() {
 
     if (currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register" || currentView === "auth") {
       if (user) {
-        // Already logged in, redirect away from login screen immediately!
+        // If logged in, route to onboarding if incomplete, otherwise dashboard
         setIsAuthOpen(false);
-        const attempted = localStorage.getItem("fit_attempted_view");
-        if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
-          localStorage.removeItem("fit_attempted_view");
-          setView(attempted);
+        if (user.onboarded === false) {
+          setView("onboarding");
         } else {
-          setView("dashboard");
+          const attempted = localStorage.getItem("fit_attempted_view");
+          if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
+            localStorage.removeItem("fit_attempted_view");
+            setView(attempted);
+          } else {
+            setView("dashboard");
+          }
         }
       } else {
         // Close modal so full-page AuthView renders cleanly without popup obstruction
@@ -272,8 +280,8 @@ function FitnessAppContent() {
       }
     } else if (currentView === "onboarding") {
       if (!user) {
-        // Route to login if trying to access onboarding unauthenticated
-        setView("login");
+        // Route to signup if trying to access onboarding unauthenticated
+        setView("signup");
       }
     }
   }, [currentView, user, loading, setView]);
