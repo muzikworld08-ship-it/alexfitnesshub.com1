@@ -26,6 +26,7 @@ import BellyFatShredView from "./components/BellyFatShredView";
 import LifestyleFitnessAcademy from "./components/LifestyleFitnessAcademy";
 import WomenConfidenceProgram from "./components/WomenConfidenceProgram";
 import HomeWorkoutChallengeView from "./components/HomeWorkoutChallengeView";
+import WorkoutChallengeDashboard from "./components/WorkoutChallengeDashboard";
 import BodyStatsCalculatorView from "./components/BodyStatsCalculatorView";
 import PricingView from "./components/PricingView";
 import { TestimonialPopup } from "./components/TestimonialPopup";
@@ -91,6 +92,11 @@ const PATH_TO_VIEW_MAP: Record<string, string> = {
   "/premium/daily-plan": "daily-plan",
   "/challenges": "challenges",
   "/premium/challenges": "challenges",
+  "/challenge-engine": "challenge-engine",
+  "/premium/challenge-engine": "challenge-engine",
+  "/workout-engine": "challenge-engine",
+  "/posture-vitality": "challenge-engine",
+  "/reclaim-posture": "challenge-engine",
   "/community": "community",
   "/premium/community": "community",
   "/weekly-reports": "weekly-reports",
@@ -701,6 +707,9 @@ function FitnessAppContent() {
               )}
               {["home-workout-challenge", "180-day-challenge", "home-challenge"].includes(currentView) && (
                 <HomeWorkoutChallengeView />
+              )}
+              {["challenge-engine", "workout-engine", "posture-vitality", "reclaim-posture"].includes(currentView) && (
+                <WorkoutChallengeDashboard />
               )}
               {currentView === "lifestyle-academy" && (
                 <LifestyleFitnessAcademy />

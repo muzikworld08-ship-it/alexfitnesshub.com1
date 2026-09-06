@@ -10,6 +10,7 @@ import { TestimonialAdminManager } from "./TestimonialAdminManager";
 import AdminAssetManager from "./AdminAssetManager";
 import AdminWorkoutEditor from "./admin/AdminWorkoutEditor";
 import AdminChallengeManager from "./admin/AdminChallengeManager";
+import AdminWorkoutChallengeEngine from "./admin/AdminWorkoutChallengeEngine";
 import { AdminStoreManager } from "./admin/AdminStoreManager";
 import { db } from "../lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
@@ -33,7 +34,7 @@ export default function AdminDashboard() {
   
   const [userQuery, setUserQuery] = useState("");
   const [exerciseQuery, setExerciseQuery] = useState("");
-  const [activeAdminTab, setActiveAdminTab] = useState<"workouts" | "challenges" | "media" | "directory" | "store" | "paystack">("workouts");
+  const [activeAdminTab, setActiveAdminTab] = useState<"workouts" | "challenges" | "engine" | "media" | "directory" | "store" | "paystack">("workouts");
 
   // Media Manager Filters & Local Inputs
   const [mediaSearch, setMediaSearch] = useState("");
@@ -394,6 +395,18 @@ export default function AdminDashboard() {
           </button>
 
           <button
+            onClick={() => setActiveAdminTab("engine")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "engine"
+                ? "bg-red-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 text-red-500 shrink-0" />
+            <span>Challenge Engine V2</span>
+          </button>
+
+          <button
             onClick={() => setActiveAdminTab("media")}
             className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
               activeAdminTab === "media"
@@ -466,6 +479,13 @@ export default function AdminDashboard() {
       {activeAdminTab === "challenges" && (
         <div className="space-y-6 animate-fade-in">
           <AdminChallengeManager />
+        </div>
+      )}
+
+      {/* VIEW 2.5: CHALLENGE ENGINE V2 & VALIDATION ARCHITECT */}
+      {activeAdminTab === "engine" && (
+        <div className="space-y-6 animate-fade-in">
+          <AdminWorkoutChallengeEngine />
         </div>
       )}
 
