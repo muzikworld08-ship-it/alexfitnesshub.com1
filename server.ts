@@ -3460,13 +3460,17 @@ async function scrapeYouTubeSearch(query: string): Promise<any[]> {
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
     };
     
-    const response = await fetch(url, { headers });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+    const response = await fetch(url, { headers, signal: controller.signal });
+    clearTimeout(timeout);
+    
     if (!response.ok) {
       throw new Error(`YouTube scrape request status: ${response.status}`);
     }
     const html = await response.text();
     
-    const match = html.match(/ytInitialData\s*=\s*({.+?});/);
+    const match = html.match(/ytInitialData\s*=\s*({.+?});/) || html.match(/var\s+ytInitialData\s*=\s*({.+?});/);
     if (!match) {
       throw new Error("Could not extract ytInitialData JSON object.");
     }
@@ -3522,123 +3526,137 @@ async function scrapeYouTubeSearch(query: string): Promise<any[]> {
   }
 }
 
-// Workout videos search API
-app.get("/api/videos/search", requirePremium, async (req: any, res: any) => {
-  const qStr = (req.query.q as string || "").trim();
-  const filterVal = (req.query.filter as string || "").trim();
-  const getTrending = req.query.trending === "true";
+// Workout videos search API - open to all users with instant fallback
+app.get("/api/videos/search", async (req: any, res: any) => {
+  try {
+    const qStr = (req.query.q as string || "").trim();
+    const filterVal = (req.query.filter as string || "").trim();
+    const getTrending = req.query.trending === "true";
 
-  // Create unique cache key
-  const cacheKey = `q:${qStr.toLowerCase()}_f:${filterVal.toLowerCase()}_t:${getTrending}`;
-  if (videoSearchCache.has(cacheKey)) {
-    console.log(`[Cache Hit] Serving video search results for key: ${cacheKey}`);
-    return res.json({ success: true, videos: videoSearchCache.get(cacheKey) });
-  }
+    // Create unique cache key
+    const cacheKey = `q:${qStr.toLowerCase()}_f:${filterVal.toLowerCase()}_t:${getTrending}`;
+    if (videoSearchCache.has(cacheKey)) {
+      console.log(`[Cache Hit] Serving video search results for key: ${cacheKey}`);
+      return res.json({ success: true, videos: videoSearchCache.get(cacheKey) });
+    }
 
-  const apiKey = process.env.YOUTUBE_API_KEY;
+    const apiKey = process.env.YOUTUBE_API_KEY;
 
-  // 1. First choice: Use live YouTube Data API if token present
-  if (apiKey) {
-    try {
-      console.log(`[API Search] Calling live YouTube Data API for query: "${qStr}", filter: "${filterVal}"`);
-      let fullQuery = "workout";
-      if (getTrending) {
-        fullQuery = "trending gym fitness workout";
-      } else {
-        fullQuery = `${qStr} ${filterVal}`.trim() + " workout";
-      }
+    // 1. First choice: Use live YouTube Data API if token present
+    if (apiKey) {
+      try {
+        console.log(`[API Search] Calling live YouTube Data API for query: "${qStr}", filter: "${filterVal}"`);
+        let fullQuery = "workout";
+        if (getTrending) {
+          fullQuery = "trending gym fitness workout";
+        } else {
+          fullQuery = `${qStr} ${filterVal}`.trim() + " workout";
+        }
 
-      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(fullQuery)}&key=${apiKey}&maxResults=15&type=video&safeSearch=active`;
-      const searchRes = await fetch(searchUrl);
-      const searchData = await searchRes.json();
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4000);
+        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(fullQuery)}&key=${apiKey}&maxResults=15&type=video&safeSearch=active`;
+        const searchRes = await fetch(searchUrl, { signal: controller.signal });
+        clearTimeout(timeout);
+        const searchData = await searchRes.json();
 
-      if (searchData && searchData.items && searchData.items.length > 0) {
-        const items = searchData.items;
-        const videoIds = items.map((item: any) => item.id.videoId).filter(Boolean).join(",");
+        if (searchData && searchData.items && searchData.items.length > 0) {
+          const items = searchData.items;
+          const videoIds = items.map((item: any) => item.id.videoId).filter(Boolean).join(",");
 
-        if (videoIds) {
-          const detailUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${apiKey}`;
-          const detailRes = await fetch(detailUrl);
-          const detailData = await detailRes.json();
+          if (videoIds) {
+            const detailUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${apiKey}`;
+            const detailRes = await fetch(detailUrl);
+            const detailData = await detailRes.json();
 
-          if (detailData && detailData.items) {
-            const liveVideos = detailData.items.map((video: any) => ({
-              id: video.id,
-              title: video.snippet.title,
-              channelTitle: video.snippet.channelTitle,
-              description: video.snippet.description || "",
-              thumbnail: video.snippet.thumbnails?.maxresdefault?.url || video.snippet.thumbnails?.high?.url || video.snippet.thumbnails?.default?.url,
-              duration: video.contentDetails?.duration ? parseYouTubeDuration(video.contentDetails.duration) : "10:00",
-              viewCount: video.statistics?.viewCount ? formatYouTubeViews(video.statistics.viewCount) : "10K views",
-              publishedAt: video.snippet.publishedAt ? video.snippet.publishedAt.split("T")[0] : new Date().toISOString().split("T")[0]
-            }));
+            if (detailData && detailData.items) {
+              const liveVideos = detailData.items.map((video: any) => ({
+                id: video.id,
+                title: video.snippet.title,
+                channelTitle: video.snippet.channelTitle,
+                description: video.snippet.description || "",
+                thumbnail: video.snippet.thumbnails?.maxresdefault?.url || video.snippet.thumbnails?.high?.url || video.snippet.thumbnails?.default?.url,
+                duration: video.contentDetails?.duration ? parseYouTubeDuration(video.contentDetails.duration) : "10:00",
+                viewCount: video.statistics?.viewCount ? formatYouTubeViews(video.statistics.viewCount) : "10K views",
+                publishedAt: video.snippet.publishedAt ? video.snippet.publishedAt.split("T")[0] : new Date().toISOString().split("T")[0]
+              }));
 
-            videoSearchCache.set(cacheKey, liveVideos);
-            return res.json({ success: true, videos: liveVideos });
+              videoSearchCache.set(cacheKey, liveVideos);
+              return res.json({ success: true, videos: liveVideos });
+            }
           }
         }
+      } catch (apiError: any) {
+        console.error("YouTube Live API error (falling back to live scraper):", apiError.message || apiError);
       }
-    } catch (apiError: any) {
-      console.error("YouTube Live API error (falling back to live scraper):", apiError.message || apiError);
     }
-  }
 
-  // 2. Second choice: Use live YouTube HTML Scraper mechanism (resolves in 100% of cases without API keys)
-  let queryText = "workout";
-  if (getTrending) {
-    queryText = "trending gym fitness workout";
-  } else {
-    queryText = `${qStr} ${filterVal}`.trim() + " workout";
-  }
+    // 2. Second choice: Use live YouTube HTML Scraper mechanism (resolves in 100% of cases without API keys)
+    let queryText = "workout";
+    if (getTrending) {
+      queryText = "trending gym fitness workout";
+    } else {
+      queryText = `${qStr} ${filterVal}`.trim() + " workout";
+    }
 
-  console.log(`[Live Web Scrape] Querying youtube results live for: "${queryText}"`);
-  const scraped = await scrapeYouTubeSearch(queryText);
-  if (scraped && scraped.length > 0) {
-    console.log(`[Live Web Scrape Success] Retrieved ${scraped.length} real videos.`);
-    videoSearchCache.set(cacheKey, scraped);
-    return res.json({ success: true, videos: scraped });
-  }
+    console.log(`[Live Web Scrape] Querying youtube results live for: "${queryText}"`);
+    const scraped = await scrapeYouTubeSearch(queryText);
+    if (scraped && scraped.length > 0) {
+      console.log(`[Live Web Scrape Success] Retrieved ${scraped.length} real videos.`);
+      videoSearchCache.set(cacheKey, scraped);
+      return res.json({ success: true, videos: scraped });
+    }
 
-  // 3. Third choice: Fall back to curated matching local database
-  console.log(`[Local Fallback] Serving filtered matches from curated workout library for query: "${qStr}", filter: "${filterVal}"`);
-  
-  let results = [...CURATED_VIDEOS];
+    // 3. Third choice: Fall back to curated matching local database
+    console.log(`[Local Fallback] Serving filtered matches from curated workout library for query: "${qStr}", filter: "${filterVal}"`);
+    
+    let results = [...CURATED_VIDEOS];
 
-  if (getTrending) {
-    results = CURATED_VIDEOS.slice(0, 10);
-  } else {
-    const lowerQuery = qStr.toLowerCase();
-    const lowerFilter = filterVal.toLowerCase();
+    if (getTrending) {
+      results = CURATED_VIDEOS.slice(0, 12);
+    } else {
+      const lowerQuery = qStr.toLowerCase();
+      const lowerFilter = filterVal.toLowerCase();
 
-    if (lowerQuery || lowerFilter) {
-      results = CURATED_VIDEOS.filter((video) => {
-        const matchesQuery = !lowerQuery || 
-          video.title.toLowerCase().includes(lowerQuery) || 
-          video.channelTitle.toLowerCase().includes(lowerQuery) ||
-          video.description.toLowerCase().includes(lowerQuery) ||
-          video.tags.some(t => t.toLowerCase().includes(lowerQuery));
-
-        const matchesFilter = !lowerFilter || 
-          video.tags.some(t => t.toLowerCase() === lowerFilter || lowerFilter.includes(t.toLowerCase()));
-
-        return matchesQuery && matchesFilter;
-      });
-
-      if (results.length === 0 && lowerQuery) {
+      if (lowerQuery || lowerFilter) {
         results = CURATED_VIDEOS.filter((video) => {
-          return video.title.toLowerCase().includes(lowerQuery) ||
-                 video.description.toLowerCase().includes(lowerQuery);
+          const matchesQuery = !lowerQuery || 
+            video.title.toLowerCase().includes(lowerQuery) || 
+            video.channelTitle.toLowerCase().includes(lowerQuery) ||
+            video.description.toLowerCase().includes(lowerQuery) ||
+            video.tags.some(t => t.toLowerCase().includes(lowerQuery));
+
+          const matchesFilter = !lowerFilter || 
+            video.tags.some(t => t.toLowerCase() === lowerFilter || lowerFilter.includes(t.toLowerCase()));
+
+          return matchesQuery && matchesFilter;
         });
+
+        if (results.length === 0 && lowerQuery) {
+          results = CURATED_VIDEOS.filter((video) => {
+            return video.title.toLowerCase().includes(lowerQuery) ||
+                   video.description.toLowerCase().includes(lowerQuery) ||
+                   video.tags.some(t => t.toLowerCase().includes(lowerQuery));
+          });
+        }
       }
     }
-  }
 
-  videoSearchCache.set(cacheKey, results);
-  return res.json({ success: true, videos: results });
+    // Always ensure at least some curated results if query was too narrow
+    if (results.length === 0) {
+      results = CURATED_VIDEOS.slice(0, 8);
+    }
+
+    videoSearchCache.set(cacheKey, results);
+    return res.json({ success: true, videos: results });
+  } catch (err: any) {
+    console.error("Error processing /api/videos/search, returning fallback curated videos:", err);
+    return res.json({ success: true, videos: CURATED_VIDEOS.slice(0, 10) });
+  }
 });
 
-// GET query instant suggestions list
-app.get("/api/videos/suggestions", requirePremium, (req: any, res: any) => {
+// GET query instant suggestions list - open to all
+app.get("/api/videos/suggestions", (req: any, res: any) => {
   const query = (req.query.q as string || "").trim().toLowerCase();
   
   if (!query) {

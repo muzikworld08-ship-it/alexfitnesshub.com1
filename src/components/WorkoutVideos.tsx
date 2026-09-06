@@ -3,6 +3,7 @@ import { useApp } from "../context/AppContext";
 import { db, auth, OperationType, handleFirestoreError } from "../lib/firebase";
 import PageHero from "./PageHero";
 import YouTubePlayer from "./video/YouTubePlayer";
+import { getCuratedFallback } from "../data/curatedVideos";
 import { 
   collection, 
   addDoc, 
@@ -304,19 +305,26 @@ export default function WorkoutVideos() {
       const res = await fetch(url, {
         headers: token ? { "Authorization": `Bearer ${token}` } : {}
       });
-      const data = await res.json();
 
-      if (data && data.success) {
-        setVideos(data.videos);
-        // Save search history on successful query
-        if (finalQ.trim() && !isTrending) {
-          saveSearchToFirebase(finalQ);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.videos) && data.videos.length > 0) {
+          setVideos(data.videos);
+          // Save search history on successful query for logged in users
+          if (finalQ.trim() && !isTrending && user) {
+            saveSearchToFirebase(finalQ);
+          }
+          return;
         }
-      } else {
-        triggerToast("Encountered an issue retrieving search data.");
       }
-    } catch {
-      triggerToast("Error accessing YouTube Search indexing proxy.");
+
+      // Safe client-side fallback if server returns empty or non-200
+      const fallback = getCuratedFallback(finalQ, finalF);
+      setVideos(fallback);
+    } catch (err) {
+      console.warn("Video search network warning, using curated fallback:", err);
+      const fallback = getCuratedFallback(queryText || searchQuery, filterText || selectedFilter);
+      setVideos(fallback);
     } finally {
       setLoading(false);
     }
@@ -345,48 +353,6 @@ export default function WorkoutVideos() {
     setSelectedFilter("");
     triggerSearch("", "", true);
   };
-
-  const isPremium = user?.subscriptionStatus === "premium" || user?.role === "admin";
-
-  if (!isPremium) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-16 text-center font-sans">
-        <div className="relative overflow-hidden p-8 sm:p-12 rounded-3xl bg-white border border-slate-200 shadow-2xl space-y-6">
-          <div className="absolute top-0 right-0 h-40 w-40 bg-radial-[circle_at_center,_rgba(16,185,129,0.04)_10%,_transparent_60%]" />
-          
-          <div className="h-14 w-14 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full flex items-center justify-center mx-auto">
-            <Sparkles className="w-7 h-7 animate-pulse" />
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-[10px] font-bold font-mono text-red-500 uppercase tracking-widest">Premium Only Access</span>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-              Unlock Workout Video Guides
-            </h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-              Unlock crystal-clear, high-definition instructional video workouts featuring perfect technique demonstrations by verified coaches and kinesiologists.
-            </p>
-          </div>
-
-          {/* Premium Checklist */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 max-w-sm mx-auto space-y-2.5 text-xs text-slate-700 text-left">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-              <span>Crystal-clear high definition streams</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-              <span>Slow-motion technique and biomechanics coaching</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-              <span>Full list of exercise variations for home and gym</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-6 sm:py-8 min-h-screen w-full max-w-full overflow-x-hidden">
@@ -885,6 +851,16 @@ export default function WorkoutVideos() {
               </div>
               
               <div className="flex flex-wrap items-center gap-2 sm:self-center">
+                <a
+                  href={`https://www.youtube.com/watch?v=${currentVideo.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 flex items-center gap-1.5 transition-all shadow-sm"
+                  title="Open in YouTube tab"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-red-600" />
+                  YouTube
+                </a>
                 <button
                   onClick={() => toggleFavoriteVideo(currentVideo)}
                   className={`px-4 py-2 text-xs font-bold rounded-xl border flex items-center gap-2 transition-all active:scale-95 cursor-pointer ${

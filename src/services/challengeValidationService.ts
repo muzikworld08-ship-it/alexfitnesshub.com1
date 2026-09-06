@@ -77,6 +77,29 @@ export class ChallengeValidationService {
   }
 
   /**
+   * Filters a list of exercises to only those that pass strict validation rules for the day and program.
+   */
+  public static filterValidExercisesForDay(
+    exercises: ChallengeExerciseItem[],
+    programId: ProgramId,
+    dayNum: number,
+    dayMeta?: DayWorkoutMeta,
+    completedExerciseIds: string[] = []
+  ): ChallengeExerciseItem[] {
+    const meta = dayMeta || getWorkoutForProgramAndDay(programId, dayNum).meta;
+    return exercises.filter(ex => {
+      const result = this.validateExerciseForWorkout(
+        ex,
+        programId,
+        dayNum,
+        meta,
+        completedExerciseIds
+      );
+      return result.isValid;
+    });
+  }
+
+  /**
    * Comprehensive validation tool for administrators.
    * Scans programs and days for configuration discrepancies, reporting:
    * - "Exercise assigned to incorrect category"

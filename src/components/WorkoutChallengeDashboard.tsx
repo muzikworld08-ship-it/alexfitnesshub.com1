@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { 
   Trophy, Flame, Shield, Clock, CheckCircle2, Lock, Sparkles, 
   ChevronRight, Dumbbell, AlertTriangle, Play, RefreshCw, 
-  Check, Calendar, Activity, Zap, Info, ShieldCheck, Heart, User, Compass
+  Check, Calendar, Activity, Zap, Info, ShieldCheck, Heart, User, Compass,
+  ChevronLeft
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useChallengeEngine } from "../hooks/useChallengeEngine";
-import { CHALLENGE_PROGRAMS_METADATA } from "../data/challengeEngineDatabase";
+import { CHALLENGE_PROGRAMS_METADATA, getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
+import { ChallengeValidationService } from "../services/challengeValidationService";
 import { ProgramId, ChallengeExerciseItem } from "../types/challengeEngine";
 import { useApp, isEmailAdmin } from "../context/AppContext";
 
@@ -29,11 +31,31 @@ export default function WorkoutChallengeDashboard() {
     toggleExerciseComplete,
     completeTodayWorkout,
     adminBypassUnlock,
+    jumpToDay,
     resetProgramProgress
   } = useChallengeEngine("immortal_90");
 
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState<number>(1);
+
+  // Viewed day vs actual current prescribed day
+  const viewingDay = selectedDay ?? currentProgress.currentDay;
+  const isViewingCurrentDay = viewingDay === currentProgress.currentDay;
+
+  // Dynamically resolve workout plan and validated exercises for viewed day
+  const displayPlan = useMemo(() => {
+    return getWorkoutForProgramAndDay(activeProgramId, viewingDay);
+  }, [activeProgramId, viewingDay]);
+
+  const displayExercises = useMemo(() => {
+    return ChallengeValidationService.filterValidExercisesForDay(
+      displayPlan.exercises,
+      activeProgramId,
+      viewingDay
+    );
+  }, [displayPlan, activeProgramId, viewingDay]);
 
   if (!isLoaded) {
     return (
@@ -46,14 +68,19 @@ export default function WorkoutChallengeDashboard() {
     );
   }
 
-  const completedCount = currentProgress.exercisesCompleted.length;
-  const totalCount = validatedExercises.length;
+  const completedCount = isViewingCurrentDay ? currentProgress.exercisesCompleted.length : 0;
+  const totalCount = displayExercises.length;
   const allExercisesFinished = totalCount > 0 && completedCount >= totalCount;
 
   const handleFinishWorkout = () => {
     completeTodayWorkout();
     setShowCelebration(true);
     setTimeout(() => setShowCelebration(false), 5000);
+  };
+
+  const handleSetActiveDay = (day: number) => {
+    jumpToDay(day);
+    setSelectedDay(null);
   };
 
   return (
@@ -68,7 +95,7 @@ export default function WorkoutChallengeDashboard() {
                   CHALLENGE ENGINE V2
                 </span>
                 <span className="text-xs text-neutral-400">
-                  Deterministic Progression & 7-Hour Lock
+                  7-Day Repeating Cadence • Day 1 to 90
                 </span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white mt-1">
@@ -86,7 +113,10 @@ export default function WorkoutChallengeDashboard() {
                 return (
                   <button
                     key={pid}
-                    onClick={() => setActiveProgramId(pid)}
+                    onClick={() => {
+                      setActiveProgramId(pid);
+                      setSelectedDay(null);
+                    }}
                     className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                       isActive 
                         ? "bg-red-600 text-white shadow-lg shadow-red-600/25 ring-1 ring-red-500" 
@@ -117,6 +147,127 @@ export default function WorkoutChallengeDashboard() {
           </div>
         )}
 
+        {/* 7-DAY CADENCE SELECTOR STRIP */}
+        <div className="mb-6 p-5 rounded-3xl bg-neutral-900/70 border border-neutral-800/90 shadow-xl space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-neutral-800 pb-3">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-red-400 font-mono">
+                Strict 7-Day Cycle Cadence
+              </span>
+              <h3 className="text-base font-extrabold text-white">
+                Inspect Any Day in the 90-Day Challenge
+              </h3>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-neutral-400 font-semibold">Week:</span>
+              <div className="flex items-center gap-1 overflow-x-auto max-w-[280px] sm:max-w-none">
+                {Array.from({ length: Math.ceil(metadata.totalDays / 7) }).map((_, wIdx) => {
+                  const w = wIdx + 1;
+                  const isCurrentWeek = selectedWeek === w;
+                  return (
+                    <button
+                      key={w}
+                      onClick={() => setSelectedWeek(w)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        isCurrentWeek
+                          ? "bg-red-600 text-white shadow-xs"
+                          : "bg-neutral-800 text-neutral-400 hover:text-white"
+                      }`}
+                    >
+                      W{w}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Days of Selected Week */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+            {Array.from({ length: 7 }).map((_, dayIdxInWeek) => {
+              const dayNum = (selectedWeek - 1) * 7 + dayIdxInWeek + 1;
+              if (dayNum > metadata.totalDays) return null;
+
+              const cycleDayIdx = (dayNum - 1) % 7; // 0..6
+              const isSelected = viewingDay === dayNum;
+              const isPrescribedToday = currentProgress.currentDay === dayNum;
+
+              // Day Focus Titles
+              const cycleTitles = [
+                "Chest + Triceps",
+                "Back + Biceps + Forearm",
+                "5-10 KM Cardio / Walk",
+                "Legs + Shoulders + Abs",
+                "Chest + Triceps",
+                "Back + Biceps",
+                "5-10 KM Run / Walk"
+              ];
+              const cycleLabel = cycleTitles[cycleDayIdx];
+              const isCardioDay = cycleDayIdx === 2 || cycleDayIdx === 6;
+
+              return (
+                <button
+                  key={dayNum}
+                  onClick={() => setSelectedDay(dayNum)}
+                  className={`p-3 rounded-2xl text-left border transition-all relative flex flex-col justify-between ${
+                    isSelected
+                      ? "bg-red-950/40 border-red-500 shadow-md ring-1 ring-red-500"
+                      : isPrescribedToday
+                      ? "bg-neutral-800/80 border-amber-500/50 hover:border-neutral-600"
+                      : "bg-neutral-950/60 border-neutral-800/80 hover:border-neutral-700 hover:bg-neutral-900/50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-black uppercase font-mono ${isSelected ? "text-red-400" : "text-neutral-400"}`}>
+                      Day {dayNum}
+                    </span>
+                    {isPrescribedToday && (
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                        Today
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1.5">
+                    <p className={`text-xs font-extrabold leading-tight ${isSelected ? "text-white" : isCardioDay ? "text-sky-300" : "text-neutral-300"}`}>
+                      {cycleLabel}
+                    </p>
+                    <span className={`text-[10px] font-mono mt-1 inline-block ${isCardioDay ? "text-sky-400" : "text-neutral-500"}`}>
+                      {isCardioDay ? "Zero Lifting" : "Resistance"}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {!isViewingCurrentDay && (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-red-950/20 border border-red-500/30 text-xs">
+              <div className="flex items-center gap-2">
+                <Info className="w-4 h-4 text-red-400 shrink-0" />
+                <span>
+                  Currently inspecting <strong>Day {viewingDay}</strong> ({displayPlan.meta.category}). Your current tracked day is <strong>Day {currentProgress.currentDay}</strong>.
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleSetActiveDay(viewingDay)}
+                  className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold transition-all text-xs flex items-center gap-1.5"
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Set Day {viewingDay} as Active Today</span>
+                </button>
+                <button
+                  onClick={() => setSelectedDay(null)}
+                  className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white font-semibold transition-all text-xs"
+                >
+                  Return to Day {currentProgress.currentDay}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* 2. PROGRAM OVERVIEW & DAY STATUS HERO */}
         <div className="relative overflow-hidden rounded-3xl border border-neutral-800 bg-gradient-to-br from-neutral-900 via-neutral-900/90 to-neutral-950 p-6 sm:p-8 mb-8 shadow-2xl">
           <div className="absolute top-0 right-0 -mt-12 -mr-12 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
@@ -125,17 +276,17 @@ export default function WorkoutChallengeDashboard() {
             <div className="lg:col-span-2 space-y-3">
               <div className="flex flex-wrap items-center gap-2.5">
                 <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-white/10 text-white border border-white/10">
-                  DAY {currentProgress.currentDay} OF {metadata.totalDays}
+                  DAY {viewingDay} OF {metadata.totalDays}
                 </span>
                 <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/20">
-                  {workoutPlan.meta.category}
+                  {displayPlan.meta.category}
                 </span>
-                {workoutPlan.meta.isCardioOnly && (
+                {displayPlan.meta.isCardioOnly && (
                   <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                    5 TO 10 KM CARDIO & RECOVERY
+                    5 TO 10 KM CARDIO & RECOVERY (ZERO WEIGHTS)
                   </span>
                 )}
-                {workoutPlan.meta.isRestDay && (
+                {displayPlan.meta.isRestDay && (
                   <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                     COMPLETE REST & WALKING
                   </span>
@@ -143,17 +294,17 @@ export default function WorkoutChallengeDashboard() {
               </div>
 
               <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
-                {workoutPlan.meta.title}
+                {displayPlan.meta.title}
               </h2>
 
               <p className="text-sm sm:text-base text-neutral-300 max-w-2xl leading-relaxed">
-                {workoutPlan.meta.coachingNotes}
+                {displayPlan.meta.coachingNotes}
               </p>
 
               {/* Target Muscles Pills */}
               <div className="flex flex-wrap items-center gap-2 pt-2">
-                <span className="text-xs text-neutral-500 font-semibold uppercase tracking-wider">Targeted:</span>
-                {workoutPlan.meta.targetMuscles.map((muscle) => (
+                <span className="text-xs text-neutral-500 font-semibold uppercase tracking-wider">Targeted Muscles:</span>
+                {displayPlan.meta.targetMuscles.map((muscle) => (
                   <span key={muscle} className="px-2.5 py-1 rounded-lg text-xs font-medium bg-neutral-800 text-neutral-200 border border-neutral-700/60">
                     {muscle}
                   </span>
@@ -164,7 +315,7 @@ export default function WorkoutChallengeDashboard() {
             {/* Quick Metrics & Progression */}
             <div className="bg-neutral-950/80 border border-neutral-800/80 rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between text-xs text-neutral-400 font-semibold uppercase tracking-wider">
-                <span>Today's Progress</span>
+                <span>{isViewingCurrentDay ? "Today's Progress" : `Day ${viewingDay} Drills`}</span>
                 <span className="text-white font-bold">{completedCount} / {totalCount} Drills</span>
               </div>
 
@@ -172,7 +323,7 @@ export default function WorkoutChallengeDashboard() {
               <div className="w-full bg-neutral-800 h-3 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-red-600 to-amber-500 rounded-full transition-all duration-500"
-                  style={{ width: `${currentProgress.completionPercentage}%` }}
+                  style={{ width: `${isViewingCurrentDay ? currentProgress.completionPercentage : 0}%` }}
                 />
               </div>
 
@@ -183,7 +334,7 @@ export default function WorkoutChallengeDashboard() {
                     Est. Duration
                   </div>
                   <div className="text-sm font-bold text-white mt-1">
-                    {workoutPlan.meta.estimatedDuration}
+                    {displayPlan.meta.estimatedDuration}
                   </div>
                 </div>
 
@@ -193,7 +344,7 @@ export default function WorkoutChallengeDashboard() {
                     Est. Burn
                   </div>
                   <div className="text-sm font-bold text-white mt-1">
-                    ~{workoutPlan.meta.estimatedCalories} kcal
+                    ~{displayPlan.meta.estimatedCalories} kcal
                   </div>
                 </div>
               </div>
@@ -269,10 +420,10 @@ export default function WorkoutChallengeDashboard() {
         <div className="mb-8 p-5 rounded-2xl bg-neutral-900/60 border border-neutral-800">
           <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2 flex items-center gap-2">
             <Shield className="w-4 h-4 text-red-500" />
-            Execution Protocol & Strict Rules
+            Execution Protocol & Rules (Day {viewingDay}: {displayPlan.meta.category})
           </h4>
           <ul className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {workoutPlan.meta.guidelines.map((guide, idx) => (
+            {displayPlan.meta.guidelines.map((guide, idx) => (
               <li key={idx} className="text-xs text-neutral-300 flex items-start gap-2 bg-neutral-950/60 p-3 rounded-xl border border-neutral-800/60">
                 <span className="w-4 h-4 rounded-full bg-red-600/20 text-red-400 font-bold flex items-center justify-center shrink-0 text-[10px] mt-0.5">
                   {idx + 1}
@@ -285,25 +436,35 @@ export default function WorkoutChallengeDashboard() {
 
         {/* 5. EXERCISE LIST (STRICTLY VALIDATED FOR PROGRAM, DAY, AND MUSCLE GROUP) */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
             <h3 className="text-lg font-black text-white tracking-tight flex items-center gap-2">
               <Dumbbell className="w-5 h-5 text-red-500" />
-              Prescribed Exercises ({validatedExercises.length})
+              Day {viewingDay} Prescribed Routine ({displayExercises.length} Exercises)
             </h3>
-            <span className="text-xs text-neutral-400 font-medium">
-              Strict Category: <strong className="text-white">{workoutPlan.meta.category}</strong>
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-neutral-400 font-medium">
+                Category: <strong className="text-white">{displayPlan.meta.category}</strong>
+              </span>
+              {!isViewingCurrentDay && (
+                <button
+                  onClick={() => handleSetActiveDay(viewingDay)}
+                  className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-red-600 hover:bg-red-500 text-white transition-all"
+                >
+                  Train Day {viewingDay} Now
+                </button>
+              )}
+            </div>
           </div>
 
-          {validatedExercises.length === 0 ? (
+          {displayExercises.length === 0 ? (
             <div className="p-8 text-center bg-neutral-900/60 border border-neutral-800 rounded-3xl">
               <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
               <p className="text-white font-bold">No exercises found for this day's category.</p>
               <p className="text-xs text-neutral-400 mt-1">Check administrator mappings or program configuration.</p>
             </div>
           ) : (
-            validatedExercises.map((exercise, index) => {
-              const isCompleted = currentProgress.exercisesCompleted.includes(exercise.id);
+            displayExercises.map((exercise: ChallengeExerciseItem, index: number) => {
+              const isCompleted = isViewingCurrentDay && currentProgress.exercisesCompleted.includes(exercise.id);
               const isExpanded = expandedExerciseId === exercise.id;
 
               return (
@@ -319,14 +480,24 @@ export default function WorkoutChallengeDashboard() {
                     <div className="flex items-start sm:items-center gap-3.5">
                       {/* Completion checkbox button */}
                       <button
-                        onClick={() => toggleExerciseComplete(exercise.id)}
-                        disabled={isLockedAwaitingTimer}
+                        onClick={() => {
+                          if (isViewingCurrentDay) {
+                            toggleExerciseComplete(exercise.id);
+                          } else {
+                            handleSetActiveDay(viewingDay);
+                          }
+                        }}
+                        disabled={isViewingCurrentDay && isLockedAwaitingTimer}
                         className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all ${
                           isCompleted
                             ? "bg-emerald-600 text-white ring-2 ring-emerald-500 shadow-md shadow-emerald-600/20"
                             : "border-2 border-neutral-700 text-transparent hover:border-red-500"
-                        } ${isLockedAwaitingTimer ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
-                        title={isCompleted ? "Mark Incomplete" : "Mark Complete"}
+                        } ${isViewingCurrentDay && isLockedAwaitingTimer ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+                        title={
+                          !isViewingCurrentDay 
+                            ? "Click to switch active training to this day" 
+                            : isCompleted ? "Mark Incomplete" : "Mark Complete"
+                        }
                       >
                         <Check className="w-4 h-4 stroke-[3]" />
                       </button>
@@ -399,7 +570,7 @@ export default function WorkoutChallengeDashboard() {
                             Step-by-Step Instructions
                           </h5>
                           <ol className="list-decimal list-inside text-xs sm:text-sm text-neutral-300 space-y-1">
-                            {exercise.instructions.map((inst, i) => (
+                            {exercise.instructions.map((inst: string, i: number) => (
                               <li key={i} className="leading-relaxed">{inst}</li>
                             ))}
                           </ol>
@@ -412,7 +583,7 @@ export default function WorkoutChallengeDashboard() {
                               Trainer Kinetic Cue
                             </h5>
                             <ul className="text-xs text-neutral-300 space-y-0.5">
-                              {exercise.coachingCues.map((cue, i) => (
+                              {exercise.coachingCues.map((cue: string, i: number) => (
                                 <li key={i}>• {cue}</li>
                               ))}
                             </ul>

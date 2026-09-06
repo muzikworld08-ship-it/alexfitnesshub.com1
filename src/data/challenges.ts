@@ -21,6 +21,19 @@ export interface PremiumChallenge {
 
 export const FLAGSHIP_CHALLENGES: PremiumChallenge[] = [
   {
+    id: "immortal_90",
+    title: "Immortal 90 Day Challenge",
+    description: "The premier 90-day physical mastery challenge. Strict 7-day rolling cadence cycling Chest+Triceps, Back+Biceps+Forearm, 5-10KM Cardio/Walk, Legs+Shoulders+Abs, Chest+Triceps, Back+Biceps, and 5-10KM Run/Walk with complete rest on cardio days.",
+    category: "Hypertrophy & Conditioning",
+    goal: "Transform full-body power, muscular density, aerobic endurance, and unbreakable physical discipline.",
+    image: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80",
+    badgeId: "badge_immortal_champion",
+    badgeName: "Immortal 90 Champion",
+    badgeColor: "from-red-600 to-amber-600",
+    durationDays: 90,
+    isPremium: true
+  },
+  {
     id: "lean_muscle",
     title: "90 Day Lean Muscle Challenge",
     description: "Build premium lean muscle definition, optimize progressive load, and improve baseline metabolic body composition.",
@@ -116,7 +129,24 @@ export const FLAGSHIP_CHALLENGES: PremiumChallenge[] = [
 export const PREMIUM_CHALLENGES = FLAGSHIP_CHALLENGES;
 
 export const CHALLENGE_SPLITS: Record<string, string[]> = {
-  lean_muscle: ["Chest + Triceps", "Back + Biceps", "Legs", "Shoulders + Core", "Upper Body", "Conditioning", "Recovery"],
+  immortal_90: [
+    "Chest + Triceps",
+    "Back + Biceps + Forearm",
+    "5 to 10 KM Cardio or Walking",
+    "Legs + Shoulders + Abs",
+    "Chest + Triceps",
+    "Back + Biceps",
+    "5 to 10 KM Running or Walking"
+  ],
+  lean_muscle: [
+    "Chest + Triceps",
+    "Back + Biceps + Forearm",
+    "5 to 10 KM Cardio or Walking",
+    "Legs + Shoulders + Abs",
+    "Chest + Triceps",
+    "Back + Biceps",
+    "5 to 10 KM Running or Walking"
+  ],
   fat_burning: ["HIIT Cardio", "Lower Body Conditioning", "Aerobic Cardio", "Upper Body Circuit", "Full Body Shred", "HIIT Endurance", "Recovery"],
   body_transformation: ["Upper Body Strength", "Lower Body Strength", "Core + Mobility", "Full Body Hypertrophy", "HIIT Cardio", "Core + Conditioning", "Recovery"],
   athletic_performance: ["Plyometrics & Speed", "Lower Body Power", "Conditioning", "Upper Body Power", "Agility + Core", "Endurance Running", "Recovery"],

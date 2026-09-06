@@ -290,6 +290,28 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
     persistState(nextStates);
   }, [activeProgramId, currentProgress, allProgramStates, persistState]);
 
+  // Jump to specific day (e.g. Day 1, 2, 3, 4, 5, 6, 7... 90)
+  const jumpToDay = useCallback((day: number) => {
+    const maxDays = CHALLENGE_PROGRAMS_METADATA[activeProgramId].totalDays;
+    const targetDay = Math.max(1, Math.min(maxDays, day));
+
+    const updated: ProgramProgressState = {
+      ...currentProgress,
+      currentDay: targetDay,
+      workoutStarted: false,
+      workoutCompleted: false,
+      startedAt: null,
+      completedAt: null,
+      exercisesCompleted: [],
+      completionPercentage: 0,
+      nextWorkoutUnlockTime: null
+    };
+
+    const nextStates = { ...allProgramStates, [activeProgramId]: updated };
+    setAllProgramStates(nextStates);
+    persistState(nextStates);
+  }, [activeProgramId, currentProgress, allProgramStates, persistState]);
+
   // Reset program progress for testing/restart
   const resetProgramProgress = useCallback((progId: ProgramId = activeProgramId) => {
     const nextStates = {
@@ -315,6 +337,7 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
     toggleExerciseComplete,
     completeTodayWorkout,
     adminBypassUnlock,
+    jumpToDay,
     resetProgramProgress
   };
 }

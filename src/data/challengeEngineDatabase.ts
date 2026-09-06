@@ -14,12 +14,12 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
     badge: "Flagship 90 Days",
     categories: [
       "Chest + Triceps",
+      "Back + Biceps + Forearm",
+      "5 to 10 KM Cardio / Walking",
+      "Legs + Shoulders + Abs",
+      "Chest + Triceps",
       "Back + Biceps",
-      "Cardio + Recovery",
-      "Legs + Shoulders",
-      "Chest + Triceps + Forearms",
-      "Back + Biceps + Abs",
-      "Rest + Walking"
+      "5 to 10 KM Running / Walking"
     ],
     equipmentRequired: ["Barbell", "Dumbbells", "Cable Machine", "Bench", "Pull-up Bar"],
     coverImage: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&auto=format&fit=crop&q=80"
@@ -480,7 +480,7 @@ const IMMORTAL_CARDIO_RECOVERY: Omit<ChallengeExerciseItem, "id" | "dayNumber">[
   {
     programId: "immortal_90",
     programName: "Immortal 90 Day Challenge",
-    category: "Cardio + Recovery",
+    category: "5 to 10 KM Cardio / Walking",
     muscleGroup: ["Cardio"],
     exerciseName: "5 to 10 KM Continuous Paced Run or Walk",
     equipment: "Running Shoes & Outdoors or Treadmill",
@@ -500,8 +500,8 @@ const IMMORTAL_CARDIO_RECOVERY: Omit<ChallengeExerciseItem, "id" | "dayNumber">[
   {
     programId: "immortal_90",
     programName: "Immortal 90 Day Challenge",
-    category: "Cardio + Recovery",
-    muscleGroup: ["Mobility and recovery"],
+    category: "5 to 10 KM Cardio / Walking",
+    muscleGroup: ["Recovery"],
     exerciseName: "Post-Cardio Full Decompression & Hydration Protocol",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
@@ -676,12 +676,12 @@ const IMMORTAL_LEGS_SHOULDERS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
   }
 ];
 
-const IMMORTAL_CHEST_TRICEPS_FOREARMS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
-  ...IMMORTAL_CHEST_TRICEPS.slice(0, 6),
+const IMMORTAL_BACK_BICEPS_FOREARMS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+  ...IMMORTAL_BACK_BICEPS.slice(0, 6).map(ex => ({ ...ex, category: "Back + Biceps + Forearm" })),
   {
     programId: "immortal_90",
     programName: "Immortal 90 Day Challenge",
-    category: "Chest + Triceps + Forearms",
+    category: "Back + Biceps + Forearm",
     muscleGroup: ["Forearms"],
     exerciseName: "Barbell Palms-Up Wrist Curls",
     equipment: "Barbell & Flat Bench",
@@ -699,7 +699,25 @@ const IMMORTAL_CHEST_TRICEPS_FOREARMS: Omit<ChallengeExerciseItem, "id" | "dayNu
   {
     programId: "immortal_90",
     programName: "Immortal 90 Day Challenge",
-    category: "Chest + Triceps + Forearms",
+    category: "Back + Biceps + Forearm",
+    muscleGroup: ["Forearms"],
+    exerciseName: "Reverse EZ-Bar Forearm Curls",
+    equipment: "EZ-Bar",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12-15",
+    duration: "40s set",
+    instructions: [
+      "Grip EZ-bar with overhand (pronated) grip.",
+      "Curl bar upward to develop top brachioradialis and wrist extensors.",
+      "Lower bar with smooth eccentric control."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back + Biceps + Forearm",
     muscleGroup: ["Forearms"],
     exerciseName: "Farmer's Heavy Dumbbell Carry",
     equipment: "Heavy Dumbbells",
@@ -712,32 +730,15 @@ const IMMORTAL_CHEST_TRICEPS_FOREARMS: Omit<ChallengeExerciseItem, "id" | "dayNu
       "Walk with proud posture, shoulders pinned back, without allowing weights to swing."
     ],
     restTime: "60s"
-  },
-  {
-    programId: "immortal_90",
-    programName: "Immortal 90 Day Challenge",
-    category: "Chest + Triceps + Forearms",
-    muscleGroup: ["Forearms"],
-    exerciseName: "Reverse EZ-Bar Forearm Curls",
-    equipment: "EZ-Bar",
-    difficulty: "Beginner",
-    sets: 3,
-    reps: "12-15",
-    duration: "40s set",
-    instructions: [
-      "Grip EZ-bar with overhand (pronated) grip.",
-      "Curl bar upward to develop top brachioradialis and wrist extensors."
-    ],
-    restTime: "60s"
   }
 ];
 
-const IMMORTAL_BACK_BICEPS_ABS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
-  ...IMMORTAL_BACK_BICEPS.slice(0, 6),
+const IMMORTAL_LEGS_SHOULDERS_ABS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+  ...IMMORTAL_LEGS_SHOULDERS.map(ex => ({ ...ex, category: "Legs + Shoulders + Abs" })),
   {
     programId: "immortal_90",
     programName: "Immortal 90 Day Challenge",
-    category: "Back + Biceps + Abs",
+    category: "Legs + Shoulders + Abs",
     muscleGroup: ["Abs"],
     exerciseName: "Hanging Leg Raises",
     equipment: "Pull-up Bar",
@@ -755,7 +756,7 @@ const IMMORTAL_BACK_BICEPS_ABS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[
   {
     programId: "immortal_90",
     programName: "Immortal 90 Day Challenge",
-    category: "Back + Biceps + Abs",
+    category: "Legs + Shoulders + Abs",
     muscleGroup: ["Abs"],
     exerciseName: "Ab Wheel Rollouts",
     equipment: "Ab Wheel",
@@ -773,7 +774,7 @@ const IMMORTAL_BACK_BICEPS_ABS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[
   {
     programId: "immortal_90",
     programName: "Immortal 90 Day Challenge",
-    category: "Back + Biceps + Abs",
+    category: "Legs + Shoulders + Abs",
     muscleGroup: ["Abs"],
     exerciseName: "Weighted Cable Rope Crunches",
     equipment: "Cable Machine & Rope",
@@ -788,6 +789,51 @@ const IMMORTAL_BACK_BICEPS_ABS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[
     restTime: "60s"
   }
 ];
+
+const IMMORTAL_DAY7_RUNNING_WALKING_CARDIO: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "5 to 10 KM Running / Walking",
+    muscleGroup: ["Cardio"],
+    exerciseName: "5 to 10 KM Continuous Running or Walking",
+    equipment: "Running Shoes & Outdoors or Treadmill",
+    difficulty: "Beginner",
+    sets: 1,
+    reps: "5-10 KM",
+    duration: "45-75 mins",
+    instructions: [
+      "Complete a steady 5 to 10 kilometer running or brisk walking session.",
+      "Maintain a consistent conversational pace (aerobic Zone 2).",
+      "Strict rule: No weight training or resistance exercise on cardio days.",
+      "Immediately following cardio, transition to complete muscular rest and recovery."
+    ],
+    restTime: "Full rest post-cardio",
+    coachingCues: ["Relax upper torso and arms", "Breathe smoothly through nose and diaphragm"]
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "5 to 10 KM Running / Walking",
+    muscleGroup: ["Recovery"],
+    exerciseName: "Post-Cardio Decompression, Rehydration & Complete Rest",
+    equipment: "Yoga Mat or Bed",
+    difficulty: "Beginner",
+    sets: 1,
+    reps: "Rest Protocol",
+    duration: "Rest & Recover",
+    instructions: [
+      "Lie supine with legs elevated for 10-15 minutes to aid circulation and flush metabolic waste.",
+      "Rehydrate thoroughly with water and minerals.",
+      "Zero resistance training permitted today. Full rest prepares your muscles to repeat the 7-day cycle on Day 1."
+    ],
+    restTime: "Complete rest",
+    coachingCues: ["Let all skeletal tension dissolve completely"]
+  }
+];
+
+const IMMORTAL_CHEST_TRICEPS_FOREARMS = IMMORTAL_CHEST_TRICEPS;
+const IMMORTAL_BACK_BICEPS_ABS = IMMORTAL_BACK_BICEPS_FOREARMS;
 
 const IMMORTAL_REST_WALKING: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
   {
@@ -1302,21 +1348,21 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
       const meta: DayWorkoutMeta = {
         dayNumber: safeDay,
         programId: "immortal_90",
-        title: `Day ${safeDay}: Back + Biceps Hypertrophy`,
-        category: "Back + Biceps",
-        targetMuscles: ["Back", "Biceps"],
-        estimatedDuration: "50-60 mins",
-        estimatedCalories: 470,
+        title: `Day ${safeDay}: Back + Biceps + Forearm`,
+        category: "Back + Biceps + Forearm",
+        targetMuscles: ["Back", "Biceps", "Forearms"],
+        estimatedDuration: "55-65 mins",
+        estimatedCalories: 490,
         isRestDay: false,
         isCardioOnly: false,
         guidelines: [
-          "Display ONLY back and biceps exercises.",
+          "Display back, biceps, and forearm exercises ONLY.",
           "Initiate pulling movements with the lats, keeping core locked.",
-          "Control the eccentric stretch on all bicep curls."
+          "Isolate biceps with strict curls and finish with heavy forearm wrist curls and grip carries."
         ],
-        coachingNotes: "Immortal Day 2 exclusively engages vertical and horizontal pulling: latissimus dorsi, rhomboids, trapezius, and biceps brachii."
+        coachingNotes: "Immortal Day 2 exclusively engages vertical and horizontal pulling: latissimus dorsi, rhomboids, trapezius, biceps, and forearm wrist flexors/extensors."
       };
-      const exercises: ChallengeExerciseItem[] = IMMORTAL_BACK_BICEPS.map((ex, idx) => ({
+      const exercises: ChallengeExerciseItem[] = IMMORTAL_BACK_BICEPS_FOREARMS.map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
@@ -1328,20 +1374,20 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
       const meta: DayWorkoutMeta = {
         dayNumber: safeDay,
         programId: "immortal_90",
-        title: `Day ${safeDay}: Cardio + Recovery (5 to 10 KM)`,
-        category: "Cardio + Recovery",
+        title: `Day ${safeDay}: 5 to 10 KM Cardio / Walking (Rest After)`,
+        category: "5 to 10 KM Cardio / Walking",
         targetMuscles: ["Cardio", "Recovery"],
-        estimatedDuration: "50-70 mins",
+        estimatedDuration: "50-75 mins",
         estimatedCalories: 550,
         isRestDay: false,
         isCardioOnly: true,
         cardioDistance: "5 to 10 KM",
         guidelines: [
           "Display walking or running for 5 to 10 km.",
-          "Do NOT display weight training exercises today.",
-          "Full post-cardio cellular rest, hydration, and nervous system recovery."
+          "No exercise or weight training is permitted on cardio days.",
+          "After cardio, rest completely so your body recovers deep energy reserves."
         ],
-        coachingNotes: "Immortal Day 3: Resistance workouts are removed entirely today. Log your 5 to 10 KM running or walking and recover!"
+        coachingNotes: "Immortal Day 3: Resistance exercises are completely removed. Complete your 5 to 10 KM cardio or walk, and rest."
       };
       const exercises: ChallengeExerciseItem[] = IMMORTAL_CARDIO_RECOVERY.map((ex, idx) => ({
         ...ex,
@@ -1355,21 +1401,21 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
       const meta: DayWorkoutMeta = {
         dayNumber: safeDay,
         programId: "immortal_90",
-        title: `Day ${safeDay}: Legs + Shoulders Power`,
-        category: "Legs + Shoulders",
-        targetMuscles: ["Legs", "Shoulders"],
-        estimatedDuration: "55-65 mins",
-        estimatedCalories: 520,
+        title: `Day ${safeDay}: Legs + Shoulders + Abs`,
+        category: "Legs + Shoulders + Abs",
+        targetMuscles: ["Legs", "Shoulders", "Abs"],
+        estimatedDuration: "60-70 mins",
+        estimatedCalories: 560,
         isRestDay: false,
         isCardioOnly: false,
         guidelines: [
-          "Display ONLY leg and shoulder exercises.",
+          "Display leg, shoulder, and abdominal exercises ONLY.",
           "Prioritize knee tracking and deep hip hinges on squats and RDLs.",
-          "Hit all three deltoid heads (anterior, lateral, posterior)."
+          "Hit all three deltoid heads (anterior, lateral, posterior) and finish with ab rollouts and leg raises."
         ],
-        coachingNotes: "Immortal Day 4: High metabolic demand combining lower body quad/hamstring power with 3D shoulder sculpting."
+        coachingNotes: "Immortal Day 4: High metabolic demand combining lower body quad/hamstring power, 3D shoulder sculpting, and core armor."
       };
-      const exercises: ChallengeExerciseItem[] = IMMORTAL_LEGS_SHOULDERS.map((ex, idx) => ({
+      const exercises: ChallengeExerciseItem[] = IMMORTAL_LEGS_SHOULDERS_ABS.map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
@@ -1381,20 +1427,20 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
       const meta: DayWorkoutMeta = {
         dayNumber: safeDay,
         programId: "immortal_90",
-        title: `Day ${safeDay}: Chest + Triceps + Forearms`,
-        category: "Chest + Triceps + Forearms",
-        targetMuscles: ["Chest", "Triceps", "Forearms"],
-        estimatedDuration: "55-60 mins",
-        estimatedCalories: 460,
+        title: `Day ${safeDay}: Chest + Triceps`,
+        category: "Chest + Triceps",
+        targetMuscles: ["Chest", "Triceps"],
+        estimatedDuration: "50-60 mins",
+        estimatedCalories: 450,
         isRestDay: false,
         isCardioOnly: false,
         guidelines: [
-          "Display chest, triceps, and forearm exercises ONLY.",
-          "Progressive load on chest pressing followed by tricep isolation and crushing forearm grip holds."
+          "Display chest and triceps exercises ONLY.",
+          "Progressive load on flat/incline presses followed by tricep dips and cable pushdowns."
         ],
-        coachingNotes: "Immortal Day 5: Builds upper body pushing density alongside grip endurance and forearm strength."
+        coachingNotes: "Immortal Day 5: Re-stimulates the anterior pushing chain with heavy volume on pectorals and triceps."
       };
-      const exercises: ChallengeExerciseItem[] = IMMORTAL_CHEST_TRICEPS_FOREARMS.map((ex, idx) => ({
+      const exercises: ChallengeExerciseItem[] = IMMORTAL_CHEST_TRICEPS.map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
@@ -1406,20 +1452,20 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
       const meta: DayWorkoutMeta = {
         dayNumber: safeDay,
         programId: "immortal_90",
-        title: `Day ${safeDay}: Back + Biceps + Abs`,
-        category: "Back + Biceps + Abs",
-        targetMuscles: ["Back", "Biceps", "Abs"],
-        estimatedDuration: "55-60 mins",
-        estimatedCalories: 480,
+        title: `Day ${safeDay}: Back + Biceps`,
+        category: "Back + Biceps",
+        targetMuscles: ["Back", "Biceps"],
+        estimatedDuration: "50-60 mins",
+        estimatedCalories: 470,
         isRestDay: false,
         isCardioOnly: false,
         guidelines: [
-          "Display back, biceps, and abdominal exercises ONLY.",
-          "Maintain spinal integrity on rows, squeeze biceps, and complete the core armor finisher."
+          "Display back and biceps exercises ONLY.",
+          "Heavy deadlifts, wide pull-ups, barbell rows, and peak bicep curls."
         ],
-        coachingNotes: "Immortal Day 6: Total pulling density combined with hanging and rolling core stabilization."
+        coachingNotes: "Immortal Day 6: Total pulling density targeting lat width, mid-back thickness, and bicep peaks."
       };
-      const exercises: ChallengeExerciseItem[] = IMMORTAL_BACK_BICEPS_ABS.map((ex, idx) => ({
+      const exercises: ChallengeExerciseItem[] = IMMORTAL_BACK_BICEPS.map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
@@ -1427,26 +1473,27 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
       return { meta, exercises };
     }
 
-    // Day 7: Rest + Walking
+    // Day 7: Running or Walking 5 to 10 KM + Rest
     const meta: DayWorkoutMeta = {
       dayNumber: safeDay,
       programId: "immortal_90",
-      title: `Day ${safeDay}: Rest + Walking`,
-      category: "Rest + Walking",
-      targetMuscles: ["Mobility and recovery"],
-      estimatedDuration: "30-45 mins",
-      estimatedCalories: 150,
-      isRestDay: true,
-      isCardioOnly: false,
-      cardioDistance: "2 to 4 KM Optional Walk",
+      title: `Day ${safeDay}: 5 to 10 KM Running or Walking (Rest After)`,
+      category: "5 to 10 KM Running / Walking",
+      targetMuscles: ["Cardio", "Recovery"],
+      estimatedDuration: "50-75 mins",
+      estimatedCalories: 550,
+      isRestDay: false,
+      isCardioOnly: true,
+      cardioDistance: "5 to 10 KM",
       guidelines: [
-        "Display recovery instructions and optional walking.",
-        "Do NOT display resistance training.",
-        "Complete rest allows muscle tissue rebuilding and nervous system resets."
+        "Display running or walking for 5 to 10 km.",
+        "No exercise on cardio days. Strict cardio and walking only.",
+        "After cardio, rest completely. No weight training or resistance workouts.",
+        "Prepares your body for Day 1 of the repeating 7-day cycle."
       ],
-      coachingNotes: "Immortal Day 7: Honor your body with complete active recovery and gentle walking before repeating the 7-day cycle."
+      coachingNotes: "Immortal Day 7: Complete your 5 to 10 km running or walking. After cardio, rest completely to finish the 7-day cycle."
     };
-    const exercises: ChallengeExerciseItem[] = IMMORTAL_REST_WALKING.map((ex, idx) => ({
+    const exercises: ChallengeExerciseItem[] = IMMORTAL_DAY7_RUNNING_WALKING_CARDIO.map((ex, idx) => ({
       ...ex,
       id: `immortal_d${safeDay}_ex_${idx + 1}`,
       dayNumber: safeDay

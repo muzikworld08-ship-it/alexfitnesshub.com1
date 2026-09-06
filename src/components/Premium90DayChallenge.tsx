@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import PersistentDashboardTabs from "./PersistentDashboardTabs";
 import { getChallengeWorkouts } from "../data/challenges";
+import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
 
 
@@ -114,10 +115,27 @@ export const PREMIUM_CHALLENGES: PremiumChallenge[] = [
   }
 ];
 
-// Presets for splits - Day 3 (index 2) is Cardio & Complete Rest (workouts removed entirely, rest after cardio)
+// Presets for splits - Day 3 and Day 7 are Cardio (5-10 km, workouts removed, rest after cardio)
 const CHALLENGE_SPLITS: Record<string, string[]> = {
-  lean_muscle: ["Chest + Triceps", "Back + Biceps", "5-10 KM Cardio & Complete Rest", "Shoulders + Core", "Upper Body", "Conditioning", "Recovery"],
-  fat_burning: ["HIIT Cardio", "Lower Body Conditioning", "5-10 KM Cardio & Complete Rest", "Upper Body Circuit", "Full Body Shred", "HIIT Endurance", "Recovery"],
+  immortal_90: [
+    "Chest + Triceps",
+    "Back + Biceps + Forearm",
+    "5 to 10 KM Cardio or Walking",
+    "Legs + Shoulders + Abs",
+    "Chest + Triceps",
+    "Back + Biceps",
+    "5 to 10 KM Running or Walking"
+  ],
+  lean_muscle: [
+    "Chest + Triceps",
+    "Back + Biceps + Forearm",
+    "5 to 10 KM Cardio or Walking",
+    "Legs + Shoulders + Abs",
+    "Chest + Triceps",
+    "Back + Biceps",
+    "5 to 10 KM Running or Walking"
+  ],
+  fat_burning: ["HIIT Cardio", "Lower Body Conditioning", "5-10 KM Cardio & Complete Rest", "Upper Body Circuit", "Full Body Shred", "HIIT Endurance", "5-10 KM Running or Walking"],
   body_transformation: ["Upper Body Strength", "Lower Body Strength", "5-10 KM Cardio & Complete Rest", "Full Body Hypertrophy", "HIIT Cardio", "Core + Conditioning", "Recovery"],
   athletic_performance: ["Plyometrics & Speed", "Lower Body Power", "5-10 KM Cardio & Complete Rest", "Upper Body Power", "Agility + Core", "Endurance Running", "Recovery"],
   strength_challenge: ["Squats & Legs", "Bench Press & Chest", "5-10 KM Cardio & Complete Rest", "Deadlifts & Back", "Overhead Press & Shoulders", "Heavy Bracing Core", "Recovery"],
@@ -474,16 +492,85 @@ export default function Premium90DayChallenge() {
       intensityLabel = "Absolute Maximum Effort (90-95%)";
     }
 
+    // Delegate directly to the strictly organized 7-day repeating Challenge Engine for Immortal 90 / Lean Muscle
+    if (challengeId === "immortal_90" || challengeId === "lean_muscle" || !challengeId) {
+      const enginePlan = getWorkoutForProgramAndDay("immortal_90", dayNum);
+      const isCardioDay = enginePlan.meta.isCardioOnly;
+
+      const exercisesWithDetails = enginePlan.exercises.map((ex, idx) => {
+        const isCardio = isCardioDay || ex.muscleGroup?.includes("Cardio") || ex.category.includes("Cardio") || ex.category.includes("Running") || ex.category.includes("Walking");
+        const calBurn = isCardio ? 460 : Math.round(setsMultiplier * 75);
+
+        let weightRec = "Moderate Load";
+        if (ex.equipment?.toLowerCase().includes("bodyweight") || ex.equipment?.toLowerCase().includes("shoes")) {
+          weightRec = "Bodyweight load";
+        } else if (ex.equipment?.toLowerCase().includes("barbell")) {
+          weightRec = "65%-80% of 1RM";
+        } else if (ex.equipment?.toLowerCase().includes("machine") || ex.equipment?.toLowerCase().includes("cable")) {
+          weightRec = "Standard machine stack";
+        } else if (ex.equipment?.toLowerCase().includes("dumbbell")) {
+          weightRec = "Moderate Dumbbells";
+        }
+
+        return {
+          id: ex.id || `immortal_d${dayNum}_ex_${idx + 1}`,
+          name: ex.exerciseName,
+          category: ex.category,
+          muscleGroups: ex.muscleGroup,
+          equipment: [ex.equipment],
+          sets: isCardio ? 1 : (ex.sets || setsMultiplier),
+          reps: ex.reps || repScheme,
+          weight: weightRec,
+          rest: isCardio ? "Full Rest Post-Cardio" : (ex.restTime || restTime),
+          calories: calBurn,
+          instruction: ex.instructions?.[0] || "Execute with strict posture, full range of motion, and controlled tempo.",
+          mistake: ex.coachingCues?.[0] || "Avoid relying on momentum; maintain muscular control.",
+          safety: "Keep core braced. Maintain neutral spine and joint alignment throughout."
+        };
+      });
+
+      return {
+        dayNum,
+        weekNum,
+        phase,
+        phaseDesc: isCardioDay 
+          ? "5 to 10 KM Aerobic Engine & Total Muscular Rest. Strict protocol: No weight training or resistance drills today. After cardio, take complete rest."
+          : phaseDesc,
+        focus: enginePlan.meta.category,
+        isRecoveryDay: isCardioDay,
+        restTime: isCardioDay ? "Full Rest Post-Cardio" : restTime,
+        intensityLabel: isCardioDay ? "Aerobic Zone 2 (Conversational Pace)" : intensityLabel,
+        exercises: exercisesWithDetails,
+        estTime: isCardioDay ? 55 : 75,
+        estCalories: enginePlan.meta.estimatedCalories || 520,
+        warmUp: isCardioDay ? [
+          { name: "Ankle, Hip & Knee Joint Mobilizations", duration: "3 Mins", desc: "Dynamic joint lubrication before 5-10 KM cardio." },
+          { name: "Light Aerobic Walking Warm-Up", duration: "3 Mins", desc: "Gradual elevation of heart rate and core temperature." }
+        ] : [
+          { name: "Dynamic Warm-up Jumps", duration: "3 Mins", desc: "Light impact baseline dynamic hopping." },
+          { name: "Dynamic Rotational Swings", duration: "3 Mins", desc: "Full range axial mobility pivots." },
+          { name: "Target Joint Articulations", duration: "4 Mins", desc: "Lubricate target joints specifically for today's muscle groups." }
+        ],
+        coolDown: isCardioDay ? [
+          { name: "Deep Diaphragmatic Box Breathing", duration: "4 Mins", desc: "Lower heart rate and initiate parasympathetic nervous recovery." },
+          { name: "Complete Post-Cardio Rest & Rehydration", duration: "Full Rest", desc: "Rest muscles completely; zero weight training." }
+        ] : [
+          { name: "Systemic Decompression Breathing", duration: "4 Mins", desc: "Deep diaphragmatic nasal inhalation cycles." },
+          { name: "Target Muscle Static Lengthening", duration: "4 Mins", desc: "Release tension in worked muscle groups." }
+        ]
+      };
+    }
+
     const currentSplit = CHALLENGE_SPLITS[challengeId] || CHALLENGE_SPLITS["lean_muscle"];
     const focusLabel = currentSplit[dayOfWeekIdx];
 
-    // Day 3 / Cardio Days: Remove workout entirely - users only do cardio and rest after cardio
-    const isCardioDay = dayOfWeekIdx === 2 || focusLabel.toLowerCase().includes("cardio & complete rest") || focusLabel.toLowerCase().includes("5-10 km cardio");
+    // Day 3 & Day 7 / Cardio Days: Remove workout entirely - users only do cardio and rest after cardio
+    const isCardioDay = dayOfWeekIdx === 2 || dayOfWeekIdx === 6 || focusLabel.toLowerCase().includes("cardio") || focusLabel.toLowerCase().includes("walking") || focusLabel.toLowerCase().includes("running");
     if (isCardioDay) {
       const cardioDayExercises = [
         {
           id: "challenge-cardio-5-10km",
-          name: "5 to 10 KM Aerobic Run / Walk",
+          name: dayOfWeekIdx === 6 ? "5 to 10 KM Running or Walking" : "5 to 10 KM Cardio / Walking",
           category: "Cardio Workouts",
           muscleGroups: ["Cardio"],
           equipment: ["Bodyweight"],
@@ -492,23 +579,23 @@ export default function Premium90DayChallenge() {
           weight: "Bodyweight",
           rest: "Full Rest Post-Cardio",
           calories: 460,
-          instruction: "Complete 5 to 10 KM at a steady aerobic pace (Zone 2). All workouts and weight exercises are removed today so your muscles can rest completely.",
-          mistake: "Adding heavy lifting or intense calisthenics on cardio day.",
+          instruction: "Complete 5 to 10 KM continuous at conversational pace. Strict protocol: zero weight training or resistance drills today. After cardio, take complete rest.",
+          mistake: "Adding heavy lifting or intense resistance drills on cardio days.",
           safety: "Wear proper running shoes and maintain steady hydration."
         },
         {
           id: "challenge-cardio-rest-recovery",
-          name: "Post-Cardio Full Rest & Muscle Recovery",
+          name: "Post-Cardio Decompression & Complete Rest",
           category: "Recovery & Mobility",
           muscleGroups: ["Recovery"],
           equipment: ["Bodyweight"],
           sets: 1,
           reps: "Complete Rest Protocol",
           weight: "None",
-          rest: "Until Next Day",
+          rest: "Full Rest Until Tomorrow",
           calories: 50,
-          instruction: "Lie down or relax comfortably. No workout is performed today. Rehydrate, replenish glycogen with nutritious food, and let your body recover.",
-          mistake: "Forcing extra exercises when the schedule calls for rest.",
+          instruction: "Relax comfortably. No resistance exercises allowed today. Rehydrate, replenish glycogen, and allow muscles to recover completely.",
+          mistake: "Forcing extra workouts when the schedule prescribes complete rest.",
           safety: "Elevate your legs and practice slow diaphragmatic breathing."
         }
       ];
@@ -542,31 +629,24 @@ export default function Premium90DayChallenge() {
       targetCategory = "Home Workouts";
     }
 
-    // Filter exercises from active exercise list
+    // Filter exercises from active exercise list strictly matching focus words
+    const focusWords = focusLabel.toLowerCase().split(/[ +&]+/);
     const filtered = exercises.filter(ex => {
       const matchCat = ex.category === targetCategory || ex.categories?.includes(targetCategory);
-      // matching focus word in muscles or title
-      const focusWords = focusLabel.toLowerCase().split(/[ +&]+/);
-      const matchFocus = ex.muscleGroups?.some(m => focusWords.includes(m.toLowerCase())) ||
+      const matchFocus = ex.muscleGroups?.some(m => focusWords.some(fw => m.toLowerCase().includes(fw))) ||
                          ex.name.toLowerCase().split(" ").some(w => focusWords.includes(w));
       return matchCat && matchFocus;
     });
 
-    // Select 8 to 10 exercises for this day's routine
+    // Select exercises matching this day's routine strictly
     let matchedExercises = filtered.slice(0, 9);
-    if (matchedExercises.length < 8) {
-      // fill up with general exercise matching category
-      const extras = exercises.filter(ex => 
-        (ex.category === targetCategory || ex.categories?.includes(targetCategory)) && 
-        !matchedExercises.some(m => m.id === ex.id)
-      ).slice(0, 10 - matchedExercises.length);
-      matchedExercises = [...matchedExercises, ...extras];
-    }
-
-    // Ensure we always have at least 8 to 10 exercises
-    if (matchedExercises.length < 8) {
-      const remaining = exercises.filter(ex => !matchedExercises.some(m => m.id === ex.id)).slice(0, 8 - matchedExercises.length);
-      matchedExercises = [...matchedExercises, ...remaining];
+    if (matchedExercises.length < 5) {
+      // Only pull extras that match the target muscle groups
+      const muscleExtras = exercises.filter(ex => 
+        !matchedExercises.some(m => m.id === ex.id) &&
+        ex.muscleGroups?.some(m => focusWords.some(fw => m.toLowerCase().includes(fw)))
+      ).slice(0, 8 - matchedExercises.length);
+      matchedExercises = [...matchedExercises, ...muscleExtras];
     }
 
     // Construct exercises details list
@@ -854,8 +934,39 @@ export default function Premium90DayChallenge() {
     return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   };
 
+  // Cadence browsing and preview states
+  const [browsingDay, setBrowsingDay] = useState<number | null>(null);
+  const [previewDay, setPreviewDay] = useState<number>(1);
+  const [selectedWeek, setSelectedWeek] = useState<number>(1);
+
+  const activeDisplayDay = browsingDay ?? (dbState?.currentDay || 1);
+  const isViewingToday = !browsingDay || browsingDay === dbState?.currentDay;
+
   // Active workout object calculations
-  const todayWorkoutDetail = (dbState && dbState.onboarding) ? getDailyWorkoutDetail(dbState.currentDay, dbState.challengeId) : getDailyWorkoutDetail(1, "lean_muscle");
+  const todayWorkoutDetail = (dbState && dbState.onboarding) 
+    ? getDailyWorkoutDetail(activeDisplayDay, dbState.challengeId) 
+    : getDailyWorkoutDetail(activeDisplayDay, "immortal_90");
+
+  const previewWorkoutDetail = getDailyWorkoutDetail(previewDay, "immortal_90");
+
+  // Switch current active day for athlete
+  const handleSetCurrentDay = async (targetDay: number) => {
+    if (!dbState || !user) return;
+    const updatedState: Premium90DayState = {
+      ...dbState,
+      currentDay: targetDay
+    };
+    setLoadingDb(true);
+    try {
+      await saveChallengeData(user.uid, updatedState);
+      setDbState(updatedState);
+      setBrowsingDay(null);
+    } catch (err) {
+      console.error("Error setting current day:", err);
+    } finally {
+      setLoadingDb(false);
+    }
+  };
 
   // Calculations for total progress metrics
   const totalCompletedCount = dbState?.completedDays?.length || 0;
@@ -982,55 +1093,107 @@ export default function Premium90DayChallenge() {
             </div>
           </div>
 
-          {/* Sample Day 1 Preview */}
+          {/* Dynamic 7-Day Cadence Teaser Preview */}
           <div id="sample_preview" className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-lg text-left space-y-6">
             <div className="border-b border-slate-100 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <span className="text-[10px] text-red-600 font-mono font-black uppercase tracking-widest">Sample Teaser Preview</span>
+                <span className="text-[10px] text-red-600 font-mono font-black uppercase tracking-widest">Immortal 90-Day Challenge • 7-Day Rolling Cadence</span>
                 <h3 className="text-xl sm:text-2xl font-black text-slate-900 uppercase mt-1">
-                  Lean Muscle Challenge • Day 1 Workout
+                  Day {previewDay}: {previewWorkoutDetail.focus}
                 </h3>
               </div>
               <span className="bg-amber-100 text-amber-700 font-bold text-xs px-3 py-1.5 rounded-full border border-amber-200/50 flex items-center gap-1">
-                <Crown className="w-3.5 h-3.5" /> Premium Content Preview
+                <Crown className="w-3.5 h-3.5" /> 7-Day Cadence Preview
               </span>
             </div>
 
-            {/* Simulated Teaser Workout details */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <span className="text-[10px] text-slate-400 uppercase font-mono">Splits Focus</span>
-                <p className="text-base font-black text-slate-900 mt-1">Chest + Triceps</p>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <span className="text-[10px] text-slate-400 uppercase font-mono">Calories Expected</span>
-                <p className="text-base font-black text-slate-900 mt-1">~640 kcal</p>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <span className="text-[10px] text-slate-400 uppercase font-mono">Time Investment</span>
-                <p className="text-base font-black text-slate-900 mt-1">75 Minutes</p>
+            {/* 7-Day Quick Cadence Selector Pills */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Explore The 7-Day Repeating Structure:
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                {[
+                  { day: 1, label: "Day 1", focus: "Chest + Triceps" },
+                  { day: 2, label: "Day 2", focus: "Back + Biceps + Forearm" },
+                  { day: 3, label: "Day 3", focus: "5-10 KM Cardio / Walk" },
+                  { day: 4, label: "Day 4", focus: "Legs + Shoulders + Abs" },
+                  { day: 5, label: "Day 5", focus: "Chest + Triceps" },
+                  { day: 6, label: "Day 6", focus: "Back + Biceps" },
+                  { day: 7, label: "Day 7", focus: "5-10 KM Run / Walk" },
+                ].map((item) => {
+                  const isSelected = previewDay === item.day;
+                  return (
+                    <button
+                      key={item.day}
+                      type="button"
+                      onClick={() => setPreviewDay(item.day)}
+                      className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-600/20"
+                          : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                      }`}
+                    >
+                      <div className={`text-[10px] font-mono font-black uppercase ${isSelected ? "text-red-100" : "text-slate-400"}`}>
+                        {item.label}
+                      </div>
+                      <div className="text-xs font-bold truncate mt-0.5">
+                        {item.focus}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
+            {/* Dynamic Teaser Workout details */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <span className="text-[10px] text-slate-400 uppercase font-mono">Splits Focus</span>
+                <p className="text-base font-black text-slate-900 mt-1">{previewWorkoutDetail.focus}</p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <span className="text-[10px] text-slate-400 uppercase font-mono">Calories Expected</span>
+                <p className="text-base font-black text-slate-900 mt-1">~{previewWorkoutDetail.estCalories} kcal</p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <span className="text-[10px] text-slate-400 uppercase font-mono">Time Investment</span>
+                <p className="text-base font-black text-slate-900 mt-1">{previewWorkoutDetail.estTime} Minutes</p>
+              </div>
+            </div>
+
+            {/* Cardio Notice for Day 3 & Day 7 */}
+            {previewWorkoutDetail.isRecoveryDay && (
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-3">
+                <Shield className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="font-bold block text-sm mb-0.5">Strict Cardio & Rest Protocol Enforced:</strong>
+                  No weight training or resistance training today. Only 5 to 10 KM continuous aerobic work followed by full recovery and rehydration.
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4">
-              <h4 className="font-extrabold text-sm uppercase text-slate-500">Day 1 Exercises Preview (5 of 8)</h4>
+              <h4 className="font-extrabold text-sm uppercase text-slate-500">
+                Day {previewDay} Exercises ({previewWorkoutDetail.exercises.length} Prescribed)
+              </h4>
               <div className="divide-y divide-slate-100">
-                {[
-                  { name: "Barbell Bench Press", sets: "3 Sets", reps: "12 Reps", rest: "60s Rest", desc: "Build overall pectoral power and thickness." },
-                  { name: "Incline Dumbbell Press", sets: "3 Sets", reps: "12 Reps", rest: "60s Rest", desc: "Target clavicular upper pectoral fibers." },
-                  { name: "Cable Chest Fly", sets: "3 Sets", reps: "15 Reps", rest: "60s Rest", desc: "Maximize deep chest mechanical load contraction." },
-                  { name: "Triceps Pushdown", sets: "3 Sets", reps: "15 Reps", rest: "60s Rest", desc: "Isolate lateral head of triceps brachii." },
-                  { name: "Close Grip Bench Press", sets: "3 Sets", reps: "12 Reps", rest: "90s Rest", desc: "Compound triceps focus with high load overload." }
-                ].map((ex, idx) => (
-                  <div key={idx} className="py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                {previewWorkoutDetail.exercises.map((ex, idx) => (
+                  <div key={ex.id || idx} className="py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div>
                       <h5 className="font-bold text-slate-900 text-sm">{ex.name}</h5>
-                      <p className="text-xs text-slate-500">{ex.desc}</p>
+                      <p className="text-xs text-slate-500">{ex.instruction}</p>
                     </div>
-                    <div className="flex flex-wrap gap-2 text-[10px] font-bold font-mono">
-                      <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100">{ex.sets}</span>
-                      <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded border border-amber-100">{ex.reps}</span>
-                      <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded">{ex.rest}</span>
+                    <div className="flex flex-wrap gap-2 text-[10px] font-bold font-mono shrink-0">
+                      <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100">
+                        {typeof ex.sets === "number" ? `${ex.sets} Sets` : ex.sets}
+                      </span>
+                      <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded border border-amber-100">
+                        {ex.reps}
+                      </span>
+                      <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                        {ex.rest}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -1285,24 +1448,170 @@ export default function Premium90DayChallenge() {
               <div className="transition-all duration-300">
                 {/* 1. Workout Day Tab */}
                 {activeSubTab === "workout" && (
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
-                    {/* Left: Active Workout Info */}
-                    <div className="lg:col-span-2 space-y-6">
-                      
-                      {/* Active Workout Goal block */}
-                      <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
-                        <div className="flex flex-wrap justify-between items-start gap-4 border-b border-slate-100 pb-5">
-                          <div>
-                            <span className="text-[10px] text-red-600 font-mono font-black uppercase tracking-widest">{todayWorkoutDetail.phase}</span>
-                            <h3 className="text-xl sm:text-2xl font-black text-slate-950 uppercase mt-0.5">Day {dbState.currentDay} Focus: {todayWorkoutDetail.focus}</h3>
-                            <p className="text-xs text-slate-400 leading-relaxed font-medium mt-1">{todayWorkoutDetail.phaseDesc}</p>
+                  <div className="space-y-6">
+                    {/* 7-Day Repeating Cadence Navigator & Day Selector */}
+                    <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-red-600" />
+                            <span className="text-[10px] font-mono font-black uppercase tracking-wider text-red-600">
+                              Immortal 90-Day Challenge Schedule
+                            </span>
                           </div>
-                          <div className="flex flex-wrap gap-2 text-[10px] font-mono font-bold">
-                            <span className="bg-red-50 text-red-600 px-3 py-1.5 rounded-full border border-red-100">Week {todayWorkoutDetail.weekNum}</span>
-                            <span className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full">{todayWorkoutDetail.estTime} Mins</span>
-                            <span className="bg-amber-50 text-amber-600 px-3 py-1.5 rounded-full border border-amber-100">~{todayWorkoutDetail.estCalories} kcal expected</span>
+                          <h4 className="text-base sm:text-lg font-black text-slate-900 mt-0.5">
+                            7-Day Repeating Cadence (Week {todayWorkoutDetail.weekNum}, Day {activeDisplayDay} of 90)
+                          </h4>
+                        </div>
+
+                        {/* Week selection buttons */}
+                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newDay = Math.max(1, activeDisplayDay - 7);
+                              setBrowsingDay(newDay);
+                            }}
+                            disabled={activeDisplayDay <= 7}
+                            className="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            ← Prev Week
+                          </button>
+                          <span className="text-xs font-mono font-bold text-slate-600 px-1">
+                            Day {activeDisplayDay}/90
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newDay = Math.min(90, activeDisplayDay + 7);
+                              setBrowsingDay(newDay);
+                            }}
+                            disabled={activeDisplayDay >= 84}
+                            className="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            Next Week →
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 7-Day Cycle Strip */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                        {[
+                          { offset: 0, dayName: "Day 1", focus: "Chest + Triceps", badge: "Push" },
+                          { offset: 1, dayName: "Day 2", focus: "Back + Biceps + Forearm", badge: "Pull" },
+                          { offset: 2, dayName: "Day 3", focus: "5-10 KM Cardio / Walk", badge: "Cardio" },
+                          { offset: 3, dayName: "Day 4", focus: "Legs + Shoulders + Abs", badge: "Legs/Core" },
+                          { offset: 4, dayName: "Day 5", focus: "Chest + Triceps", badge: "Push" },
+                          { offset: 5, dayName: "Day 6", focus: "Back + Biceps", badge: "Pull" },
+                          { offset: 6, dayName: "Day 7", focus: "5-10 KM Run / Walk", badge: "Cardio" },
+                        ].map((cadenceItem) => {
+                          const currentWeekStart = Math.floor((activeDisplayDay - 1) / 7) * 7 + 1;
+                          const calculatedDay = currentWeekStart + cadenceItem.offset;
+                          if (calculatedDay > 90) return null;
+
+                          const isViewingThis = activeDisplayDay === calculatedDay;
+                          const isTrackedToday = dbState.currentDay === calculatedDay;
+
+                          return (
+                            <button
+                              key={calculatedDay}
+                              type="button"
+                              onClick={() => setBrowsingDay(calculatedDay)}
+                              className={`p-3 rounded-2xl text-left border transition-all cursor-pointer relative ${
+                                isViewingThis
+                                  ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-600/20 ring-2 ring-red-400/30"
+                                  : isTrackedToday
+                                  ? "bg-red-50 hover:bg-red-100 text-slate-800 border-red-200"
+                                  : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                              }`}
+                            >
+                              {isTrackedToday && (
+                                <span className={`absolute top-2 right-2 text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded ${
+                                  isViewingThis ? "bg-white text-red-600" : "bg-red-600 text-white"
+                                }`}>
+                                  Today
+                                </span>
+                              )}
+                              <div className={`text-[10px] font-mono font-black uppercase ${
+                                isViewingThis ? "text-red-100" : "text-slate-400"
+                              }`}>
+                                Day {calculatedDay}
+                              </div>
+                              <div className="text-xs font-bold truncate mt-0.5">
+                                {cadenceItem.focus}
+                              </div>
+                              <div className={`text-[9px] font-mono mt-1 ${
+                                isViewingThis ? "text-red-200" : "text-slate-400"
+                              }`}>
+                                {cadenceItem.badge}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Not viewing today notice + Action to switch active training day */}
+                      {!isViewingToday && (
+                        <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-900">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span>
+                              You are viewing <strong>Day {activeDisplayDay}</strong> ({todayWorkoutDetail.focus}). Your active tracked workout is currently <strong>Day {dbState.currentDay}</strong>.
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleSetCurrentDay(activeDisplayDay)}
+                              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs transition-all shadow-xs cursor-pointer"
+                            >
+                              ⚡ Train Day {activeDisplayDay} Today
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setBrowsingDay(null)}
+                              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs border border-slate-200 transition-all cursor-pointer"
+                            >
+                              Back to Day {dbState.currentDay}
+                            </button>
                           </div>
                         </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
+                      {/* Left: Active Workout Info */}
+                      <div className="lg:col-span-2 space-y-6">
+                        
+                        {/* Active Workout Goal block */}
+                        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+                          <div className="flex flex-wrap justify-between items-start gap-4 border-b border-slate-100 pb-5">
+                            <div>
+                              <span className="text-[10px] text-red-600 font-mono font-black uppercase tracking-widest">{todayWorkoutDetail.phase}</span>
+                              <h3 className="text-xl sm:text-2xl font-black text-slate-950 uppercase mt-0.5">
+                                Day {activeDisplayDay} Focus: {todayWorkoutDetail.focus}
+                              </h3>
+                              <p className="text-xs text-slate-400 leading-relaxed font-medium mt-1">{todayWorkoutDetail.phaseDesc}</p>
+                            </div>
+                            <div className="flex flex-wrap gap-2 text-[10px] font-mono font-bold">
+                              <span className="bg-red-50 text-red-600 px-3 py-1.5 rounded-full border border-red-100">Week {todayWorkoutDetail.weekNum}</span>
+                              <span className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full">{todayWorkoutDetail.estTime} Mins</span>
+                              <span className="bg-amber-50 text-amber-600 px-3 py-1.5 rounded-full border border-amber-100">~{todayWorkoutDetail.estCalories} kcal expected</span>
+                            </div>
+                          </div>
+
+                          {/* Cardio Protocol Banner for Day 3 and Day 7 */}
+                          {todayWorkoutDetail.isRecoveryDay && (
+                            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs font-medium rounded-2xl flex items-start gap-3">
+                              <Shield className="w-5 h-5 shrink-0 text-emerald-600 mt-0.5" />
+                              <div>
+                                <p className="font-bold text-sm text-emerald-900">5 to 10 KM Cardio & Complete Rest Protocol:</p>
+                                <p className="mt-0.5 leading-relaxed">
+                                  All resistance training and weightlifting exercises are strictly removed today. Complete 5 to 10 KM at a steady aerobic pace (Zone 2 running or walking). After cardio, relax and allow your muscles to replenish glycogen and repair.
+                                </p>
+                              </div>
+                            </div>
+                          )}
 
                         {/* Injury warnings if onboarding filled */}
                         {dbState.onboarding.injuries && (
@@ -1483,10 +1792,11 @@ export default function Premium90DayChallenge() {
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* 2. Analytics & History */}
-                {activeSubTab === "analytics" && (
+              {/* 2. Analytics & History */}
+              {activeSubTab === "analytics" && (
                   <div className="space-y-8 text-left">
                     {/* Charts block */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
