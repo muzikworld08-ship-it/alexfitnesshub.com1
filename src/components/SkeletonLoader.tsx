@@ -181,3 +181,5 @@ export default function GlobalSkeletonLoader() {
     </div>
   );
 }
+
+export { default as WorkoutLibrarySkeleton } from "./WorkoutLibrarySkeleton";

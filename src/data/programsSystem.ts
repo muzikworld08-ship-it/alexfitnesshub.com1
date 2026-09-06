@@ -109,33 +109,35 @@ export const IMMORTAL_7_DAY_CYCLE_INFO = [
   {
     cycleDay: 1,
     title: "Chest + Triceps",
-    focus: "Horizontal & Incline Pressing + Tricep Lockouts",
+    focus: "Horizontal & Incline Pressing + Pectoral Flyes + Tricep Lockouts (13+ Workouts)",
     targetMuscles: ["Chest", "Triceps"],
     isCardioRecovery: false,
     isRestDay: false,
     guidelines: [
       "Warm up rotator cuffs with light arm circles and band pull-aparts.",
-      "Start with compound pressing movements before moving to isolated flys and tricep pushdowns.",
-      "Control the eccentric (negative) portion for 2-3 seconds on every rep."
+      "Start with primary compound barbell/dumbbell presses before progressing to flyes and isolated triceps extensions.",
+      "Control the eccentric (negative) portion for 2-3 seconds on every rep.",
+      "Execute all 13 high-volume exercises with strict tempo and peak lockout."
     ]
   },
   {
     cycleDay: 2,
-    title: "Back + Biceps",
-    focus: "Vertical & Horizontal Pulling + Bicep Hypertrophy",
-    targetMuscles: ["Back", "Biceps"],
+    title: "Back + Biceps + Forearms & Abs",
+    focus: "Vertical & Horizontal Pulling + Bicep Hypertrophy + Grip & Core Bracing (13+ Workouts)",
+    targetMuscles: ["Back", "Biceps", "Forearms", "Abs"],
     isCardioRecovery: false,
     isRestDay: false,
     guidelines: [
       "Initiate all pulls from your lats and scapula, not your hands or wrists.",
       "Keep your spine neutral on heavy deadlifts and barbell rows.",
-      "Achieve full extension at the bottom of bicep curls without swinging your torso."
+      "Achieve full extension on bicep curls, then finish with dedicated forearm grip work and abdominal flexion.",
+      "Execute all 13 exercises with structured sets and progressive overload."
     ]
   },
   {
     cycleDay: 3,
-    title: "5-10 KM Cardio & Complete Rest",
-    focus: "5 to 10 KM Aerobic Run or Walk + Full Post-Cardio Muscular Rest",
+    title: "5 to 10 KM Running / Walking & Rest",
+    focus: "5 to 10 KM Aerobic Run or Walk + Full Post-Cardio Muscular Rest (Workouts Removed)",
     targetMuscles: ["Cardio", "Recovery"],
     isCardioRecovery: true,
     isRestDay: false,
@@ -148,55 +150,57 @@ export const IMMORTAL_7_DAY_CYCLE_INFO = [
   },
   {
     cycleDay: 4,
-    title: "Legs + Shoulders",
-    focus: "Quad & Hamstring Overload + Deltoid Boulder Shaping",
-    targetMuscles: ["Legs", "Shoulders", "Quadriceps", "Hamstrings", "Calves"],
+    title: "Legs, Abs & Shoulders",
+    focus: "Quad & Hamstring Overload + Deltoid Boulder Shaping + Abdominal Stability (13+ Workouts)",
+    targetMuscles: ["Legs", "Shoulders", "Abs", "Quadriceps", "Hamstrings", "Calves"],
     isCardioRecovery: false,
     isRestDay: false,
     guidelines: [
-      "Prioritize depth and knee tracking over pure weight on leg movements.",
-      "Keep elbows slightly in front of the body on overhead shoulder presses.",
-      "Control lateral raises with thumbs slightly turned up to protect the impingement zone."
+      "Prioritize full range of motion and knee tracking over pure weight on leg presses and squats.",
+      "Target all three deltoid heads (anterior, lateral, posterior) with clean overhead presses and lateral raises.",
+      "Engage lower and upper abdominals with controlled tempo and zero momentum.",
+      "Complete all 13 targeted movements for balanced aesthetic development."
     ]
   },
   {
     cycleDay: 5,
-    title: "Chest + Triceps + Forearms",
-    focus: "Pectoral Volume + Tricep Deep Burn + Grip & Forearms",
-    targetMuscles: ["Chest", "Triceps", "Forearms"],
+    title: "Chest + Triceps (Hypertrophy Rotation)",
+    focus: "Pectoral Fiber Variation + Cable Overload + Triceps Skull Crushers & Dips (13+ Workouts)",
+    targetMuscles: ["Chest", "Triceps"],
     isCardioRecovery: false,
     isRestDay: false,
     guidelines: [
-      "Utilize moderate load with high mind-muscle squeeze on chest movements.",
-      "Focus on continuous mechanical tension on triceps extensions.",
-      "Finish with forearm wrist curls or reverse curls to develop iron grip strength."
+      "Target clavicular and sternal pectoral fibers with varied angles and grips.",
+      "Keep continuous mechanical tension on triceps pushdowns and overhead extensions.",
+      "A distinct non-repeating set of 13 exercises compared to Day 1."
     ]
   },
   {
     cycleDay: 6,
-    title: "Back + Biceps",
-    focus: "Lat Width, Upper Back Thickness + Bicep Peak Overload",
-    targetMuscles: ["Back", "Biceps"],
+    title: "Back + Biceps + Forearms & Abs (Density Rotation)",
+    focus: "Lat Width, Scapular Retraction + Bicep Peak + Forearms & Core Armor (13+ Workouts)",
+    targetMuscles: ["Back", "Biceps", "Forearms", "Abs"],
     isCardioRecovery: false,
     isRestDay: false,
     guidelines: [
-      "Focus on driving your elbows back toward your hips on all rows.",
+      "Focus on driving your elbows back toward your hips on all horizontal rows.",
       "Squeeze your shoulder blades together tightly at peak contraction.",
-      "Use varied grips (neutral, pronated, supinated) across bicep movements."
+      "Rotate through fresh bicep curl angles, reverse wrist curls, and core rollouts.",
+      "Complete all 13 exercises with intense focus and discipline."
     ]
   },
   {
     cycleDay: 7,
-    title: "Rest + Walking",
-    focus: "5 to 10 KM Recovery Walk + Full Central Nervous Recovery",
-    targetMuscles: ["Recovery", "Mobility"],
+    title: "5 to 10 KM Running / Walking & Rest",
+    focus: "5 to 10 KM Recovery Walk or Run + Full Central Nervous Recovery (Workouts Removed)",
+    targetMuscles: ["Recovery", "Cardio", "Mobility"],
     isCardioRecovery: true,
     isRestDay: true,
-    walkRunDistance: "5 to 10 km Recovery Walk",
+    walkRunDistance: "5 to 10 km Recovery Walk or Run",
     guidelines: [
       "Total active recovery day. No resistance or weightlifting permitted.",
-      "A 5 to 10 kilometer brisk outdoor or treadmill walk is recommended to stimulate lymphatic flow.",
-      "Prioritize nutrient-dense whole foods, 3-4 liters of water, and 8+ hours of quality sleep."
+      "A 5 to 10 kilometer brisk outdoor or treadmill walk or gentle run is completed.",
+      "Prioritize nutrient-dense whole foods, 3-4 liters of water, and full recovery."
     ]
   }
 ];
@@ -204,98 +208,36 @@ export const IMMORTAL_7_DAY_CYCLE_INFO = [
 /**
  * Returns the exact workout plan for any given day (Day 1 through Day 90)
  * of the 90 Days Immortal Challenge, using real exercises from the live library.
+ * Guarantees at least 13 exercises per resistance day, properly filtered by category,
+ * with dynamic non-repeating rotation across days and weeks.
  */
 export function getImmortalChallengeDayPlan(dayNumber: number, allExercises: Exercise[]): DayWorkoutPlan {
   const safeDay = Math.max(1, Math.min(90, dayNumber));
   const cycleDay = ((safeDay - 1) % 7) + 1; // 1, 2, 3, 4, 5, 6, 7
+  const weekNum = Math.ceil(safeDay / 7);
   const cycleInfo = IMMORTAL_7_DAY_CYCLE_INFO[cycleDay - 1];
+
+  // Helper to safely rotate an array by an offset to ensure different workouts each day/week
+  const rotatePool = (list: Exercise[], offset: number): Exercise[] => {
+    if (list.length === 0) return [];
+    const normalizedOffset = Math.abs(offset) % list.length;
+    return [...list.slice(normalizedOffset), ...list.slice(0, normalizedOffset)];
+  };
 
   let dayExercises: Exercise[] = [];
 
-  if (cycleDay === 1) {
-    // Day 1: Chest + Triceps
-    const chestExercises = allExercises.filter(e => {
-      const p = e.muscleGroups[0]?.toLowerCase() || "";
-      const s = e.secondaryMuscles?.map(m => m.toLowerCase()) || [];
-      const n = e.name.toLowerCase();
-      return (p.includes("chest") || s.some(m => m.includes("chest")) || n.includes("bench") || n.includes("chest") || n.includes("push up")) &&
-             !p.includes("back") && !p.includes("leg");
-    });
-
-    const tricepExercises = allExercises.filter(e => {
-      const p = e.muscleGroups[0]?.toLowerCase() || "";
-      const s = e.secondaryMuscles?.map(m => m.toLowerCase()) || [];
-      const n = e.name.toLowerCase();
-      return (p.includes("tricep") || s.some(m => m.includes("tricep")) || n.includes("dip") || n.includes("skull crusher") || n.includes("pushdown")) &&
-             !p.includes("back") && !p.includes("bicep");
-    });
-
-    // Select distinct, high-quality chest & tricep exercises without duplicates
-    const seen = new Set<string>();
-    const selected: Exercise[] = [];
-    for (const ex of chestExercises) {
-      if (!seen.has(ex.id) && selected.length < 5) {
-        seen.add(ex.id);
-        selected.push(ex);
-      }
-    }
-    for (const ex of tricepExercises) {
-      if (!seen.has(ex.id) && selected.length < 8) {
-        seen.add(ex.id);
-        selected.push(ex);
-      }
-    }
-    dayExercises = selected;
-  } else if (cycleDay === 2 || cycleDay === 6) {
-    // Day 2 & Day 6: Back + Biceps
-    const backExercises = allExercises.filter(e => {
-      const p = e.muscleGroups[0]?.toLowerCase() || "";
-      const s = e.secondaryMuscles?.map(m => m.toLowerCase()) || [];
-      const n = e.name.toLowerCase();
-      return (p.includes("back") || s.some(m => m.includes("back")) || n.includes("pull up") || n.includes("row") || n.includes("deadlift") || n.includes("lat")) &&
-             !p.includes("chest") && !p.includes("tricep");
-    });
-
-    const bicepExercises = allExercises.filter(e => {
-      const p = e.muscleGroups[0]?.toLowerCase() || "";
-      const s = e.secondaryMuscles?.map(m => m.toLowerCase()) || [];
-      const n = e.name.toLowerCase();
-      return (p.includes("bicep") || s.some(m => m.includes("bicep")) || n.includes("curl")) &&
-             !p.includes("tricep") && !p.includes("chest");
-    });
-
-    const seen = new Set<string>();
-    const selected: Exercise[] = [];
-    // If Day 6, offset slightly for balanced variety
-    const backPool = cycleDay === 6 ? [...backExercises].reverse() : backExercises;
-    const bicepPool = cycleDay === 6 ? [...bicepExercises].reverse() : bicepExercises;
-
-    for (const ex of backPool) {
-      if (!seen.has(ex.id) && selected.length < 5) {
-        seen.add(ex.id);
-        selected.push(ex);
-      }
-    }
-    for (const ex of bicepPool) {
-      if (!seen.has(ex.id) && selected.length < 8) {
-        seen.add(ex.id);
-        selected.push(ex);
-      }
-    }
-    dayExercises = selected;
-  } else if (cycleDay === 3) {
-    // Day 3: Cardio & Complete Rest (5 to 10 km Walk or Run)
-    // NO resistance or workout - they rest completely after the cardio
+  if (cycleDay === 3 || cycleDay === 7) {
+    // Day 3 & Day 7: 5 to 10 KM Running / Walking & Complete Rest (Workouts removed)
     const cardioRestDrills: Exercise[] = [
       {
-        id: "5-10km-aerobic-run-walk",
-        name: "5 to 10 KM Aerobic Run / Walk",
+        id: `immortal-cardio-5-10km-day-${safeDay}`,
+        name: safeDay % 2 === 0 ? "5 to 10 KM Outdoor Aerobic Run / Walk" : "5 to 10 KM Paced Treadmill or Trail Run / Walk",
         muscleGroups: ["Cardio"],
         difficulty: "Beginner",
         instructions: [
-          "Maintain a rhythmic, conversational aerobic pacing (Zone 2).",
-          "Breathe steadily through your nose and diaphragm.",
-          "Complete the 5 to 10 KM distance outdoors or on a treadmill.",
+          "Maintain a steady, conversational aerobic pacing (Zone 2 heart rate).",
+          "Breathe rhythmically through your nose and diaphragm.",
+          "Complete the 5 to 10 KM distance outdoors, around a track, or on a treadmill.",
           "Once finished, discontinue all workouts and begin complete rest."
         ],
         equipment: ["Bodyweight"],
@@ -303,32 +245,32 @@ export function getImmortalChallengeDayPlan(dayNumber: number, allExercises: Exe
         categories: ["Cardio Workouts"],
         commonMistakes: ["Sprinting too fast and spiking cortisol", "Adding heavy weight training on cardio day"],
         safetyTips: ["Wear cushioned running shoes", "Hydrate with water and electrolytes"],
-        alternativeExercises: ["12-3-30 Treadmill Walk"],
-        progressionVariations: ["Increase distance toward 10 km", "Increase incline"],
+        alternativeExercises: ["12-3-30 Treadmill Incline Walk"],
+        progressionVariations: ["Increase distance toward 10 km", "Increase outdoor incline"],
         isPremium: false,
         startingPosition: "Upright athletic posture.",
-        movementExecution: "Smooth aerobic strides.",
-        finishingPosition: "Gradual cooldown walk.",
-        regressionVariations: ["5 km power walk"],
-        musclesWorked: ["Cardiovascular System", "Legs"],
+        movementExecution: "Smooth aerobic strides with relaxed shoulders.",
+        finishingPosition: "Gradual 5-minute cooldown walk.",
+        regressionVariations: ["5 km brisk power walk"],
+        musclesWorked: ["Cardiovascular System", "Legs", "Heart & Lungs"],
         gifUrl: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=800&auto=format&fit=crop&q=80",
         imageUrl: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=800&auto=format&fit=crop&q=80",
         description: "Pure cardiovascular pacing engine. Build aerobic base and burn fat while sparing muscular joints.",
-        duration: "45-60 min",
-        tags: ["Cardio", "Zone 2", "Fat Burn"],
+        duration: "45-65 min",
+        tags: ["Cardio", "Zone 2", "Fat Burn", "5-10 KM"],
         breathingInstructions: "Rhythmic nasal and diaphragmatic breathing.",
         recommendedSetsReps: "5 to 10 KM Continuous Distance",
         recommendedSets: "1",
         recommendedReps: "5-10 KM",
         restTime: "Complete Rest Post-Cardio",
-        caloriesBurned: 450,
+        caloriesBurned: 520,
         benefits: ["Maximizes fat oxidation", "Expands lung VO2 max", "Allows muscular recovery from lifting"],
         trainerTips: "No workout today. Just complete your cardio and rest!",
         safetyNotes: "Stay hydrated.",
         bodyPart: "Cardio"
       },
       {
-        id: "post-cardio-complete-rest",
+        id: `immortal-post-cardio-rest-day-${safeDay}`,
         name: "Post-Cardio Full Rest & Muscle Recovery",
         muscleGroups: ["Recovery"],
         difficulty: "Beginner",
@@ -349,11 +291,11 @@ export function getImmortalChallengeDayPlan(dayNumber: number, allExercises: Exe
         startingPosition: "Relaxed supine or seated rest.",
         movementExecution: "Deep restorative breathing and full muscle relaxation.",
         finishingPosition: "Refreshed and recharged.",
-        regressionVariations: ["Seated meditation"],
+        regressionVariations: ["Seated relaxation"],
         musclesWorked: ["Full Body Recovery", "Parasympathetic System"],
         gifUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&auto=format&fit=crop&q=80",
         imageUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&auto=format&fit=crop&q=80",
-        description: "Mandatory complete rest protocol following your cardio session. No workout is performed today so muscles recover fully.",
+        description: "Mandatory complete rest protocol following your cardio session. All resistance workouts are removed today so muscles recover fully.",
         duration: "Full Rest",
         tags: ["Rest", "Recovery", "Hydration"],
         breathingInstructions: "Slow diaphragmatic box breathing.",
@@ -361,105 +303,307 @@ export function getImmortalChallengeDayPlan(dayNumber: number, allExercises: Exe
         recommendedSets: "1",
         recommendedReps: "Full Rest",
         restTime: "Until Next Morning",
-        caloriesBurned: 50,
+        caloriesBurned: 60,
         benefits: ["Lowers systemic inflammation", "Replenishes glycogen", "Prevents overtraining"],
         trainerTips: "Respect the recovery. You will come back stronger tomorrow.",
         safetyNotes: "Rest is essential for muscular growth.",
         bodyPart: "Full Body"
       }
     ];
-
     dayExercises = cardioRestDrills;
-  } else if (cycleDay === 4) {
-    // Day 4: Legs + Shoulders
-    const legExercises = allExercises.filter(e => {
-      const p = e.muscleGroups[0]?.toLowerCase() || "";
-      const s = e.secondaryMuscles?.map(m => m.toLowerCase()) || [];
-      const n = e.name.toLowerCase();
-      return (p.includes("leg") || p.includes("quad") || p.includes("hamstring") || p.includes("glute") || p.includes("calf") || n.includes("squat") || n.includes("lunge") || n.includes("leg press")) &&
-             !p.includes("chest") && !p.includes("back");
-    });
-
-    const shoulderExercises = allExercises.filter(e => {
-      const p = e.muscleGroups[0]?.toLowerCase() || "";
-      const s = e.secondaryMuscles?.map(m => m.toLowerCase()) || [];
-      const n = e.name.toLowerCase();
-      return (p.includes("shoulder") || s.some(m => m.includes("shoulder")) || n.includes("overhead press") || n.includes("lateral raise") || n.includes("face pull") || n.includes("military")) &&
-             !p.includes("chest") && !p.includes("back");
-    });
-
-    const seen = new Set<string>();
-    const selected: Exercise[] = [];
-    for (const ex of legExercises) {
-      if (!seen.has(ex.id) && selected.length < 4) {
-        seen.add(ex.id);
-        selected.push(ex);
-      }
-    }
-    for (const ex of shoulderExercises) {
-      if (!seen.has(ex.id) && selected.length < 8) {
-        seen.add(ex.id);
-        selected.push(ex);
-      }
-    }
-    dayExercises = selected;
-  } else if (cycleDay === 5) {
-    // Day 5: Chest + Triceps + Forearms
+  } else if (cycleDay === 1 || cycleDay === 5) {
+    // Day 1 & Day 5: Chest and Triceps (At least 13 exercises: 8 Chest + 5 Triceps)
     const chestExercises = allExercises.filter(e => {
-      const p = e.muscleGroups[0]?.toLowerCase() || "";
+      const p = (e.muscleGroups?.[0] || "").toLowerCase();
+      const allM = (e.muscleGroups || []).map(m => m.toLowerCase());
+      const s = (e.secondaryMuscles || []).map(m => m.toLowerCase());
       const n = e.name.toLowerCase();
-      return (p.includes("chest") || n.includes("press") || n.includes("fly") || n.includes("push up")) &&
-             !p.includes("back") && !p.includes("leg");
+      return (
+        p.includes("chest") ||
+        allM.includes("chest") ||
+        s.includes("chest") ||
+        n.includes("bench") ||
+        n.includes("chest") ||
+        n.includes("push up") ||
+        n.includes("fly") ||
+        n.includes("incline press") ||
+        n.includes("decline press")
+      ) && !p.includes("back") && !p.includes("leg") && !allM.includes("back");
     });
 
     const tricepExercises = allExercises.filter(e => {
-      const p = e.muscleGroups[0]?.toLowerCase() || "";
+      const p = (e.muscleGroups?.[0] || "").toLowerCase();
+      const allM = (e.muscleGroups || []).map(m => m.toLowerCase());
+      const s = (e.secondaryMuscles || []).map(m => m.toLowerCase());
       const n = e.name.toLowerCase();
-      return (p.includes("tricep") || n.includes("dip") || n.includes("pushdown") || n.includes("skull crusher")) &&
-             !p.includes("bicep");
+      return (
+        p.includes("tricep") ||
+        allM.includes("tricep") ||
+        s.includes("tricep") ||
+        n.includes("tricep") ||
+        n.includes("dip") ||
+        n.includes("skull crusher") ||
+        n.includes("pushdown") ||
+        n.includes("kickback")
+      ) && !p.includes("back") && !p.includes("bicep") && !p.includes("leg");
     });
 
-    const forearmExercises = allExercises.filter(e => {
-      const p = e.muscleGroups[0]?.toLowerCase() || "";
-      const s = e.secondaryMuscles?.map(m => m.toLowerCase()) || [];
-      const n = e.name.toLowerCase();
-      return p.includes("forearm") || s.some(m => m.includes("forearm")) || n.includes("wrist") || n.includes("reverse curl") || n.includes("farmer");
-    });
+    // Dynamic rotation offset so Day 1 != Day 5 != Day 8 != Day 15, etc.
+    const dayOffset = (weekNum - 1) * 4 + (cycleDay === 5 ? 5 : 0);
+    const rotatedChest = rotatePool(chestExercises.length > 0 ? chestExercises : allExercises, dayOffset);
+    const rotatedTriceps = rotatePool(tricepExercises.length > 0 ? tricepExercises : allExercises, dayOffset + 2);
 
     const seen = new Set<string>();
     const selected: Exercise[] = [];
-    for (const ex of chestExercises) {
-      if (!seen.has(ex.id) && selected.length < 3) {
-        seen.add(ex.id);
-        selected.push(ex);
-      }
-    }
-    for (const ex of tricepExercises) {
-      if (!seen.has(ex.id) && selected.length < 6) {
-        seen.add(ex.id);
-        selected.push(ex);
-      }
-    }
-    for (const ex of (forearmExercises.length > 0 ? forearmExercises : allExercises.filter(e => e.name.toLowerCase().includes("curl")))) {
+
+    // Select 8 Chest exercises
+    for (const ex of rotatedChest) {
       if (!seen.has(ex.id) && selected.length < 8) {
         seen.add(ex.id);
         selected.push(ex);
       }
     }
+    // Select 5 Triceps exercises (totaling 13)
+    for (const ex of rotatedTriceps) {
+      if (!seen.has(ex.id) && selected.length < 13) {
+        seen.add(ex.id);
+        selected.push(ex);
+      }
+    }
+    // Safeguard: Ensure at least 13 exercises
+    if (selected.length < 13) {
+      const extras = allExercises.filter(e => !seen.has(e.id) && !e.name.toLowerCase().includes("squat"));
+      for (const ex of extras) {
+        if (selected.length >= 13) break;
+        seen.add(ex.id);
+        selected.push(ex);
+      }
+    }
     dayExercises = selected;
-  } else if (cycleDay === 7) {
-    // Day 7: Rest + Walking (5 to 10 km Recovery Walk)
-    const recoveryExercises = allExercises.filter(e => {
+  } else if (cycleDay === 2 || cycleDay === 6) {
+    // Day 2 & Day 6: Back and Biceps + Forearms and Abs (At least 13 exercises: 5 Back + 4 Biceps + 2 Forearms + 2 Abs)
+    const backExercises = allExercises.filter(e => {
+      const p = (e.muscleGroups?.[0] || "").toLowerCase();
+      const allM = (e.muscleGroups || []).map(m => m.toLowerCase());
+      const s = (e.secondaryMuscles || []).map(m => m.toLowerCase());
       const n = e.name.toLowerCase();
-      const p = e.muscleGroups[0]?.toLowerCase() || "";
-      return (p.includes("mobility") || n.includes("walk") || n.includes("stretch") || n.includes("cat-cow") || n.includes("hip stretch") || n.includes("breathing") || n.includes("foam")) &&
-             !n.includes("press") && !n.includes("squat") && !n.includes("curl");
+      return (
+        p.includes("back") ||
+        allM.includes("back") ||
+        s.includes("back") ||
+        n.includes("pull up") ||
+        n.includes("chin up") ||
+        n.includes("row") ||
+        n.includes("deadlift") ||
+        n.includes("lat") ||
+        n.includes("pulldown")
+      ) && !p.includes("chest") && !p.includes("tricep") && !allM.includes("chest");
     });
+
+    const bicepExercises = allExercises.filter(e => {
+      const p = (e.muscleGroups?.[0] || "").toLowerCase();
+      const allM = (e.muscleGroups || []).map(m => m.toLowerCase());
+      const s = (e.secondaryMuscles || []).map(m => m.toLowerCase());
+      const n = e.name.toLowerCase();
+      return (
+        p.includes("bicep") ||
+        allM.includes("bicep") ||
+        s.includes("bicep") ||
+        n.includes("curl")
+      ) && !p.includes("tricep") && !p.includes("chest") && !p.includes("leg");
+    });
+
+    const forearmExercises = allExercises.filter(e => {
+      const p = (e.muscleGroups?.[0] || "").toLowerCase();
+      const allM = (e.muscleGroups || []).map(m => m.toLowerCase());
+      const s = (e.secondaryMuscles || []).map(m => m.toLowerCase());
+      const n = e.name.toLowerCase();
+      return (
+        p.includes("forearm") ||
+        allM.includes("forearm") ||
+        s.includes("forearm") ||
+        n.includes("wrist") ||
+        n.includes("forearm") ||
+        n.includes("reverse curl") ||
+        n.includes("farmer") ||
+        n.includes("hammer curl") ||
+        n.includes("grip")
+      );
+    });
+
+    const absExercises = allExercises.filter(e => {
+      const p = (e.muscleGroups?.[0] || "").toLowerCase();
+      const allM = (e.muscleGroups || []).map(m => m.toLowerCase());
+      const s = (e.secondaryMuscles || []).map(m => m.toLowerCase());
+      const n = e.name.toLowerCase();
+      return (
+        p.includes("ab") ||
+        p.includes("core") ||
+        allM.includes("core") ||
+        allM.includes("abdominals") ||
+        s.includes("core") ||
+        n.includes("crunch") ||
+        n.includes("plank") ||
+        n.includes("leg raise") ||
+        n.includes("russian twist") ||
+        n.includes("hollow")
+      ) && !n.includes("press");
+    });
+
+    // Dynamic rotation offset
+    const dayOffset = (weekNum - 1) * 4 + (cycleDay === 6 ? 5 : 0);
+    const rotatedBack = rotatePool(backExercises.length > 0 ? backExercises : allExercises, dayOffset);
+    const rotatedBiceps = rotatePool(bicepExercises.length > 0 ? bicepExercises : allExercises, dayOffset + 2);
+    const rotatedForearms = rotatePool(forearmExercises.length > 0 ? forearmExercises : rotatedBiceps, dayOffset + 1);
+    const rotatedAbs = rotatePool(absExercises.length > 0 ? absExercises : allExercises, dayOffset + 3);
 
     const seen = new Set<string>();
     const selected: Exercise[] = [];
-    for (const ex of recoveryExercises) {
+
+    // 5 Back exercises
+    for (const ex of rotatedBack) {
       if (!seen.has(ex.id) && selected.length < 5) {
+        seen.add(ex.id);
+        selected.push(ex);
+      }
+    }
+    // 4 Biceps exercises
+    for (const ex of rotatedBiceps) {
+      if (!seen.has(ex.id) && selected.length < 9) {
+        seen.add(ex.id);
+        selected.push(ex);
+      }
+    }
+    // 2 Forearm exercises
+    for (const ex of rotatedForearms) {
+      if (!seen.has(ex.id) && selected.length < 11) {
+        seen.add(ex.id);
+        selected.push(ex);
+      }
+    }
+    // 2 Abs exercises (totaling 13)
+    for (const ex of rotatedAbs) {
+      if (!seen.has(ex.id) && selected.length < 13) {
+        seen.add(ex.id);
+        selected.push(ex);
+      }
+    }
+
+    // Safeguard: Ensure at least 13 exercises
+    if (selected.length < 13) {
+      const extras = allExercises.filter(e => !seen.has(e.id) && !e.name.toLowerCase().includes("squat"));
+      for (const ex of extras) {
+        if (selected.length >= 13) break;
+        seen.add(ex.id);
+        selected.push(ex);
+      }
+    }
+    dayExercises = selected;
+  } else if (cycleDay === 4) {
+    // Day 4: Legs, Abs & Shoulders (At least 13 exercises: 5 Legs + 5 Shoulders + 3 Abs)
+    const legExercises = allExercises.filter(e => {
+      const p = (e.muscleGroups?.[0] || "").toLowerCase();
+      const allM = (e.muscleGroups || []).map(m => m.toLowerCase());
+      const s = (e.secondaryMuscles || []).map(m => m.toLowerCase());
+      const n = e.name.toLowerCase();
+      return (
+        p.includes("leg") ||
+        p.includes("quad") ||
+        p.includes("hamstring") ||
+        p.includes("glute") ||
+        p.includes("calf") ||
+        allM.includes("legs") ||
+        allM.includes("quadriceps") ||
+        allM.includes("hamstrings") ||
+        allM.includes("glutes") ||
+        allM.includes("calves") ||
+        s.includes("legs") ||
+        n.includes("squat") ||
+        n.includes("lunge") ||
+        n.includes("leg press") ||
+        n.includes("leg extension") ||
+        n.includes("leg curl") ||
+        n.includes("calf raise")
+      ) && !p.includes("chest") && !p.includes("back");
+    });
+
+    const shoulderExercises = allExercises.filter(e => {
+      const p = (e.muscleGroups?.[0] || "").toLowerCase();
+      const allM = (e.muscleGroups || []).map(m => m.toLowerCase());
+      const s = (e.secondaryMuscles || []).map(m => m.toLowerCase());
+      const n = e.name.toLowerCase();
+      return (
+        p.includes("shoulder") ||
+        p.includes("deltoid") ||
+        allM.includes("shoulders") ||
+        allM.includes("deltoids") ||
+        s.includes("shoulders") ||
+        n.includes("overhead press") ||
+        n.includes("shoulder press") ||
+        n.includes("military press") ||
+        n.includes("lateral raise") ||
+        n.includes("front raise") ||
+        n.includes("rear delt") ||
+        n.includes("face pull") ||
+        n.includes("arnold press")
+      ) && !p.includes("chest") && !p.includes("back") && !p.includes("leg");
+    });
+
+    const absExercises = allExercises.filter(e => {
+      const p = (e.muscleGroups?.[0] || "").toLowerCase();
+      const allM = (e.muscleGroups || []).map(m => m.toLowerCase());
+      const s = (e.secondaryMuscles || []).map(m => m.toLowerCase());
+      const n = e.name.toLowerCase();
+      return (
+        p.includes("ab") ||
+        p.includes("core") ||
+        allM.includes("core") ||
+        allM.includes("abdominals") ||
+        s.includes("core") ||
+        n.includes("plank") ||
+        n.includes("crunch") ||
+        n.includes("hanging leg") ||
+        n.includes("ab rollout") ||
+        n.includes("hollow body")
+      );
+    });
+
+    // Dynamic rotation offset
+    const dayOffset = (weekNum - 1) * 4;
+    const rotatedLegs = rotatePool(legExercises.length > 0 ? legExercises : allExercises, dayOffset);
+    const rotatedShoulders = rotatePool(shoulderExercises.length > 0 ? shoulderExercises : allExercises, dayOffset + 2);
+    const rotatedAbs = rotatePool(absExercises.length > 0 ? absExercises : allExercises, dayOffset + 4);
+
+    const seen = new Set<string>();
+    const selected: Exercise[] = [];
+
+    // 5 Legs exercises
+    for (const ex of rotatedLegs) {
+      if (!seen.has(ex.id) && selected.length < 5) {
+        seen.add(ex.id);
+        selected.push(ex);
+      }
+    }
+    // 5 Shoulders exercises
+    for (const ex of rotatedShoulders) {
+      if (!seen.has(ex.id) && selected.length < 10) {
+        seen.add(ex.id);
+        selected.push(ex);
+      }
+    }
+    // 3 Abs exercises (totaling 13)
+    for (const ex of rotatedAbs) {
+      if (!seen.has(ex.id) && selected.length < 13) {
+        seen.add(ex.id);
+        selected.push(ex);
+      }
+    }
+
+    // Safeguard: Ensure at least 13 exercises
+    if (selected.length < 13) {
+      const extras = allExercises.filter(e => !seen.has(e.id));
+      for (const ex of extras) {
+        if (selected.length >= 13) break;
         seen.add(ex.id);
         selected.push(ex);
       }
@@ -467,9 +611,9 @@ export function getImmortalChallengeDayPlan(dayNumber: number, allExercises: Exe
     dayExercises = selected;
   }
 
-  // Ensure every workout has at least 3-6 exercises from the library
+  // Final fallback safeguard
   if (dayExercises.length === 0) {
-    dayExercises = allExercises.slice(0, 6);
+    dayExercises = allExercises.slice(0, 13);
   }
 
   return {

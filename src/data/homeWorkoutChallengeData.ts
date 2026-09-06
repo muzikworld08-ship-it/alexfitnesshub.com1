@@ -50,7 +50,7 @@ export interface HomeDailyWorkout {
   focus: string;
   isRestDay: boolean;
   is5KmCardioDay: boolean;
-  cardioTypeRecommended?: "5 KM Run" | "5 KM Walk";
+  cardioTypeRecommended?: "5 to 10 KM Run or Walk" | "5 to 10 KM Walk" | "5 KM Run" | "5 KM Walk";
   estimatedMinutes: number;
   exercises: HomeExercise[];
   sections: HomeWorkoutSection[];
@@ -1152,58 +1152,12 @@ export function getHomeWorkoutForDay(dayNumber: number): HomeDailyWorkout {
   const dayInWeek = ((day - 1) % 7) + 1; // 1 to 7
 
   // -------------------------------------------------------------------------
-  // DAY 7 OF WEEK: ACTIVE RECOVERY, DECOMPRESSION & REPAIR (11 EXERCISES)
+  // DAY 3 & DAY 7 OF WEEK: 5 TO 10 KM CARDIO & COMPLETE REST (WORKOUTS REMOVED)
+  // (Wednesday & Sunday are the ONLY cardio days on the entire program)
   // -------------------------------------------------------------------------
-  if (dayInWeek === 7) {
-    const rawList: HomeExercise[] = [
-      // Section 1: Breath & Gentle Activation (3 movements)
-      HOME_EXERCISES_CATALOG.cat_cow_stretch,
-      HOME_EXERCISES_CATALOG.arm_circles,
-      HOME_EXERCISES_CATALOG.t_spine_rotations,
-
-      // Section 2: Core & Posterior Decompression (3 movements)
-      HOME_EXERCISES_CATALOG.bird_dog,
-      HOME_EXERCISES_CATALOG.dead_bug,
-      HOME_EXERCISES_CATALOG.superman_holds,
-
-      // Section 3: Pelvic & Glute Alignment (3 movements)
-      HOME_EXERCISES_CATALOG.glute_bridges,
-      HOME_EXERCISES_CATALOG.plank,
-      HOME_EXERCISES_CATALOG.standing_quad_stretch,
-
-      // Section 4: Deep Tissue Restoration (2 movements)
-      HOME_EXERCISES_CATALOG.childs_pose,
-      HOME_EXERCISES_CATALOG.cobra_stretch
-    ];
-
-    const { exercises, sections } = attachSections(rawList, [
-      { id: "s1", title: "Activation & Joint Mobility", description: "Awaken joint lubrication and relieve spinal tightness.", count: 3 },
-      { id: "s2", title: "Spinal & Core Decompression", description: "Gentle stabilizer recruitment without fatigue.", count: 3 },
-      { id: "s3", title: "Pelvic & Lower Chain Reset", description: "Restore glute activation and hip flexor length.", count: 3 },
-      { id: "s4", title: "Deep Restorative Release", description: "Parasympathetic breathing and full myofascial relaxation.", count: 2 }
-    ]);
-
-    return {
-      dayNumber: day,
-      phaseNumber,
-      phaseName,
-      title: `Day ${day}: Active Recovery & Joint Restoration`,
-      focus: "Mobility Flow, Posture Decompression, Hydration & Weekly Reset",
-      isRestDay: true,
-      is5KmCardioDay: false,
-      estimatedMinutes: 25,
-      exercises,
-      sections,
-      motivationalQuote: `Day ${day} of 180: Recovery is where muscle fibers rebuild and nervous systems recharge. Take a relaxing walk, hydrate, and enjoy this restorative sequence!`
-    };
-  }
-
-  // -------------------------------------------------------------------------
-  // DAY 3 & 6 OF WEEK: 5 KM CARDIO & POST-CARDIO COMPLETE REST (WORKOUTS REMOVED)
-  // -------------------------------------------------------------------------
-  if (dayInWeek === 3 || dayInWeek === 6) {
-    const isMidWeek = dayInWeek === 3;
-    const cardioTitle = isMidWeek ? "Mid-Week 5 KM Cardio & Rest" : "Weekend 5 KM Cardio & Rest";
+  if (dayInWeek === 3 || dayInWeek === 7) {
+    const isWednesday = dayInWeek === 3;
+    const cardioTitle = isWednesday ? "Wednesday 5 to 10 KM Cardio & Complete Rest" : "Sunday 5 to 10 KM Cardio & Complete Rest";
 
     const rawList: HomeExercise[] = [
       // Section 1: Gentle Warm-Up Before Cardio (2 movements)
@@ -1216,7 +1170,7 @@ export function getHomeWorkoutForDay(dayNumber: number): HomeDailyWorkout {
     ];
 
     const { exercises, sections } = attachSections(rawList, [
-      { id: "s1", title: "Gentle Warm-Up", description: "Easy ankle and shoulder prep before logging your 5 KM cardio.", count: 2 },
+      { id: "s1", title: "Gentle Warm-Up", description: "Easy ankle, hip, and shoulder prep before logging your 5 to 10 KM cardio.", count: 2 },
       { id: "s2", title: "Post-Cardio Complete Rest & Recovery", description: "Workout removed entirely today. Rest your muscles completely, rehydrate, and recharge after the cardio session.", count: 2 }
     ]);
 
@@ -1225,14 +1179,76 @@ export function getHomeWorkoutForDay(dayNumber: number): HomeDailyWorkout {
       phaseNumber,
       phaseName,
       title: `Day ${day}: ${cardioTitle}`,
-      focus: "5 KM Run or Walk + Complete Post-Cardio Rest (Workouts Removed)",
+      focus: "5 to 10 KM Run or Walk + Complete Post-Cardio Rest (Workouts Removed)",
       isRestDay: false,
       is5KmCardioDay: true,
-      cardioTypeRecommended: day <= 60 ? "5 KM Walk" : "5 KM Run",
-      estimatedMinutes: 45,
+      cardioTypeRecommended: day <= 60 ? "5 to 10 KM Walk" : "5 to 10 KM Run or Walk",
+      estimatedMinutes: 50,
       exercises,
       sections,
-      motivationalQuote: `Day ${day} of 180: Complete your 5 KM cardio session today. Calisthenics and strength workouts are removed entirely today so you can rest and recover fully after your cardio!`
+      motivationalQuote: `Day ${day} of 180: Complete your 5 to 10 KM running or walking session today. Resistance and calisthenics workouts are removed entirely today so you can rest and recover fully after your cardio!`
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // DAY 6 OF WEEK: SATURDAY FULL BODY CALISTHENICS & METABOLIC FINISHER (13 EXERCISES)
+  // -------------------------------------------------------------------------
+  if (dayInWeek === 6) {
+    const rawList: HomeExercise[] = phaseNumber <= 2 ? [
+      HOME_EXERCISES_CATALOG.jumping_jacks,
+      HOME_EXERCISES_CATALOG.step_jacks,
+      HOME_EXERCISES_CATALOG.arm_circles,
+
+      HOME_EXERCISES_CATALOG.push_ups,
+      HOME_EXERCISES_CATALOG.bodyweight_squats,
+      HOME_EXERCISES_CATALOG.mountain_climbers,
+      HOME_EXERCISES_CATALOG.walking_lunges,
+
+      HOME_EXERCISES_CATALOG.plank,
+      HOME_EXERCISES_CATALOG.shoulder_taps,
+      HOME_EXERCISES_CATALOG.glute_bridges,
+
+      HOME_EXERCISES_CATALOG.calf_raises,
+      HOME_EXERCISES_CATALOG.superman_holds,
+      HOME_EXERCISES_CATALOG.childs_pose
+    ] : [
+      HOME_EXERCISES_CATALOG.burpees,
+      HOME_EXERCISES_CATALOG.inchworms,
+      HOME_EXERCISES_CATALOG.worlds_greatest_stretch,
+
+      HOME_EXERCISES_CATALOG.diamond_pushups,
+      HOME_EXERCISES_CATALOG.squat_jumps,
+      HOME_EXERCISES_CATALOG.mountain_climbers,
+      HOME_EXERCISES_CATALOG.skater_hops,
+
+      HOME_EXERCISES_CATALOG.shoulder_taps,
+      HOME_EXERCISES_CATALOG.bicycle_crunches,
+      HOME_EXERCISES_CATALOG.single_leg_glute_bridge,
+
+      HOME_EXERCISES_CATALOG.calf_raises,
+      HOME_EXERCISES_CATALOG.superman_holds,
+      HOME_EXERCISES_CATALOG.cobra_stretch
+    ];
+
+    const { exercises, sections } = attachSections(rawList, [
+      { id: "s1", title: "Kinetic Pulse & Full Range Warmup", description: "Elevate body temperature and mobilize full kinetic chains.", count: 3 },
+      { id: "s2", title: "Metabolic Calisthenics Circuit", description: "High-density bodyweight compounds for full body muscular tone.", count: 4 },
+      { id: "s3", title: "Core Fortress & Dynamic Stability", description: "Midline anti-rotation, rotational torque, and pelvic control.", count: 3 },
+      { id: "s4", title: "Posterior Finisher & Guided Cooldown", description: "Restore spinal length, calm breathing, and reward consistency.", count: 3 }
+    ]);
+
+    return {
+      dayNumber: day,
+      phaseNumber,
+      phaseName,
+      title: `Day ${day}: Saturday Full Body Calisthenics & Athletic Conditioning`,
+      focus: "Full Body Synergy, Plyometric Endurance, Core Armor & Kinetic Power",
+      isRestDay: false,
+      is5KmCardioDay: false,
+      estimatedMinutes: 38 + (phaseNumber * 3),
+      exercises,
+      sections,
+      motivationalQuote: quote
     };
   }
 

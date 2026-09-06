@@ -299,23 +299,23 @@ const getWorkoutForWeekAndDay = (week: number, dayNum: number) => {
     title = `HIIT Intervals & Midsection Stability`;
     exercises = ["High Knees", "Plank", "Russian Twist", "Mountain Climbers", "Bicycle Crunch", "Flutter Kicks", "Jumping Jacks", "Dead Bug", "Push-ups"];
   } else if (dayNum === 2) {
-    title = `Active Recovery: 12-3-30 Incline Treadmill Walk & Core Reset`;
-    exercises = ["12-3-30 Treadmill Walk", "Dead Bug", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing", "Plank", "Side Plank"];
+    title = `Core Armor & Lower Body Toning`;
+    exercises = ["Squats", "Plank", "Russian Twist", "Lunges", "Glute Bridges", "Dead Bug", "Push-ups", "Bicycle Crunch"];
   } else if (dayNum === 3) {
-    title = `5-10 KM Cardio Session & Complete Rest`;
-    exercises = ["12-3-30 Treadmill Walk", "Dead Bug", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing"];
+    title = `Wednesday 5-10 KM Running or Walking & Complete Rest`;
+    exercises = ["Dead Bug", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing", "Child's Pose Spinal Reach"];
   } else if (dayNum === 4) {
-    title = `Active Recovery: Zone 2 Kinetic Walking & Aerobic Base`;
-    exercises = ["12-3-30 Treadmill Walk", "Rope Jump", "Mountain Climbers", "Side Plank", "Dead Bug", "Child's Pose Spinal Reach"];
+    title = `Upper Body Push-Pull & Midsection Sculpt`;
+    exercises = ["Push-ups", "Plank", "Mountain Climbers", "Side Plank", "Bear Crawl", "Arm Circles", "Dead Bug"];
   } else if (dayNum === 5) {
-    title = `Upper Body Sculpt & Metabolic Circuit`;
-    exercises = ["Push-ups", "Jumping Jacks", "Side Plank", "Bear Crawl", "Reverse Crunch", "Mountain Climbers", "Arm Circles", "Plank", "High Knees"];
+    title = `Lower Body Shred & Isometric Core`;
+    exercises = ["Squats", "Lunges", "Glute Bridges", "Wall Sit", "Plank", "Russian Twist", "Flutter Kicks", "Dead Bug"];
   } else if (dayNum === 6) {
-    title = `Active Recovery: Low-Intensity Steady-State (LISS) Walking & Full Body Flush`;
-    exercises = ["12-3-30 Treadmill Walk", "Glute Bridges", "Dead Bug", "Plank", "90/90 Hip Stretch", "Child's Pose Spinal Reach"];
+    title = `Saturday Total Body Resistance & Functional Core`;
+    exercises = ["Push-ups", "Squats", "Plank", "Mountain Climbers", "Russian Twist", "Burpees", "Bicycle Crunch", "Flutter Kicks"];
   } else {
-    title = `Elite Midsection Melt & Endurance`;
-    exercises = ["Rope Jump", "Russian Twist", "Plank", "Mountain Climbers", "Squats", "Burpees", "Bicycle Crunch", "Flutter Kicks", "Lunges"];
+    title = `Sunday 5-10 KM Running or Walking & Complete Rest`;
+    exercises = ["Dead Bug", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing", "Child's Pose Spinal Reach"];
   }
 
   return {
@@ -335,22 +335,28 @@ const getWorkoutForWeekAndDay = (week: number, dayNum: number) => {
       `Dead Bug: 3 sets x ${week <= 4 ? "12 reps" : "16 reps with control"}`,
       `Side Plank Hold: 3 sets x ${week <= 4 ? "20s" : "45s per side"}`
     ],
-    hiit: [
+    hiit: (dayNum === 3 || dayNum === 7) ? [
+      "No HIIT Circuit Today: Scheduled purely for 5 to 10 KM aerobic running or walking.",
+      "Workouts Removed: Full focus is dedicated to the 5-10 KM distance and recovery."
+    ] : [
       `Mountain Climbers: 4 rounds x ${week <= 8 ? "30s work / 15s rest" : "45s work / 15s rest"}`,
       `Burpees: 3 rounds x ${week <= 4 ? "10 reps" : week <= 12 ? "15 reps" : "20 reps with push-up"}`,
       `Rope Jump intervals: ${week <= 8 ? "3 mins continuous" : "5 mins high intensity double-unders"}`
     ],
-    strength: dayNum === 3 ? [
+    strength: (dayNum === 3 || dayNum === 7) ? [
       "Workout Removed: All strength exercises are removed on cardio days.",
-      "Post-Cardio Rest: Lie down or relax, hydrate, and let your body recover completely after cardio."
+      "Post-Cardio Rest: Lie down or relax, hydrate, and let your body recover completely after your 5-10 KM running or walking session."
     ] : [
       `Squats: ${strengthReps}`,
       `Push-ups (Knee or Full): 3 sets x ${week <= 4 ? "8 reps" : "15 reps with slow negatives"}`,
       `Reverse Lunges: 3 sets x 12 reps per side ${week > 8 ? "(Hold dumbbells)" : ""}`
     ],
-    fullBodyCircuit: [
+    fullBodyCircuit: (dayNum === 3 || dayNum === 7) ? [
+      "Aerobic Cardio Assignment: 5 to 10 KM Running or Walking (Outdoors or Treadmill).",
+      "Cardio-Only Protocol: Wednesday and Sunday are the ONLY cardio sessions on the entire program."
+    ] : [
       `Bear Crawl: 3 sets x 40 seconds`,
-      `12-3-30 Treadmill Walk: ${week <= 4 ? "15 mins" : week <= 12 ? "30 mins" : "45 mins"} at 12% incline, 3.0 mph`
+      `Core Functional Isometric: 3 sets x 45s Plank & Hollow Body Hold`
     ],
     cooldown: [
       "Cobra pose stretch — hold 30s x 2",
@@ -359,8 +365,8 @@ const getWorkoutForWeekAndDay = (week: number, dayNum: number) => {
     ],
     modifications: {
       beginner: "Scale cardio work-to-rest ratio (e.g. 20s work / 20s rest). Use elevated pushups. Do standard bodyweight air squats.",
-      intermediate: "Add light dumbbells. Maintain 12-3-30 incline at full duration. Perform classic pushups.",
-      advanced: "Increase dumbbell weights. Replace standard squats with jump squats. Perform 12-3-30 walk with a 5kg weighted vest."
+      intermediate: "Add light dumbbells. Maintain steady pace at full duration. Perform classic pushups.",
+      advanced: "Increase dumbbell weights. Replace standard squats with jump squats."
     },
     exercisesList: exercises
   };
@@ -871,8 +877,8 @@ export default function BellyFatShredView() {
   // Active workout definition
   const workoutInfo = getWorkoutForWeekAndDay(progress.currentWeek, progress.currentDay);
 
-  // Check if today is Run Day (typically 3 times/week e.g. Days 2, 4, 6)
-  const isRunScheduled = progress.currentDay % 2 === 0;
+  // Check if today is Run Day (Wednesday Day 3 and Sunday Day 7 are the ONLY cardio days on the entire program)
+  const isRunScheduled = progress.currentDay === 3 || progress.currentDay === 7;
   // Check if Lemon Water is scheduled (3 times/week e.g. Days 1, 3, 5)
   const isLemonScheduled = progress.currentDay % 2 !== 0 && progress.currentDay <= 5;
 

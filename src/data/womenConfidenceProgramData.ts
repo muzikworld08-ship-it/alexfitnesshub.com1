@@ -880,17 +880,18 @@ export function getDailyWorkoutForDay(
       "sumo_squat"
     ];
   } else {
-    dayType = "rest";
-    title += "Restorative Recovery & Weekly Mindset Calibration";
-    subtitle = "Honor your body with full cellular rest, deep sleep, and mindful hydration.";
-    focus = "Systemic Recovery, Nervous System Reset & Reflection";
+    dayType = "active_recovery";
+    title += "Sunday 5-10 KM Running or Walking & Complete Rest";
+    subtitle = "Complete your 5-10 KM running or walking session today. Workouts are removed so your body and muscles can rest completely after your cardio.";
+    focus = "5-10 KM Running or Walking & Complete Muscular Rest";
     intensity = "Low";
-    estimatedMinutes = 15;
+    estimatedMinutes = 45;
     dayExerciseTemplates = [
       "dead_bug_core",
       "bird_dog",
       "stomach_vacuum",
-      "face_pulls_or_band_pullaparts"
+      "cat_cow_breathing_reset",
+      "childs_pose_stretch"
     ];
   }
 
@@ -957,8 +958,8 @@ export function getDailyWorkoutForDay(
     dayType,
     estimatedMinutes,
     intensity,
-    calorieEstimate: dayType === "rest" ? 60 : dayType === "mobility" ? 110 : estimatedMinutes * 6.5,
-    exercises: dayType === "rest" ? scaledExercises.slice(0, 3) : scaledExercises.slice(0, duration === "20-30" ? 8 : 10),
+    calorieEstimate: dayType === "active_recovery" ? 60 : dayType === "mobility" ? 110 : estimatedMinutes * 6.5,
+    exercises: dayType === "active_recovery" ? scaledExercises.slice(0, 5) : scaledExercises.slice(0, duration === "20-30" ? 8 : 10),
     coachingCue
   };
 }
