@@ -31,13 +31,17 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     name?: boolean;
   }>({});
 
-  const handleSuccessfulAuth = () => {
-    const attempted = localStorage.getItem("fit_attempted_view");
-    if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
-      localStorage.removeItem("fit_attempted_view");
-      setView(attempted);
+  const handleSuccessfulAuth = (isNewUser: boolean = false) => {
+    if (isNewUser) {
+      setView("onboarding");
     } else {
-      setView("dashboard");
+      const attempted = localStorage.getItem("fit_attempted_view");
+      if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
+        localStorage.removeItem("fit_attempted_view");
+        setView(attempted);
+      } else {
+        setView("dashboard");
+      }
     }
     onClose();
   };
@@ -196,10 +200,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         setMessage(`A password reset link has been dispatched to ${cleanEmail}. Please check your email.`);
       } else if (isSignUp) {
         await signUpEmail(cleanEmail, cleanPass, cleanName, rememberMe);
-        handleSuccessfulAuth();
+        handleSuccessfulAuth(true);
       } else {
         await loginEmail(cleanEmail, cleanPass, rememberMe);
-        handleSuccessfulAuth();
+        handleSuccessfulAuth(false);
       }
     } catch (err: any) {
       const code = err?.code || "";

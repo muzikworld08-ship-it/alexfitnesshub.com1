@@ -2572,7 +2572,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         } catch (e) {
           console.warn("Could not check user doc during Google login:", e);
         }
-        return await processAuthSuccess(result.user, undefined, true, isNewSignUp);
+        await processAuthSuccess(result.user, undefined, true, isNewSignUp);
+        return;
       }
     } catch (err: any) {
       console.warn("[Google Auth Warning]:", err?.code, err?.message);
@@ -2607,7 +2608,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         } catch (e) {
           console.warn("Could not check user doc during Apple login:", e);
         }
-        return await processAuthSuccess(result.user, undefined, true, isNewSignUp);
+        await processAuthSuccess(result.user, undefined, true, isNewSignUp);
+        return;
       }
     } catch (err: any) {
       if (err?.code === "auth/popup-blocked" || err?.code === "auth/cancelled-popup-request") {
@@ -2639,7 +2641,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.warn("Could not update Firebase displayName:", profileErr);
       }
 
-      return await processAuthSuccess(cred.user, { displayName: name.trim() }, remember, true);
+      await processAuthSuccess(cred.user, { displayName: name.trim() }, remember, true);
     } catch (err: any) {
       throw handleAuthError(err);
     } finally {
@@ -2666,7 +2668,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // ignore
       }
 
-      return await processAuthSuccess(cred.user, undefined, remember, isNewSignUp);
+      await processAuthSuccess(cred.user, undefined, remember, isNewSignUp);
     } catch (err: any) {
       throw handleAuthError(err);
     } finally {

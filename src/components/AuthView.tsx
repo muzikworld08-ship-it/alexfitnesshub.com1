@@ -76,6 +76,10 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
   // If user is already authenticated, redirect to dashboard or attempted destination
   useEffect(() => {
     if (user) {
+      if (user.onboarded === false) {
+        setView("onboarding");
+        return;
+      }
       const attempted = localStorage.getItem("fit_attempted_view");
       if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
         localStorage.removeItem("fit_attempted_view");
@@ -182,9 +186,13 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
     }
   };
 
-  const handleSuccessfulAuth = () => {
+  const handleSuccessfulAuth = (isNewUser: boolean = false) => {
     if (onSuccess) {
       onSuccess();
+    }
+    if (isNewUser) {
+      setView("onboarding");
+      return;
     }
     const attempted = localStorage.getItem("fit_attempted_view");
     if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
@@ -230,10 +238,10 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
         setMessage(`A password reset link has been dispatched to ${cleanEmail}. Please check your inbox and spam folder.`);
       } else if (isSignUp) {
         await signUpEmail(cleanEmail, cleanPass, cleanName, rememberMe);
-        handleSuccessfulAuth();
+        handleSuccessfulAuth(true);
       } else {
         await loginEmail(cleanEmail, cleanPass, rememberMe);
-        handleSuccessfulAuth();
+        handleSuccessfulAuth(false);
       }
     } catch (err: any) {
       const code = err?.code || "";
