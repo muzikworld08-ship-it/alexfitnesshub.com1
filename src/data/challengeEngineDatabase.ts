@@ -922,6 +922,34 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
   {
     programId: "home_180",
     programName: "180 Day Home Workout Challenge",
+    category: "Back",
+    muscleGroup: ["Back", "Arms"],
+    exerciseName: "Bodyweight Doorway Rows",
+    equipment: "Doorframe or Sturdy Table",
+    difficulty: "Beginner",
+    sets: 4,
+    reps: "12-15",
+    duration: "45s set",
+    instructions: ["Grip edge of sturdy doorframe with feet positioned forward, pull chest firmly toward frame squeezing mid-back."],
+    restTime: "45s"
+  },
+  {
+    programId: "home_180",
+    programName: "180 Day Home Workout Challenge",
+    category: "Back",
+    muscleGroup: ["Back"],
+    exerciseName: "Prone Scapular Y-T-W Holds",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "10 cycles",
+    duration: "45s set",
+    instructions: ["Lie prone, transition arms smoothly between Y, T, and W shapes while maintaining active scapular retraction."],
+    restTime: "45s"
+  },
+  {
+    programId: "home_180",
+    programName: "180 Day Home Workout Challenge",
     category: "Shoulders",
     muscleGroup: ["Shoulders"],
     exerciseName: "Pike Push-ups for Deltoid Power",
@@ -964,6 +992,48 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
   {
     programId: "home_180",
     programName: "180 Day Home Workout Challenge",
+    category: "Legs and glutes",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Calisthenic Alternating Walking Lunges",
+    equipment: "Bodyweight",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "20 total lunges",
+    duration: "45s set",
+    instructions: ["Step forward into a 90-degree knee bend, keeping chest tall, driving through front heel."],
+    restTime: "60s"
+  },
+  {
+    programId: "home_180",
+    programName: "180 Day Home Workout Challenge",
+    category: "Legs and glutes",
+    muscleGroup: ["Glutes", "Legs"],
+    exerciseName: "Single-Leg Floor Glute Bridge",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12 reps per leg",
+    duration: "40s set",
+    instructions: ["One foot flat, extend opposing leg upward, drive hips skyward squeezing active glute at apex."],
+    restTime: "45s"
+  },
+  {
+    programId: "home_180",
+    programName: "180 Day Home Workout Challenge",
+    category: "Legs and glutes",
+    muscleGroup: ["Legs"],
+    exerciseName: "Standing Single-Leg Calf Raises",
+    equipment: "Step or Flat Ground",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "20 reps per leg",
+    duration: "40s set",
+    instructions: ["Balance on ball of single foot, elevate heel to full plantarflexion, pause, lower under control."],
+    restTime: "45s"
+  },
+  {
+    programId: "home_180",
+    programName: "180 Day Home Workout Challenge",
     category: "Core and abs",
     muscleGroup: ["Abs"],
     exerciseName: "Dead Bug Core Bracing",
@@ -973,6 +1043,48 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     reps: "16 alternating reps",
     duration: "45s set",
     instructions: ["Press lower back into mat, extend opposite arm and leg without losing spinal contact."],
+    restTime: "45s"
+  },
+  {
+    programId: "home_180",
+    programName: "180 Day Home Workout Challenge",
+    category: "Core and abs",
+    muscleGroup: ["Abs"],
+    exerciseName: "Hollow Body Core Isometric Hold",
+    equipment: "Yoga Mat",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "35-45s hold",
+    duration: "45s set",
+    instructions: ["Posterior pelvic tilt pressed firmly to floor, arms extended overhead, legs hover 6 inches off ground."],
+    restTime: "45s"
+  },
+  {
+    programId: "home_180",
+    programName: "180 Day Home Workout Challenge",
+    category: "Core and abs",
+    muscleGroup: ["Abs"],
+    exerciseName: "Forearm Plank with Knee Taps",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "20 alternating taps",
+    duration: "45s set",
+    instructions: ["Lock into solid forearm plank, gently tap alternating knees to floor while keeping pelvic girdle rigid."],
+    restTime: "45s"
+  },
+  {
+    programId: "home_180",
+    programName: "180 Day Home Workout Challenge",
+    category: "Core and abs",
+    muscleGroup: ["Abs"],
+    exerciseName: "Bicycle Crunches with Peak Hold",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "20 alternating reps",
+    duration: "45s set",
+    instructions: ["Slow tempo rotation bringing armpit toward opposing knee, hold peak contraction for 1 full second."],
     restTime: "45s"
   },
   {
@@ -1006,6 +1118,20 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
   {
     programId: "home_180",
     programName: "180 Day Home Workout Challenge",
+    category: "Cardio",
+    muscleGroup: ["Cardio"],
+    exerciseName: "High Knees & Lateral Shuttle Conditioning",
+    equipment: "Bodyweight & Running Shoes",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "45s on / 15s off",
+    duration: "30 mins",
+    instructions: ["Pumping arms with high knee drive followed by crisp lateral shuffles for aerobic stamina."],
+    restTime: "60s"
+  },
+  {
+    programId: "home_180",
+    programName: "180 Day Home Workout Challenge",
     category: "Mobility and recovery",
     muscleGroup: ["Mobility and recovery"],
     exerciseName: "World's Greatest Stretch & Spinal Flow",
@@ -1015,6 +1141,34 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     reps: "8 reps per side",
     duration: "10 mins",
     instructions: ["Deep lunge with elbow to instep, then rotate arm towards sky."],
+    restTime: "Active flow"
+  },
+  {
+    programId: "home_180",
+    programName: "180 Day Home Workout Challenge",
+    category: "Mobility and recovery",
+    muscleGroup: ["Mobility and recovery"],
+    exerciseName: "Deep Squat Pry & Hip Opener Flow",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "45s hold",
+    duration: "10 mins",
+    instructions: ["Sink deep into prayer squat, use elbows to gently pry inner knees outward, elongating spine."],
+    restTime: "Active flow"
+  },
+  {
+    programId: "home_180",
+    programName: "180 Day Home Workout Challenge",
+    category: "Mobility and recovery",
+    muscleGroup: ["Mobility and recovery"],
+    exerciseName: "Prone Scorpion & Thoracic Twist",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 2,
+    reps: "8 alternating reps",
+    duration: "8 mins",
+    instructions: ["Lie flat on stomach with arms spread, swing one foot across back toward opposing hand to stretch hip flexor and chest."],
     restTime: "Active flow"
   }
 ];
@@ -1066,6 +1220,20 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
   {
     programId: "women_confidence",
     programName: "Women Confidence Program",
+    category: "Legs",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Dumbbell Romanian Deadlift",
+    equipment: "Pair of Dumbbells",
+    difficulty: "Beginner",
+    sets: 4,
+    reps: "12",
+    duration: "45s set",
+    instructions: ["Hinge at hips with soft knees, glide dumbbells along shins, squeeze glutes firmly to stand."],
+    restTime: "60s"
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
     category: "Core and abs",
     muscleGroup: ["Abs"],
     exerciseName: "Stomach Vacuum & Transverse Bracing",
@@ -1080,6 +1248,48 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
   {
     programId: "women_confidence",
     programName: "Women Confidence Program",
+    category: "Core and abs",
+    muscleGroup: ["Abs"],
+    exerciseName: "Dead Bug Pelvic Tilt Control",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "16 alternating reps",
+    duration: "40s set",
+    instructions: ["Imprint lumbar spine flush against mat, extend contralateral arm and leg slowly with deep abdominal tension."],
+    restTime: "30s"
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Core and abs",
+    muscleGroup: ["Abs"],
+    exerciseName: "Side Plank Waist Cinch Hold",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "30s each side",
+    duration: "35s set",
+    instructions: ["Elevate on forearm, align shoulder over elbow, elevate hips creating an unbroken straight line along torso."],
+    restTime: "30s"
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Core and abs",
+    muscleGroup: ["Abs"],
+    exerciseName: "Bird Dog Glute & Core Stabilizer",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12 per side",
+    duration: "40s set",
+    instructions: ["On all fours, extend opposing arm and leg without shifting hips, pause 2 seconds at full extension."],
+    restTime: "30s"
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
     category: "Upper body",
     muscleGroup: ["Upper body"],
     exerciseName: "Incline Push-ups for Toned Upper Chest",
@@ -1089,6 +1299,20 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     reps: "12-15",
     duration: "40s set",
     instructions: ["Hands placed on elevated surface. Keep body in a straight plank, lower chest to edge and press."],
+    restTime: "45s"
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Upper body",
+    muscleGroup: ["Upper body"],
+    exerciseName: "Dumbbell Lateral Deltoid Toning Raises",
+    equipment: "Light Dumbbells",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12-15",
+    duration: "40s set",
+    instructions: ["Slight forward lean, raise dumbbells out to sides leading with elbows until parallel to floor."],
     restTime: "45s"
   },
   {
@@ -1228,6 +1452,20 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
   {
     programId: "posture_vitality",
     programName: "Reclaim Your Posture & Vitality",
+    category: "Posture correction",
+    muscleGroup: ["Upper back"],
+    exerciseName: "Prone Prismatic Scapular Squeeze",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "15 reps with 2s squeeze",
+    duration: "40s set",
+    instructions: ["Lie face down, extend arms in W shape, pinch shoulder blades deeply together while keeping neck neutral."],
+    restTime: "40s"
+  },
+  {
+    programId: "posture_vitality",
+    programName: "Reclaim Your Posture & Vitality",
     category: "Neck mobility",
     muscleGroup: ["Neck mobility"],
     exerciseName: "Chin Tucks against Headrest/Wall",
@@ -1256,6 +1494,34 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
   {
     programId: "posture_vitality",
     programName: "Reclaim Your Posture & Vitality",
+    category: "Chest opening",
+    muscleGroup: ["Chest", "Shoulders"],
+    exerciseName: "Prone Floor Y-Chest Opener",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "30s hold per side",
+    duration: "35s set",
+    instructions: ["Lie on stomach, extend one arm out at 45 degrees, roll gently toward extended arm to open anterior shoulder."],
+    restTime: "30s"
+  },
+  {
+    programId: "posture_vitality",
+    programName: "Reclaim Your Posture & Vitality",
+    category: "Chest opening",
+    muscleGroup: ["Chest", "Shoulders"],
+    exerciseName: "Clasp-Hands Behind Back Chest Expansion",
+    equipment: "Towel or Bodyweight",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "35s hold",
+    duration: "35s set",
+    instructions: ["Interlace fingers behind lower back, roll shoulders back and down, gently lift hands away from hips."],
+    restTime: "30s"
+  },
+  {
+    programId: "posture_vitality",
+    programName: "Reclaim Your Posture & Vitality",
     category: "Spinal mobility",
     muscleGroup: ["Spinal mobility"],
     exerciseName: "Cat-Cow Dynamic Spinal Waves",
@@ -1265,6 +1531,34 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     reps: "10 slow cycles",
     duration: "45s set",
     instructions: ["On all fours, inhale arching spine gazing up, exhale tucking chin and rounding spine skyward."],
+    restTime: "30s"
+  },
+  {
+    programId: "posture_vitality",
+    programName: "Reclaim Your Posture & Vitality",
+    category: "Spinal mobility",
+    muscleGroup: ["Spinal mobility"],
+    exerciseName: "Thoracic Thread the Needle Rotations",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "8 reps per side",
+    duration: "40s set",
+    instructions: ["From tabletop, slide one arm underneath chest across floor, resting shoulder, then rotate skyward."],
+    restTime: "30s"
+  },
+  {
+    programId: "posture_vitality",
+    programName: "Reclaim Your Posture & Vitality",
+    category: "Spinal mobility",
+    muscleGroup: ["Spinal mobility"],
+    exerciseName: "Cobra to Child's Pose Spinal Articulation",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "8 flow transitions",
+    duration: "45s set",
+    instructions: ["Flow smoothly from prone spinal extension into deep lumbar flexion in active child's pose."],
     restTime: "30s"
   },
   {
@@ -1284,6 +1578,20 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
   {
     programId: "posture_vitality",
     programName: "Reclaim Your Posture & Vitality",
+    category: "Hip mobility",
+    muscleGroup: ["Hip mobility"],
+    exerciseName: "Half-Kneeling Hip Flexor & Psoas Stretch",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "35s per side",
+    duration: "40s set",
+    instructions: ["Kneel on back knee, tuck tailbone to posterior tilt, shift hips forward feeling deep anterior hip stretch."],
+    restTime: "30s"
+  },
+  {
+    programId: "posture_vitality",
+    programName: "Reclaim Your Posture & Vitality",
     category: "Glute activation",
     muscleGroup: ["Glutes"],
     exerciseName: "Prone Hip Extension with Knee Bent",
@@ -1294,6 +1602,90 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     duration: "40s set",
     instructions: ["Lie on stomach, bend knee to 90 degrees, stamp sole of foot toward ceiling using glute."],
     restTime: "30s"
+  },
+  {
+    programId: "posture_vitality",
+    programName: "Reclaim Your Posture & Vitality",
+    category: "Glute activation",
+    muscleGroup: ["Glutes"],
+    exerciseName: "Quadruped Fire Hydrants for Glute Medius",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12 reps per leg",
+    duration: "40s set",
+    instructions: ["On hands and knees with stable core, abduct bent knee out to 45 degrees without rotating pelvis."],
+    restTime: "30s"
+  },
+  {
+    programId: "posture_vitality",
+    programName: "Reclaim Your Posture & Vitality",
+    category: "Glute activation",
+    muscleGroup: ["Glutes", "Core stability"],
+    exerciseName: "Isometric Floor Glute Bridge Hold",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "40s hold",
+    duration: "45s set",
+    instructions: ["Drive through heels, squeeze glutes to form straight diagonal line from knees to shoulders, ribs locked."],
+    restTime: "30s"
+  },
+  {
+    programId: "posture_vitality",
+    programName: "Reclaim Your Posture & Vitality",
+    category: "Daily movement",
+    muscleGroup: ["Daily movement", "Mobility and recovery"],
+    exerciseName: "Standing Postural Alignment & Spinal Elongation",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "45s hold",
+    duration: "45s set",
+    instructions: ["Stand tall with feet parallel, engage core, tuck chin slightly, reach crown of head upward toward ceiling."],
+    restTime: "30s"
+  },
+  {
+    programId: "posture_vitality",
+    programName: "Reclaim Your Posture & Vitality",
+    category: "Daily movement",
+    muscleGroup: ["Daily movement", "Mobility and recovery"],
+    exerciseName: "Multi-Plane Gentle Posture Mobility Flow",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "8 flow cycles",
+    duration: "45s set",
+    instructions: ["Seamless flow through standing side reach, gentle thoracic rotation, and slow spinal roll-downs."],
+    restTime: "30s"
+  },
+  {
+    programId: "posture_vitality",
+    programName: "Reclaim Your Posture & Vitality",
+    category: "Daily movement",
+    muscleGroup: ["Daily movement", "Mobility and recovery"],
+    exerciseName: "20-Minute Calibrated Posture Walking Protocol",
+    equipment: "Walking Shoes",
+    difficulty: "Beginner",
+    sets: 1,
+    reps: "20 mins",
+    duration: "20 mins",
+    instructions: ["Brisk walking maintaining upright posture, eyes on horizon, relaxed shoulder blades, natural arm swing."],
+    restTime: "Post-walk rest"
+  },
+  {
+    programId: "posture_vitality",
+    programName: "Reclaim Your Posture & Vitality",
+    category: "Daily movement",
+    muscleGroup: ["Daily movement", "Mobility and recovery"],
+    exerciseName: "Diaphragmatic Deep Breathing & Pelvic Reset",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "10 deep breaths",
+    duration: "3 mins",
+    instructions: ["Supine with knees bent, one hand on belly and one on chest. Expand 360 degrees into ribcage on inhale."],
+    restTime: "Full relaxation"
   }
 ];
 
@@ -1517,19 +1909,19 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
     } else if (dayMod === 1) {
       category = "Legs and glutes";
       targetMuscles = ["Legs", "Glutes"];
-      exercisesToUse = HOME_180_EXERCISES_POOL.filter(e => ["Legs and glutes", "Core and abs"].includes(e.category));
+      exercisesToUse = HOME_180_EXERCISES_POOL.filter(e => e.category === "Legs and glutes");
     } else if (dayMod === 2) {
       category = "Cardio";
       targetMuscles = ["Cardio"];
-      exercisesToUse = HOME_180_EXERCISES_POOL.filter(e => e.category === "Cardio" || e.category === "Mobility and recovery");
+      exercisesToUse = HOME_180_EXERCISES_POOL.filter(e => e.category === "Cardio");
     } else if (dayMod === 3) {
       category = "Back";
       targetMuscles = ["Back", "Arms"];
-      exercisesToUse = HOME_180_EXERCISES_POOL.filter(e => ["Back", "Arms", "Core and abs"].includes(e.category));
+      exercisesToUse = HOME_180_EXERCISES_POOL.filter(e => ["Back", "Arms"].includes(e.category));
     } else if (dayMod === 4) {
       category = "Core and abs";
       targetMuscles = ["Abs"];
-      exercisesToUse = HOME_180_EXERCISES_POOL.filter(e => ["Core and abs", "Full body"].includes(e.category));
+      exercisesToUse = HOME_180_EXERCISES_POOL.filter(e => e.category === "Core and abs");
     } else {
       category = "Mobility and recovery";
       targetMuscles = ["Mobility and recovery"];
@@ -1578,7 +1970,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
     } else if (dayMod === 1) {
       category = "Core and abs";
       targetMuscles = ["Abs"];
-      exercisesToUse = WOMEN_EXERCISES_POOL.filter(e => ["Core and abs", "Upper body"].includes(e.category));
+      exercisesToUse = WOMEN_EXERCISES_POOL.filter(e => e.category === "Core and abs");
     } else if (dayMod === 2) {
       category = "Cardio";
       targetMuscles = ["Cardio"];
@@ -1694,7 +2086,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
   } else if (dayMod === 1) {
     category = "Chest opening";
     targetMuscles = ["Chest", "Shoulders"];
-    exercisesToUse = POSTURE_VITALITY_POOL.filter(e => ["Chest opening", "Spinal mobility"].includes(e.category));
+    exercisesToUse = POSTURE_VITALITY_POOL.filter(e => e.category === "Chest opening");
   } else if (dayMod === 2) {
     category = "Hip mobility";
     targetMuscles = ["Hip mobility", "Glutes"];
@@ -1702,15 +2094,15 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
   } else if (dayMod === 3) {
     category = "Spinal mobility";
     targetMuscles = ["Spinal mobility"];
-    exercisesToUse = POSTURE_VITALITY_POOL.filter(e => ["Spinal mobility", "Posture correction"].includes(e.category));
+    exercisesToUse = POSTURE_VITALITY_POOL.filter(e => e.category === "Spinal mobility");
   } else if (dayMod === 4) {
     category = "Glute activation";
     targetMuscles = ["Glutes", "Core stability"];
-    exercisesToUse = POSTURE_VITALITY_POOL.filter(e => ["Glute activation", "Hip mobility"].includes(e.category));
+    exercisesToUse = POSTURE_VITALITY_POOL.filter(e => e.category === "Glute activation");
   } else {
     category = "Daily movement";
-    targetMuscles = ["Mobility and recovery"];
-    exercisesToUse = POSTURE_VITALITY_POOL;
+    targetMuscles = ["Daily movement", "Mobility and recovery"];
+    exercisesToUse = POSTURE_VITALITY_POOL.filter(e => e.category === "Daily movement");
   }
 
   const meta: DayWorkoutMeta = {
