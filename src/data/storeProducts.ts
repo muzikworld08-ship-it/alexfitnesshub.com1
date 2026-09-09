@@ -1,4 +1,14 @@
-import { Product } from "../types";
+import { Product, ProductImage } from "../types";
+
+export function createProductGallery(images: string[]): ProductImage[] {
+  return images.map((url, idx) => ({
+    id: `img-${idx + 1}`,
+    url,
+    displayOrder: idx + 1,
+    isPrimary: idx === 0,
+    altText: `Product view ${idx + 1}`
+  }));
+}
 
 export const INITIAL_STORE_PRODUCTS: Product[] = [
   // --- MEN'S APPAREL ---
@@ -13,7 +23,12 @@ export const INITIAL_STORE_PRODUCTS: Product[] = [
     backImage: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=900&auto=format&fit=crop&q=80",
     images: [
       "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=900&auto=format&fit=crop&q=80"
+      "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=900&auto=format&fit=crop&q=80"
     ],
     sizes: ["S", "M", "L", "XL", "XXL"],
     colors: [
@@ -53,7 +68,12 @@ export const INITIAL_STORE_PRODUCTS: Product[] = [
     backImage: "https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=900&auto=format&fit=crop&q=80",
     images: [
       "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=900&auto=format&fit=crop&q=80"
+      "https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1578587018452-892bacefd3f2?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1516257984-b1b4d707412e?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1534367507873-d2d7e24c797f?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1495121605193-b116b5b9c5fe?w=900&auto=format&fit=crop&q=80"
     ],
     sizes: ["M", "L", "XL", "XXL"],
     colors: [
@@ -93,7 +113,12 @@ export const INITIAL_STORE_PRODUCTS: Product[] = [
     backImage: "https://images.unsplash.com/photo-1539185441755-769473a23570?w=900&auto=format&fit=crop&q=80",
     images: [
       "https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1539185441755-769473a23570?w=900&auto=format&fit=crop&q=80"
+      "https://images.unsplash.com/photo-1539185441755-769473a23570?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1549576490-b0b4831ef60a?w=900&auto=format&fit=crop&q=80"
     ],
     sizes: ["S", "M", "L", "XL", "XXL"],
     colors: [
@@ -131,6 +156,15 @@ export const INITIAL_STORE_PRODUCTS: Product[] = [
     originalPrice: 17500,
     frontImage: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=900&auto=format&fit=crop&q=80",
     backImage: "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=900&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=900&auto=format&fit=crop&q=80"
+    ],
     sizes: ["S", "M", "L", "XL"],
     colors: [
       { name: "Stealth Black", hex: "#111827" },
@@ -169,7 +203,12 @@ export const INITIAL_STORE_PRODUCTS: Product[] = [
     backImage: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&auto=format&fit=crop&q=80",
     images: [
       "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&auto=format&fit=crop&q=80"
+      "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=900&auto=format&fit=crop&q=80"
     ],
     sizes: ["XS", "S", "M", "L", "XL"],
     colors: [
@@ -211,7 +250,12 @@ export const INITIAL_STORE_PRODUCTS: Product[] = [
     backImage: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=900&auto=format&fit=crop&q=80",
     images: [
       "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=900&auto=format&fit=crop&q=80"
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?w=900&auto=format&fit=crop&q=80"
     ],
     sizes: ["XS", "S", "M", "L"],
     colors: [
@@ -248,6 +292,15 @@ export const INITIAL_STORE_PRODUCTS: Product[] = [
     originalPrice: 23000,
     frontImage: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=900&auto=format&fit=crop&q=80",
     backImage: "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?w=900&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=900&auto=format&fit=crop&q=80"
+    ],
     sizes: ["XS", "S", "M", "L"],
     colors: [
       { name: "Midnight Black", hex: "#111827" },
@@ -283,6 +336,15 @@ export const INITIAL_STORE_PRODUCTS: Product[] = [
     originalPrice: 21000,
     frontImage: "https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=900&auto=format&fit=crop&q=80",
     backImage: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=900&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=900&auto=format&fit=crop&q=80"
+    ],
     sizes: ["XS", "S", "M", "L"],
     colors: [
       { name: "Jet Black", hex: "#0F172A" },
@@ -322,7 +384,12 @@ export const INITIAL_STORE_PRODUCTS: Product[] = [
     backImage: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=900&auto=format&fit=crop&q=80",
     images: [
       "https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=900&auto=format&fit=crop&q=80"
+      "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1578587018452-892bacefd3f2?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1516257984-b1b4d707412e?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1534367507873-d2d7e24c797f?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1495121605193-b116b5b9c5fe?w=900&auto=format&fit=crop&q=80"
     ],
     sizes: ["S", "M", "L", "XL", "XXL"],
     colors: [
@@ -361,7 +428,12 @@ export const INITIAL_STORE_PRODUCTS: Product[] = [
     backImage: "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=900&auto=format&fit=crop&q=80",
     images: [
       "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=900&auto=format&fit=crop&q=80"
+      "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=900&auto=format&fit=crop&q=80"
     ],
     sizes: ["S", "M", "L", "XL", "XXL"],
     colors: [
@@ -397,6 +469,15 @@ export const INITIAL_STORE_PRODUCTS: Product[] = [
     originalPrice: 38000,
     frontImage: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=900&auto=format&fit=crop&q=80",
     backImage: "https://images.unsplash.com/photo-1546938576-6e6a64f317cc?w=900&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1546938576-6e6a64f317cc?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1575428652377-a2d80e2277fc?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=900&auto=format&fit=crop&q=80"
+    ],
     sizes: ["One Size (45L)"],
     colors: [
       { name: "Tactical Matte Black", hex: "#111827" }
@@ -429,6 +510,15 @@ export const INITIAL_STORE_PRODUCTS: Product[] = [
     originalPrice: 15000,
     frontImage: "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=900&auto=format&fit=crop&q=80",
     backImage: "https://images.unsplash.com/photo-1575428652377-a2d80e2277fc?w=900&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1575428652377-a2d80e2277fc?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1546938576-6e6a64f317cc?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=900&auto=format&fit=crop&q=80"
+    ],
     sizes: ["Adjustable Snapback"],
     colors: [
       { name: "Stealth Black", hex: "#111827" },
@@ -450,4 +540,7 @@ export const INITIAL_STORE_PRODUCTS: Product[] = [
     rating: 4.8,
     reviewsCount: 39
   }
-];
+].map(p => ({
+  ...p,
+  gallery: createProductGallery(p.images)
+}));

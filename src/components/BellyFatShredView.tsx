@@ -19,6 +19,8 @@ import HomeWorkoutPlayer from "./HomeWorkoutPlayer";
 import GlobalSkeletonLoader, { DashboardSkeleton } from "./SkeletonLoader";
 import bellyShredHeroImg from "../assets/images/belly_shred_hero_1784283617530.jpg";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
+import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
+import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
 
 // High-fidelity local types
 interface WeightEntry {
@@ -989,6 +991,7 @@ export default function BellyFatShredView() {
           progress.currentWeek
         );
       }
+      recordDailyWorkoutCompletion("belly_fat_shred", daySeq);
       setCelebrationModalData({
         isOpen: true,
         completedDay: daySeq,
@@ -2392,6 +2395,34 @@ export default function BellyFatShredView() {
         {/* TAB 2: DETAILED WORKOUT SCHEDULE */}
         {activeTab === "workouts" && (
           <div className="space-y-8">
+            {/* 5-Hour Cooldown Recovery Guard */}
+            {(() => {
+              const currentDaySeq = (progress.currentWeek - 1) * 7 + progress.currentDay;
+              const waitState = getProgramWaitState("belly_fat_shred");
+              if (waitState.isWaiting && currentDaySeq > waitState.completedDay) {
+                return (
+                  <ProgramCooldownWaitingScreen
+                    programId="belly_fat_shred"
+                    programName="5-Month Belly Fat Shred Program"
+                    completedDay={waitState.completedDay}
+                    nextDay={waitState.nextDay}
+                    nextUnlockAt={waitState.nextUnlockAt}
+                    onReviewTodayWorkout={() => {
+                      const prevWeek = Math.floor((waitState.completedDay - 1) / 7) + 1;
+                      const prevDay = ((waitState.completedDay - 1) % 7) + 1;
+                      setProgress(prev => (prev ? { ...prev, currentWeek: prevWeek, currentDay: prevDay } : null));
+                    }}
+                    onUnlocked={() => {
+                      const nextWeek = Math.floor((waitState.nextDay - 1) / 7) + 1;
+                      const nextDay = ((waitState.nextDay - 1) % 7) + 1;
+                      setProgress(prev => (prev ? { ...prev, currentWeek: nextWeek, currentDay: nextDay } : null));
+                    }}
+                  />
+                );
+              }
+              return null;
+            })()}
+
             {/* 5-Month Phase & Week/Day Architecture Switcher */}
             <div className={`border rounded-3xl p-6 sm:p-8 space-y-6 ${cardBg}`}>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

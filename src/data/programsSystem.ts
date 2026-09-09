@@ -1,4 +1,4 @@
-import { Exercise } from "./exercises";
+import { Exercise, getExerciseGifUrl } from "./exercises";
 
 export interface ProgramMainCategory {
   id: "90-days-immortal" | "gym-programs" | "women-programs" | "home-programs" | "goal-based-programs" | "workout-library";
@@ -23,7 +23,7 @@ export const MAIN_PROGRAM_CATEGORIES: ProgramMainCategory[] = [
     description: "The ultimate 7-day science-based muscle split continuously rotating for 90 days. Zero duplicates, structured cardio recovery, and automated progression.",
     bgGradient: "from-amber-600/20 via-neutral-900 to-neutral-950",
     accentColor: "text-amber-400 border-amber-500/40 hover:border-amber-400",
-    image: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&auto=format&fit=crop&q=80",
+    image: getExerciseGifUrl("Barbell Bench Press", "Gym Workouts"),
     totalWorkoutsOrDays: "90 Days"
   },
   {
@@ -35,7 +35,7 @@ export const MAIN_PROGRAM_CATEGORIES: ProgramMainCategory[] = [
     description: "Specialized resistance training programs utilizing barbells, dumbbells, cables, and machines for maximum strength and muscular hypertrophy.",
     bgGradient: "from-red-600/20 via-neutral-900 to-neutral-950",
     accentColor: "text-red-400 border-red-500/40 hover:border-red-400",
-    image: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&auto=format&fit=crop&q=80",
+    image: getExerciseGifUrl("Deadlift", "Gym Workouts"),
     totalWorkoutsOrDays: "6 Core Programs"
   },
   {
@@ -47,7 +47,7 @@ export const MAIN_PROGRAM_CATEGORIES: ProgramMainCategory[] = [
     description: "The 180-day structured rolling cycle alternating upper/lower body splits with 2x 5-10km walks/runs, glutes, core, and posture mobility.",
     bgGradient: "from-pink-600/20 via-neutral-900 to-neutral-950",
     accentColor: "text-pink-400 border-pink-500/40 hover:border-pink-400",
-    image: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&auto=format&fit=crop&q=80",
+    image: getExerciseGifUrl("Barbell Hip Thrust", "Gym Workouts"),
     totalWorkoutsOrDays: "180 Days"
   },
   {
@@ -59,7 +59,7 @@ export const MAIN_PROGRAM_CATEGORIES: ProgramMainCategory[] = [
     description: "Strictly home-compatible workouts. No gym machines, no bulky setups. 19 specialized tracks for fat loss, abs, strength, and mobility.",
     bgGradient: "from-emerald-600/20 via-neutral-900 to-neutral-950",
     accentColor: "text-emerald-400 border-emerald-500/40 hover:border-emerald-400",
-    image: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&auto=format&fit=crop&q=80",
+    image: getExerciseGifUrl("Standard Push Ups", "Home Workouts"),
     totalWorkoutsOrDays: "19 Categories"
   },
   {
@@ -71,7 +71,7 @@ export const MAIN_PROGRAM_CATEGORIES: ProgramMainCategory[] = [
     description: "Directly target your priority: Build Muscle, Lose Weight, Build Abs, Build Glutes, Get Stronger, Improve Fitness, Beginner, or Home.",
     bgGradient: "from-cyan-600/20 via-neutral-900 to-neutral-950",
     accentColor: "text-cyan-400 border-cyan-500/40 hover:border-cyan-400",
-    image: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800&auto=format&fit=crop&q=80",
+    image: getExerciseGifUrl("Burpees", "Calisthenics Workouts"),
     totalWorkoutsOrDays: "8 Goals"
   },
   {
@@ -83,7 +83,7 @@ export const MAIN_PROGRAM_CATEGORIES: ProgramMainCategory[] = [
     description: "Explore the comprehensive exercise library with real-time video/GIF animations, biomechanical cues, muscle targeting, and smart filters.",
     bgGradient: "from-purple-600/20 via-neutral-900 to-neutral-950",
     accentColor: "text-purple-400 border-purple-500/40 hover:border-purple-400",
-    image: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=800&auto=format&fit=crop&q=80",
+    image: getExerciseGifUrl("Plank", "Core"),
     totalWorkoutsOrDays: "250+ Exercises"
   }
 ];
@@ -253,8 +253,8 @@ export function getImmortalChallengeDayPlan(dayNumber: number, allExercises: Exe
         finishingPosition: "Gradual 5-minute cooldown walk.",
         regressionVariations: ["5 km brisk power walk"],
         musclesWorked: ["Cardiovascular System", "Legs", "Heart & Lungs"],
-        gifUrl: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=800&auto=format&fit=crop&q=80",
-        imageUrl: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=800&auto=format&fit=crop&q=80",
+        gifUrl: getExerciseGifUrl("Running", "Cardio"),
+        imageUrl: getExerciseGifUrl("Running", "Cardio"),
         description: "Pure cardiovascular pacing engine. Build aerobic base and burn fat while sparing muscular joints.",
         duration: "45-65 min",
         tags: ["Cardio", "Zone 2", "Fat Burn", "5-10 KM"],
@@ -293,8 +293,8 @@ export function getImmortalChallengeDayPlan(dayNumber: number, allExercises: Exe
         finishingPosition: "Refreshed and recharged.",
         regressionVariations: ["Seated relaxation"],
         musclesWorked: ["Full Body Recovery", "Parasympathetic System"],
-        gifUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&auto=format&fit=crop&q=80",
-        imageUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&auto=format&fit=crop&q=80",
+        gifUrl: getExerciseGifUrl("Walking", "Mobility"),
+        imageUrl: getExerciseGifUrl("Walking", "Mobility"),
         description: "Mandatory complete rest protocol following your cardio session. All resistance workouts are removed today so muscles recover fully.",
         duration: "Full Rest",
         tags: ["Rest", "Recovery", "Hydration"],
@@ -1081,7 +1081,7 @@ export const GYM_WORKOUT_PROGRAMS: GymProgram[] = [
     difficulty: "Intermediate",
     description: "The gold standard bodybuilding routine. Separates pushing muscles, pulling muscles, and lower body for continuous progressive overload.",
     targetFocus: "Maximum Muscular Hypertrophy & Symmetry",
-    coverImage: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&auto=format&fit=crop&q=80",
+    coverImage: getExerciseGifUrl("Incline Dumbbell Press", "Gym Workouts"),
     splits: [
       { dayName: "Day 1", focus: "Push (Chest, Shoulders, Triceps)", targetMuscles: ["Chest", "Shoulders", "Triceps"] },
       { dayName: "Day 2", focus: "Pull (Back, Rear Delts, Biceps)", targetMuscles: ["Back", "Biceps"] },
@@ -1100,7 +1100,7 @@ export const GYM_WORKOUT_PROGRAMS: GymProgram[] = [
     difficulty: "Advanced",
     description: "Built around the big 4 compound lifts: Squat, Bench Press, Deadlift, and Overhead Press for pure kinetic strength.",
     targetFocus: "Maximal Force Development & Neural Drive",
-    coverImage: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800&auto=format&fit=crop&q=80",
+    coverImage: getExerciseGifUrl("Barbell Squat", "Gym Workouts"),
     splits: [
       { dayName: "Day 1", focus: "Upper Body Heavy Strength", targetMuscles: ["Chest", "Back", "Shoulders"] },
       { dayName: "Day 2", focus: "Lower Body Heavy Squat / Deadlift", targetMuscles: ["Legs", "Glutes"] },
@@ -1119,7 +1119,7 @@ export const GYM_WORKOUT_PROGRAMS: GymProgram[] = [
     difficulty: "Advanced",
     description: "Chest & Back paired together for skin-tearing pumps, followed by Shoulders & Arms, and an intense Leg day.",
     targetFocus: "V-Taper Aesthetics & High Volume Hypertrophy",
-    coverImage: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&auto=format&fit=crop&q=80",
+    coverImage: getExerciseGifUrl("Chest Dips", "Gym Workouts"),
     splits: [
       { dayName: "Day 1", focus: "Chest + Back Antagonists", targetMuscles: ["Chest", "Back"] },
       { dayName: "Day 2", focus: "Shoulders + Biceps + Triceps", targetMuscles: ["Shoulders", "Biceps", "Triceps"] },
@@ -1138,7 +1138,7 @@ export const GYM_WORKOUT_PROGRAMS: GymProgram[] = [
     difficulty: "Beginner",
     description: "Designed for beginners entering the gym. Master form on machines and dumbbells without intimidation or excessive soreness.",
     targetFocus: "Biomechanics, Joint Integrity & Baseline Mass",
-    coverImage: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=800&auto=format&fit=crop&q=80",
+    coverImage: getExerciseGifUrl("Dumbbell Chest Press", "Gym Workouts"),
     splits: [
       { dayName: "Day 1", focus: "Full Body Foundation A", targetMuscles: ["Chest", "Back", "Legs", "Core"] },
       { dayName: "Day 2", focus: "Rest / Light Walk", targetMuscles: ["Recovery"] },

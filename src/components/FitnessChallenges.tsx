@@ -28,7 +28,7 @@ export default function FitnessChallenges() {
               }`}
             >
               <Zap className="w-3.5 h-3.5" />
-              <span>Workout Challenge Engine (Strict 7h Lock)</span>
+              <span>Workout Challenge Engine</span>
             </button>
 
             <button

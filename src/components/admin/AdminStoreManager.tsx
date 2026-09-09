@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useStore } from "../../context/StoreContext";
 import { Product, StoreOrder, ProductCategory, ProductColor } from "../../types";
+import { AdminProductGalleryManager } from "./AdminProductGalleryManager";
 
 export const AdminStoreManager: React.FC = () => {
   const { 
@@ -32,6 +33,7 @@ export const AdminStoreManager: React.FC = () => {
   const [formOriginalPrice, setFormOriginalPrice] = useState<number | undefined>(22000);
   const [formFrontImage, setFormFrontImage] = useState("");
   const [formBackImage, setFormBackImage] = useState("");
+  const [formImages, setFormImages] = useState<string[]>([]);
   const [formDescription, setFormDescription] = useState("");
   const [formSizes, setFormSizes] = useState<string[]>(["S", "M", "L", "XL"]);
   const [formColors, setFormColors] = useState<ProductColor[]>([
@@ -60,6 +62,10 @@ export const AdminStoreManager: React.FC = () => {
     setFormOriginalPrice(p.originalPrice);
     setFormFrontImage(p.frontImage);
     setFormBackImage(p.backImage || "");
+    const initialImages = Array.isArray(p.images) && p.images.length > 0 
+      ? [...p.images] 
+      : [p.frontImage, p.backImage].filter(Boolean) as string[];
+    setFormImages(initialImages);
     setFormDescription(p.description);
     setFormSizes([...p.sizes]);
     setFormColors(p.colors ? [...p.colors] : [{ name: "Black", hex: "#111827" }]);
@@ -77,8 +83,18 @@ export const AdminStoreManager: React.FC = () => {
     setFormCategory("Men");
     setFormPrice(18500);
     setFormOriginalPrice(22000);
-    setFormFrontImage("https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=900&auto=format&fit=crop&q=80");
-    setFormBackImage("https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=900&auto=format&fit=crop&q=80");
+    const defaultSampleImages = [
+      "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=900&auto=format&fit=crop&q=80"
+    ];
+    setFormFrontImage(defaultSampleImages[0]);
+    setFormBackImage(defaultSampleImages[1]);
+    setFormImages(defaultSampleImages);
     setFormDescription("");
     setFormSizes(["S", "M", "L", "XL", "XXL"]);
     setFormColors([
@@ -95,8 +111,12 @@ export const AdminStoreManager: React.FC = () => {
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName.trim() || !formFrontImage.trim()) {
-      setFormStatusMsg({ text: "Name and Front Image URL are required.", isError: true });
+    const validImages = formImages.map(s => (s || "").trim()).filter(Boolean);
+    const frontImg = validImages[0] || formFrontImage.trim();
+    const backImg = validImages[1] || formBackImage.trim() || frontImg;
+
+    if (!formName.trim() || !frontImg) {
+      setFormStatusMsg({ text: "Name and at least 1 Product Image are required.", isError: true });
       return;
     }
 
@@ -105,8 +125,9 @@ export const AdminStoreManager: React.FC = () => {
       category: formCategory,
       price: Number(formPrice),
       originalPrice: formOriginalPrice ? Number(formOriginalPrice) : undefined,
-      frontImage: formFrontImage.trim(),
-      backImage: formBackImage.trim() || formFrontImage.trim(),
+      frontImage: frontImg,
+      backImage: backImg,
+      images: validImages.length > 0 ? validImages : [frontImg, backImg],
       description: formDescription.trim(),
       sizes: formSizes,
       colors: formColors,
@@ -292,17 +313,21 @@ export const AdminStoreManager: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                   {products.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
-                      {/* Front & Back Thumbnails */}
+                      {/* Front & Gallery Thumbnails */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1.5">
-                          <div className="w-10 h-12 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0" title="Front View">
-                            <img src={p.frontImage} alt="Front" className="w-full h-full object-cover" />
+                          <div className="w-10 h-12 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0" title="Primary View">
+                            <img src={p.frontImage} alt="Primary" className="w-full h-full object-cover" />
                           </div>
-                          {p.backImage && (
+                          {p.images && p.images.length > 1 ? (
+                            <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200 shrink-0" title={`${p.images.length} photos in gallery`}>
+                              +{p.images.length - 1}
+                            </span>
+                          ) : p.backImage ? (
                             <div className="w-10 h-12 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0" title="Back View">
                               <img src={p.backImage} alt="Back" className="w-full h-full object-cover" />
                             </div>
-                          )}
+                          ) : null}
                         </div>
                       </td>
 
@@ -679,30 +704,16 @@ export const AdminStoreManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* Front Image & Back Image URLs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Front View Image URL *</label>
-                  <input
-                    type="url"
-                    required
-                    value={formFrontImage}
-                    onChange={(e) => setFormFrontImage(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full text-xs font-mono px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Back View Image URL</label>
-                  <input
-                    type="url"
-                    value={formBackImage}
-                    onChange={(e) => setFormBackImage(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full text-xs font-mono px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50"
-                  />
-                </div>
+              {/* Product Image Gallery Manager (Up to 7 Images) */}
+              <div className="space-y-1">
+                <AdminProductGalleryManager
+                  images={formImages}
+                  onChange={(newImgs) => {
+                    setFormImages(newImgs);
+                    if (newImgs[0]) setFormFrontImage(newImgs[0]);
+                    if (newImgs[1]) setFormBackImage(newImgs[1]);
+                  }}
+                />
               </div>
 
               {/* Description */}

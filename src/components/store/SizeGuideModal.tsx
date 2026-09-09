@@ -1,11 +1,11 @@
 import React from "react";
 import { X, Ruler, ShieldCheck } from "lucide-react";
-import { ProductSizeGuide } from "../../types";
+import { ProductSizeGuide, ProductCategory } from "../../types";
 
 interface SizeGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
-  category: "Men" | "Women" | "ALEXFITNESSHUB Collections";
+  category: ProductCategory;
   productName: string;
   sizeGuide?: ProductSizeGuide;
 }

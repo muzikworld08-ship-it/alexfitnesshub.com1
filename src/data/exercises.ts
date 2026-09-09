@@ -338,15 +338,15 @@ export const BACKUP_EXERCISE_MEDIA = {
 };
 
 export const REAL_EXERCISE_MEDIA = {
-  chest: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=600&auto=format&fit=crop&q=80",
-  back: "https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=600&auto=format&fit=crop&q=80",
-  shoulders: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=600&auto=format&fit=crop&q=80",
-  arms: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80",
-  core: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80",
-  legs: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&auto=format&fit=crop&q=80",
-  neck: "",
-  cardio: "https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=600&auto=format&fit=crop&q=80",
-  mobility: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&auto=format&fit=crop&q=80"
+  chest: "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+  back: "https://media.giphy.com/media/duuVpx00In40Syc7m6/giphy.gif",
+  shoulders: "https://media.giphy.com/media/3o7qE6b39zV1LALZRe/giphy.gif",
+  arms: "https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif",
+  core: "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
+  legs: "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+  neck: "https://media.giphy.com/media/26AHG5KGFxSkUWw1i/giphy.gif",
+  cardio: "https://media.giphy.com/media/l41lI4bYmcsPJX9Go/giphy.gif",
+  mobility: "https://media.giphy.com/media/26AHG5KGFxSkUWw1i/giphy.gif"
 };
 
 interface RawExerciseData {
@@ -698,7 +698,8 @@ const RAW_EXERCISES_DATA: RawExerciseData[] = [
   { name: "Scorpion Stretch for Spinal Rotation", displayName: "Scorpion Stretch for Spinal Rotation", category: "Home Workouts", sub: "Stretching", equipment: ["Bodyweight"], primary: "Mobility", secondary: ["Lower Back", "Chest"], diff: "Beginner" },
   { name: "Couch Stretch for Tight Hip Flexors", displayName: "Couch Stretch for Tight Hip Flexors", category: "Home Workouts", sub: "Stretching", equipment: ["Wall / Couch", "Mat"], primary: "Mobility", secondary: ["Quadriceps", "Glutes"], diff: "Beginner" },
   { name: "Pigeon Pose with Active Thoracic Reach", displayName: "Pigeon Pose with Active Thoracic Reach", category: "Home Workouts", sub: "Stretching", equipment: ["Mat"], primary: "Mobility", secondary: ["Glutes", "Lower Back"], diff: "Beginner" },
-  { name: "Shin Box Hip Internal-External Rotations", displayName: "Shin Box Hip Internal-External Rotations", category: "Home Workouts", sub: "Warm-up", equipment: ["Mat"], primary: "Mobility", secondary: ["Glutes", "Lower Back"], diff: "Beginner" }
+  { name: "Shin Box Hip Internal-External Rotations", displayName: "Shin Box Hip Internal-External Rotations", category: "Home Workouts", sub: "Warm-up", equipment: ["Mat"], primary: "Mobility", secondary: ["Glutes", "Lower Back"], diff: "Beginner" },
+  { name: "Pike Push Ups", displayName: "Pike Push Ups", category: "Calisthenics Workouts", sub: "Beginner Calisthenics", equipment: ["Bodyweight"], primary: "Shoulders", secondary: ["Triceps", "Upper Chest"], diff: "Intermediate" }
 ];
 
 export function determineCategories(
@@ -1369,9 +1370,9 @@ export const PROGRAMS: Program[] = [
     imageUrl: REAL_EXERCISE_MEDIA.chest,
     isPremium: true,
     schedule: [
-      { day: "Day 1", focus: "Chest & Triceps Overload", exercises: ["Barbell Bench Press", "Dumbbell Chest Press", "Chest Dips", "Triceps Pushdowns"] },
+      { day: "Day 1", focus: "Chest & Triceps Overload", exercises: ["Barbell Bench Press", "Dumbbell Chest Press", "Chest Dips", "Triceps Pushdown"] },
       { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Low-Impact Cardio & Incline Walk", exercises: ["12-3-30 Treadmill Walk", "Jump Squats", "Child's Pose Spinal Reach"] },
-      { day: "Day 3", focus: "Back & Biceps Thickness", exercises: ["Pull Ups", "Barbell Row", "Cable Lat Pulldowns (Slow Eccentric)", "Seated Dumbbell Bicep Peaks Curl"] },
+      { day: "Day 3", focus: "Back & Biceps Thickness", exercises: ["Pull Ups", "Barbell Row", "Cable Lat Pulldowns (Slow Eccentric)"] },
       { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Zone 2 Kinetic Walking & Mobility Flush", exercises: ["Primal Cat-Cow Spinal Waves", "Dynamic Warm-up Jumps", "Dead Bug"] },
       { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Walking & Metabolic Recovery", exercises: ["Plank with Shoulder Taps", "Bodyweight Squats", "90/90 Hip Stretch"] }
     ]
@@ -1407,7 +1408,7 @@ export const PROGRAMS: Program[] = [
     schedule: [
       { day: "Day 1", focus: "Posterior Chain Power", exercises: ["Romanian Barbell Deadlifts", "Dumbbell Romanian Deadlifts", "Pull Ups"] },
       { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Incline Walk & Parasympathetic Reset", exercises: ["12-3-30 Treadmill Walk", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing"] },
-      { day: "Day 3", focus: "Anterior Squat Drive", exercises: ["High-Tension Barbell Back Squats", "Dumbbell Goblet Squats", "Plank Holds"] },
+      { day: "Day 3", focus: "Anterior Squat Drive", exercises: ["Barbell Squat", "Dumbbell Goblet Squats", "Plank Holds"] },
       { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Zone 2 Walking & Joint Flushing", exercises: ["Dead Bug", "Single-Leg Glute Bridges", "Child's Pose Spinal Reach"] },
       { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Walking & Hip Mobility", exercises: ["90/90 Hip Stretch", "Bodyweight Squats", "Plank Holds"] }
     ]
@@ -1495,9 +1496,9 @@ export const PROGRAMS: Program[] = [
     imageUrl: REAL_EXERCISE_MEDIA.mobility,
     isPremium: false,
     schedule: [
-      { day: "Day 1", focus: "Calisthenic Push Mastery", exercises: ["Advanced Calisthenics: Handstand Push Ups", "Advanced Calisthenics: Planche", "Advanced Calisthenics: One Arm Push Up"] },
+      { day: "Day 1", focus: "Calisthenic Push Mastery", exercises: ["Handstand Push Ups", "Planche", "One Arm Push Up"] },
       { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Kinetic Incline Walking & Scapular Flow", exercises: ["12-3-30 Treadmill Walk", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing"] },
-      { day: "Day 3", focus: "Calisthenic Pull & Core", exercises: ["Advanced Calisthenics: Muscle Ups", "Advanced Calisthenics: Front Lever", "Advanced Calisthenics: Dragon Flag"] },
+      { day: "Day 3", focus: "Calisthenic Pull & Core", exercises: ["Muscle Ups", "Front Lever", "Dragon Flag"] },
       { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Low-Impact Cardio & Joint Recovery", exercises: ["Dead Bug", "Child's Pose Spinal Reach", "Bodyweight Squats"] },
       { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Outdoor Walking & Wrist/Shoulder Mobility", exercises: ["90/90 Hip Stretch", "Plank Holds", "Single-Leg Glute Bridges"] }
     ]
@@ -1585,11 +1586,11 @@ export const PROGRAMS: Program[] = [
     imageUrl: REAL_EXERCISE_MEDIA.core,
     isPremium: true,
     schedule: [
-      { day: "Phase 1 - Foundational Adaptation", focus: "Full Body Bodyweight & Isometric Base", exercises: ["Push-Ups (or Incline / Knee)", "Bodyweight Squats", "Forearm Plank", "Dynamic Jumping Jacks"] },
+      { day: "Phase 1 - Foundational Adaptation", focus: "Full Body Bodyweight & Isometric Base", exercises: ["Standard Push Ups", "Bodyweight Squats", "Plank Holds", "Jumping Jacks"] },
       { day: "Weekly 5 KM Milestone Day", focus: "Aerobic Capacity: 5 KM Outdoor Run or Brisk Walk", exercises: ["Rope Jump", "Deep Diaphragmatic Box Breathing", "Primal Cat-Cow Spinal Waves"] },
-      { day: "Phase 2 - Hypertrophy & Work Capacity", focus: "Elevated Volume & Mechanical Tension", exercises: ["Decline / Diamond Push-Ups", "Reverse Lunges with Knee Drive", "Chair Tricep Dips", "Mountain Climbers"] },
-      { day: "Phase 3 - Calisthenics Strength", focus: "Explosive Power & Calisthenics", exercises: ["Pike Push-Ups", "Jump Squats", "Bicycle Crunches", "Doorframe Bodyweight Rows"] },
-      { day: "Phase 4 - Peak Transformation", focus: "Elite Density & Mastery", exercises: ["Push-Ups", "Bodyweight Squats", "Plank to Push-Up", "Burpees"] }
+      { day: "Phase 2 - Hypertrophy & Work Capacity", focus: "Elevated Volume & Mechanical Tension", exercises: ["Diamond Push Ups", "Dips", "Mountain Climbers"] },
+      { day: "Phase 3 - Calisthenics Strength", focus: "Explosive Power & Calisthenics", exercises: ["Pike Push Ups", "Jump Squats", "Bicycle Crunches"] },
+      { day: "Phase 4 - Peak Transformation", focus: "Elite Density & Mastery", exercises: ["Push-ups", "Bodyweight Squats", "Burpees"] }
     ]
   },
   {

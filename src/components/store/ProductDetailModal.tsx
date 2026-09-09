@@ -7,6 +7,7 @@ import {
 import { Product } from "../../types";
 import { useStore } from "../../context/StoreContext";
 import { SizeGuideModal } from "./SizeGuideModal";
+import { ProductImageGallery } from "./ProductImageGallery";
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -84,90 +85,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <X className="w-5 h-5" />
           </button>
 
-          {/* LEFT: Dynamic Product Images & Front/Back Switcher */}
-          <div className="w-full md:w-1/2 bg-slate-100 p-6 flex flex-col justify-between relative select-none">
-            {/* Badges Strip */}
-            <div className="flex items-center gap-2 mb-3">
-              {product.badge && (
-                <span className="px-3 py-1 bg-[#E53935] text-white font-black text-[10px] uppercase tracking-wider rounded-md shadow-xs flex items-center gap-1">
-                  <Flame className="w-3 h-3 fill-white" />
-                  {product.badge}
-                </span>
-              )}
-              {discountPercent && (
-                <span className="px-2.5 py-1 bg-amber-500 text-slate-950 font-black text-[10px] uppercase tracking-wider rounded-md shadow-xs">
-                  SAVE {discountPercent}%
-                </span>
-              )}
-              <span className="px-2 py-1 bg-white text-slate-700 font-bold text-[10px] uppercase tracking-wider rounded-md border border-slate-200 shadow-xs">
-                Official AFH
-              </span>
-            </div>
-
-            {/* Main Stage Image */}
-            <div className="relative aspect-4/5 w-full rounded-2xl overflow-hidden shadow-sm bg-slate-200 border border-slate-200">
-              <img
-                src={currentImage}
-                alt={`${product.name} - ${activeView} view`}
-                className="w-full h-full object-cover object-center transition-all duration-300"
-                loading="eager"
-              />
-
-              {/* Quick Front / Back Flip Pill - Solid Crisp Pill, No Blur */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 bg-slate-900 rounded-full shadow-lg border border-white/20">
-                <button
-                  type="button"
-                  onClick={() => setActiveView("front")}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeView === "front" 
-                      ? "bg-[#E53935] text-white shadow-xs" 
-                      : "text-slate-300 hover:text-white"
-                  }`}
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>Front View</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveView("back")}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeView === "back" 
-                      ? "bg-[#E53935] text-white shadow-xs" 
-                      : "text-slate-300 hover:text-white"
-                  }`}
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Back View</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Thumbnail Pickers */}
-            <div className="flex items-center gap-3 mt-4 justify-center">
-              <button
-                type="button"
-                onClick={() => setActiveView("front")}
-                className={`relative w-14 h-16 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
-                  activeView === "front" ? "border-red-600 ring-2 ring-red-500/20" : "border-slate-300 opacity-70 hover:opacity-100"
-                }`}
-              >
-                <img src={product.frontImage} alt="Front" className="w-full h-full object-cover" />
-                <span className="absolute bottom-0 inset-x-0 bg-slate-900 text-[9px] text-white font-bold text-center py-0.5">FRONT</span>
-              </button>
-
-              {product.backImage && (
-                <button
-                  type="button"
-                  onClick={() => setActiveView("back")}
-                  className={`relative w-14 h-16 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
-                    activeView === "back" ? "border-red-600 ring-2 ring-red-500/20" : "border-slate-300 opacity-70 hover:opacity-100"
-                  }`}
-                >
-                  <img src={product.backImage} alt="Back" className="w-full h-full object-cover" />
-                  <span className="absolute bottom-0 inset-x-0 bg-slate-900 text-[9px] text-white font-bold text-center py-0.5">BACK</span>
-                </button>
-              )}
-            </div>
+          {/* LEFT: Dynamic Product Images (Up to 7 slots & touch swipe) */}
+          <div className="w-full md:w-1/2 bg-slate-100 p-4 sm:p-6 flex flex-col justify-start relative select-none">
+            <ProductImageGallery 
+              product={product} 
+              selectedColor={selectedColor} 
+            />
           </div>
 
           {/* RIGHT: TEMU-STYLE PRODUCT SPECIFICATIONS & PURCHASE ACTIONS */}

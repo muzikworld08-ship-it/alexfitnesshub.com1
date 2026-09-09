@@ -113,6 +113,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // --- Admin Store Notifications ---
+    match /admin_store_notifications/{notifId} {
+      allow read, write: if true;
+    }
+
     // --- Payments ---
     match /payments/{paymentId} {
       allow read, write: if true;

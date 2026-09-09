@@ -7,6 +7,14 @@ import {
   Trash2, Bell, MessageSquare, AlertTriangle, ArrowUpRight, TrendingUp, Info, ShieldAlert
 } from "lucide-react";
 import PersistentDashboardTabs from "./PersistentDashboardTabs";
+import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
+import { 
+  getProgramWaitState, 
+  recordDailyWorkoutCompletion, 
+  clearProgramWaitState,
+  formatRemainingTime
+} from "../utils/programWaitManager";
+import { sendEmail } from "../services/emailNotificationService";
 
 interface DailyPlanSchema {
   wakeUpTime: string;
@@ -78,6 +86,58 @@ export default function DailyPlanView() {
   // Interactive notifications state
   const [activeNotification, setActiveNotification] = useState<string | null>(null);
   const [notificationType, setNotificationType] = useState<string>("");
+
+  // 5-Hour Recovery Cooldown Manager for Daily Plan
+  const [cooldownState, setCooldownState] = useState(() => getProgramWaitState("daily_plan"));
+  const [currentPlanDay, setCurrentPlanDay] = useState<number>(() => {
+    const saved = localStorage.getItem("fit_daily_plan_current_day");
+    return saved ? parseInt(saved, 10) : 1;
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const nextState = getProgramWaitState("daily_plan");
+      setCooldownState((prev) => {
+        if (prev.isWaiting && !nextState.isWaiting) {
+          // 5-hour cooldown period has elapsed; advance to next training day
+          const nextDay = currentPlanDay + 1;
+          setCurrentPlanDay(nextDay);
+          localStorage.setItem("fit_daily_plan_current_day", nextDay.toString());
+          setCompletedExercises({});
+          setTimeout(() => fetchDailyPlan(), 0);
+        }
+        return nextState;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [currentPlanDay]);
+
+  const handleFinishDailyWorkout = async () => {
+    recordDailyWorkoutCompletion("daily_plan", currentPlanDay);
+    setCooldownState(getProgramWaitState("daily_plan"));
+
+    if (user?.email) {
+      sendEmail({
+        to: user.email,
+        recipientName: user.displayName || undefined,
+        programName: "Daily Adaptive Training Protocol",
+        dayNumber: currentPlanDay,
+        caloriesBurned: 320,
+        exercisesCompleted: plan?.workoutExercises ? plan.workoutExercises.map(e => e.name) : ["Full daily movement session"],
+        subject: `🎉 Congratulations on Completing Day ${currentPlanDay} - Daily Adaptive Plan!`
+      }).catch(err => console.warn("[DailyPlan] Failed to trigger email:", err));
+    }
+  };
+
+  const handleBypassDailyCooldown = () => {
+    clearProgramWaitState("daily_plan");
+    setCooldownState(getProgramWaitState("daily_plan"));
+    const nextDay = currentPlanDay + 1;
+    setCurrentPlanDay(nextDay);
+    localStorage.setItem("fit_daily_plan_current_day", nextDay.toString());
+    setCompletedExercises({});
+    fetchDailyPlan();
+  };
 
   // Setup initial mock log / seed logs
   useEffect(() => {
@@ -595,7 +655,7 @@ export default function DailyPlanView() {
               <div className="flex items-center gap-2">
                 <Dumbbell className="w-5 h-5 text-purple-500" />
                 <h2 className="text-base font-black text-slate-900 uppercase tracking-tight">
-                  Workout Session Movements
+                  Day {currentPlanDay} Workout Session Movements
                 </h2>
               </div>
               <div className="text-right">
@@ -604,67 +664,104 @@ export default function DailyPlanView() {
               </div>
             </div>
 
-            {/* Health restrictions note */}
-            {user?.healthRestrictions && user.healthRestrictions !== "None" && (
-              <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl mb-4 flex gap-2 items-start">
-                <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                <div className="text-[11px] text-rose-950">
-                  <span className="font-extrabold block">Health restrictions adaptation:</span>
-                  {plan?.injuryRestoration || `Bypassing biomechanical stresses that trigger your ${user.healthRestrictions}. Monitor strain levels carefully.`}
-                </div>
+            {/* If 5-hour cool-down is active, show the ProgramCooldownWaitingScreen */}
+            {cooldownState.isWaiting ? (
+              <div className="mt-2 mb-4">
+                <ProgramCooldownWaitingScreen
+                  programId="daily_plan"
+                  programName="Daily Adaptive Training Protocol"
+                  completedDay={cooldownState.completedDay}
+                  nextDay={cooldownState.nextDay}
+                  nextUnlockAt={cooldownState.nextUnlockAt}
+                  onReviewTodayWorkout={() => {}}
+                  onUnlocked={handleBypassDailyCooldown}
+                />
               </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-              {plan?.workoutExercises ? (
-                plan.workoutExercises.map((ex, index) => {
-                  const isChecked = !!completedExercises[ex.name];
-                  return (
-                    <div 
-                      key={ex.name} 
-                      onClick={() => toggleExerciseCheck(ex.name, index)}
-                      className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all duration-200 select-none ${
-                        isChecked 
-                          ? "border-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10" 
-                          : "border-slate-100 hover:border-slate-200:border-slate-800 bg-slate-50"
-                      }`}
-                    >
-                      <div className="flex justify-between items-start gap-3">
-                        <div className="flex-1">
-                          <h4 className={`text-xs font-black uppercase tracking-tight ${isChecked ? "text-emerald-500 line-through" : "text-slate-900"}`}>
-                            {ex.name}
-                          </h4>
-                          <span className="text-[10px] font-mono font-extrabold text-[#10B981] mt-0.5 block">
-                            {ex.sets} SETS &bull; {ex.reps} REPS &bull; {ex.rest}s REST
-                          </span>
-                          <p className="text-[10px] text-slate-400 mt-1 leading-normal">
-                            {ex.desc}
-                          </p>
-                        </div>
-                        <div className={`w-5 h-5 border-2 rounded-md shrink-0 flex items-center justify-center transition-all ${
-                          isChecked ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-300"
-                        }`}>
-                          {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                        </div>
-                      </div>
+            ) : (
+              <>
+                {/* Health restrictions note */}
+                {user?.healthRestrictions && user.healthRestrictions !== "None" && (
+                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl mb-4 flex gap-2 items-start">
+                    <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                    <div className="text-[11px] text-rose-950">
+                      <span className="font-extrabold block">Health restrictions adaptation:</span>
+                      {plan?.injuryRestoration || `Bypassing biomechanical stresses that trigger your ${user.healthRestrictions}. Monitor strain levels carefully.`}
                     </div>
-                  );
-                })
-              ) : (
-                <div className="col-span-2 text-center py-8 text-xs text-slate-400 font-mono">
-                  No customized movements loaded. Initiate onboarding or click refresh.
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
 
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-              <span className="font-mono text-[9px] text-slate-400 uppercase tracking-widest block mb-1">
-                CARDIO RECOMMENDATION TODAY:
-              </span>
-              <p className="font-bold text-slate-800">
-                🚀 {plan?.cardioRecommendation || "15-20 min post-lifting steady walk or jog."}
-              </p>
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+                  {plan?.workoutExercises ? (
+                    plan.workoutExercises.map((ex, index) => {
+                      const isChecked = !!completedExercises[ex.name];
+                      return (
+                        <div 
+                          key={ex.name} 
+                          onClick={() => toggleExerciseCheck(ex.name, index)}
+                          className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all duration-200 select-none ${
+                            isChecked 
+                              ? "border-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10" 
+                              : "border-slate-100 hover:border-slate-200 bg-slate-50"
+                          }`}
+                        >
+                          <div className="flex justify-between items-start gap-3">
+                            <div className="flex-1">
+                              <h4 className={`text-xs font-black uppercase tracking-tight ${isChecked ? "text-emerald-500 line-through" : "text-slate-900"}`}>
+                                {ex.name}
+                              </h4>
+                              <span className="text-[10px] font-mono font-extrabold text-[#10B981] mt-0.5 block">
+                                {ex.sets} SETS &bull; {ex.reps} REPS &bull; {ex.rest}s REST
+                              </span>
+                              <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                                {ex.desc}
+                              </p>
+                            </div>
+                            <div className={`w-5 h-5 border-2 rounded-md shrink-0 flex items-center justify-center transition-all ${
+                              isChecked ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-300"
+                            }`}>
+                              {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="col-span-2 text-center py-8 text-xs text-slate-400 font-mono">
+                      No customized movements loaded. Initiate onboarding or click refresh.
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                  <span className="font-mono text-[9px] text-slate-400 uppercase tracking-widest block mb-1">
+                    CARDIO RECOMMENDATION TODAY:
+                  </span>
+                  <p className="font-bold text-slate-800">
+                    🚀 {plan?.cardioRecommendation || "15-20 min post-lifting steady walk or jog."}
+                  </p>
+                </div>
+
+                {/* Workout Finish & 5-Hour Recovery Activation Bar */}
+                <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-tight text-slate-900">
+                      Day {currentPlanDay} Routine Progress
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      {Object.values(completedExercises).filter(Boolean).length} of {plan?.workoutExercises?.length || 0} drills completed. Finishing activates your 5-hour recovery window.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleFinishDailyWorkout}
+                    className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-red-600/20 transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Complete Day {currentPlanDay} & Start 5-Hr Recovery</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* DYNAMIC MEAL CALCULATOR & TRACKER */}

@@ -28,6 +28,8 @@ import { getExerciseGifUrl } from "../data/exercises";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
 import { preloadImage } from "../utils/imageCache";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
+import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
+import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
 
 interface HomeChallengeState {
   userId: string;
@@ -406,6 +408,7 @@ export default function HomeWorkoutChallengeView() {
     saveState(newState);
 
     if (!isCompleted) {
+      recordDailyWorkoutCompletion("home_180_challenge", dayNum);
       setCelebrationModalData({
         isOpen: true,
         completedDay: dayNum,
@@ -1215,6 +1218,25 @@ export default function HomeWorkoutChallengeView() {
               <ChevronRight className="w-4 h-4 text-slate-700" />
             </button>
           </div>
+
+          {/* 5-Hour Cooldown Recovery Guard */}
+          {(() => {
+            const homeWait = getProgramWaitState("home_180_challenge");
+            if (homeWait.isWaiting && selectedDayNumber > homeWait.completedDay) {
+              return (
+                <ProgramCooldownWaitingScreen
+                  programId="home_180_challenge"
+                  programName="180 Day Home Workout Challenge"
+                  completedDay={homeWait.completedDay}
+                  nextDay={homeWait.nextDay}
+                  nextUnlockAt={homeWait.nextUnlockAt}
+                  onReviewTodayWorkout={() => setSelectedDayNumber(homeWait.completedDay)}
+                  onUnlocked={() => setSelectedDayNumber(homeWait.nextDay)}
+                />
+              );
+            }
+            return null;
+          })()}
 
           {/* Workout Header Info */}
           <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-4">

@@ -5,10 +5,13 @@ import { ChallengeValidationService } from "../services/challengeValidationServi
 import { useApp } from "../context/AppContext";
 import { db } from "../lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { 
+  getProgramWaitState, 
+  recordDailyWorkoutCompletion, 
+  clearProgramWaitState 
+} from "../utils/programWaitManager";
 
 const STORAGE_KEY_PREFIX = "alex_challenge_engine_state_v3_";
-const UNLOCK_HOURS = 7;
-const UNLOCK_MILLISECONDS = UNLOCK_HOURS * 60 * 60 * 1000; // Exactly 7 hours in ms
 
 const DEFAULT_PROGRAM_STATE = (programId: ProgramId): ProgramProgressState => ({
   programId,
@@ -40,15 +43,6 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
   });
   
   const [isLoaded, setIsLoaded] = useState(false);
-  const [currentTimeMs, setCurrentTimeMs] = useState<number>(Date.now());
-
-  // 1. Ticking clock for exact 7-hour unlock calculation
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTimeMs(Date.now());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // 2. Load independent program progress from local storage & Firestore
   useEffect(() => {
@@ -64,12 +58,21 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
       console.warn("Could not read local challenge engine state:", e);
     }
 
+    const cleanLoadedState = (raw?: Partial<ProgramProgressState>, pid?: ProgramId): ProgramProgressState => {
+      const base = DEFAULT_PROGRAM_STATE(pid || "immortal_90");
+      return {
+        ...base,
+        ...(raw || {}),
+        nextWorkoutUnlockTime: null // Clear any legacy strict lock
+      };
+    };
+
     const merged: Record<ProgramId, ProgramProgressState> = {
-      immortal_90: { ...DEFAULT_PROGRAM_STATE("immortal_90"), ...(loadedStates.immortal_90 || {}) },
-      home_180: { ...DEFAULT_PROGRAM_STATE("home_180"), ...(loadedStates.home_180 || {}) },
-      women_confidence: { ...DEFAULT_PROGRAM_STATE("women_confidence"), ...(loadedStates.women_confidence || {}) },
-      belly_fat_shred: { ...DEFAULT_PROGRAM_STATE("belly_fat_shred"), ...(loadedStates.belly_fat_shred || {}) },
-      posture_vitality: { ...DEFAULT_PROGRAM_STATE("posture_vitality"), ...(loadedStates.posture_vitality || {}) }
+      immortal_90: cleanLoadedState(loadedStates.immortal_90, "immortal_90"),
+      home_180: cleanLoadedState(loadedStates.home_180, "home_180"),
+      women_confidence: cleanLoadedState(loadedStates.women_confidence, "women_confidence"),
+      belly_fat_shred: cleanLoadedState(loadedStates.belly_fat_shred, "belly_fat_shred"),
+      posture_vitality: cleanLoadedState(loadedStates.posture_vitality, "posture_vitality")
     };
 
     setAllProgramStates(merged);
@@ -83,11 +86,11 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
           const remoteData = snap.data() as Partial<Record<ProgramId, ProgramProgressState>>;
           setAllProgramStates(prev => {
             const remoteMerged: Record<ProgramId, ProgramProgressState> = {
-              immortal_90: { ...prev.immortal_90, ...(remoteData.immortal_90 || {}) },
-              home_180: { ...prev.home_180, ...(remoteData.home_180 || {}) },
-              women_confidence: { ...prev.women_confidence, ...(remoteData.women_confidence || {}) },
-              belly_fat_shred: { ...prev.belly_fat_shred, ...(remoteData.belly_fat_shred || {}) },
-              posture_vitality: { ...prev.posture_vitality, ...(remoteData.posture_vitality || {}) }
+              immortal_90: cleanLoadedState({ ...prev.immortal_90, ...(remoteData.immortal_90 || {}) }, "immortal_90"),
+              home_180: cleanLoadedState({ ...prev.home_180, ...(remoteData.home_180 || {}) }, "home_180"),
+              women_confidence: cleanLoadedState({ ...prev.women_confidence, ...(remoteData.women_confidence || {}) }, "women_confidence"),
+              belly_fat_shred: cleanLoadedState({ ...prev.belly_fat_shred, ...(remoteData.belly_fat_shred || {}) }, "belly_fat_shred"),
+              posture_vitality: cleanLoadedState({ ...prev.posture_vitality, ...(remoteData.posture_vitality || {}) }, "posture_vitality")
             };
             try {
               localStorage.setItem(storageKey, JSON.stringify(remoteMerged));
@@ -124,43 +127,6 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
   const currentProgress = allProgramStates[activeProgramId] || DEFAULT_PROGRAM_STATE(activeProgramId);
   const metadata = CHALLENGE_PROGRAMS_METADATA[activeProgramId];
 
-  // Check 7-hour unlock condition: Has unlock time expired?
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    let hasChanges = false;
-    const nextStates = { ...allProgramStates };
-
-    (Object.keys(nextStates) as ProgramId[]).forEach((pid) => {
-      const prog = nextStates[pid];
-      if (prog.workoutCompleted && prog.nextWorkoutUnlockTime) {
-        if (currentTimeMs >= prog.nextWorkoutUnlockTime) {
-          // 7 hours have elapsed! Advance to next day and unlock!
-          const maxDays = CHALLENGE_PROGRAMS_METADATA[pid].totalDays;
-          const nextDay = Math.min(maxDays, prog.currentDay + 1);
-
-          nextStates[pid] = {
-            ...prog,
-            currentDay: nextDay,
-            workoutStarted: false,
-            workoutCompleted: false,
-            startedAt: null,
-            completedAt: null,
-            exercisesCompleted: [],
-            completionPercentage: 0,
-            nextWorkoutUnlockTime: null
-          };
-          hasChanges = true;
-        }
-      }
-    });
-
-    if (hasChanges) {
-      setAllProgramStates(nextStates);
-      persistState(nextStates);
-    }
-  }, [currentTimeMs, isLoaded, allProgramStates, persistState]);
-
   // Resolve today's workout plan
   const workoutPlan: DayExecutionPlan = useMemo(() => {
     return getWorkoutForProgramAndDay(activeProgramId, currentProgress.currentDay);
@@ -182,21 +148,21 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
     });
   }, [workoutPlan, activeProgramId, currentProgress.currentDay, currentProgress.exercisesCompleted]);
 
-  // Unlock Timer Countdown formatted string (e.g. "06:59:59")
-  const unlockCountdown = useMemo(() => {
-    if (!currentProgress.workoutCompleted || !currentProgress.nextWorkoutUnlockTime) {
-      return null;
-    }
-    const diff = currentProgress.nextWorkoutUnlockTime - currentTimeMs;
-    if (diff <= 0) return "00:00:00";
+  // 5-Hour Cool-down Recovery Timer State
+  const [cooldownWaitState, setCooldownWaitState] = useState(() => getProgramWaitState(activeProgramId));
 
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const secs = Math.floor((diff % (1000 * 60)) / 1000);
+  useEffect(() => {
+    setCooldownWaitState(getProgramWaitState(activeProgramId));
+    const interval = setInterval(() => {
+      const state = getProgramWaitState(activeProgramId);
+      setCooldownWaitState(state);
+    }, 1000);
 
-    const pad = (n: number) => n.toString().padStart(2, "0");
-    return `${pad(hours)}:${pad(mins)}:${pad(secs)}`;
-  }, [currentProgress.workoutCompleted, currentProgress.nextWorkoutUnlockTime, currentTimeMs]);
+    return () => clearInterval(interval);
+  }, [activeProgramId]);
+
+  const unlockCountdown = cooldownWaitState.isWaiting ? cooldownWaitState.remainingFormatted : null;
+  const isLockedAwaitingTimer = cooldownWaitState.isWaiting;
 
   // Actions
   const startTodayWorkout = useCallback(() => {
@@ -237,9 +203,11 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
   }, [currentProgress, validatedExercises.length, allProgramStates, activeProgramId, persistState]);
 
   const completeTodayWorkout = useCallback(() => {
-    const now = Date.now();
-    const unlockTime = now + UNLOCK_MILLISECONDS; // Exactly 7 hours from now
     const completedAtStr = new Date().toISOString();
+
+    // Trigger mandatory 5-hour cool-down recovery logic
+    const waitRecord = recordDailyWorkoutCompletion(activeProgramId, currentProgress.currentDay);
+    setCooldownWaitState(getProgramWaitState(activeProgramId));
 
     const historyRecord = {
       dayNumber: currentProgress.currentDay,
@@ -254,7 +222,7 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
       workoutCompleted: true,
       completedAt: completedAtStr,
       completionPercentage: 100,
-      nextWorkoutUnlockTime: unlockTime,
+      nextWorkoutUnlockTime: waitRecord.nextUnlockAt,
       totalCompletedWorkouts: currentProgress.totalCompletedWorkouts + 1,
       currentStreak: currentProgress.currentStreak + 1,
       history: {
@@ -268,8 +236,8 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
     persistState(nextStates);
   }, [currentProgress, workoutPlan.meta.category, validatedExercises.length, allProgramStates, activeProgramId, persistState]);
 
-  // Admin bypass to test next workout without waiting 7 hours
-  const adminBypassUnlock = useCallback(() => {
+  // Advance to next workout day immediately without strict lock
+  const advanceToNextDay = useCallback(() => {
     const maxDays = CHALLENGE_PROGRAMS_METADATA[activeProgramId].totalDays;
     const nextDay = Math.min(maxDays, currentProgress.currentDay + 1);
 
@@ -289,6 +257,13 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
     setAllProgramStates(nextStates);
     persistState(nextStates);
   }, [activeProgramId, currentProgress, allProgramStates, persistState]);
+
+  // Admin / Test bypass to unlock cooldown immediately
+  const adminBypassUnlock = useCallback(() => {
+    clearProgramWaitState(activeProgramId);
+    setCooldownWaitState(getProgramWaitState(activeProgramId));
+    advanceToNextDay();
+  }, [activeProgramId, advanceToNextDay]);
 
   // Jump to specific day (e.g. Day 1, 2, 3, 4, 5, 6, 7... 90)
   const jumpToDay = useCallback((day: number) => {
@@ -332,10 +307,12 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
     workoutPlan,
     validatedExercises,
     unlockCountdown,
-    isLockedAwaitingTimer: currentProgress.workoutCompleted && (currentProgress.nextWorkoutUnlockTime ? currentTimeMs < currentProgress.nextWorkoutUnlockTime : false),
+    isLockedAwaitingTimer,
+    cooldownWaitState,
     startTodayWorkout,
     toggleExerciseComplete,
     completeTodayWorkout,
+    advanceToNextDay,
     adminBypassUnlock,
     jumpToDay,
     resetProgramProgress

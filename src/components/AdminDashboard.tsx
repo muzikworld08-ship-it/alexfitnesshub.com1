@@ -19,6 +19,7 @@ import UnifiedExerciseMedia from "./UnifiedExerciseMedia";
 import { AssetManifestService } from "../services/AssetManifestService";
 import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
 import { uploadAdminMedia, getAdminMediaUrl, resolveAdminMediaUrl } from "../lib/mediaStorage";
+import { sendEmail } from "../services/emailNotificationService";
 
 export default function AdminDashboard() {
   const { 
@@ -53,6 +54,44 @@ export default function AdminDashboard() {
   const [enrollGymOrHome, setEnrollGymOrHome] = useState<"Gym" | "Home">("Gym");
   const [enrollStatus, setEnrollStatus] = useState("");
   const [enrollLoading, setEnrollLoading] = useState(false);
+
+  // Exercise Completion Congrats Email Trigger
+  const [congratsEmailTo, setCongratsEmailTo] = useState("muzikworld08@gmail.com");
+  const [congratsAthleteName, setCongratsAthleteName] = useState("Athlete");
+  const [congratsProgram, setCongratsProgram] = useState("90-Day Immortal Strength Challenge");
+  const [congratsDay, setCongratsDay] = useState(1);
+  const [congratsCalories, setCongratsCalories] = useState(350);
+  const [congratsLoading, setCongratsLoading] = useState(false);
+  const [congratsStatus, setCongratsStatus] = useState<string | null>(null);
+
+  const handleSendCongratsEmail = async () => {
+    if (!congratsEmailTo) {
+      alert("Please enter a valid recipient email address.");
+      return;
+    }
+    setCongratsLoading(true);
+    setCongratsStatus(null);
+    try {
+      const res = await sendEmail({
+        to: congratsEmailTo,
+        recipientName: congratsAthleteName,
+        programName: congratsProgram,
+        dayNumber: congratsDay,
+        caloriesBurned: congratsCalories,
+        exercisesCompleted: ["Barbell Back Squat", "Romanian Deadlift", "Dumbbell Walking Lunges"],
+        subject: `🎉 Congratulations on Crushing Day ${congratsDay} of ${congratsProgram}!`
+      });
+      if (res.success) {
+        setCongratsStatus(`Congrats email successfully dispatched via ${res.provider}! (Message ID: ${res.id || "ok"})`);
+      } else {
+        setCongratsStatus(`Dispatch result: ${res.error || "Email logged or queued."}`);
+      }
+    } catch (err: any) {
+      setCongratsStatus(`Failed to send email: ${err.message || String(err)}`);
+    } finally {
+      setCongratsLoading(false);
+    }
+  };
 
   const handleFileUpload = async (exerciseId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1011,6 +1050,107 @@ export default function AdminDashboard() {
                     enrollStatus.includes("Successfully") ? "text-emerald-700 bg-emerald-50" : "text-amber-700 bg-amber-50"
                   }`}>
                     {enrollStatus}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* ATHLETE EXERCISE COMPLETION & CONGRATS EMAIL DISPATCHER */}
+            <div className="lg:col-span-12 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 space-y-6 shadow-xs text-left">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100">
+                  <CheckCircle2 className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">
+                    Athlete Exercise Completion & Congrats Email Trigger
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Test and trigger the automated 'Congrats' email sent to an athlete whenever an exercise or daily workout routine is completed.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                {/* Target Email */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-extrabold uppercase font-mono tracking-wider text-slate-500">Recipient Email</label>
+                  <input
+                    type="email"
+                    value={congratsEmailTo}
+                    onChange={(e) => setCongratsEmailTo(e.target.value)}
+                    placeholder="e.g. muzikworld08@gmail.com"
+                    className="w-full text-xs font-bold p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-red-600"
+                  />
+                </div>
+
+                {/* Recipient Name */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-extrabold uppercase font-mono tracking-wider text-slate-500">Athlete Name</label>
+                  <input
+                    type="text"
+                    value={congratsAthleteName}
+                    onChange={(e) => setCongratsAthleteName(e.target.value)}
+                    placeholder="Athlete Name"
+                    className="w-full text-xs font-bold p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-red-600"
+                  />
+                </div>
+
+                {/* Challenge / Program Title */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-extrabold uppercase font-mono tracking-wider text-slate-500">Program / Challenge</label>
+                  <input
+                    type="text"
+                    value={congratsProgram}
+                    onChange={(e) => setCongratsProgram(e.target.value)}
+                    className="w-full text-xs font-bold p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-red-600"
+                  />
+                </div>
+
+                {/* Day Number */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-extrabold uppercase font-mono tracking-wider text-slate-500">Day Completed (1-90)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="90"
+                    value={congratsDay}
+                    onChange={(e) => setCongratsDay(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full text-xs font-bold p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-red-600"
+                  />
+                </div>
+
+                {/* Estimated Calories */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-extrabold uppercase font-mono tracking-wider text-slate-500">Estimated Burn (Kcal)</label>
+                  <input
+                    type="number"
+                    min="50"
+                    max="2000"
+                    value={congratsCalories}
+                    onChange={(e) => setCongratsCalories(Math.max(50, parseInt(e.target.value) || 300))}
+                    className="w-full text-xs font-bold p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-red-600"
+                  />
+                </div>
+
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-100 pt-4">
+                <button
+                  onClick={handleSendCongratsEmail}
+                  disabled={congratsLoading}
+                  className="w-full sm:w-auto px-6 py-3 bg-amber-600 text-white hover:bg-amber-700 disabled:bg-slate-300 font-sans font-extrabold text-xs uppercase rounded-xl shadow-xs transition duration-150 cursor-pointer text-center inline-flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{congratsLoading ? "Dispatching Email..." : "Trigger Exercise Congrats Email (sendEmail)"}</span>
+                </button>
+
+                {congratsStatus && (
+                  <p className={`text-xs font-bold p-3 rounded-xl ${
+                    congratsStatus.includes("successfully") ? "text-emerald-700 bg-emerald-50" : "text-amber-700 bg-amber-50"
+                  }`}>
+                    {congratsStatus}
                   </p>
                 )}
               </div>

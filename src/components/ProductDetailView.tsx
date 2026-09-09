@@ -8,6 +8,7 @@ import {
 import { Product } from "../types";
 import { useStore } from "../context/StoreContext";
 import { SizeGuideModal } from "./store/SizeGuideModal";
+import { ProductImageGallery } from "./store/ProductImageGallery";
 
 interface ProductDetailViewProps {
   setView: (view: string) => void;
@@ -161,98 +162,12 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ setView })
         {/* Top Product Hero: 2-Column Showcase */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-4 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* LEFT 6-COLS: Interactive Image Showcase */}
+          {/* LEFT 6-COLS: Interactive Image Showcase with up to 7 slots & touch-swipe */}
           <div className="lg:col-span-6 flex flex-col space-y-4">
-            
-            {/* Main Stage Image with Badges and View Toggle */}
-            <div className="relative aspect-4/5 w-full bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 select-none shadow-2xs">
-              
-              {/* Badges Top-Left */}
-              <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                {product.badge && (
-                  <span className="px-3 py-1 bg-red-600 text-white font-black text-xs uppercase tracking-wider rounded-md shadow-sm flex items-center gap-1.5">
-                    <Flame className="w-3.5 h-3.5 fill-white" />
-                    {product.badge}
-                  </span>
-                )}
-                {discountPercent && (
-                  <span className="px-3 py-1 bg-slate-900 text-amber-400 font-black text-xs uppercase tracking-wider rounded-md shadow-sm">
-                    SAVE {discountPercent}%
-                  </span>
-                )}
-                <span className="px-2.5 py-1 bg-white text-slate-800 font-bold text-[10px] uppercase tracking-wider rounded-md border border-slate-200 shadow-xs">
-                  100% Authentic AFH
-                </span>
-              </div>
-
-              {/* Main Image */}
-              <img
-                src={currentImage}
-                alt={`${product.name} - ${activeView} view`}
-                className="w-full h-full object-cover object-center transition-all duration-300 hover:scale-102"
-              />
-
-              {/* Front / Back Toggle Pill Anchored at Bottom Center */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 p-1.5 bg-slate-900/90 rounded-full shadow-lg border border-white/20">
-                <button
-                  type="button"
-                  onClick={() => setActiveView("front")}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeView === "front" 
-                      ? "bg-red-600 text-white shadow-xs" 
-                      : "text-slate-300 hover:text-white"
-                  }`}
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>Front View</span>
-                </button>
-                {product.backImage && (
-                  <button
-                    type="button"
-                    onClick={() => setActiveView("back")}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      activeView === "back" 
-                        ? "bg-red-600 text-white shadow-xs" 
-                        : "text-slate-300 hover:text-white"
-                    }`}
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Back View</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Thumbnail Selectors */}
-            <div className="flex items-center gap-3 justify-center pt-1">
-              <button
-                type="button"
-                onClick={() => setActiveView("front")}
-                className={`relative w-16 h-20 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
-                  activeView === "front" 
-                    ? "border-red-600 ring-2 ring-red-500/20 scale-105" 
-                    : "border-slate-200 opacity-70 hover:opacity-100"
-                }`}
-              >
-                <img src={product.frontImage} alt="Front Thumbnail" className="w-full h-full object-cover" />
-                <span className="absolute bottom-0 inset-x-0 bg-slate-900/90 text-[9px] text-white font-bold text-center py-0.5">FRONT</span>
-              </button>
-
-              {product.backImage && (
-                <button
-                  type="button"
-                  onClick={() => setActiveView("back")}
-                  className={`relative w-16 h-20 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
-                    activeView === "back" 
-                      ? "border-red-600 ring-2 ring-red-500/20 scale-105" 
-                      : "border-slate-200 opacity-70 hover:opacity-100"
-                  }`}
-                >
-                  <img src={product.backImage} alt="Back Thumbnail" className="w-full h-full object-cover" />
-                  <span className="absolute bottom-0 inset-x-0 bg-slate-900/90 text-[9px] text-white font-bold text-center py-0.5">BACK</span>
-                </button>
-              )}
-            </div>
+            <ProductImageGallery 
+              product={product} 
+              selectedColor={selectedColor} 
+            />
 
             {/* Quality Guarantees Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-[11px]">

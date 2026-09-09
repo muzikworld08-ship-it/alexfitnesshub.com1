@@ -255,7 +255,7 @@ export interface ChallengeItem {
 }
 
 // --- ALEXFITNESSHUB STORE TYPES ---
-export type ProductCategory = "Men" | "Women" | "ALEXFITNESSHUB Collections";
+export type ProductCategory = "Men" | "Women" | "ALEXFITNESSHUB Collections" | string;
 
 export interface ProductColor {
   name: string;
@@ -269,8 +269,17 @@ export interface ProductSizeGuide {
   hips?: string;
   length?: string;
   inseam?: string;
-  fitType?: "Compression" | "Athletic Tapered" | "True to Size" | "Oversized Fit";
+  fitType?: "Compression" | "Athletic Tapered" | "True to Size" | "Oversized Fit" | string;
   notes?: string;
+}
+
+export interface ProductImage {
+  id: string;
+  url: string;
+  displayOrder: number;
+  isPrimary: boolean;
+  altText?: string;
+  createdAt?: string;
 }
 
 export interface Product {
@@ -280,13 +289,14 @@ export interface Product {
   category: ProductCategory;
   price: number; // in NGN
   originalPrice?: number; // optional strike-through price
-  frontImage: string;
-  backImage: string;
-  images?: string[];
+  frontImage: string; // primary main product image
+  backImage?: string;
+  images: string[]; // array of up to 7 image URLs (index 0 is primary)
+  gallery?: ProductImage[]; // dedicated structured relationship
   sizes: string[]; // e.g. ["S", "M", "L", "XL", "XXL"]
   colors: ProductColor[];
   stock: number;
-  sizeStock?: Record<string, number>;
+  sizeStock?: Record<string, number | undefined>;
   sizeGuide?: ProductSizeGuide;
   fabric?: string;
   features?: string[];
@@ -325,6 +335,24 @@ export interface StoreDeliveryInfo {
   deliveryNotes?: string;
 }
 
+export type StoreOrderStatus = 
+  | "new" 
+  | "confirmed" 
+  | "processing" 
+  | "ready_for_delivery" 
+  | "shipped" 
+  | "delivered" 
+  | "cancelled" 
+  | "refunded"
+  | "pending";
+
+export interface OrderStatusHistoryItem {
+  status: StoreOrderStatus;
+  timestamp: string;
+  note?: string;
+  updatedBy?: string;
+}
+
 export interface StoreOrder {
   id: string;
   orderNumber: string;
@@ -339,12 +367,32 @@ export interface StoreOrder {
   discount: number;
   totalAmount: number;
   currency: string;
-  paymentStatus: "pending" | "paid" | "failed";
+  paymentStatus: "pending" | "paid" | "failed" | "refunded";
   paymentReference?: string;
-  orderStatus: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  orderStatus: StoreOrderStatus;
+  statusHistory?: OrderStatusHistoryItem[];
   trackingNumber?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;
 }
+
+export interface AdminStoreNotification {
+  id: string;
+  type: "store_order";
+  title: string;
+  orderId: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  productSummary: string;
+  itemCount: number;
+  totalAmount: number;
+  paymentStatus: "pending" | "paid" | "failed";
+  orderStatus: StoreOrderStatus;
+  read: boolean;
+  createdAt: string;
+}
+
 

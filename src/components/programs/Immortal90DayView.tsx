@@ -32,6 +32,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import WorkoutCelebrationModal from "../WorkoutCelebrationModal";
+import ProgramCooldownWaitingScreen from "../ProgramCooldownWaitingScreen";
+import { recordDailyWorkoutCompletion, getProgramWaitState } from "../../utils/programWaitManager";
 
 interface Immortal90DayViewProps {
   onBackToPrograms?: () => void;
@@ -205,6 +207,8 @@ export default function Immortal90DayView({ onBackToPrograms, onNavigateToCatego
         completedExercisesByDay: newMap
       };
     });
+
+    recordDailyWorkoutCompletion("immortal_90", selectedDay);
 
     setCelebrationModalData({
       isOpen: true,
@@ -480,6 +484,27 @@ export default function Immortal90DayView({ onBackToPrograms, onNavigateToCatego
             </div>
           </div>
         </div>
+
+        {/* 5-Hour Cooldown Recovery Guard */}
+        {(() => {
+          const waitState = getProgramWaitState("immortal_90");
+          if (waitState.isWaiting && selectedDay > waitState.completedDay) {
+            return (
+              <div className="mb-8">
+                <ProgramCooldownWaitingScreen
+                  programId="immortal_90"
+                  programName="90-Day Immortal Transformation Challenge"
+                  completedDay={waitState.completedDay}
+                  nextDay={waitState.nextDay}
+                  nextUnlockAt={waitState.nextUnlockAt}
+                  onReviewTodayWorkout={() => setSelectedDay(waitState.completedDay)}
+                  onUnlocked={() => setSelectedDay(waitState.nextDay)}
+                />
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         {/* WORKOUT INTERACTIVE STAGE: 2 Columns */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

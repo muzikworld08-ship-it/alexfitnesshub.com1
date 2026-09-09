@@ -11,6 +11,8 @@ import { CHALLENGE_PROGRAMS_METADATA, getWorkoutForProgramAndDay } from "../data
 import { ChallengeValidationService } from "../services/challengeValidationService";
 import { ProgramId, ChallengeExerciseItem } from "../types/challengeEngine";
 import { useApp, isEmailAdmin } from "../context/AppContext";
+import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
+import { sendEmail } from "../services/emailNotificationService";
 
 export default function WorkoutChallengeDashboard() {
   const { user } = useApp();
@@ -27,9 +29,11 @@ export default function WorkoutChallengeDashboard() {
     validatedExercises,
     unlockCountdown,
     isLockedAwaitingTimer,
+    cooldownWaitState,
     startTodayWorkout,
     toggleExerciseComplete,
     completeTodayWorkout,
+    advanceToNextDay,
     adminBypassUnlock,
     jumpToDay,
     resetProgramProgress
@@ -43,6 +47,9 @@ export default function WorkoutChallengeDashboard() {
   // Viewed day vs actual current prescribed day
   const viewingDay = selectedDay ?? currentProgress.currentDay;
   const isViewingCurrentDay = viewingDay === currentProgress.currentDay;
+
+  // Check if viewed day is locked behind the 5-hour cool-down period
+  const isCooldownLockedForDay = isLockedAwaitingTimer && viewingDay >= cooldownWaitState.nextDay;
 
   // Dynamically resolve workout plan and validated exercises for viewed day
   const displayPlan = useMemo(() => {
@@ -72,9 +79,22 @@ export default function WorkoutChallengeDashboard() {
   const totalCount = displayExercises.length;
   const allExercisesFinished = totalCount > 0 && completedCount >= totalCount;
 
-  const handleFinishWorkout = () => {
+  const handleFinishWorkout = async () => {
     completeTodayWorkout();
     setShowCelebration(true);
+
+    // Trigger Congrats Email via Resend / MailerSend
+    if (user?.email) {
+      sendEmail({
+        to: user.email,
+        recipientName: user.displayName || undefined,
+        programName: metadata.name,
+        dayNumber: currentProgress.currentDay,
+        caloriesBurned: 350,
+        exercisesCompleted: validatedExercises.map(e => e.exerciseName)
+      }).catch(err => console.warn("[WorkoutChallenge] Failed to dispatch congrats email:", err));
+    }
+
     setTimeout(() => setShowCelebration(false), 5000);
   };
 
@@ -349,72 +369,30 @@ export default function WorkoutChallengeDashboard() {
                 </div>
               </div>
 
-              {/* Admin Bypass Controls */}
-              {isAdmin && (
-                <div className="pt-2 border-t border-neutral-800 flex items-center justify-between">
-                  <span className="text-[11px] text-amber-400 font-medium flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5" /> Admin Override
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={adminBypassUnlock}
-                      className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30"
-                      title="Advance to next day without 7 hour delay"
-                    >
-                      Unlock Next Day
-                    </button>
-                    <button
-                      onClick={() => resetProgramProgress()}
-                      className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
-                    >
-                      Reset Day 1
-                    </button>
-                  </div>
+              {/* Quick Jump / Reset Controls */}
+              <div className="pt-2 border-t border-neutral-800 flex items-center justify-between">
+                <span className="text-[11px] text-neutral-400 font-medium flex items-center gap-1">
+                  <Flame className="w-3.5 h-3.5 text-amber-500" /> Challenge Navigator
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => adminBypassUnlock()}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30"
+                    title="Advance to next training day"
+                  >
+                    Next Day
+                  </button>
+                  <button
+                    onClick={() => resetProgramProgress()}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                  >
+                    Reset Day 1
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
-
-        {/* 3. STRICT 7-HOUR LOCK STATUS BANNER */}
-        {isLockedAwaitingTimer && (
-          <div className="mb-8 p-6 rounded-3xl bg-gradient-to-r from-red-950/40 via-neutral-900 to-neutral-900 border-2 border-red-500/40 shadow-xl">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-4 text-center md:text-left">
-                <div className="w-14 h-14 rounded-2xl bg-red-600/20 border border-red-500/40 flex items-center justify-center shrink-0">
-                  <Lock className="w-7 h-7 text-red-400" />
-                </div>
-                <div>
-                  <div className="flex items-center justify-center md:justify-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                      Day {currentProgress.currentDay} Completed & Saved
-                    </span>
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-black text-white mt-0.5">
-                    Next Workout Unlocks in:
-                  </h3>
-                  <p className="text-xs sm:text-sm text-neutral-400 mt-1 max-w-xl">
-                    Strict recovery cadence enforced. Your muscles and nervous system require adequate recovery before Day {currentProgress.currentDay + 1} unlocks.
-                  </p>
-                </div>
-              </div>
-
-              {/* Live 7-Hour Countdown Clock */}
-              <div className="bg-neutral-950 px-6 py-4 rounded-2xl border border-red-500/30 text-center shrink-0">
-                <div className="text-[11px] text-neutral-400 uppercase tracking-wider font-semibold">
-                  Unlock Timer
-                </div>
-                <div className="text-3xl sm:text-4xl font-mono font-black text-red-500 tracking-wider mt-0.5">
-                  {unlockCountdown || "07:00:00"}
-                </div>
-                <div className="text-[10px] text-neutral-400 mt-1">
-                  Server Synchronized (7 Hours)
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* 4. WORKOUT GUIDELINES & CADENCE RULES */}
         <div className="mb-8 p-5 rounded-2xl bg-neutral-900/60 border border-neutral-800">
@@ -435,6 +413,19 @@ export default function WorkoutChallengeDashboard() {
         </div>
 
         {/* 5. EXERCISE LIST (STRICTLY VALIDATED FOR PROGRAM, DAY, AND MUSCLE GROUP) */}
+        {isCooldownLockedForDay ? (
+          <ProgramCooldownWaitingScreen
+            programId={activeProgramId}
+            programName={metadata.name}
+            completedDay={cooldownWaitState.completedDay}
+            nextDay={cooldownWaitState.nextDay}
+            nextUnlockAt={cooldownWaitState.nextUnlockAt}
+            onReviewTodayWorkout={() => setSelectedDay(cooldownWaitState.completedDay)}
+            onUnlocked={() => {
+              adminBypassUnlock();
+            }}
+          />
+        ) : (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
             <h3 className="text-lg font-black text-white tracking-tight flex items-center gap-2">
@@ -597,33 +588,84 @@ export default function WorkoutChallengeDashboard() {
             })
           )}
         </div>
+        )}
 
         {/* 6. WORKOUT COMPLETION CALL TO ACTION */}
         <div className="mt-8 pt-6 border-t border-neutral-800">
-          {!isLockedAwaitingTimer ? (
+          {!currentProgress.workoutCompleted ? (
             <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
               <div>
                 <h4 className="text-lg sm:text-xl font-black text-white">
                   Finish Day {currentProgress.currentDay} Workout
                 </h4>
                 <p className="text-xs sm:text-sm text-neutral-400 mt-1 max-w-lg">
-                  Once completed, today's workout will be permanently logged and locked for 7 hours before Day {currentProgress.currentDay + 1} unlocks.
+                  Complete today's training to record your achievement. This activates your mandatory 5-hour cool-down recovery window before Day {currentProgress.currentDay + 1} unlocks.
                 </p>
               </div>
 
               <button
                 onClick={handleFinishWorkout}
-                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-base shadow-xl shadow-red-600/25 transition-all transform active:scale-95 flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-base shadow-xl shadow-red-600/25 transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <CheckCircle2 className="w-5 h-5" />
                 <span>COMPLETE TODAY'S WORKOUT</span>
               </button>
             </div>
+          ) : isLockedAwaitingTimer ? (
+            <div className="bg-gradient-to-r from-amber-950/40 via-neutral-900 to-neutral-900 border border-amber-500/40 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0">
+                  <Clock className="w-6 h-6 text-amber-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
+                      5-Hour Cooldown Active
+                    </span>
+                    <span className="text-xs text-neutral-400">Day {currentProgress.currentDay} Finished</span>
+                  </div>
+                  <h4 className="text-lg sm:text-xl font-black text-white mt-1">
+                    Next Workout Unlocks In: <span className="text-amber-400 font-mono">{unlockCountdown}</span>
+                  </h4>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Muscular and metabolic recovery active. Day {currentProgress.currentDay + 1} will unlock automatically when cooldown finishes.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button
+                  onClick={() => adminBypassUnlock()}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs font-mono font-bold uppercase transition border border-neutral-700 cursor-pointer"
+                  title="Test or Admin Override"
+                >
+                  ⚡ Bypass 5-Hr Wait
+                </button>
+              </div>
+            </div>
           ) : (
-            <div className="text-center p-6 bg-neutral-900/40 border border-neutral-800/80 rounded-2xl">
-              <span className="text-xs text-neutral-400">
-                Workout completed. Day {currentProgress.currentDay + 1} unlocks automatically in <strong className="text-red-400">{unlockCountdown}</strong>.
-              </span>
+            <div className="bg-gradient-to-r from-emerald-950/40 via-neutral-900 to-neutral-900 border border-emerald-500/30 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                </div>
+                <div>
+                  <h4 className="text-lg sm:text-xl font-black text-white">
+                    Day {currentProgress.currentDay} Recovery Complete!
+                  </h4>
+                  <p className="text-xs sm:text-sm text-neutral-400 mt-0.5">
+                    Your 5-hour rest window has concluded. You are cleared to advance to Day {currentProgress.currentDay + 1}!
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => advanceToNextDay()}
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-base shadow-xl shadow-red-600/25 transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>START DAY {currentProgress.currentDay + 1}</span>
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
           )}
         </div>

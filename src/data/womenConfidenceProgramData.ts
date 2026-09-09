@@ -101,7 +101,7 @@ export const PROGRAM_PHASES: ProgramPhase[] = [
     description: "Phase 1 focuses on core stabilization, pelvic floor activation, joint mobility, posture correction, and mastering fundamental movement patterns with pristine mechanics.",
     primaryFocus: "Kinetic Alignment, Glute Activation & Habit Formation",
     colorTheme: "from-rose-500 via-pink-500 to-rose-600",
-    bannerImage: "https://cdn.shopify.com/s/files/1/0503/6110/6616/files/athletes-doing-exercises-with-kettlebells_1024x1024.jpg?v=1629941573"
+    bannerImage: getExerciseGifUrl("Glute Bridges", "Home Workouts")
   },
   {
     phaseNumber: 2,
@@ -112,7 +112,7 @@ export const PROGRAM_PHASES: ProgramPhase[] = [
     description: "Phase 2 introduces progressive resistance loading and metabolic circuits to build lean, metabolic active muscle while supporting sustained whole-body fat oxidation.",
     primaryFocus: "Progressive Loading, Metabolic Tone & Posterior Chain Power",
     colorTheme: "from-fuchsia-600 via-pink-600 to-rose-500",
-    bannerImage: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTT1oxBXCFDr-HAd8_GRem87mgVwBjra6ay9NYAVcnBbeA9s_3fNDPWVDo&s=10"
+    bannerImage: getExerciseGifUrl("Barbell Hip Thrust", "Gym Workouts")
   },
   {
     phaseNumber: 3,
@@ -123,7 +123,7 @@ export const PROGRAM_PHASES: ProgramPhase[] = [
     description: "Phase 3 emphasizes aesthetic shaping: glute hypertrophy, shoulder capping, back posture sculpting, and core tightening without exhausting burnout.",
     primaryFocus: "Hourglass Taper, Core Sculpting & Postural Elegance",
     colorTheme: "from-violet-600 via-pink-600 to-rose-500",
-    bannerImage: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQQR_wqJ2OvJTqTyffzsUIf2QwSAHxao_ZMkYQA5zBpYdDK8Xi9JW3U7FRF&s=10"
+    bannerImage: getExerciseGifUrl("Bulgarian Split Squat", "Gym Workouts")
   },
   {
     phaseNumber: 4,
@@ -134,7 +134,7 @@ export const PROGRAM_PHASES: ProgramPhase[] = [
     description: "Phase 4 elevates training density with unilateral stability, supersets, and functional conditioning to elevate your cardiovascular stamina and lifting confidence.",
     primaryFocus: "Unilateral Balance, Power Density & Functional Stamina",
     colorTheme: "from-purple-600 via-rose-500 to-amber-500",
-    bannerImage: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=1200&auto=format&fit=crop&q=80"
+    bannerImage: getExerciseGifUrl("Walking Lunges", "Home Workouts")
   },
   {
     phaseNumber: 5,
@@ -145,7 +145,7 @@ export const PROGRAM_PHASES: ProgramPhase[] = [
     description: "Phase 5 incorporates advanced eccentric tempos, isometric holds, and targeted metabolic waves to sculpt refined muscular definition and joint resilience.",
     primaryFocus: "Time-Under-Tension, Peak Glute-Ham Tie-In & Deep Abdominal Control",
     colorTheme: "from-pink-600 via-rose-600 to-amber-600",
-    bannerImage: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRW7GG57ik5pyyM9oxAwQmxWbLTJSHhhXYJrfgsBYmyd6ixwXnzlE3z3t4&s=10"
+    bannerImage: getExerciseGifUrl("Sumo Squat with Pulse", "Gym Workouts")
   },
   {
     phaseNumber: 6,
@@ -156,7 +156,7 @@ export const PROGRAM_PHASES: ProgramPhase[] = [
     description: "The crowning phase consolidating 6 months of devotion into a permanent lifestyle transformation. You emerge physically strong, mentally resilient, and radiantly confident.",
     primaryFocus: "Lifelong Mastery, Radiant Confidence & Sustainable Athleticism",
     colorTheme: "from-rose-600 via-amber-500 to-yellow-500",
-    bannerImage: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6lg7QbEmeaktDsLgmzvRytUSD09Q7F52tHF6Vw4NP3J1vp8AeEpqkn6_E&s=10"
+    bannerImage: getExerciseGifUrl("World's Greatest Stretch Complex", "Home Workouts")
   }
 ];
 
@@ -250,7 +250,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     ],
     beginnerModification: "Perform on floor with bodyweight only, arms resting flat at your sides for balance.",
     advancedProgression: "Place a medium resistance band above knees or rest a 10-15kg dumbbell across hips.",
-    gifUrl: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Glute Bridge & Isometric Hold")
   },
   "goblet_squat": {
     id: "wc_goblet_squat",
@@ -274,7 +274,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     ],
     beginnerModification: "Perform bodyweight box squat onto a chair or bench to calibrate depth safely.",
     advancedProgression: "Add 1.5 rep pulses at the bottom or increase dumbbell load.",
-    gifUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Tempo Goblet Squat")
   },
   "romanian_deadlift": {
     id: "wc_rdl",
@@ -298,7 +298,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     ],
     beginnerModification: "Perform with hands on hips against a wall, practicing the hip hinge touch before adding weight.",
     advancedProgression: "Switch to B-Stance (staggered foot) RDL to challenge single-leg stability.",
-    gifUrl: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Dumbbell Romanian Deadlift (RDL)")
   },
   "bulgarian_split_squat": {
     id: "wc_bulgarian_split_squat",
@@ -322,7 +322,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     ],
     beginnerModification: "Perform static split squats with rear foot on the floor rather than elevated.",
     advancedProgression: "Hold dual dumbbells and add a 1-second pause at the bottom of each repetition.",
-    gifUrl: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Bulgarian Split Squat")
   },
   "lateral_band_walk": {
     id: "wc_band_walk",
@@ -346,7 +346,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     ],
     beginnerModification: "Place band higher up above knees where leverage is easier to control.",
     advancedProgression: "Place band around the balls of your feet and increase step width.",
-    gifUrl: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Lateral Mini-Band Glute Walk")
   },
   "single_arm_dumbbell_row": {
     id: "wc_single_arm_row",
@@ -370,7 +370,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     ],
     beginnerModification: "Use a lighter dumbbell or resistance band anchored to a door frame.",
     advancedProgression: "Pause for 2 full seconds at peak contraction on each rep.",
-    gifUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Single-Arm Supported Row")
   },
   "overhead_dumbbell_press": {
     id: "wc_overhead_press",
@@ -394,7 +394,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     ],
     beginnerModification: "Perform seated on a sturdy chair with back support.",
     advancedProgression: "Perform alternating single-arm overhead presses to challenge anti-rotational core stability.",
-    gifUrl: "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Standing Dumbbell Overhead Shoulder Press")
   },
   "dead_bug_core": {
     id: "wc_dead_bug",
@@ -418,7 +418,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     ],
     beginnerModification: "Keep knees bent and tap heels to the floor instead of extending legs straight.",
     advancedProgression: "Hold a light dumbbell in each hand or press a stability ball between hands and knees.",
-    gifUrl: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Contralateral Dead Bug")
   },
   "side_plank_hip_dips": {
     id: "wc_side_plank",
@@ -442,7 +442,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     ],
     beginnerModification: "Perform side plank from knees rather than feet for reduced leverage.",
     advancedProgression: "Hold a light dumbbell on top hip or add continuous top-leg abduction pulses.",
-    gifUrl: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Side Plank with Glute Abduction")
   },
   "face_pulls_or_band_pullaparts": {
     id: "wc_band_pullaparts",
@@ -466,7 +466,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     ],
     beginnerModification: "Grip the band wider to decrease tension.",
     advancedProgression: "Double up the band or perform with 3-second isometric hold at chest.",
-    gifUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Resistance Band Pull-Aparts & Posture Opener")
   },
   "barbell_hip_thrust": {
     id: "wc_hip_thrust",
@@ -487,7 +487,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Keep chin tucked toward chest throughout.", "Do not hyperextend lumbar spine at top."],
     beginnerModification: "Use a dumbbell across hips or bodyweight before adding a barbell.",
     advancedProgression: "Add a 3-second pause at the peak contraction or use mini-band around knees.",
-    gifUrl: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Barbell Hip Thrust")
   },
   "cable_glute_kickback": {
     id: "wc_glute_kickback",
@@ -507,7 +507,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Keep hips square to the machine; do not twist spine."],
     beginnerModification: "Perform on hands and knees with resistance band or bodyweight.",
     advancedProgression: "Add 2-second hold with pulse at peak extension.",
-    gifUrl: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Cable Glute Kickbacks")
   },
   "sumo_squat": {
     id: "wc_sumo_squat",
@@ -527,7 +527,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Track knees directly in line with toes.", "Keep torso proud and tall."],
     beginnerModification: "Perform bodyweight sumo squat without pulse.",
     advancedProgression: "Add 1.5 rep technique (down, half up, down, all way up).",
-    gifUrl: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Sumo Squat with Pulse")
   },
   "curtsy_lunge": {
     id: "wc_curtsy_lunge",
@@ -547,7 +547,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Keep front knee aligned over front ankle.", "Keep chest upright and square."],
     beginnerModification: "Perform bodyweight curtsy step without deep knee drop.",
     advancedProgression: "Hold dumbbells at sides and add a balance lift at top.",
-    gifUrl: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Curtsy Lunges")
   },
   "step_ups": {
     id: "wc_step_ups",
@@ -567,7 +567,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Do not bounce off bottom foot; let the elevated leg do the work."],
     beginnerModification: "Use a lower platform (8-10 inches).",
     advancedProgression: "Hold moderate dumbbells at sides.",
-    gifUrl: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Step Ups with Knee Drive")
   },
   "incline_chest_press": {
     id: "wc_incline_chest_press",
@@ -587,7 +587,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Keep shoulder blades retracted and pinched into bench."],
     beginnerModification: "Perform incline push-ups against a bench or countertop.",
     advancedProgression: "Use 3-second eccentric tempo on the lowering phase.",
-    gifUrl: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Incline Dumbbell Chest Press")
   },
   "lat_pulldown": {
     id: "wc_lat_pulldown",
@@ -608,7 +608,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Avoid momentum or aggressive swinging."],
     beginnerModification: "Use resistance band anchored overhead or assisted pulldown.",
     advancedProgression: "Hold contraction at clavicle for 2 full seconds.",
-    gifUrl: "https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Lat Pulldown to Sternum")
   },
   "lateral_raises": {
     id: "wc_lateral_raise",
@@ -628,7 +628,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Do not shrug neck or swing upper body."],
     beginnerModification: "Use resistance band or lighter dumbbells.",
     advancedProgression: "Add 1-second pause at top of each repetition.",
-    gifUrl: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Dumbbell Lateral Raises")
   },
   "tricep_extension": {
     id: "wc_tricep_extension",
@@ -648,7 +648,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Keep elbows tucked close to ears; do not let them flare wide."],
     beginnerModification: "Perform overhead dumbbell extension seated or bench dips.",
     advancedProgression: "Add 2-second hold with peak elbow extension.",
-    gifUrl: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Overhead Triceps Rope Extension")
   },
   "hammer_curls": {
     id: "wc_hammer_curl",
@@ -668,7 +668,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Keep core braced and wrists neutral."],
     beginnerModification: "Perform alternating arms instead of simultaneous.",
     advancedProgression: "Add 3-second eccentric lowering phase.",
-    gifUrl: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Dumbbell Hammer Curls")
   },
   "bird_dog": {
     id: "wc_bird_dog",
@@ -689,7 +689,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Do not let hips tilt or lower back sag."],
     beginnerModification: "Extend only the leg or only the arm until stability improves.",
     advancedProgression: "Add light ankle/wrist weights or draw elbow to knee between reps.",
-    gifUrl: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Bird Dog Stability Hold")
   },
   "plank_dips": {
     id: "wc_plank_dips",
@@ -709,7 +709,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Keep movement controlled; avoid dropping hips rapidly."],
     beginnerModification: "Perform standard forearm plank holds.",
     advancedProgression: "Add a 1-second pause at each side tap.",
-    gifUrl: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Plank Hip Dips")
   },
   "bicycle_crunches": {
     id: "wc_bicycle_crunch",
@@ -729,7 +729,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Rotate from the ribcage, not by pulling on the neck."],
     beginnerModification: "Keep feet on floor and lift one knee at a time.",
     advancedProgression: "Slow down the tempo with a 2-second hold on each rotation.",
-    gifUrl: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Bicycle Crunches")
   },
   "stomach_vacuum": {
     id: "wc_stomach_vacuum",
@@ -750,7 +750,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Perform on empty stomach or before meals for best mind-muscle feedback."],
     beginnerModification: "Perform lying on back with knees bent.",
     advancedProgression: "Hold for 30 seconds while standing tall.",
-    gifUrl: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80"
+    gifUrl: getExerciseGifUrl("Stomach Vacuum & Core Bracing")
   }
 };
 

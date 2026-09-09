@@ -25,6 +25,8 @@ import {
 } from "../data/womenConfidenceProgramData";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
+import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
+import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
 
 interface WomenConfidenceProgressState {
   userId: string;
@@ -501,6 +503,8 @@ export default function WomenConfidenceProgram() {
     }
 
     persistState(newState);
+
+    recordDailyWorkoutCompletion("women_confidence", dayNum);
 
     setCelebrationModalData({
       isOpen: true,
@@ -1488,6 +1492,25 @@ export default function WomenConfidenceProgram() {
       {/* ------------------------------------------------------------------ */}
       {activeTab === "workout" && (
         <div className="space-y-6 w-full min-w-0">
+          {/* 5-Hour Cooldown Recovery Guard */}
+          {(() => {
+            const waitState = getProgramWaitState("women_confidence");
+            if (waitState.isWaiting && selectedDayNumber > waitState.completedDay) {
+              return (
+                <ProgramCooldownWaitingScreen
+                  programId="women_confidence"
+                  programName="Women 180-Day Confidence & Glute Sculpt"
+                  completedDay={waitState.completedDay}
+                  nextDay={waitState.nextDay}
+                  nextUnlockAt={waitState.nextUnlockAt}
+                  onReviewTodayWorkout={() => setSelectedDayNumber(waitState.completedDay)}
+                  onUnlocked={() => setSelectedDayNumber(waitState.nextDay)}
+                />
+              );
+            }
+            return null;
+          })()}
+
           {/* Workout Header Bar */}
           <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 w-full">
             <div className="space-y-1 min-w-0 flex-1">

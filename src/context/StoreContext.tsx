@@ -391,7 +391,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const newOverallStock = Math.max(0, currentProd.stock - item.quantity);
             const newSizeStock = { ...(currentProd.sizeStock || {}) };
             if (newSizeStock[item.size] !== undefined) {
-              newSizeStock[item.size] = Math.max(0, newSizeStock[item.size] - item.quantity);
+              newSizeStock[item.size] = Math.max(0, (newSizeStock[item.size] ?? 0) - item.quantity);
             }
             await updateDoc(productRef, {
               stock: newOverallStock,

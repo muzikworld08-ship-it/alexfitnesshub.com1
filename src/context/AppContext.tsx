@@ -36,12 +36,13 @@ import {
   ProgramProgressItem
 } from "../types";
 import { calculateReadinessScore } from "../utils/readiness";
-import { EXERCISES, Exercise } from "../data/exercises";
+import { EXERCISES, Exercise, getExerciseGifUrl } from "../data/exercises";
 import { PremiumChallenge, FLAGSHIP_CHALLENGES, getChallengeWorkouts } from "../data/challenges";
 import { isExerciseMatch } from "../utils/exerciseMatching";
 import { fetchAllExerciseMediaFromDatabase } from "../utils/mediaStorageService";
 import { samplePopupTestimonials } from "../data/sampleTestimonials";
 import { queueWelcomeEmail, queueWorkoutSummaryEmail, queueBellyFatShredReminderEmail } from "../lib/mailTriggers";
+import { sendEmail } from "../services/emailNotificationService";
 
 export const DEFAULT_PROGRAM_PROGRESS: Record<string, ProgramProgressItem> = {
   "90_day_immortal": {
@@ -928,8 +929,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 finishingPosition: d.finishingPosition || "",
                 regressionVariations: d.regressionVariations || [],
                 musclesWorked: d.musclesWorked || [d.category || "Full Body"],
-                gifUrl: d.customMediaUrl || d.gifUrl || d.imageUrl || "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80",
-                imageUrl: d.customMediaUrl || d.imageUrl || d.gifUrl || "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80",
+                gifUrl: d.customMediaUrl || d.gifUrl || d.imageUrl || getExerciseGifUrl(d.name || d.exerciseName, d.category),
+                imageUrl: d.customMediaUrl || d.imageUrl || d.gifUrl || getExerciseGifUrl(d.name || d.exerciseName, d.category),
                 customMediaUrl: d.customMediaUrl,
                 customMediaType: d.customMediaType || "image",
                 description: d.description || "",
@@ -1038,7 +1039,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               description: d.description || "",
               category: d.category || "Hypertrophy",
               goal: d.goal || d.description || "",
-              image: d.image || "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80",
+              image: d.image || getExerciseGifUrl("Barbell Bench Press", "Gym Workouts"),
               badgeId: d.badgeId || `badge_${docSnap.id}`,
               badgeName: d.badgeName || `${d.title} Champion`,
               badgeColor: d.badgeColor || "from-red-500 to-amber-600",
@@ -2750,6 +2751,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         notes: notes || ""
       }).catch(err => handleFirestoreError(err, OperationType.WRITE, `user_workout_actions/${newLog.id}`));
     }
+
+    // Trigger Congratulations Email after user finishes their exercise
+    if (user.email) {
+      sendEmail({
+        to: user.email,
+        recipientName: user.displayName || undefined,
+        programName: "AlexFitnessHub Training Session",
+        dayNumber: 1,
+        caloriesBurned: Math.round((weight || 60) * 0.4 + (reps || 10) * 3),
+        exercisesCompleted: [targetEx?.name || exerciseId],
+        subject: `🎉 Congratulations on Crushing Your ${targetEx?.name || "Workout Drill"}!`
+      }).catch(err => console.warn("[AppContext] Failed to trigger exercise congrats email:", err));
+    }
   };
 
   const addWeightLogAction = async (weight: number, bodyFat?: number) => {
@@ -4132,8 +4146,8 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       finishingPosition: workoutData.finishingPosition || `Return smoothly to starting position.`,
       regressionVariations: workoutData.regressionVariations || ["Perform with lighter load or bodyweight assistance."],
       musclesWorked: workoutData.musclesWorked || [workoutData.category || "Full Body"],
-      gifUrl: workoutData.customMediaUrl || workoutData.gifUrl || workoutData.imageUrl || "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80",
-      imageUrl: workoutData.customMediaUrl || workoutData.imageUrl || workoutData.gifUrl || "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80",
+      gifUrl: workoutData.customMediaUrl || workoutData.gifUrl || workoutData.imageUrl || getExerciseGifUrl(workoutData.name || "", workoutData.category),
+      imageUrl: workoutData.customMediaUrl || workoutData.imageUrl || workoutData.gifUrl || getExerciseGifUrl(workoutData.name || "", workoutData.category),
       customMediaUrl: workoutData.customMediaUrl,
       customMediaType: workoutData.customMediaType || "image",
       description: workoutData.description || `${workoutData.name} targets key muscular chains to build strength and hypertrophy.`,
@@ -4219,7 +4233,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       description: challengeData.description || "Comprehensive multi-phase workout challenge designed for peak performance.",
       category: challengeData.category || "Hypertrophy",
       goal: challengeData.goal || challengeData.description || "Build strength and transform body composition.",
-      image: challengeData.image || "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80",
+      image: challengeData.image || getExerciseGifUrl("Barbell Bench Press", "Gym Workouts"),
       badgeId: challengeData.badgeId || `badge_${newId}`,
       badgeName: challengeData.badgeName || `${challengeData.title || 'Challenge'} Champion`,
       badgeColor: challengeData.badgeColor || "from-amber-500 to-red-600",

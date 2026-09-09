@@ -20,6 +20,8 @@ import PersistentDashboardTabs from "./PersistentDashboardTabs";
 import { getChallengeWorkouts } from "../data/challenges";
 import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
+import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
+import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
 
 
 // 1. Definition of the 7 Flagship Premium Challenges
@@ -823,6 +825,12 @@ export default function Premium90DayChallenge() {
         );
       }
 
+      // Record 5-hour mandatory cooldown
+      recordDailyWorkoutCompletion("90_day_immortal", currentDay);
+      if (dbState?.challengeId) {
+        recordDailyWorkoutCompletion(dbState.challengeId, currentDay);
+      }
+
       // Display completed day with celebratory animation and next day morning alert
       setCelebrationModalData({
         isOpen: true,
@@ -1449,6 +1457,25 @@ export default function Premium90DayChallenge() {
                 {/* 1. Workout Day Tab */}
                 {activeSubTab === "workout" && (
                   <div className="space-y-6">
+                    {/* 5-Hour Cooldown Recovery Guard */}
+                    {(() => {
+                      const waitState = getProgramWaitState("90_day_immortal");
+                      if (waitState.isWaiting && activeDisplayDay > waitState.completedDay) {
+                        return (
+                          <ProgramCooldownWaitingScreen
+                            programId="90_day_immortal"
+                            programName={PREMIUM_CHALLENGES.find(c => c.id === dbState?.challengeId)?.title || "90 Day Immortal Challenge"}
+                            completedDay={waitState.completedDay}
+                            nextDay={waitState.nextDay}
+                            nextUnlockAt={waitState.nextUnlockAt}
+                            onReviewTodayWorkout={() => setBrowsingDay(waitState.completedDay)}
+                            onUnlocked={() => setBrowsingDay(waitState.nextDay)}
+                          />
+                        );
+                      }
+                      return null;
+                    })()}
+
                     {/* 7-Day Repeating Cadence Navigator & Day Selector */}
                     <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
                       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">

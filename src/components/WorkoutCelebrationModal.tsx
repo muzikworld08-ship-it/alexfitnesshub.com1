@@ -10,9 +10,13 @@ import {
   ArrowRight, 
   Zap, 
   Clock,
-  Heart
+  Heart,
+  Ban,
+  Moon,
+  ShieldCheck
 } from "lucide-react";
 import { scheduleNextDayMorningNotification } from "../utils/notificationScheduler";
+import ResendEmailWidget from "./ResendEmailWidget";
 
 interface WorkoutCelebrationModalProps {
   isOpen: boolean;
@@ -211,17 +215,54 @@ export default function WorkoutCelebrationModal({
             </div>
           </div>
 
-          {/* Morning Notification Notice Box */}
+          {/* MANDATORY COACHING DIRECTIVES: CUT OUT SUGAR & NO LATE NIGHT EATING */}
+          <div className="mb-6 space-y-3 text-left">
+            <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-amber-400">
+              <Sparkles className="w-4 h-4" />
+              <span>Coach Alex's Mandatory Post-Workout Directives</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Directive 1 */}
+              <div className="bg-red-950/40 border border-red-500/30 rounded-2xl p-3.5 space-y-1">
+                <div className="flex items-center gap-2 text-red-400 font-bold text-xs uppercase">
+                  <Ban className="w-4 h-4 shrink-0" />
+                  <span>Strictly Cut Out Sugar</span>
+                </div>
+                <p className="text-[11px] text-neutral-300 leading-relaxed">
+                  Eliminate all sodas, juices, and sweets today. Keeping blood sugar baseline ensures 100% fat burning mode.
+                </p>
+              </div>
+
+              {/* Directive 2 */}
+              <div className="bg-amber-950/40 border border-amber-500/30 rounded-2xl p-3.5 space-y-1">
+                <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase">
+                  <Moon className="w-4 h-4 shrink-0" />
+                  <span>No Late-Night Eating</span>
+                </div>
+                <p className="text-[11px] text-neutral-300 leading-relaxed">
+                  Stop eating after 7:30 PM. Overnight fasting maximizes natural growth hormone release and burns stubborn fat while you sleep.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 5-Hour Program Waiting Notification Notice Box */}
           {!isFinalDay ? (
-            <div className="bg-gradient-to-r from-amber-950/40 via-neutral-900 to-neutral-900 border border-amber-500/30 rounded-2xl p-4 mb-6 space-y-2">
-              <div className="flex items-center gap-2 text-amber-400">
-                <Bell className="w-4 h-4" />
-                <span className="text-xs font-mono font-bold uppercase tracking-wide">
-                  Next Up: Day {nextDay} Morning Workout
+            <div className="bg-gradient-to-r from-amber-950/40 via-neutral-900 to-neutral-900 border border-amber-500/30 rounded-2xl p-4 mb-6 space-y-2 text-left">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-amber-400">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-xs font-mono font-bold uppercase tracking-wide">
+                    Next Up: Day {nextDay} (5-Hour Wait Period Active)
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
+                  5h Recovery
                 </span>
               </div>
               <p className="text-xs text-neutral-300 leading-relaxed">
-                Day {nextDay} has been scheduled for tomorrow morning! You will receive a morning reminder so you can step straight into Day {nextDay} and maintain your training streak.
+                Day {completedDay} is complete! Each program waits for <strong>5 hours</strong> before displaying the next workout, so when you visit tomorrow, Day {nextDay} will be ready and waiting for you.
               </p>
               
               <div className="pt-1 flex items-center justify-between">
@@ -231,9 +272,9 @@ export default function WorkoutCelebrationModal({
                   className="text-[11px] font-mono font-bold text-amber-400 hover:text-amber-300 underline flex items-center gap-1 cursor-pointer"
                 >
                   <Sparkles className="w-3 h-3" />
-                  {testNotificationSent ? "Morning Alert Sent! Check your device" : "Test Morning Notification"}
+                  {testNotificationSent ? "Morning Alert Sent! Check device" : "Test Morning Reminder"}
                 </button>
-                <span className="text-[10px] font-mono text-neutral-400">Scheduled: 08:00 AM</span>
+                <span className="text-[10px] font-mono text-neutral-400">Next Workout Ready Tomorrow</span>
               </div>
             </div>
           ) : (
@@ -244,6 +285,15 @@ export default function WorkoutCelebrationModal({
               </p>
             </div>
           )}
+
+          {/* Resend Email Dispatch Widget */}
+          <div className="mb-6 text-left">
+            <ResendEmailWidget
+              programName={programName}
+              dayNumber={completedDay}
+              compact={true}
+            />
+          </div>
 
           {/* Action Buttons */}
           <div className="space-y-2.5">

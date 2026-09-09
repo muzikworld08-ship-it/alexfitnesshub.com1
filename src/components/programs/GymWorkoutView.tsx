@@ -2,6 +2,9 @@ import React, { useState, useMemo } from "react";
 import { useApp } from "../../context/AppContext";
 import { GYM_WORKOUT_PROGRAMS, GymProgram } from "../../data/programsSystem";
 import WorkoutVisual from "../WorkoutVisual";
+import WorkoutCelebrationModal from "../WorkoutCelebrationModal";
+import ProgramCooldownWaitingScreen from "../ProgramCooldownWaitingScreen";
+import { recordDailyWorkoutCompletion, getProgramWaitState } from "../../utils/programWaitManager";
 import { 
   Dumbbell, 
   Calendar, 
@@ -11,7 +14,8 @@ import {
   ChevronRight, 
   ShieldCheck, 
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Check
 } from "lucide-react";
 
 interface GymWorkoutViewProps {
@@ -25,6 +29,44 @@ export default function GymWorkoutView({ onBackToPrograms, onOpenExerciseLibrary
   const [selectedProgramId, setSelectedProgramId] = useState<string>(GYM_WORKOUT_PROGRAMS[0].id);
   const [selectedSplitDayIndex, setSelectedSplitDayIndex] = useState<number>(0);
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>("");
+  const [completedSplits, setCompletedSplits] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem("fit_gym_completed_splits");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [celebrationModalData, setCelebrationModalData] = useState<{
+    isOpen: boolean;
+    completedDay: number;
+    totalDays: number;
+    streakCount: number;
+    caloriesBurned: number;
+    exercisesCount: number;
+  } | null>(null);
+
+  const handleCompleteSplit = (splitIdx: number) => {
+    const key = `${selectedProgramId}_split_${splitIdx}`;
+    const nextCompleted = { ...completedSplits, [key]: true };
+    setCompletedSplits(nextCompleted);
+    try {
+      localStorage.setItem("fit_gym_completed_splits", JSON.stringify(nextCompleted));
+    } catch {}
+
+    const dayNum = splitIdx + 1;
+    recordDailyWorkoutCompletion("gym_programs", dayNum);
+    recordDailyWorkoutCompletion("programs_academy", dayNum);
+
+    setCelebrationModalData({
+      isOpen: true,
+      completedDay: dayNum,
+      totalDays: activeProgram.splits.length,
+      streakCount: Object.keys(nextCompleted).length,
+      caloriesBurned: 420,
+      exercisesCount: splitExercises.length
+    });
+  };
 
   const activeProgram: GymProgram = useMemo(() => {
     return GYM_WORKOUT_PROGRAMS.find(p => p.id === selectedProgramId) || GYM_WORKOUT_PROGRAMS[0];
@@ -153,13 +195,57 @@ export default function GymWorkoutView({ onBackToPrograms, onOpenExerciseLibrary
           })}
         </div>
 
+        {/* 5-Hour Cooldown Recovery Guard */}
+        {(() => {
+          const waitState = getProgramWaitState("gym_programs");
+          if (waitState.isWaiting && (selectedSplitDayIndex + 1) > waitState.completedDay) {
+            return (
+              <div className="mb-8">
+                <ProgramCooldownWaitingScreen
+                  programId="gym_programs"
+                  programName={`Gym Programs - ${activeProgram.name}`}
+                  completedDay={waitState.completedDay}
+                  nextDay={waitState.nextDay}
+                  nextUnlockAt={waitState.nextUnlockAt}
+                  onReviewTodayWorkout={() => setSelectedSplitDayIndex(Math.max(0, waitState.completedDay - 1))}
+                  onUnlocked={() => setSelectedSplitDayIndex(Math.min(activeProgram.splits.length - 1, waitState.nextDay - 1))}
+                />
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         {/* Exercises Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-6 space-y-3">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-2">
-              <Dumbbell className="w-5 h-5 text-red-400" />
-              {activeSplitDay.dayName} Exercises ({splitExercises.length})
-            </h3>
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Dumbbell className="w-5 h-5 text-red-400" />
+                {activeSplitDay.dayName} Exercises ({splitExercises.length})
+              </h3>
+              <button
+                type="button"
+                onClick={() => handleCompleteSplit(selectedSplitDayIndex)}
+                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition cursor-pointer ${
+                  completedSplits[`${selectedProgramId}_split_${selectedSplitDayIndex}`]
+                    ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/40"
+                    : "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30"
+                }`}
+              >
+                {completedSplits[`${selectedProgramId}_split_${selectedSplitDayIndex}`] ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Split Completed ✓</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Complete Today's Workout</span>
+                  </>
+                )}
+              </button>
+            </div>
             {splitExercises.map((ex, idx) => {
               const isSelected = activeExercise?.id === ex.id;
               return (
@@ -247,6 +333,23 @@ export default function GymWorkoutView({ onBackToPrograms, onOpenExerciseLibrary
           </div>
         </div>
       </div>
+      {/* Celebratory Completion Modal */}
+      {celebrationModalData && (
+        <WorkoutCelebrationModal
+          isOpen={celebrationModalData.isOpen}
+          onClose={() => setCelebrationModalData(null)}
+          programId="gym_programs"
+          programName={`Gym Programs - ${activeProgram.name}`}
+          completedDay={celebrationModalData.completedDay}
+          totalDays={celebrationModalData.totalDays}
+          streakCount={celebrationModalData.streakCount}
+          caloriesBurned={celebrationModalData.caloriesBurned}
+          exercisesCompletedCount={celebrationModalData.exercisesCount}
+          onContinue={() => {
+            setCelebrationModalData(null);
+          }}
+        />
+      )}
     </div>
   );
 }

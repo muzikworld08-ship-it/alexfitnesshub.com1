@@ -1,4 +1,5 @@
 import { ProgramId, ProgramMetadata, ChallengeExerciseItem, DayWorkoutMeta, DayExecutionPlan } from "../types/challengeEngine";
+import { getExerciseGifUrl } from "./exercises";
 
 // ============================================================================
 // 1. FIVE INDEPENDENT PROGRAM METADATA
@@ -22,7 +23,7 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
       "5 to 10 KM Running / Walking"
     ],
     equipmentRequired: ["Barbell", "Dumbbells", "Cable Machine", "Bench", "Pull-up Bar"],
-    coverImage: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&auto=format&fit=crop&q=80"
+    coverImage: "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif"
   },
   home_180: {
     id: "home_180",
@@ -45,7 +46,7 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
       "Mobility and recovery"
     ],
     equipmentRequired: ["Bodyweight", "Optional Resistance Bands", "Yoga Mat"],
-    coverImage: "https://images.unsplash.com/photo-1599058945522-28d584b6f0ff?w=800&auto=format&fit=crop&q=80"
+    coverImage: "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif"
   },
   women_confidence: {
     id: "women_confidence",
@@ -70,7 +71,7 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
       "Confidence and wellness sessions"
     ],
     equipmentRequired: ["Dumbbells", "Booty Bands", "Yoga Mat", "Bench or Chair"],
-    coverImage: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&auto=format&fit=crop&q=80"
+    coverImage: "https://media.giphy.com/media/v1F0A8f5Ff6hO/giphy.gif"
   },
   belly_fat_shred: {
     id: "belly_fat_shred",
@@ -92,7 +93,7 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
       "Mobility and recovery"
     ],
     equipmentRequired: ["Bodyweight", "Jump Rope", "Treadmill or Outdoors", "Light Dumbbells"],
-    coverImage: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&auto=format&fit=crop&q=80"
+    coverImage: "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif"
   },
   posture_vitality: {
     id: "posture_vitality",
@@ -118,7 +119,7 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
       "Daily movement"
     ],
     equipmentRequired: ["Yoga Mat", "Resistance Band or Towel", "Foam Roller"],
-    coverImage: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&auto=format&fit=crop&q=80"
+    coverImage: "https://media.giphy.com/media/26AHG5KGFxSkUWw1i/giphy.gif"
   }
 };
 
@@ -133,7 +134,7 @@ const IMMORTAL_CHEST_TRICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] 
     programName: "Immortal 90 Day Challenge",
     category: "Chest + Triceps",
     muscleGroup: ["Chest"],
-    exerciseName: "Barbell Flat Bench Press",
+    exerciseName: "Barbell Bench Press",
     equipment: "Barbell & Bench",
     difficulty: "Intermediate",
     sets: 4,
@@ -146,7 +147,7 @@ const IMMORTAL_CHEST_TRICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] 
     ],
     restTime: "90s",
     coachingCues: ["Keep elbows tucked at ~45 degrees", "Drive with your legs without arching excessively"],
-    gifUrl: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&auto=format&fit=crop&q=80"
+    gifUrl: "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif"
   },
   {
     programId: "immortal_90",
@@ -172,7 +173,7 @@ const IMMORTAL_CHEST_TRICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] 
     programName: "Immortal 90 Day Challenge",
     category: "Chest + Triceps",
     muscleGroup: ["Chest"],
-    exerciseName: "Parallel Bar Chest Dips",
+    exerciseName: "Chest Dips",
     equipment: "Dip Station",
     difficulty: "Advanced",
     sets: 3,
@@ -191,7 +192,7 @@ const IMMORTAL_CHEST_TRICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] 
     programName: "Immortal 90 Day Challenge",
     category: "Chest + Triceps",
     muscleGroup: ["Chest"],
-    exerciseName: "Standing Cable Pec Flyes",
+    exerciseName: "Cable Chest Fly",
     equipment: "Cable Machine",
     difficulty: "Beginner",
     sets: 3,
@@ -209,7 +210,7 @@ const IMMORTAL_CHEST_TRICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] 
     programName: "Immortal 90 Day Challenge",
     category: "Chest + Triceps",
     muscleGroup: ["Chest"],
-    exerciseName: "Decline Dumbbell Press",
+    exerciseName: "Decline Bench Press",
     equipment: "Dumbbells & Decline Bench",
     difficulty: "Intermediate",
     sets: 3,
@@ -227,7 +228,7 @@ const IMMORTAL_CHEST_TRICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] 
     programName: "Immortal 90 Day Challenge",
     category: "Chest + Triceps",
     muscleGroup: ["Chest"],
-    exerciseName: "Standard Strict Push-ups",
+    exerciseName: "Standard Push Ups",
     equipment: "Bodyweight",
     difficulty: "Beginner",
     sets: 3,
@@ -245,7 +246,7 @@ const IMMORTAL_CHEST_TRICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] 
     programName: "Immortal 90 Day Challenge",
     category: "Chest + Triceps",
     muscleGroup: ["Triceps"],
-    exerciseName: "Cable Rope Tricep Pushdowns",
+    exerciseName: "Triceps Pushdown",
     equipment: "Cable Machine & Rope",
     difficulty: "Beginner",
     sets: 4,
@@ -263,7 +264,7 @@ const IMMORTAL_CHEST_TRICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] 
     programName: "Immortal 90 Day Challenge",
     category: "Chest + Triceps",
     muscleGroup: ["Triceps"],
-    exerciseName: "EZ-Bar Lying Skull Crushers",
+    exerciseName: "Skull Crushers",
     equipment: "EZ-Bar & Flat Bench",
     difficulty: "Intermediate",
     sets: 3,
@@ -281,7 +282,7 @@ const IMMORTAL_CHEST_TRICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] 
     programName: "Immortal 90 Day Challenge",
     category: "Chest + Triceps",
     muscleGroup: ["Triceps"],
-    exerciseName: "Overhead Dumbbell Tricep Extension",
+    exerciseName: "Overhead Triceps Extension",
     equipment: "Single Heavy Dumbbell",
     difficulty: "Intermediate",
     sets: 3,
@@ -299,7 +300,7 @@ const IMMORTAL_CHEST_TRICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] 
     programName: "Immortal 90 Day Challenge",
     category: "Chest + Triceps",
     muscleGroup: ["Triceps"],
-    exerciseName: "Diamond Push-ups",
+    exerciseName: "Diamond Push Ups",
     equipment: "Bodyweight",
     difficulty: "Intermediate",
     sets: 3,
@@ -319,7 +320,7 @@ const IMMORTAL_BACK_BICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Immortal 90 Day Challenge",
     category: "Back + Biceps",
     muscleGroup: ["Back"],
-    exerciseName: "Conventional Barbell Deadlift",
+    exerciseName: "Deadlift",
     equipment: "Barbell & Plates",
     difficulty: "Advanced",
     sets: 4,
@@ -337,7 +338,7 @@ const IMMORTAL_BACK_BICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Immortal 90 Day Challenge",
     category: "Back + Biceps",
     muscleGroup: ["Back"],
-    exerciseName: "Wide-Grip Pull-ups",
+    exerciseName: "Pull Ups",
     equipment: "Pull-up Bar",
     difficulty: "Advanced",
     sets: 4,
@@ -355,7 +356,7 @@ const IMMORTAL_BACK_BICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Immortal 90 Day Challenge",
     category: "Back + Biceps",
     muscleGroup: ["Back"],
-    exerciseName: "Bent-Over Barbell Row",
+    exerciseName: "Barbell Row",
     equipment: "Barbell",
     difficulty: "Intermediate",
     sets: 4,
@@ -373,7 +374,7 @@ const IMMORTAL_BACK_BICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Immortal 90 Day Challenge",
     category: "Back + Biceps",
     muscleGroup: ["Back"],
-    exerciseName: "Lat Pulldown (Cable)",
+    exerciseName: "Lat Pulldown",
     equipment: "Lat Pulldown Machine",
     difficulty: "Beginner",
     sets: 3,
@@ -408,7 +409,7 @@ const IMMORTAL_BACK_BICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Immortal 90 Day Challenge",
     category: "Back + Biceps",
     muscleGroup: ["Biceps"],
-    exerciseName: "Standing Barbell Bicep Curl",
+    exerciseName: "Barbell Curl",
     equipment: "Barbell",
     difficulty: "Intermediate",
     sets: 4,
@@ -426,7 +427,7 @@ const IMMORTAL_BACK_BICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Immortal 90 Day Challenge",
     category: "Back + Biceps",
     muscleGroup: ["Biceps"],
-    exerciseName: "Incline Dumbbell Bicep Curl",
+    exerciseName: "Incline Dumbbell Curl",
     equipment: "Dumbbells & Incline Bench",
     difficulty: "Intermediate",
     sets: 3,
@@ -462,7 +463,7 @@ const IMMORTAL_BACK_BICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Immortal 90 Day Challenge",
     category: "Back + Biceps",
     muscleGroup: ["Biceps"],
-    exerciseName: "Preacher Curl with EZ-Bar",
+    exerciseName: "Preacher Curl",
     equipment: "Preacher Bench & EZ-Bar",
     difficulty: "Intermediate",
     sets: 3,
@@ -482,7 +483,7 @@ const IMMORTAL_CARDIO_RECOVERY: Omit<ChallengeExerciseItem, "id" | "dayNumber">[
     programName: "Immortal 90 Day Challenge",
     category: "5 to 10 KM Cardio / Walking",
     muscleGroup: ["Cardio"],
-    exerciseName: "5 to 10 KM Continuous Paced Run or Walk",
+    exerciseName: "Running",
     equipment: "Running Shoes & Outdoors or Treadmill",
     difficulty: "Beginner",
     sets: 1,
@@ -502,7 +503,7 @@ const IMMORTAL_CARDIO_RECOVERY: Omit<ChallengeExerciseItem, "id" | "dayNumber">[
     programName: "Immortal 90 Day Challenge",
     category: "5 to 10 KM Cardio / Walking",
     muscleGroup: ["Recovery"],
-    exerciseName: "Post-Cardio Full Decompression & Hydration Protocol",
+    exerciseName: "Walking",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 1,
@@ -524,7 +525,7 @@ const IMMORTAL_LEGS_SHOULDERS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "Immortal 90 Day Challenge",
     category: "Legs + Shoulders",
     muscleGroup: ["Legs"],
-    exerciseName: "Barbell Back Squats",
+    exerciseName: "Barbell Squat",
     equipment: "Squat Rack & Barbell",
     difficulty: "Advanced",
     sets: 4,
@@ -542,7 +543,7 @@ const IMMORTAL_LEGS_SHOULDERS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "Immortal 90 Day Challenge",
     category: "Legs + Shoulders",
     muscleGroup: ["Legs"],
-    exerciseName: "Romanian Deadlift (Dumbbell/Barbell)",
+    exerciseName: "Romanian Deadlift",
     equipment: "Dumbbells or Barbell",
     difficulty: "Intermediate",
     sets: 4,
@@ -560,7 +561,7 @@ const IMMORTAL_LEGS_SHOULDERS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "Immortal 90 Day Challenge",
     category: "Legs + Shoulders",
     muscleGroup: ["Legs"],
-    exerciseName: "Leg Press Machine",
+    exerciseName: "Leg Press",
     equipment: "Leg Press",
     difficulty: "Intermediate",
     sets: 3,
@@ -578,7 +579,7 @@ const IMMORTAL_LEGS_SHOULDERS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "Immortal 90 Day Challenge",
     category: "Legs + Shoulders",
     muscleGroup: ["Legs"],
-    exerciseName: "Walking Lunges (Weighted)",
+    exerciseName: "Walking Lunges",
     equipment: "Dumbbells",
     difficulty: "Intermediate",
     sets: 3,
@@ -595,7 +596,7 @@ const IMMORTAL_LEGS_SHOULDERS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "Immortal 90 Day Challenge",
     category: "Legs + Shoulders",
     muscleGroup: ["Legs"],
-    exerciseName: "Standing Calf Raises",
+    exerciseName: "Calf Raises",
     equipment: "Calf Machine or Step & Dumbbell",
     difficulty: "Beginner",
     sets: 4,
@@ -612,7 +613,7 @@ const IMMORTAL_LEGS_SHOULDERS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "Immortal 90 Day Challenge",
     category: "Legs + Shoulders",
     muscleGroup: ["Shoulders"],
-    exerciseName: "Seated Dumbbell Overhead Shoulder Press",
+    exerciseName: "Standing Dumbbell Overhead Shoulder Press",
     equipment: "Dumbbells & 90-degree Bench",
     difficulty: "Intermediate",
     sets: 4,
@@ -630,7 +631,7 @@ const IMMORTAL_LEGS_SHOULDERS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "Immortal 90 Day Challenge",
     category: "Legs + Shoulders",
     muscleGroup: ["Shoulders"],
-    exerciseName: "Standing Dumbbell Lateral Raises",
+    exerciseName: "Dumbbell Lateral Raises",
     equipment: "Dumbbells",
     difficulty: "Beginner",
     sets: 4,
@@ -647,7 +648,7 @@ const IMMORTAL_LEGS_SHOULDERS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "Immortal 90 Day Challenge",
     category: "Legs + Shoulders",
     muscleGroup: ["Shoulders"],
-    exerciseName: "Face Pulls with Rope",
+    exerciseName: "Face Pulls",
     equipment: "Cable Machine & Rope",
     difficulty: "Beginner",
     sets: 3,
@@ -663,7 +664,7 @@ const IMMORTAL_LEGS_SHOULDERS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "Immortal 90 Day Challenge",
     category: "Legs + Shoulders",
     muscleGroup: ["Shoulders"],
-    exerciseName: "Bent-Over Rear Delt Flyes",
+    exerciseName: "Rear Delt Fly",
     equipment: "Dumbbells",
     difficulty: "Beginner",
     sets: 3,
@@ -683,7 +684,7 @@ const IMMORTAL_BACK_BICEPS_FOREARMS: Omit<ChallengeExerciseItem, "id" | "dayNumb
     programName: "Immortal 90 Day Challenge",
     category: "Back + Biceps + Forearm",
     muscleGroup: ["Forearms"],
-    exerciseName: "Barbell Palms-Up Wrist Curls",
+    exerciseName: "Behind-the-Back Barbell Wrist Curl",
     equipment: "Barbell & Flat Bench",
     difficulty: "Beginner",
     sets: 3,
@@ -701,7 +702,7 @@ const IMMORTAL_BACK_BICEPS_FOREARMS: Omit<ChallengeExerciseItem, "id" | "dayNumb
     programName: "Immortal 90 Day Challenge",
     category: "Back + Biceps + Forearm",
     muscleGroup: ["Forearms"],
-    exerciseName: "Reverse EZ-Bar Forearm Curls",
+    exerciseName: "Zottman Dumbbell Reverse Curls",
     equipment: "EZ-Bar",
     difficulty: "Beginner",
     sets: 3,
@@ -719,7 +720,7 @@ const IMMORTAL_BACK_BICEPS_FOREARMS: Omit<ChallengeExerciseItem, "id" | "dayNumb
     programName: "Immortal 90 Day Challenge",
     category: "Back + Biceps + Forearm",
     muscleGroup: ["Forearms"],
-    exerciseName: "Farmer's Heavy Dumbbell Carry",
+    exerciseName: "Dumbbell Suitcase Carry",
     equipment: "Heavy Dumbbells",
     difficulty: "Intermediate",
     sets: 3,
@@ -740,7 +741,7 @@ const IMMORTAL_LEGS_SHOULDERS_ABS: Omit<ChallengeExerciseItem, "id" | "dayNumber
     programName: "Immortal 90 Day Challenge",
     category: "Legs + Shoulders + Abs",
     muscleGroup: ["Abs"],
-    exerciseName: "Hanging Leg Raises",
+    exerciseName: "Hanging Leg Raise",
     equipment: "Pull-up Bar",
     difficulty: "Intermediate",
     sets: 3,
@@ -758,7 +759,7 @@ const IMMORTAL_LEGS_SHOULDERS_ABS: Omit<ChallengeExerciseItem, "id" | "dayNumber
     programName: "Immortal 90 Day Challenge",
     category: "Legs + Shoulders + Abs",
     muscleGroup: ["Abs"],
-    exerciseName: "Ab Wheel Rollouts",
+    exerciseName: "Ab Wheel Rollout",
     equipment: "Ab Wheel",
     difficulty: "Advanced",
     sets: 3,
@@ -776,7 +777,7 @@ const IMMORTAL_LEGS_SHOULDERS_ABS: Omit<ChallengeExerciseItem, "id" | "dayNumber
     programName: "Immortal 90 Day Challenge",
     category: "Legs + Shoulders + Abs",
     muscleGroup: ["Abs"],
-    exerciseName: "Weighted Cable Rope Crunches",
+    exerciseName: "Cable Crunch",
     equipment: "Cable Machine & Rope",
     difficulty: "Intermediate",
     sets: 3,
@@ -796,7 +797,7 @@ const IMMORTAL_DAY7_RUNNING_WALKING_CARDIO: Omit<ChallengeExerciseItem, "id" | "
     programName: "Immortal 90 Day Challenge",
     category: "5 to 10 KM Running / Walking",
     muscleGroup: ["Cardio"],
-    exerciseName: "5 to 10 KM Continuous Running or Walking",
+    exerciseName: "Running",
     equipment: "Running Shoes & Outdoors or Treadmill",
     difficulty: "Beginner",
     sets: 1,
@@ -816,7 +817,7 @@ const IMMORTAL_DAY7_RUNNING_WALKING_CARDIO: Omit<ChallengeExerciseItem, "id" | "
     programName: "Immortal 90 Day Challenge",
     category: "5 to 10 KM Running / Walking",
     muscleGroup: ["Recovery"],
-    exerciseName: "Post-Cardio Decompression, Rehydration & Complete Rest",
+    exerciseName: "Walking",
     equipment: "Yoga Mat or Bed",
     difficulty: "Beginner",
     sets: 1,
@@ -882,7 +883,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Chest",
     muscleGroup: ["Chest"],
-    exerciseName: "Tempo Calisthenic Push-ups",
+    exerciseName: "Push Ups",
     equipment: "Bodyweight",
     difficulty: "Intermediate",
     sets: 4,
@@ -896,7 +897,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Upper body",
     muscleGroup: ["Chest", "Shoulders", "Arms"],
-    exerciseName: "Chair / Couch Tricep Dips",
+    exerciseName: "Dips",
     equipment: "Sturdy Chair or Couch",
     difficulty: "Beginner",
     sets: 3,
@@ -910,7 +911,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Back",
     muscleGroup: ["Back"],
-    exerciseName: "Prone Floor Cobra Hold",
+    exerciseName: "Prone Cobra Chest Opener",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -924,7 +925,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Back",
     muscleGroup: ["Back", "Arms"],
-    exerciseName: "Bodyweight Doorway Rows",
+    exerciseName: "Inverted Bodyweight Row on Smith Machine",
     equipment: "Doorframe or Sturdy Table",
     difficulty: "Beginner",
     sets: 4,
@@ -938,7 +939,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Back",
     muscleGroup: ["Back"],
-    exerciseName: "Prone Scapular Y-T-W Holds",
+    exerciseName: "Y-T-W Scapular Raises (Bodyweight)",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -952,7 +953,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Shoulders",
     muscleGroup: ["Shoulders"],
-    exerciseName: "Pike Push-ups for Deltoid Power",
+    exerciseName: "Decline Push Ups",
     equipment: "Bodyweight",
     difficulty: "Intermediate",
     sets: 3,
@@ -966,7 +967,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Arms",
     muscleGroup: ["Arms"],
-    exerciseName: "Doorframe Isometric Bicep Curls",
+    exerciseName: "Dips",
     equipment: "Doorframe",
     difficulty: "Beginner",
     sets: 3,
@@ -980,7 +981,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Legs and glutes",
     muscleGroup: ["Legs", "Glutes"],
-    exerciseName: "Bodyweight Air Squats & Pulse",
+    exerciseName: "Bodyweight Squats",
     equipment: "Bodyweight",
     difficulty: "Beginner",
     sets: 4,
@@ -994,7 +995,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Legs and glutes",
     muscleGroup: ["Legs", "Glutes"],
-    exerciseName: "Calisthenic Alternating Walking Lunges",
+    exerciseName: "Walking Lunges",
     equipment: "Bodyweight",
     difficulty: "Intermediate",
     sets: 3,
@@ -1008,7 +1009,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Legs and glutes",
     muscleGroup: ["Glutes", "Legs"],
-    exerciseName: "Single-Leg Floor Glute Bridge",
+    exerciseName: "Single Leg Glute Bridge",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1022,7 +1023,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Legs and glutes",
     muscleGroup: ["Legs"],
-    exerciseName: "Standing Single-Leg Calf Raises",
+    exerciseName: "Calf Raises",
     equipment: "Step or Flat Ground",
     difficulty: "Beginner",
     sets: 3,
@@ -1036,7 +1037,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Core and abs",
     muscleGroup: ["Abs"],
-    exerciseName: "Dead Bug Core Bracing",
+    exerciseName: "Dead Bug",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1050,7 +1051,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Core and abs",
     muscleGroup: ["Abs"],
-    exerciseName: "Hollow Body Core Isometric Hold",
+    exerciseName: "Hollow Body Hold",
     equipment: "Yoga Mat",
     difficulty: "Intermediate",
     sets: 4,
@@ -1064,7 +1065,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Core and abs",
     muscleGroup: ["Abs"],
-    exerciseName: "Forearm Plank with Knee Taps",
+    exerciseName: "Plank",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1078,7 +1079,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Core and abs",
     muscleGroup: ["Abs"],
-    exerciseName: "Bicycle Crunches with Peak Hold",
+    exerciseName: "Bicycle Crunches",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1106,7 +1107,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Cardio",
     muscleGroup: ["Cardio"],
-    exerciseName: "5 to 10 KM Calibrated Walk or Jog",
+    exerciseName: "Walking",
     equipment: "Running Shoes",
     difficulty: "Beginner",
     sets: 1,
@@ -1120,7 +1121,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Cardio",
     muscleGroup: ["Cardio"],
-    exerciseName: "High Knees & Lateral Shuttle Conditioning",
+    exerciseName: "High Knees",
     equipment: "Bodyweight & Running Shoes",
     difficulty: "Intermediate",
     sets: 4,
@@ -1134,7 +1135,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Mobility and recovery",
     muscleGroup: ["Mobility and recovery"],
-    exerciseName: "World's Greatest Stretch & Spinal Flow",
+    exerciseName: "World's Greatest Stretch Complex",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 2,
@@ -1148,7 +1149,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Mobility and recovery",
     muscleGroup: ["Mobility and recovery"],
-    exerciseName: "Deep Squat Pry & Hip Opener Flow",
+    exerciseName: "90/90 Active Hip Opener",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1162,7 +1163,7 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
     programName: "180 Day Home Workout Challenge",
     category: "Mobility and recovery",
     muscleGroup: ["Mobility and recovery"],
-    exerciseName: "Prone Scorpion & Thoracic Twist",
+    exerciseName: "Scorpion Stretch for Spinal Rotation",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 2,
@@ -1180,7 +1181,7 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Women Confidence Program",
     category: "Glutes",
     muscleGroup: ["Glutes"],
-    exerciseName: "Banded Glute Bridge Abductions",
+    exerciseName: "Lateral Mini-Band Glute Walk",
     equipment: "Booty Band & Yoga Mat",
     difficulty: "Beginner",
     sets: 4,
@@ -1194,7 +1195,7 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Women Confidence Program",
     category: "Lower body",
     muscleGroup: ["Glutes", "Legs"],
-    exerciseName: "Dumbbell Bulgarian Split Squats",
+    exerciseName: "Bulgarian Split Squat",
     equipment: "Dumbbells & Bench/Chair",
     difficulty: "Intermediate",
     sets: 3,
@@ -1208,7 +1209,7 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Women Confidence Program",
     category: "Legs",
     muscleGroup: ["Legs"],
-    exerciseName: "Goblet Sumo Squat",
+    exerciseName: "Sumo Squat with Pulse",
     equipment: "Single Dumbbell",
     difficulty: "Beginner",
     sets: 3,
@@ -1222,7 +1223,7 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Women Confidence Program",
     category: "Legs",
     muscleGroup: ["Legs", "Glutes"],
-    exerciseName: "Dumbbell Romanian Deadlift",
+    exerciseName: "Dumbbell Romanian Deadlift (RDL)",
     equipment: "Pair of Dumbbells",
     difficulty: "Beginner",
     sets: 4,
@@ -1236,7 +1237,7 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Women Confidence Program",
     category: "Core and abs",
     muscleGroup: ["Abs"],
-    exerciseName: "Stomach Vacuum & Transverse Bracing",
+    exerciseName: "Stomach Vacuum & Core Bracing",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 4,
@@ -1250,7 +1251,7 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Women Confidence Program",
     category: "Core and abs",
     muscleGroup: ["Abs"],
-    exerciseName: "Dead Bug Pelvic Tilt Control",
+    exerciseName: "Dead Bug",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1264,7 +1265,7 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Women Confidence Program",
     category: "Core and abs",
     muscleGroup: ["Abs"],
-    exerciseName: "Side Plank Waist Cinch Hold",
+    exerciseName: "Side Plank",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1278,7 +1279,7 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Women Confidence Program",
     category: "Core and abs",
     muscleGroup: ["Abs"],
-    exerciseName: "Bird Dog Glute & Core Stabilizer",
+    exerciseName: "Bird Dog Stability Hold",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1292,7 +1293,7 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Women Confidence Program",
     category: "Upper body",
     muscleGroup: ["Upper body"],
-    exerciseName: "Incline Push-ups for Toned Upper Chest",
+    exerciseName: "Incline Push Ups",
     equipment: "Bench or Countertop",
     difficulty: "Beginner",
     sets: 3,
@@ -1306,7 +1307,7 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Women Confidence Program",
     category: "Upper body",
     muscleGroup: ["Upper body"],
-    exerciseName: "Dumbbell Lateral Deltoid Toning Raises",
+    exerciseName: "Dumbbell Lateral Raises",
     equipment: "Light Dumbbells",
     difficulty: "Beginner",
     sets: 3,
@@ -1320,7 +1321,7 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Women Confidence Program",
     category: "Back",
     muscleGroup: ["Back"],
-    exerciseName: "Dumbbell Dual Arm Row for Posture",
+    exerciseName: "Single-Arm Supported Row",
     equipment: "Dumbbells",
     difficulty: "Beginner",
     sets: 3,
@@ -1334,7 +1335,7 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Women Confidence Program",
     category: "Confidence and wellness sessions",
     muscleGroup: ["Mobility and recovery"],
-    exerciseName: "Mindset Calibration & Posture Self-Alignment",
+    exerciseName: "Child's Pose Spinal Reach",
     equipment: "Quiet Room & Mat",
     difficulty: "Beginner",
     sets: 1,
@@ -1348,7 +1349,7 @@ const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
     programName: "Women Confidence Program",
     category: "Cardio",
     muscleGroup: ["Cardio"],
-    exerciseName: "5 to 10 KM Power Walking or Trail Run",
+    exerciseName: "Running",
     equipment: "Running Shoes",
     difficulty: "Beginner",
     sets: 1,
@@ -1366,7 +1367,7 @@ const BELLY_FAT_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[
     programName: "Belly Fat Shred System",
     category: "Core",
     muscleGroup: ["Abs"],
-    exerciseName: "Isometric Plank with Posterior Pelvic Tilt",
+    exerciseName: "Plank",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 4,
@@ -1380,7 +1381,7 @@ const BELLY_FAT_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[
     programName: "Belly Fat Shred System",
     category: "Obliques",
     muscleGroup: ["Abs"],
-    exerciseName: "Russian Twist with Controlled Tempo",
+    exerciseName: "Russian Twist",
     equipment: "Bodyweight or Light Dumbbell",
     difficulty: "Beginner",
     sets: 3,
@@ -1394,7 +1395,7 @@ const BELLY_FAT_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[
     programName: "Belly Fat Shred System",
     category: "HIIT",
     muscleGroup: ["Full body"],
-    exerciseName: "Mountain Climbers Sprint Intervals",
+    exerciseName: "Mountain Climbers",
     equipment: "Bodyweight",
     difficulty: "Intermediate",
     sets: 4,
@@ -1408,7 +1409,7 @@ const BELLY_FAT_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[
     programName: "Belly Fat Shred System",
     category: "Full body conditioning",
     muscleGroup: ["Full body"],
-    exerciseName: "Jump Rope Double Taps or Speed Skips",
+    exerciseName: "Jump Rope",
     equipment: "Jump Rope",
     difficulty: "Intermediate",
     sets: 4,
@@ -1422,7 +1423,7 @@ const BELLY_FAT_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[
     programName: "Belly Fat Shred System",
     category: "Walking or running",
     muscleGroup: ["Cardio"],
-    exerciseName: "5 to 10 KM Incline Walk or Outdoor Run",
+    exerciseName: "Running",
     equipment: "Treadmill or Outdoor Path",
     difficulty: "Beginner",
     sets: 1,
@@ -1440,7 +1441,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Posture correction",
     muscleGroup: ["Upper back"],
-    exerciseName: "Wall Angels for Scapular Depression",
+    exerciseName: "Y-T-W Scapular Raises (Bodyweight)",
     equipment: "Wall",
     difficulty: "Beginner",
     sets: 3,
@@ -1454,7 +1455,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Posture correction",
     muscleGroup: ["Upper back"],
-    exerciseName: "Prone Prismatic Scapular Squeeze",
+    exerciseName: "Prone Trap-3 Scapular Raise",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1468,7 +1469,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Neck mobility",
     muscleGroup: ["Neck mobility"],
-    exerciseName: "Chin Tucks against Headrest/Wall",
+    exerciseName: "Resistance Band Pull-Aparts & Posture Opener",
     equipment: "Wall or Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1482,7 +1483,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Chest opening",
     muscleGroup: ["Chest"],
-    exerciseName: "Doorway Pectoral & Bicep Stretch",
+    exerciseName: "Child's Pose Spinal Reach",
     equipment: "Doorframe",
     difficulty: "Beginner",
     sets: 3,
@@ -1496,7 +1497,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Chest opening",
     muscleGroup: ["Chest", "Shoulders"],
-    exerciseName: "Prone Floor Y-Chest Opener",
+    exerciseName: "Prone Cobra Chest Opener",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1510,7 +1511,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Chest opening",
     muscleGroup: ["Chest", "Shoulders"],
-    exerciseName: "Clasp-Hands Behind Back Chest Expansion",
+    exerciseName: "Child's Pose Spinal Reach",
     equipment: "Towel or Bodyweight",
     difficulty: "Beginner",
     sets: 3,
@@ -1524,7 +1525,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Spinal mobility",
     muscleGroup: ["Spinal mobility"],
-    exerciseName: "Cat-Cow Dynamic Spinal Waves",
+    exerciseName: "Primal Cat-Cow Spinal Waves",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1538,7 +1539,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Spinal mobility",
     muscleGroup: ["Spinal mobility"],
-    exerciseName: "Thoracic Thread the Needle Rotations",
+    exerciseName: "Seated Thoracic Extension & Twist",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1552,7 +1553,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Spinal mobility",
     muscleGroup: ["Spinal mobility"],
-    exerciseName: "Cobra to Child's Pose Spinal Articulation",
+    exerciseName: "Child's Pose Spinal Reach",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1566,7 +1567,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Hip mobility",
     muscleGroup: ["Hip mobility"],
-    exerciseName: "90/90 Hip Flow with Forward Fold",
+    exerciseName: "90/90 Active Hip Opener",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1580,7 +1581,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Hip mobility",
     muscleGroup: ["Hip mobility"],
-    exerciseName: "Half-Kneeling Hip Flexor & Psoas Stretch",
+    exerciseName: "Couch Stretch for Tight Hip Flexors",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1594,7 +1595,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Glute activation",
     muscleGroup: ["Glutes"],
-    exerciseName: "Prone Hip Extension with Knee Bent",
+    exerciseName: "Glute Bridges",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1608,7 +1609,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Glute activation",
     muscleGroup: ["Glutes"],
-    exerciseName: "Quadruped Fire Hydrants for Glute Medius",
+    exerciseName: "Lateral Mini-Band Glute Walk",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1622,7 +1623,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Glute activation",
     muscleGroup: ["Glutes", "Core stability"],
-    exerciseName: "Isometric Floor Glute Bridge Hold",
+    exerciseName: "Glute Bridge & Isometric Hold",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1636,7 +1637,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Daily movement",
     muscleGroup: ["Daily movement", "Mobility and recovery"],
-    exerciseName: "Standing Postural Alignment & Spinal Elongation",
+    exerciseName: "Systemic Decompression Breathing",
     equipment: "Bodyweight",
     difficulty: "Beginner",
     sets: 3,
@@ -1650,7 +1651,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Daily movement",
     muscleGroup: ["Daily movement", "Mobility and recovery"],
-    exerciseName: "Multi-Plane Gentle Posture Mobility Flow",
+    exerciseName: "World's Greatest Stretch Complex",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1664,7 +1665,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Daily movement",
     muscleGroup: ["Daily movement", "Mobility and recovery"],
-    exerciseName: "20-Minute Calibrated Posture Walking Protocol",
+    exerciseName: "Walking",
     equipment: "Walking Shoes",
     difficulty: "Beginner",
     sets: 1,
@@ -1678,7 +1679,7 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
     programName: "Reclaim Your Posture & Vitality",
     category: "Daily movement",
     muscleGroup: ["Daily movement", "Mobility and recovery"],
-    exerciseName: "Diaphragmatic Deep Breathing & Pelvic Reset",
+    exerciseName: "Deep Diaphragmatic Box Breathing",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
@@ -1693,6 +1694,23 @@ const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
 // 3. DETERMINISTIC WORKOUT GENERATOR WITH STRICT HIERARCHY
 // PROGRAM -> DAY -> CATEGORY -> MUSCLE GROUP -> EXERCISE
 // ============================================================================
+
+function finalizePlan(meta: DayWorkoutMeta, exercises: ChallengeExerciseItem[]): DayExecutionPlan {
+  return {
+    meta,
+    exercises: exercises.map(ex => {
+      const exerciseName = ex.exerciseName || (ex as any).name || "";
+      const gif = getExerciseGifUrl(exerciseName, ex.category);
+      return {
+        ...ex,
+        name: exerciseName,
+        exerciseName: exerciseName,
+        gifUrl: gif,
+        imageUrl: gif
+      };
+    })
+  };
+}
 
 export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: number): DayExecutionPlan {
   const safeDay = Math.max(1, dayNumber);
@@ -1733,7 +1751,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
       }));
-      return { meta, exercises };
+      return finalizePlan(meta, exercises);
     }
 
     if (cycleDay === 2) {
@@ -1759,7 +1777,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
       }));
-      return { meta, exercises };
+      return finalizePlan(meta, exercises);
     }
 
     if (cycleDay === 3) {
@@ -1786,7 +1804,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
       }));
-      return { meta, exercises };
+      return finalizePlan(meta, exercises);
     }
 
     if (cycleDay === 4) {
@@ -1812,7 +1830,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
       }));
-      return { meta, exercises };
+      return finalizePlan(meta, exercises);
     }
 
     if (cycleDay === 5) {
@@ -1837,7 +1855,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
       }));
-      return { meta, exercises };
+      return finalizePlan(meta, exercises);
     }
 
     if (cycleDay === 6) {
@@ -1862,7 +1880,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
       }));
-      return { meta, exercises };
+      return finalizePlan(meta, exercises);
     }
 
     // Day 7: Running or Walking 5 to 10 KM + Rest
@@ -1890,7 +1908,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
       id: `immortal_d${safeDay}_ex_${idx + 1}`,
       dayNumber: safeDay
     }));
-    return { meta, exercises };
+    return finalizePlan(meta, exercises);
   }
 
   // --------------------------------------------------------------------------
@@ -1951,7 +1969,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
       id: `home_d${safeDay}_ex_${idx + 1}`,
       dayNumber: safeDay
     }));
-    return { meta, exercises };
+    return finalizePlan(meta, exercises);
   }
 
   // --------------------------------------------------------------------------
@@ -2011,7 +2029,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
       id: `women_d${safeDay}_ex_${idx + 1}`,
       dayNumber: safeDay
     }));
-    return { meta, exercises };
+    return finalizePlan(meta, exercises);
   }
 
   // --------------------------------------------------------------------------
@@ -2068,7 +2086,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
       id: `belly_d${safeDay}_ex_${idx + 1}`,
       dayNumber: safeDay
     }));
-    return { meta, exercises };
+    return finalizePlan(meta, exercises);
   }
 
   // --------------------------------------------------------------------------
@@ -2127,5 +2145,5 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
     id: `posture_d${safeDay}_ex_${idx + 1}`,
     dayNumber: safeDay
   }));
-  return { meta, exercises };
+  return finalizePlan(meta, exercises);
 }

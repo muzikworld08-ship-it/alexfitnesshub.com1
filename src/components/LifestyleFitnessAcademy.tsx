@@ -12,6 +12,9 @@ import { db } from "../lib/firebase";
 import { queueLifestyleAcademyReminderEmail } from "../lib/mailTriggers";
 import WorkoutVisual from "./WorkoutVisual";
 import { findMatchingExercise, isExerciseMatch } from "../utils/exerciseMatching";
+import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
+import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
+import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
 
 // Define TypeScript structures for Lifestyle Academy
 interface ChallengeData {
@@ -736,6 +739,14 @@ export default function LifestyleFitnessAcademy() {
 
   // Keep position on activeTab change
   const [showSubscriptionAlert, setShowSubscriptionAlert] = useState<string | null>(null);
+  const [celebrationModalData, setCelebrationModalData] = useState<{
+    isOpen: boolean;
+    completedDay: number;
+    totalDays: number;
+    streakCount: number;
+    caloriesBurned: number;
+    exercisesCount: number;
+  } | null>(null);
 
   // Email trigger state variables
   const [isSendingEmail, setIsSendingEmail] = useState(false);
@@ -854,6 +865,19 @@ export default function LifestyleFitnessAcademy() {
         activeChallengeId || 1,
         1
       );
+    }
+
+    if (updated[id] && id.includes("workout_complete")) {
+      const dayNum = activeChallengeId || 1;
+      recordDailyWorkoutCompletion("programs_academy", dayNum);
+      setCelebrationModalData({
+        isOpen: true,
+        completedDay: dayNum,
+        totalDays: 12,
+        streakCount: Math.max(1, streak),
+        caloriesBurned: 350,
+        exercisesCount: 6
+      });
     }
   };
 
@@ -1396,6 +1420,24 @@ export default function LifestyleFitnessAcademy() {
               {/* Tab 3: Weekly Workout Program */}
               {activeTab === "workout" && (
                 <div className="bg-white border border-slate-200 rounded-[2rem] p-6 sm:p-8 space-y-6">
+                  {/* 5-Hour Cooldown Recovery Guard */}
+                  {(() => {
+                    const waitState = getProgramWaitState("programs_academy");
+                    if (waitState.isWaiting && activeChallenge.id > waitState.completedDay) {
+                      return (
+                        <ProgramCooldownWaitingScreen
+                          programId="programs_academy"
+                          programName="Programs & Academy (12-Week Physique Splits)"
+                          completedDay={waitState.completedDay}
+                          nextDay={waitState.nextDay}
+                          nextUnlockAt={waitState.nextUnlockAt}
+                          onReviewTodayWorkout={() => setActiveChallengeId(waitState.completedDay)}
+                          onUnlocked={() => setActiveChallengeId(waitState.nextDay)}
+                        />
+                      );
+                    }
+                    return null;
+                  })()}
                   
                   <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
@@ -1824,6 +1866,24 @@ export default function LifestyleFitnessAcademy() {
         </div>
       )}
 
+      {/* Celebratory Workout Completion Modal */}
+      {celebrationModalData && (
+        <WorkoutCelebrationModal
+          isOpen={celebrationModalData.isOpen}
+          onClose={() => setCelebrationModalData(null)}
+          programId="programs_academy"
+          programName="Programs & Academy (12-Week Physique Splits)"
+          completedDay={celebrationModalData.completedDay}
+          totalDays={celebrationModalData.totalDays}
+          streakCount={celebrationModalData.streakCount}
+          caloriesBurned={celebrationModalData.caloriesBurned}
+          exercisesCompletedCount={celebrationModalData.exercisesCount}
+          onContinue={() => {
+            setCelebrationModalData(null);
+            setActiveTab("habits");
+          }}
+        />
+      )}
     </div>
   );
 }
