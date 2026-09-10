@@ -19,6 +19,8 @@ import {
   processPendingFirestoreMailQueue, 
   startFirestoreMailWorker 
 } from "./src/server/mailUtility";
+import { EXERCISES, getExerciseGifUrl } from "./src/data/exercises";
+import { getWorkoutForProgramAndDay } from "./src/data/challengeEngineDatabase";
 
 // Load environment variables
 dotenv.config();
@@ -2434,6 +2436,421 @@ Ensure that the JSON is perfectly valid and matches the requested structure exac
       program: fallbackProgram,
       isFallback: true
     });
+  }
+});
+
+
+// Helper to resolve an exercise name against the 237 admin-uploaded library
+function resolveMasterExercise(name: string, categoryHint: string = ""): any {
+  if (!name) return null;
+  const nameLower = name.trim().toLowerCase();
+  const nameNorm = nameLower.replace(/[^a-z0-9]/g, "");
+
+  // 1. Exact case-insensitive match
+  let found = EXERCISES.find(e => e.name.toLowerCase().trim() === nameLower);
+  if (found) return found;
+
+  // 2. Normalized alphanumeric match
+  found = EXERCISES.find(e => e.name.toLowerCase().replace(/[^a-z0-9]/g, "") === nameNorm);
+  if (found) return found;
+
+  // 3. Substring inclusion
+  found = EXERCISES.find(e => {
+    const eNorm = e.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return eNorm.includes(nameNorm) || (nameNorm.length > 5 && nameNorm.includes(eNorm));
+  });
+  if (found) return found;
+
+  // 4. Word tokens match
+  const words = nameLower.split(/\s+/).filter(w => w.length > 2 && !["and", "with", "the", "for"].includes(w));
+  let bestMatch = null;
+  let bestScore = 0;
+  for (const ex of EXERCISES) {
+    const exWords = ex.name.toLowerCase().split(/\s+/);
+    let score = 0;
+    for (const w of words) {
+      if (exWords.includes(w)) score += 2;
+      else if (exWords.some(ew => ew.includes(w) || w.includes(ew))) score += 1;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = ex;
+    }
+  }
+  if (bestScore >= 2 && bestMatch) return bestMatch;
+
+  // 5. Category hint fallback
+  if (categoryHint) {
+    const catLower = categoryHint.toLowerCase();
+    const catMatch = EXERCISES.find(e =>
+      e.category.toLowerCase().includes(catLower) ||
+      e.categories?.some(c => c.toLowerCase().includes(catLower)) ||
+      e.muscleGroups?.some(m => m.toLowerCase().includes(catLower))
+    );
+    if (catMatch) return catMatch;
+  }
+
+  return EXERCISES[0] || null;
+}
+
+// Server-side fallback daily workout generator
+function generateServerFallbackDailyWorkout(params: any): any {
+  const {
+    programType = "immortal_90",
+    dayNumber = 1,
+    targetMuscle = "",
+    fitnessLevel = "Intermediate",
+    equipment = "All",
+    duration = 45,
+    customFocusPrompt = ""
+  } = params;
+
+  const safeDay = Math.max(1, Number(dayNumber) || 1);
+  const programNames: Record<string, string> = {
+    immortal_90: "Immortal 90 Day Challenge",
+    women_confidence: "Women Confidence Program",
+    lifestyle_academy: "Lifestyle Fitness Academy",
+    home_workout: "180-Day Home Workout Challenge",
+    belly_fat_shred: "5-Month Belly Fat Shred System",
+    gym_hypertrophy: "Gym Muscle Builder & Strength",
+    cardio_calisthenics: "Cardio, Calisthenics & Military",
+    posture_vitality: "Posture & Joint Vitality",
+    custom: "Custom AI Blueprint"
+  };
+
+  const programName = programNames[programType] || "AlexFitnessHub Daily Program";
+  let title = `${programName} • Day ${safeDay}`;
+  let tagline = "Clinical Biomechanics & Progressive Overload Protocol";
+  let coachingBrief = `Day ${safeDay} execution: Maintain strict 3-second eccentric tempo, lock in abdominal stability, and breathe rhythmically through each repetition.`;
+  let targetMusclesList = [targetMuscle || "Full Body"];
+  let rawExercises: any[] = [];
+
+  if (
+    programType === "immortal_90" ||
+    programType === "women_confidence" ||
+    programType === "belly_fat_shred" ||
+    programType === "home_workout" ||
+    programType === "posture_vitality"
+  ) {
+    const engineProgramId = programType === "home_workout" ? "home_180" : programType;
+    try {
+      const plan = getWorkoutForProgramAndDay(engineProgramId as any, safeDay);
+      if (plan && plan.exercises && plan.exercises.length > 0) {
+        title = plan.meta.title || title;
+        tagline = plan.meta.category || tagline;
+        coachingBrief = plan.meta.coachingNotes || coachingBrief;
+        targetMusclesList = [plan.meta.category || "Full Body"];
+        rawExercises = plan.exercises.map(ex => ({
+          name: ex.exerciseName || (ex as any).name,
+          sets: typeof ex.sets === "number" ? ex.sets : parseInt(String(ex.sets)) || 3,
+          reps: String(ex.reps || "10-12 reps"),
+          rest: ex.restTime ? parseInt(ex.restTime) : 60,
+          notes: (Array.isArray(ex.coachingCues) ? ex.coachingCues.join(" ") : (ex as any).coachingCues) || (ex as any).notes || "Execute with maximum mind-muscle connection.",
+          targetMuscle: ex.category || plan.meta.category
+        }));
+      }
+    } catch (e) {
+      console.warn("Server fallback engine error:", e);
+    }
+  }
+
+  if (rawExercises.length === 0) {
+    // Filter from 237 exercises
+    let pool = EXERCISES;
+    if (targetMuscle) {
+      const tLower = targetMuscle.toLowerCase();
+      const matched = EXERCISES.filter(e =>
+        e.name.toLowerCase().includes(tLower) ||
+        e.category.toLowerCase().includes(tLower) ||
+        e.categories?.some(c => c.toLowerCase().includes(tLower)) ||
+        e.muscleGroups?.some(m => m.toLowerCase().includes(tLower))
+      );
+      if (matched.length >= 3) pool = matched;
+    }
+
+    const count = Math.min(6, pool.length);
+    for (let i = 0; i < count; i++) {
+      const ex = pool[(safeDay * 2 + i) % pool.length];
+      rawExercises.push({
+        name: ex.name,
+        sets: fitnessLevel === "Advanced" ? 4 : 3,
+        reps: "10-12 reps",
+        rest: 60,
+        notes: ex.movementExecution || "Maintain strict form through entire ROM.",
+        targetMuscle: ex.musclesWorked?.[0] || ex.muscleGroups?.[0] || "Target Muscle"
+      });
+    }
+  }
+
+  const exercises = rawExercises.map((raw, idx) => {
+    const matched = resolveMasterExercise(raw.name, raw.targetMuscle || targetMuscle);
+    const exName = matched ? matched.name : raw.name;
+    const sets = raw.sets || 3;
+    const reps = raw.reps || "10-12 reps";
+    const rest = raw.rest || 60;
+    const gif = matched ? matched.gifUrl : getExerciseGifUrl(exName, raw.targetMuscle);
+
+    return {
+      id: matched ? matched.id : `gen_ex_${safeDay}_${idx + 1}`,
+      name: exName,
+      sets,
+      reps,
+      restSeconds: rest,
+      tempo: "3-0-1-0",
+      coachingCues: raw.notes || matched?.movementExecution || "Brace your core, maintain neutral spine, and control negative.",
+      targetMuscle: raw.targetMuscle || matched?.musclesWorked?.[0] || matched?.muscleGroups?.[0] || "Target Muscle",
+      equipment: matched?.equipment || [equipment || "Bodyweight"],
+      difficulty: matched?.difficulty || fitnessLevel || "Intermediate",
+      gifUrl: gif,
+      instructions: matched?.instructions || ["Align body posture.", "Engage target muscle.", "Control eccentric tempo."],
+      startingPosition: matched?.startingPosition || "Assume balanced posture with braced abdominal wall.",
+      movementExecution: matched?.movementExecution || "Drive with primary muscle group, avoiding momentum.",
+      finishingPosition: matched?.finishingPosition || "Return under controlled tempo to initial position.",
+      safetyTips: matched?.safetyTips || ["Breathe rhythmically.", "Do not hyperextend joints."],
+      commonMistakes: matched?.commonMistakes || ["Rushing the negative.", "Rounding spine."]
+    };
+  });
+
+  const warmup = [
+    {
+      name: "Arm Circles & Dynamic Torso Rotations",
+      durationOrReps: "60 Seconds",
+      instructions: "Rotate arms forward and back, swivel torso gently to warm shoulder capsules and spinal erectors."
+    },
+    {
+      name: "Hip Opener & Spider-man Lunges",
+      durationOrReps: "45 Seconds per side",
+      instructions: "Step into deep lunge, press hips downward, and extend arm upward to mobilise thoracic spine."
+    }
+  ];
+
+  const cooldown = [
+    {
+      name: "Diaphragmatic Box Breathing",
+      duration: "2 Minutes",
+      instructions: "Inhale 4s, hold 4s, exhale 4s, hold 4s to transition into parasympathetic recovery."
+    },
+    {
+      name: "Full-Body Static Hamstring & Quad Stretch",
+      duration: "90 Seconds per side",
+      instructions: "Gently stretch worked muscle groups under slow, deep respiration."
+    }
+  ];
+
+  const estimatedCalories = programType === "belly_fat_shred" ? "420 - 520 kcal" : "380 - 480 kcal";
+
+  return {
+    id: `daily_workout_${programType}_d${safeDay}_${Date.now()}`,
+    title,
+    tagline,
+    programType,
+    programName,
+    dayNumber: safeDay,
+    targetMuscles: targetMusclesList,
+    fitnessLevel,
+    equipmentRequired: [equipment || "Gym Equipment"],
+    estimatedMinutes: duration || 45,
+    estimatedCalories,
+    coachingBrief,
+    warmup,
+    exercises,
+    cooldown,
+    nutritionTip: "Post-workout: Fuel with 30-40g high quality protein and drink 500ml water within 45 minutes.",
+    hydrationTip: "Maintain 3.0+ Liters of daily hydration. Sip 250ml every 15 minutes during this session.",
+    createdAt: new Date().toISOString(),
+    isAiGenerated: false,
+    isFallback: true
+  };
+}
+
+// 1.65. AI DAILY WORKOUT GENERATOR (GROUNDED IN 237 ADMIN GIF EXERCISES)
+app.post("/api/gemini/generate-daily-workout", requirePremium, async (req, res) => {
+  const {
+    programType = "immortal_90",
+    dayNumber = 1,
+    targetMuscle = "",
+    fitnessLevel = "Intermediate",
+    equipment = "All",
+    duration = 45,
+    intensity = "High",
+    customFocusPrompt = "",
+    workoutStyle = "Hypertrophy"
+  } = req.body;
+
+  const safeDay = Math.max(1, Number(dayNumber) || 1);
+
+  const programNames: Record<string, string> = {
+    immortal_90: "Immortal 90 Day Challenge",
+    women_confidence: "Women Confidence Program",
+    lifestyle_academy: "Lifestyle Fitness Academy",
+    home_workout: "180-Day Home Workout Challenge",
+    belly_fat_shred: "5-Month Belly Fat Shred System",
+    gym_hypertrophy: "Gym Muscle Builder & Strength",
+    cardio_calisthenics: "Cardio, Calisthenics & Military",
+    posture_vitality: "Posture & Joint Vitality",
+    custom: "Custom AI Blueprint"
+  };
+
+  const programName = programNames[programType] || "AlexFitnessHub Daily Program";
+
+  try {
+    const ai = getGeminiClient();
+
+    if (!ai) {
+      console.log("[AI Workout] No Gemini client configured. Launching clinical kinesiology fallback engine.");
+      const fallback = generateServerFallbackDailyWorkout({
+        programType,
+        dayNumber: safeDay,
+        targetMuscle,
+        fitnessLevel,
+        equipment,
+        duration,
+        customFocusPrompt
+      });
+      return res.json({ success: true, workout: fallback });
+    }
+
+    // Build a compact sample list of verified 237 exercises for the prompt
+    // Categorize or filter so prompt stays concise and within limits
+    const relevantExercises = EXERCISES.slice(0, 120).map(e => e.name);
+
+    const contents = `Generate an elite, single-day workout session for the following training profile:
+PROGRAM: ${programName} (${programType})
+DAY NUMBER: Day ${safeDay}
+TARGET MUSCLE / SPLIT: ${targetMuscle || "Prescribed Program Split"}
+ATHLETE FITNESS LEVEL: ${fitnessLevel}
+EQUIPMENT AVAILABLE: ${equipment}
+SESSION DURATION: ${duration} minutes
+INTENSITY: ${intensity}
+WORKOUT STYLE: ${workoutStyle}
+${customFocusPrompt ? `USER CUSTOM FOCUS / NOTES: "${customFocusPrompt}"` : ""}
+
+IMPORTANT EXERCISE DATABASE CONSTRAINT:
+AlexFitnessHub features a master library of 237 administrator-uploaded workouts with animated GIFs.
+Choose exercise names that correspond directly to real bodybuilding/fitness movements such as:
+${relevantExercises.slice(0, 50).join(", ")}, etc.
+
+Return a strictly valid JSON object matching this schema (do NOT return any markdown backticks or prefaces, just raw JSON):
+{
+  "title": "High-energy session title (e.g. Day ${safeDay}: Pectoral Cleaving & Triceps Annihilation)",
+  "tagline": "Biomechanical focus description",
+  "programName": "${programName}",
+  "dayNumber": ${safeDay},
+  "targetMuscles": ["Primary Muscle", "Secondary Muscle"],
+  "fitnessLevel": "${fitnessLevel}",
+  "estimatedMinutes": ${duration},
+  "estimatedCalories": "380 - 480 kcal",
+  "coachingBrief": "2-3 sentences of direct motivational instructions and form cues from Coach Alex for today's workout",
+  "warmup": [
+    { "name": "Dynamic Warmup Drill", "durationOrReps": "60 Seconds", "instructions": "Form cues for warmup" },
+    { "name": "Dynamic Activation Drill", "durationOrReps": "45 Seconds", "instructions": "Activation cues" }
+  ],
+  "exercises": [
+    {
+      "name": "Exact exercise name",
+      "sets": 3,
+      "reps": "10-12 reps",
+      "restSeconds": 60,
+      "tempo": "3-0-1-0",
+      "coachingCues": "Coach Alex execution cues for peak tension and safety",
+      "targetMuscle": "Specific muscle targeted"
+    }
+  ],
+  "cooldown": [
+    { "name": "Restorative stretch name", "duration": "90 Seconds", "instructions": "Deep breathing and release cues" }
+  ],
+  "nutritionTip": "Specific post-workout macro/fuel tip for this workout",
+  "hydrationTip": "Hydration strategy for today's session"
+}
+Ensure exactly 4 to 6 core exercises are generated in the exercises array, with realistic sets and reps.`;
+
+    const systemInstruction = `You are Coach Alex, the elite head strength coach and sports kinesiologist at AlexFitnessHub.
+You generate precise, scientifically sound daily training routines.
+You prioritize biomechanical safety, strict eccentric control, and muscle stimulation.
+Always return 100% valid JSON matching the requested structure.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents,
+      config: {
+        systemInstruction,
+        temperature: 0.7,
+        responseMimeType: "application/json"
+      }
+    });
+
+    let responseText = response.text || "";
+    responseText = responseText.trim();
+    if (responseText.startsWith("```")) {
+      responseText = responseText.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+    }
+
+    try {
+      const generated = JSON.parse(responseText);
+
+      // Enrich every exercise in generated.exercises with the 237 library data
+      if (Array.isArray(generated.exercises)) {
+        generated.exercises = generated.exercises.map((ex: any, idx: number) => {
+          const matched = resolveMasterExercise(ex.name, ex.targetMuscle || targetMuscle);
+          const exName = matched ? matched.name : ex.name;
+          const gif = matched ? matched.gifUrl : getExerciseGifUrl(exName, ex.targetMuscle);
+
+          return {
+            id: matched ? matched.id : `ai_ex_${safeDay}_${idx + 1}`,
+            name: exName,
+            sets: ex.sets || 3,
+            reps: ex.reps || "10-12 reps",
+            restSeconds: ex.restSeconds || 60,
+            tempo: ex.tempo || "3-0-1-0",
+            coachingCues: ex.coachingCues || matched?.movementExecution || "Maintain strict tempo and form.",
+            targetMuscle: ex.targetMuscle || matched?.musclesWorked?.[0] || matched?.muscleGroups?.[0] || "Target Muscle",
+            equipment: matched?.equipment || [equipment || "Gym Equipment"],
+            difficulty: matched?.difficulty || fitnessLevel || "Intermediate",
+            gifUrl: gif,
+            instructions: matched?.instructions || ["Set position.", "Execute with control.", "Return to start."],
+            startingPosition: matched?.startingPosition || "Position safely with neutral posture.",
+            movementExecution: matched?.movementExecution || "Drive with primary muscles through full range.",
+            finishingPosition: matched?.finishingPosition || "Complete movement smoothly.",
+            safetyTips: matched?.safetyTips || ["Breathe evenly.", "Keep core braced."],
+            commonMistakes: matched?.commonMistakes || ["Rushing reps.", "Losing posture."]
+          };
+        });
+      }
+
+      generated.id = `daily_ai_workout_${programType}_d${safeDay}_${Date.now()}`;
+      generated.programType = programType;
+      generated.programName = programName;
+      generated.dayNumber = safeDay;
+      generated.createdAt = new Date().toISOString();
+      generated.isAiGenerated = true;
+
+      return res.json({ success: true, workout: generated });
+    } catch (parseErr) {
+      console.error("[AI Workout] Failed to parse Gemini response, fallback used:", responseText);
+      const fallback = generateServerFallbackDailyWorkout({
+        programType,
+        dayNumber: safeDay,
+        targetMuscle,
+        fitnessLevel,
+        equipment,
+        duration,
+        customFocusPrompt
+      });
+      return res.json({ success: true, workout: fallback });
+    }
+
+  } catch (error: any) {
+    console.error("[AI Workout] Error in generate-daily-workout endpoint:", error);
+    const fallback = generateServerFallbackDailyWorkout({
+      programType,
+      dayNumber: safeDay,
+      targetMuscle,
+      fitnessLevel,
+      equipment,
+      duration,
+      customFocusPrompt
+    });
+    return res.json({ success: true, workout: fallback, isFallback: true });
   }
 });
 

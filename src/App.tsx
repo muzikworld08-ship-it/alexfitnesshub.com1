@@ -216,7 +216,7 @@ function FitnessAppContent() {
     if (isInitialMount.current) {
       isInitialMount.current = false;
       prevUserUid.current = currentUid;
-      if (currentUid && (currentView === "home" || currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register")) {
+      if (currentUid && (currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register")) {
         const attempted = localStorage.getItem("fit_attempted_view");
         if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
           localStorage.removeItem("fit_attempted_view");
@@ -678,7 +678,7 @@ function FitnessAppContent() {
                 <WorkoutLibrary setView={handleSetView} />
               )}
               {currentView === "workout-generator" && (
-                <WorkoutGeneratorView />
+                <WorkoutGeneratorView setView={handleSetView} />
               )}
               {currentView === "nutrition" && (
                 <NutritionView />

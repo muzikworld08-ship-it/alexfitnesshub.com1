@@ -4,7 +4,7 @@ import {
   Menu, X, Shield, Lock, Award, ChevronDown, Calendar, Flame, 
   Dumbbell, Sparkles, BookOpen, Activity, Heart, Users, Video, 
   Bookmark, BarChart3, Calculator, Crown, Star, ArrowRight, LogOut,
-  ShoppingBag
+  ShoppingBag, RotateCcw
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import Logo from "./Logo";
@@ -19,7 +19,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps) {
-  const { user, logout } = useApp();
+  const { user, logout, resetAllSettings } = useApp();
   const { cartCount, setIsCartOpen } = useStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -533,7 +533,19 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
               </div>
 
               {/* Drawer Bottom Footer */}
-              <div className="p-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between">
+              <div className="p-4 border-t border-slate-200 bg-slate-50/80 flex flex-col gap-2">
+                <button
+                  onClick={async () => {
+                    setIsMenuOpen(false);
+                    await resetAllSettings();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-700 hover:text-[#D32F2F] rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-xs"
+                  title="Reset filters and app preferences to start fresh without deleting user data"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-[#D32F2F]" />
+                  <span>Reset Settings & Start New</span>
+                </button>
+
                 {user ? (
                   <button
                     onClick={() => {
@@ -541,13 +553,13 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                       logout();
                       setView("home");
                     }}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-700 hover:text-[#E53935] rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-xs"
+                    className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-xs"
                   >
                     <LogOut className="w-4 h-4" />
                     <span>Sign Out of Account</span>
                   </button>
                 ) : (
-                  <div className="text-center w-full">
+                  <div className="text-center w-full pt-1">
                     <p className="text-[10px] text-slate-500 font-medium">
                       AlexFitnessHub • Premium Kinesiology & Fitness System
                     </p>

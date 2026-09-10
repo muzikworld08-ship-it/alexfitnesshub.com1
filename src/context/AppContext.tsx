@@ -258,6 +258,9 @@ interface AppContextType {
   // Workout Library Filters & Centralized Search State
   workoutFilters: WorkoutLibraryFilters;
   setWorkoutFilters: (filters: Partial<WorkoutLibraryFilters>) => void;
+
+  // Settings Management
+  resetAllSettings: () => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -2222,6 +2225,91 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return updated;
     });
   }, []);
+
+  const resetAllSettings = useCallback(async (): Promise<boolean> => {
+    try {
+      console.log("[AppContext] Executing comprehensive settings reset while strictly preserving user data and history...");
+      
+      // 1. Reset theme to pristine light mode
+      try {
+        const root = window.document.documentElement;
+        root.classList.remove("dark");
+        root.setAttribute("data-theme", "light");
+        localStorage.setItem("fit_theme", "light");
+      } catch (e) {}
+
+      // 2. Reset workout library search filters to fresh defaults
+      const defaultFilters: WorkoutLibraryFilters = {
+        searchQuery: "",
+        selectedCategory: "All",
+        selectedDifficulty: "All",
+        selectedMuscleGroup: "All",
+        selectedEquipment: "All",
+        selectedExerciseType: "All",
+        selectedTrainingGoal: "All",
+        activeBrowseTab: "bodyparts"
+      };
+      setWorkoutFiltersState(defaultFilters);
+      try {
+        if (auth.currentUser?.uid) {
+          localStorage.setItem(`fit_workout_filters_${auth.currentUser.uid}`, JSON.stringify(defaultFilters));
+          saveWorkoutFiltersToFirebase(auth.currentUser.uid, defaultFilters);
+        }
+        localStorage.setItem("fit_workout_filters_guest", JSON.stringify(defaultFilters));
+      } catch (e) {}
+
+      // 3. Reset calibration goals to standard optimal fitness targets
+      const defaultCalibration: CalibrationGoals = {
+        userId: auth.currentUser?.uid || "guest",
+        dailyHydrationGoal: 10,
+        dailySleepGoal: 8.0,
+        targetReadinessScore: 85,
+        targetRestingHeartRate: 60,
+        updatedAt: new Date().toISOString()
+      };
+      setCalibrationGoals(defaultCalibration);
+      if (auth.currentUser?.uid && !isMockFirebase) {
+        try {
+          const calibRef = doc(db, "users", auth.currentUser.uid, "calibrationGoals", "current");
+          await setDoc(calibRef, defaultCalibration, { merge: true });
+        } catch (e) {
+          console.warn("Could not sync default calibration goals to Firestore:", e);
+        }
+      }
+
+      // 4. Reset Program Progress tracking indicators back to Day 1 start
+      setProgramProgressState(DEFAULT_PROGRAM_PROGRESS);
+      try {
+        if (auth.currentUser?.uid) {
+          localStorage.setItem(`fit_program_progress_${auth.currentUser.uid}`, JSON.stringify(DEFAULT_PROGRAM_PROGRESS));
+          saveProgramProgressToFirebase(auth.currentUser.uid, DEFAULT_PROGRAM_PROGRESS);
+        }
+        localStorage.setItem("fit_program_progress_guest", JSON.stringify(DEFAULT_PROGRAM_PROGRESS));
+      } catch (e) {}
+
+      // 5. Clean up temporary routing, attempt, and cache flags in localStorage
+      const keysToRemove = [
+        "fit_attempted_view",
+        "fit_upgrade_reason",
+        "fit_pending_oauth_provider",
+        "fit_pending_name",
+        "fit_video_query",
+        "fit_search_term",
+        "fit_active_tab"
+      ];
+      keysToRemove.forEach(k => {
+        try { localStorage.removeItem(k); } catch (e) {}
+      });
+
+      // 6. Reset view to "home" to start new on this website
+      setView("home");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return true;
+    } catch (err) {
+      console.error("Error resetting settings:", err);
+      return false;
+    }
+  }, [setView]);
 
   const loadUserData = (uid: string) => {
     // Load Workout Library Search and Filters from local/cloud
@@ -4435,7 +4523,8 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       recordProgramStopPoint,
       markProgramWorkoutComplete,
       resumeProgram,
-      getActiveEnrolledPrograms
+      getActiveEnrolledPrograms,
+      resetAllSettings
     }}>
       {children}
     </AppContext.Provider>

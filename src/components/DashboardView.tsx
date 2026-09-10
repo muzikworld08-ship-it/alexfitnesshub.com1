@@ -59,8 +59,24 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
     triggerWeeklyReportGeneration,
     activityLogs,
     theme,
-    setTheme
+    setTheme,
+    resetAllSettings
   } = useApp();
+
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleConfirmReset = async () => {
+    setIsResetting(true);
+    try {
+      await resetAllSettings();
+      setShowResetModal(false);
+    } catch (e) {
+      console.error("Failed to reset settings:", e);
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   const isPremium = user && (user.subscriptionStatus === "premium" || user.role === "admin");
 
@@ -261,6 +277,20 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
                     Dark
                   </button>
                 </div>
+              </div>
+
+              {/* Reset Settings & Start New */}
+              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[8px] font-sans font-black uppercase tracking-wider text-slate-400">Settings</span>
+                <button
+                  type="button"
+                  onClick={() => setShowResetModal(true)}
+                  className="px-2 py-1 rounded text-[8px] font-black uppercase tracking-wider text-slate-700 hover:text-[#D32F2F] bg-slate-100 hover:bg-red-50 border border-slate-200 transition-all cursor-pointer flex items-center gap-1"
+                  title="Reset settings, calibration targets and filters to fresh defaults without deleting your data"
+                >
+                  <RotateCcw className="w-2.5 h-2.5 text-[#D32F2F]" />
+                  <span>Reset & Start New</span>
+                </button>
               </div>
             </div>
           </div>
@@ -572,6 +602,74 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
             </AnimatePresence>
           </div>
         </div>
+
+        {/* Reset Settings Confirmation Modal */}
+        <AnimatePresence>
+          {showResetModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-red-50 text-[#D32F2F] flex items-center justify-center shrink-0 border border-red-100">
+                    <RotateCcw className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-sans font-black uppercase tracking-tight text-slate-900">
+                      Reset Settings & Start New
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Refresh preferences while safeguarding your data
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span><strong>Your data is safe:</strong> Workout history, logs, saved exercises, profiles, and account credentials are never deleted.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <RotateCcw className="w-4 h-4 text-[#D32F2F] shrink-0 mt-0.5" />
+                    <span><strong>What gets reset:</strong> Active search filters, calibration goals, theme settings, and navigation state will be restored to fresh defaults.</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowResetModal(false)}
+                    disabled={isResetting}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmReset}
+                    disabled={isResetting}
+                    className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-[#D32F2F] hover:bg-[#b71c1c] transition-all cursor-pointer shadow-sm flex items-center gap-2"
+                  >
+                    {isResetting ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Resetting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Confirm & Start New</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
       </div>
     </div>
