@@ -200,16 +200,16 @@ export function getChallengeWorkouts(challenge: PremiumChallenge, exercises: Exe
       return mMatches || cMatches || nMatches;
     });
 
-    for (const ex of pool.slice(0, 3)) {
-      if (!seenIds.has(ex.id) && matched.length < 10) {
+    for (const ex of pool.slice(0, 4)) {
+      if (!seenIds.has(ex.id) && matched.length < 12) {
         seenIds.add(ex.id);
         matched.push(ex);
       }
     }
   }
 
-  // Ensure every program has exactly 8 to 10 workouts
-  if (matched.length < 8) {
+  // Ensure every program has exactly 12 workouts according to its categories
+  if (matched.length < 12) {
     const categoryMatches = exercises.filter(ex => 
       !seenIds.has(ex.id) && (
         ex.category.toLowerCase().includes(challenge.category.toLowerCase()) ||
@@ -217,17 +217,17 @@ export function getChallengeWorkouts(challenge: PremiumChallenge, exercises: Exe
       )
     );
     for (const ex of categoryMatches) {
-      if (!seenIds.has(ex.id) && matched.length < 10) {
+      if (!seenIds.has(ex.id) && matched.length < 12) {
         seenIds.add(ex.id);
         matched.push(ex);
       }
     }
   }
 
-  // Fallback to general exercises to guarantee 8 to 10 workouts
-  if (matched.length < 8) {
+  // Fallback to general exercises to guarantee 12 workouts
+  if (matched.length < 12) {
     for (const ex of exercises) {
-      if (!seenIds.has(ex.id) && matched.length < 9) {
+      if (!seenIds.has(ex.id) && matched.length < 12) {
         seenIds.add(ex.id);
         matched.push(ex);
       }

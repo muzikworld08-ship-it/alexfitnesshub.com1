@@ -2287,7 +2287,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem("fit_program_progress_guest", JSON.stringify(DEFAULT_PROGRAM_PROGRESS));
       } catch (e) {}
 
-      // 5. Clean up temporary routing, attempt, and cache flags in localStorage
+      // 5. Reset all Challenge Engine states, workout cooldown timers, and active challenge progress across all workouts
+      try {
+        const uid = auth.currentUser?.uid || "guest";
+        const challengeKeysToRemove = [
+          `alex_challenge_engine_state_v3_${uid}`,
+          `alex_challenge_engine_state_v3_guest`,
+          `alex_challenge_engine_state_v3_null`,
+          `alex_challenge_wait_state_${uid}`,
+          `alex_challenge_wait_state_guest`,
+          `premium_90_day_challenge_${uid}`,
+          `premium_90_day_challenge_guest`,
+          `fit_women_confidence_${uid}`,
+          `fit_women_confidence_guest`,
+          `fit_challenge_progress_${uid}`,
+          `fit_challenge_progress_guest`,
+          `fit_lifestyle_progress_${uid}`,
+          `fit_lifestyle_progress_guest`
+        ];
+
+        challengeKeysToRemove.forEach(k => {
+          try { localStorage.removeItem(k); } catch (e) {}
+        });
+
+        // Also clean any program_wait_state keys in localStorage
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && (k.startsWith("program_wait_state_") || k.startsWith("alex_challenge_") || k.startsWith("fit_program_timer_"))) {
+            try { localStorage.removeItem(k); } catch (e) {}
+          }
+        }
+      } catch (e) {
+        console.warn("Could not reset all workout engine storage keys:", e);
+      }
+
+      // 6. Clean up temporary routing, attempt, and cache flags in localStorage
       const keysToRemove = [
         "fit_attempted_view",
         "fit_upgrade_reason",
@@ -2301,7 +2335,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         try { localStorage.removeItem(k); } catch (e) {}
       });
 
-      // 6. Reset view to "home" to start new on this website
+      // Notify any active components to re-synchronize clean defaults
+      try {
+        window.dispatchEvent(new Event("storage"));
+        window.dispatchEvent(new CustomEvent("fit_settings_reset"));
+      } catch (e) {}
+
+      // 7. Reset view to "home" to start new on this website
       setView("home");
       window.scrollTo({ top: 0, behavior: "smooth" });
       return true;

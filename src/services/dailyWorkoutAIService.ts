@@ -286,8 +286,8 @@ export function generateLocalFallbackDailyWorkout(
       if (matched.length >= 3) filtered = matched;
     }
 
-    // Pick 5-6 exercises deterministically based on dayNumber
-    const count = Math.min(6, filtered.length);
+    // Pick up to 12 exercises deterministically based on dayNumber
+    const count = Math.min(12, filtered.length);
     for (let i = 0; i < count; i++) {
       const index = (safeDay * 2 + i) % filtered.length;
       const ex = filtered[index];

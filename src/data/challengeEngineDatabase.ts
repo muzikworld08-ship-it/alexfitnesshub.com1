@@ -1,5 +1,55 @@
 import { ProgramId, ProgramMetadata, ChallengeExerciseItem, DayWorkoutMeta, DayExecutionPlan } from "../types/challengeEngine";
 import { getExerciseGifUrl } from "./exercises";
+import {
+  HOME_UPPER_BODY_EXERCISES,
+  HOME_LEGS_GLUTES_EXERCISES,
+  HOME_CARDIO_EXERCISES,
+  HOME_BACK_EXERCISES,
+  HOME_CORE_ABS_EXERCISES,
+  HOME_MOBILITY_EXERCISES,
+  HOME_180_EXERCISES_POOL
+} from "./home180ProgramData";
+import {
+  BELLY_CORE_EXERCISES,
+  BELLY_HIIT_EXERCISES,
+  BELLY_CARDIO_EXERCISES,
+  BELLY_OBLIQUES_EXERCISES,
+  BELLY_CONDITIONING_EXERCISES,
+  BELLY_FAT_EXERCISES_POOL
+} from "./bellyFatProgramData";
+import {
+  POSTURE_CORRECTION_EXERCISES,
+  POSTURE_CHEST_OPENING_EXERCISES,
+  POSTURE_HIP_MOBILITY_EXERCISES,
+  POSTURE_SPINAL_MOBILITY_EXERCISES,
+  POSTURE_GLUTE_ACTIVATION_EXERCISES,
+  POSTURE_DAILY_MOVEMENT_EXERCISES,
+  POSTURE_VITALITY_POOL
+} from "./postureVitalityProgramData";
+
+// Re-export pools so external consumers remain backwards compatible
+export {
+  HOME_UPPER_BODY_EXERCISES,
+  HOME_LEGS_GLUTES_EXERCISES,
+  HOME_CARDIO_EXERCISES,
+  HOME_BACK_EXERCISES,
+  HOME_CORE_ABS_EXERCISES,
+  HOME_MOBILITY_EXERCISES,
+  HOME_180_EXERCISES_POOL,
+  BELLY_CORE_EXERCISES,
+  BELLY_HIIT_EXERCISES,
+  BELLY_CARDIO_EXERCISES,
+  BELLY_OBLIQUES_EXERCISES,
+  BELLY_CONDITIONING_EXERCISES,
+  BELLY_FAT_EXERCISES_POOL,
+  POSTURE_CORRECTION_EXERCISES,
+  POSTURE_CHEST_OPENING_EXERCISES,
+  POSTURE_HIP_MOBILITY_EXERCISES,
+  POSTURE_SPINAL_MOBILITY_EXERCISES,
+  POSTURE_GLUTE_ACTIVATION_EXERCISES,
+  POSTURE_DAILY_MOVEMENT_EXERCISES,
+  POSTURE_VITALITY_POOL
+};
 
 // ============================================================================
 // 1. FIVE INDEPENDENT PROGRAM METADATA
@@ -311,6 +361,45 @@ const IMMORTAL_CHEST_TRICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] 
       "Lower chest to touch diamond and press up with triceps lockout."
     ],
     restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Chest + Triceps",
+    muscleGroup: ["Chest"],
+    exerciseName: "Dumbbell Pullover",
+    equipment: "Dumbbell & Flat Bench",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10-12",
+    duration: "45s set",
+    instructions: [
+      "Lie perpendicular across a flat bench with shoulder blades supported and hips slightly dropped.",
+      "Hold a dumbbell with both hands in a diamond cup grip over your chest.",
+      "Lower the dumbbell in a slow arc behind your head, feeling a deep stretch across pectorals and serratus anterior.",
+      "Pull the dumbbell back up in a controlled arc to chest level."
+    ],
+    restTime: "75s",
+    coachingCues: ["Keep a slight bend in elbows throughout", "Focus on chest expansion at the bottom"]
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Chest + Triceps",
+    muscleGroup: ["Triceps"],
+    exerciseName: "Close-Grip Barbell Bench Press",
+    equipment: "Barbell & Flat Bench",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "8-10",
+    duration: "45s set",
+    instructions: [
+      "Lie on flat bench with hands spaced shoulder-width apart on the barbell.",
+      "Keep elbows tucked close to your torso as you lower the bar to your lower chest.",
+      "Drive upward forcefully through the palms, focusing on triceps contraction at lockout."
+    ],
+    restTime: "90s",
+    coachingCues: ["Do not grip excessively narrow to protect wrists", "Lock out triceps cleanly at the apex"]
   }
 ];
 
@@ -474,6 +563,63 @@ const IMMORTAL_BACK_BICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
       "Curl EZ-bar upward to peak contraction without lifting elbows off pad."
     ],
     restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back + Biceps",
+    muscleGroup: ["Back"],
+    exerciseName: "Single-Arm Dumbbell Row",
+    equipment: "Dumbbell & Flat Bench",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10-12 / side",
+    duration: "45s set",
+    instructions: [
+      "Place one knee and hand on flat bench, keeping back flat and spine neutral.",
+      "Pull dumbbell up towards your hip pocket, driving elbow towards the ceiling.",
+      "Lower with a full stretch at the bottom of each repetition."
+    ],
+    restTime: "60s",
+    coachingCues: ["Do not rotate torso at the top", "Squeeze lat peak at hip pocket"]
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back + Biceps",
+    muscleGroup: ["Back"],
+    exerciseName: "T-Bar Row",
+    equipment: "T-Bar Landmine Station",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "8-10",
+    duration: "45s set",
+    instructions: [
+      "Straddle the bar with feet shoulder-width apart, hinge at hips with flat back.",
+      "Pull handles into your upper abdomen, retracting shoulder blades with maximum force.",
+      "Lower under control without rounding lower spine."
+    ],
+    restTime: "75s",
+    coachingCues: ["Maintain 45-degree hip hinge", "Drive with elbows not biceps"]
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back + Biceps",
+    muscleGroup: ["Biceps"],
+    exerciseName: "Concentration Curl",
+    equipment: "Dumbbell & Flat Bench",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "10-12 / side",
+    duration: "40s set",
+    instructions: [
+      "Sit on flat bench with legs spread, brace elbow against inner thigh.",
+      "Curl dumbbell upward towards your face, keeping upper body completely still.",
+      "Squeeze bicep peak at the top for 1 full second."
+    ],
+    restTime: "60s",
+    coachingCues: ["No momentum or swinging", "Isolate the bicep peak"]
   }
 ];
 
@@ -678,7 +824,7 @@ const IMMORTAL_LEGS_SHOULDERS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
 ];
 
 const IMMORTAL_BACK_BICEPS_FOREARMS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
-  ...IMMORTAL_BACK_BICEPS.slice(0, 6).map(ex => ({ ...ex, category: "Back + Biceps + Forearm" })),
+  ...IMMORTAL_BACK_BICEPS.slice(0, 9).map(ex => ({ ...ex, category: "Back + Biceps + Forearm" })),
   {
     programId: "immortal_90",
     programName: "Immortal 90 Day Challenge",
@@ -877,7 +1023,7 @@ const IMMORTAL_REST_WALKING: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] =
 ];
 
 // --- PROGRAM 2: 180 DAY HOME WORKOUT CHALLENGE CATALOG ---
-const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+const _OLD_HOME_180_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
   {
     programId: "home_180",
     programName: "180 Day Home Workout Challenge",
@@ -1174,194 +1320,1118 @@ const HOME_180_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
   }
 ];
 
-// --- PROGRAM 3: WOMEN CONFIDENCE PROGRAM CATALOG ---
-const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+// --- PROGRAM 3: WOMEN CONFIDENCE PROGRAM CATALOG (12 EXERCISES PER CATEGORY) ---
+export const WOMEN_GLUTES_EXERCISES: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
   {
     programId: "women_confidence",
     programName: "Women Confidence Program",
     category: "Glutes",
-    muscleGroup: ["Glutes"],
-    exerciseName: "Lateral Mini-Band Glute Walk",
+    muscleGroup: ["Glutes", "Lower body"],
+    exerciseName: "Barbell Hip Thrust",
+    equipment: "Barbell & Bench",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "10-12",
+    duration: "45s set",
+    instructions: ["Upper back pinned across bench, drive through heels, lift hips into full lockout with posterior pelvic tilt."],
+    restTime: "75s",
+    coachingCues: ["Keep chin tucked and ribs down", "Hold peak squeeze at the top for 2 full seconds"],
+    gifUrl: "https://media.giphy.com/media/v1F0A8f5Ff6hO/giphy.gif"
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Glutes",
+    muscleGroup: ["Glutes", "Lower body"],
+    exerciseName: "Banded Glute Bridge",
     equipment: "Booty Band & Yoga Mat",
     difficulty: "Beginner",
     sets: 4,
-    reps: "15 reps + 10 abductions",
+    reps: "15 reps + 5s hold",
     duration: "45s set",
-    instructions: ["Place resistance band above knees. Drive hips up, flare knees out at top, lower slowly."],
-    restTime: "60s"
+    instructions: ["Place resistance band above knees. Drive hips up, flare knees outward against band tension, lower slowly."],
+    restTime: "60s",
+    coachingCues: ["Keep heels glued to the floor", "Do not hyperextend lumbar spine"]
   },
   {
     programId: "women_confidence",
     programName: "Women Confidence Program",
-    category: "Lower body",
-    muscleGroup: ["Glutes", "Legs"],
-    exerciseName: "Bulgarian Split Squat",
-    equipment: "Dumbbells & Bench/Chair",
-    difficulty: "Intermediate",
-    sets: 3,
-    reps: "10 reps per leg",
-    duration: "50s set",
-    instructions: ["Rear foot elevated on bench, drop back knee toward floor while keeping front knee tracking toes."],
-    restTime: "75s"
-  },
-  {
-    programId: "women_confidence",
-    programName: "Women Confidence Program",
-    category: "Legs",
-    muscleGroup: ["Legs"],
-    exerciseName: "Sumo Squat with Pulse",
-    equipment: "Single Dumbbell",
-    difficulty: "Beginner",
-    sets: 3,
-    reps: "12-15",
-    duration: "45s set",
-    instructions: ["Wide stance with toes pointed at 45 degrees. Lower hips deep feeling inner thigh and glute stretch."],
-    restTime: "60s"
-  },
-  {
-    programId: "women_confidence",
-    programName: "Women Confidence Program",
-    category: "Legs",
-    muscleGroup: ["Legs", "Glutes"],
+    category: "Glutes",
+    muscleGroup: ["Glutes", "Lower body"],
     exerciseName: "Dumbbell Romanian Deadlift (RDL)",
     equipment: "Pair of Dumbbells",
     difficulty: "Beginner",
     sets: 4,
     reps: "12",
     duration: "45s set",
-    instructions: ["Hinge at hips with soft knees, glide dumbbells along shins, squeeze glutes firmly to stand."],
-    restTime: "60s"
+    instructions: ["Hinge backward at hips with soft knees, glide dumbbells along shins, squeeze glutes firmly to stand."],
+    restTime: "60s",
+    coachingCues: ["Push your hips toward the back wall", "Keep shoulder blades retracted"]
   },
   {
     programId: "women_confidence",
     programName: "Women Confidence Program",
+    category: "Glutes",
+    muscleGroup: ["Glutes", "Lower body"],
+    exerciseName: "Bulgarian Split Squat",
+    equipment: "Dumbbells & Bench/Chair",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10 reps per leg",
+    duration: "50s set",
+    instructions: ["Rear foot elevated on bench, drop back knee toward floor while keeping front shin relatively vertical."],
+    restTime: "75s",
+    coachingCues: ["Lean torso slightly forward to target gluteus maximus", "Drive through front heel"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Glutes",
+    muscleGroup: ["Glutes", "Lower body"],
+    exerciseName: "Cable Glute Kickbacks",
+    equipment: "Cable Ankle Strap or Band",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "15 per leg",
+    duration: "40s set",
+    instructions: ["Attach ankle strap to low cable, kick leg backward and slightly outward, contracting glute at the peak."],
+    restTime: "45s",
+    coachingCues: ["Lock your lower back in place without arching", "Slow eccentric return"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Glutes",
+    muscleGroup: ["Glutes", "Lower body"],
+    exerciseName: "Lateral Mini-Band Glute Walk",
+    equipment: "Booty Band & Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "16 steps per direction",
+    duration: "45s set",
+    instructions: ["Place band around ankles or above knees. Sink into partial squat and step laterally against resistance."],
+    restTime: "45s",
+    coachingCues: ["Keep toes pointing straight ahead", "Maintain constant tension on band"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Glutes",
+    muscleGroup: ["Glutes", "Lower body"],
+    exerciseName: "Sumo Squat with Pulse",
+    equipment: "Single Dumbbell / Kettlebell",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12 reps + 3 pulses",
+    duration: "45s set",
+    instructions: ["Take a wide stance with toes turned outward 45 degrees. Descend deep into hips and pulse at bottom."],
+    restTime: "60s",
+    coachingCues: ["Keep knees tracking over toes", "Squeeze glutes and adductors to stand"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Glutes",
+    muscleGroup: ["Glutes", "Lower body"],
+    exerciseName: "Elevated Single-Leg Glute Bridge",
+    equipment: "Bench or Step & Mat",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12 per leg",
+    duration: "40s set",
+    instructions: ["Place working heel on bench, elevate other leg straight. Drive hips upward focusing purely on single glute."],
+    restTime: "45s",
+    coachingCues: ["Keep pelvis square to ceiling", "Do not let hips tilt"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Glutes",
+    muscleGroup: ["Glutes", "Lower body"],
+    exerciseName: "Frog Pumps",
+    equipment: "Yoga Mat & Dumbbell",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "20 reps",
+    duration: "40s set",
+    instructions: ["Lie on back with soles of feet pressed together and knees flared wide. Drive hips up in high-rep burn."],
+    restTime: "45s",
+    coachingCues: ["Tuck chin and squeeze glutes hard at the top", "Fast pumping rhythm with control"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Glutes",
+    muscleGroup: ["Glutes", "Lower body"],
+    exerciseName: "Banded Clamshells with Abduction",
+    equipment: "Booty Band & Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "15 per side",
+    duration: "40s set",
+    instructions: ["Lie on side with knees bent at 90 degrees. Open top knee like a clamshell against resistance band."],
+    restTime: "40s",
+    coachingCues: ["Do not roll hips backward", "Focus on upper side glute (gluteus medius)"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Glutes",
+    muscleGroup: ["Glutes", "Lower body"],
+    exerciseName: "Cable Pull-Throughs",
+    equipment: "Cable Machine & Rope",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12-15",
+    duration: "45s set",
+    instructions: ["Facing away from low pulley with rope between legs, hinge back at hips and thrust forward with glute squeeze."],
+    restTime: "60s",
+    coachingCues: ["Do not squat the weight; hinge hips backward", "Lock hips out at top"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Glutes",
+    muscleGroup: ["Glutes", "Lower body"],
+    exerciseName: "Dumbbell Step-Ups with Glute Squeeze",
+    equipment: "Bench or Plyo Box & Dumbbells",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10 per leg",
+    duration: "45s set",
+    instructions: ["Plant front foot flat on box. Drive through whole foot to stand without pushing off back leg."],
+    restTime: "60s",
+    coachingCues: ["Lower slowly over 3 seconds", "Keep torso with slight forward glute-bias lean"]
+  }
+];
+
+export const WOMEN_CORE_EXERCISES: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
     category: "Core and abs",
-    muscleGroup: ["Abs"],
+    muscleGroup: ["Abs", "Core"],
     exerciseName: "Stomach Vacuum & Core Bracing",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 4,
-    reps: "20s hold",
+    reps: "25s hold",
     duration: "30s set",
-    instructions: ["Exhale all air, pull belly button deeply toward spine, hold while maintaining shallow breathing."],
-    restTime: "30s"
+    instructions: ["Exhale all air, draw belly button inward toward spine, brace transverse abdominis while breathing shallowly."],
+    restTime: "30s",
+    coachingCues: ["Creates a tight natural corset around waistline", "Maintain steady core pressure"]
   },
   {
     programId: "women_confidence",
     programName: "Women Confidence Program",
     category: "Core and abs",
-    muscleGroup: ["Abs"],
-    exerciseName: "Dead Bug",
+    muscleGroup: ["Abs", "Core"],
+    exerciseName: "Dead Bug Contralateral Reach",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
     reps: "16 alternating reps",
     duration: "40s set",
-    instructions: ["Imprint lumbar spine flush against mat, extend contralateral arm and leg slowly with deep abdominal tension."],
-    restTime: "30s"
+    instructions: ["Press lower back flat against floor. Slowly extend opposite arm and leg while maintaining absolute lumbar contact."],
+    restTime: "30s",
+    coachingCues: ["Zero space between lower back and mat", "Exhale as limbs reach outward"]
   },
   {
     programId: "women_confidence",
     programName: "Women Confidence Program",
     category: "Core and abs",
-    muscleGroup: ["Abs"],
-    exerciseName: "Side Plank",
+    muscleGroup: ["Abs", "Core"],
+    exerciseName: "Side Plank with Hip Lift",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
-    reps: "30s each side",
+    reps: "10 hip dips per side",
     duration: "35s set",
-    instructions: ["Elevate on forearm, align shoulder over elbow, elevate hips creating an unbroken straight line along torso."],
-    restTime: "30s"
+    instructions: ["Align elbow under shoulder in side plank. Lower hip gently to touch mat, then lift high engaging obliques."],
+    restTime: "30s",
+    coachingCues: ["Stack shoulders vertically", "Keep neck neutral with spine"]
   },
   {
     programId: "women_confidence",
     programName: "Women Confidence Program",
     category: "Core and abs",
-    muscleGroup: ["Abs"],
+    muscleGroup: ["Abs", "Core"],
     exerciseName: "Bird Dog Stability Hold",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
-    reps: "12 per side",
+    reps: "12 per side with 2s hold",
     duration: "40s set",
-    instructions: ["On all fours, extend opposing arm and leg without shifting hips, pause 2 seconds at full extension."],
-    restTime: "30s"
+    instructions: ["From all fours, reach opposing arm and leg straight out. Hold flat table line without rotating hips."],
+    restTime: "30s",
+    coachingCues: ["Reach long through fingertips and heel", "Keep hips square to floor"]
   },
   {
     programId: "women_confidence",
     programName: "Women Confidence Program",
-    category: "Upper body",
-    muscleGroup: ["Upper body"],
-    exerciseName: "Incline Push Ups",
-    equipment: "Bench or Countertop",
+    category: "Core and abs",
+    muscleGroup: ["Abs", "Core"],
+    exerciseName: "Lying Leg Raises with Pelvic Lift",
+    equipment: "Yoga Mat",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12 reps",
+    duration: "40s set",
+    instructions: ["Hands under hips for lumbar support. Raise straight legs to vertical, then give a slight upward pulse."],
+    restTime: "40s",
+    coachingCues: ["Lower legs with control without letting back arch", "Initiate pull from lower abs"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Core and abs",
+    muscleGroup: ["Abs", "Core"],
+    exerciseName: "Bicycle Crunches with Pause",
+    equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
-    reps: "12-15",
-    duration: "40s set",
-    instructions: ["Hands placed on elevated surface. Keep body in a straight plank, lower chest to edge and press."],
-    restTime: "45s"
+    reps: "20 alternating reps",
+    duration: "45s set",
+    instructions: ["Fingertips behind ears. Rotate elbow to opposite knee while extending other leg. Pause 1 second on each twist."],
+    restTime: "35s",
+    coachingCues: ["Do not yank neck forward", "Rotate through thoracic spine"]
   },
   {
     programId: "women_confidence",
     programName: "Women Confidence Program",
-    category: "Upper body",
-    muscleGroup: ["Upper body"],
-    exerciseName: "Dumbbell Lateral Raises",
-    equipment: "Light Dumbbells",
+    category: "Core and abs",
+    muscleGroup: ["Abs", "Core"],
+    exerciseName: "Hollow Body Rock / Hold",
+    equipment: "Yoga Mat",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "30s hold",
+    duration: "35s set",
+    instructions: ["Press lower back down, lift shoulders and straight legs slightly off mat into a shallow banana shape."],
+    restTime: "40s",
+    coachingCues: ["Point toes and squeeze inner thighs together", "Breathe steadily"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Core and abs",
+    muscleGroup: ["Abs", "Core"],
+    exerciseName: "Plank Hip Dips",
+    equipment: "Yoga Mat",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "16 alternating dips",
+    duration: "40s set",
+    instructions: ["In a tight forearm plank, rotate hips to tap floor gently on right, then sweep over to left."],
+    restTime: "35s",
+    coachingCues: ["Keep forearms planted and shoulders stable", "Feel the deep oblique rotation"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Core and abs",
+    muscleGroup: ["Abs", "Core"],
+    exerciseName: "Russian Twists with Knee Tuck",
+    equipment: "Yoga Mat & Light Dumbbell",
     difficulty: "Beginner",
     sets: 3,
-    reps: "12-15",
+    reps: "20 total reps",
     duration: "40s set",
-    instructions: ["Slight forward lean, raise dumbbells out to sides leading with elbows until parallel to floor."],
-    restTime: "45s"
+    instructions: ["Balance on sit bones with knees bent. Rotate shoulders side to side with hands touching floor beside hips."],
+    restTime: "35s",
+    coachingCues: ["Chest lifted tall", "Follow hands with eyes for full rotation"]
   },
   {
     programId: "women_confidence",
     programName: "Women Confidence Program",
-    category: "Back",
-    muscleGroup: ["Back"],
-    exerciseName: "Single-Arm Supported Row",
-    equipment: "Dumbbells",
+    category: "Core and abs",
+    muscleGroup: ["Abs", "Core"],
+    exerciseName: "Mountain Climbers with Slow Tempo",
+    equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,
-    reps: "12",
+    reps: "20 slow controlled reps",
     duration: "40s set",
-    instructions: ["Hinge at waist, pull elbows up toward ceiling, pinning shoulder blades together."],
-    restTime: "60s"
+    instructions: ["High plank position. Draw knee up to chest under complete muscular control, pause, and return."],
+    restTime: "30s",
+    coachingCues: ["Do not let hips bounce in the air", "Lock core tight as if absorbing impact"]
   },
   {
     programId: "women_confidence",
     programName: "Women Confidence Program",
-    category: "Confidence and wellness sessions",
-    muscleGroup: ["Mobility and recovery"],
-    exerciseName: "Child's Pose Spinal Reach",
-    equipment: "Quiet Room & Mat",
+    category: "Core and abs",
+    muscleGroup: ["Abs", "Core"],
+    exerciseName: "Flutter Kicks / Scissor Drills",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "30s continuous",
+    duration: "35s set",
+    instructions: ["Hands under hips. Keep legs straight and kick alternating feet up and down 6 inches off floor."],
+    restTime: "30s",
+    coachingCues: ["Point toes and keep lower back grounded", "Maintain rhythmic breathing"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Core and abs",
+    muscleGroup: ["Abs", "Core"],
+    exerciseName: "Abdominal Slider Pike / Knee Tucks",
+    equipment: "Socks on Hard Floor or Towel",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12 reps",
+    duration: "40s set",
+    instructions: ["From push-up plank with toes on towel or sliders, slide feet toward hands bending knees to chest."],
+    restTime: "40s",
+    coachingCues: ["Squeeze abs hard at top of tuck", "Slide back slowly into flat plank"]
+  }
+];
+
+export const WOMEN_CARDIO_EXERCISES: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Cardio",
+    muscleGroup: ["Cardio"],
+    exerciseName: "Incline Power Walking / Light Jogging",
+    equipment: "Treadmill or Outdoor Path",
     difficulty: "Beginner",
     sets: 1,
-    reps: "10 mins",
-    duration: "10 mins",
-    instructions: ["Affirm physical strength, breathe deeply into ribs, align crown of head above tailbone."],
-    restTime: "Rest"
+    reps: "20-30 Mins Continuous",
+    duration: "25 mins",
+    instructions: ["Brisk walking at 6-10% incline or conversational jog. Keeps heart rate in Zone 2 fat burning territory."],
+    restTime: "Hydration break",
+    coachingCues: ["Pump arms naturally", "Keep posture tall with relaxed shoulders"]
   },
   {
     programId: "women_confidence",
     programName: "Women Confidence Program",
     category: "Cardio",
     muscleGroup: ["Cardio"],
-    exerciseName: "Running",
+    exerciseName: "Low-Impact Jumping Jacks",
+    equipment: "Running Shoes & Mat",
+    difficulty: "Beginner",
+    sets: 4,
+    reps: "45s work / 15s rest",
+    duration: "45s set",
+    instructions: ["Step side to side while raising arms overhead into a full jack arc. Gentle on pelvic floor and joints."],
+    restTime: "15s",
+    coachingCues: ["Stay light on balls of feet", "Synchronize breathing with arm movements"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Cardio",
+    muscleGroup: ["Cardio"],
+    exerciseName: "High Knees Rhythmic Drive",
+    equipment: "Running Shoes",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "30s work / 20s rest",
+    duration: "30s set",
+    instructions: ["Drive knees up toward hip level in quick cadence, pumping opposite arms dynamically."],
+    restTime: "20s",
+    coachingCues: ["Land softly on midfoot", "Keep core engaged and chest proud"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Cardio",
+    muscleGroup: ["Cardio"],
+    exerciseName: "Mountain Climber Cardio Bursts",
+    equipment: "Yoga Mat",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "30s sprint",
+    duration: "30s set",
+    instructions: ["High plank position. Drive knees rapidly toward chest in sprint rhythm while keeping hips level."],
+    restTime: "20s",
+    coachingCues: ["Shoulders stay stacked directly above wrists", "Fast dynamic foot turnover"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Cardio",
+    muscleGroup: ["Cardio"],
+    exerciseName: "Jump Rope / Ghost Rope Drills",
+    equipment: "Jump Rope or Bodyweight",
+    difficulty: "Beginner",
+    sets: 4,
+    reps: "45s work / 15s rest",
+    duration: "45s set",
+    instructions: ["Turn wrists and bound lightly 1-2 inches off floor. Great for calf endurance and aerobic conditioning."],
+    restTime: "15s",
+    coachingCues: ["Stay springy through ankles", "Relax shoulders down"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Cardio",
+    muscleGroup: ["Cardio"],
+    exerciseName: "Lateral Skater Hops",
+    equipment: "Bodyweight",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "16 alternating hops",
+    duration: "40s set",
+    instructions: ["Bound laterally from one foot to the other, sweeping trailing leg behind in athletic balance."],
+    restTime: "30s",
+    coachingCues: ["Absorb landing with soft knee", "Use arms for counter-balance"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Cardio",
+    muscleGroup: ["Cardio"],
+    exerciseName: "Dumbbell / Kettlebell Swing",
+    equipment: "Kettlebell or Dumbbell",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "15 swings",
+    duration: "40s set",
+    instructions: ["Hinge deeply at hips with soft knees. Snap hips forward explosively driving weight to chest height."],
+    restTime: "40s",
+    coachingCues: ["Power comes from glute snap, not shoulder lifting", "Inhale on hinge, exhale on snap"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Cardio",
+    muscleGroup: ["Cardio"],
+    exerciseName: "Step-Back Burpees (No Push-Up)",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "10-12 reps",
+    duration: "45s set",
+    instructions: ["Place hands on floor, step feet back into plank, step forward, stand tall and reach arms to ceiling."],
+    restTime: "30s",
+    coachingCues: ["Smooth controlled pace", "Step lightly without jarring lower back"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Cardio",
+    muscleGroup: ["Cardio"],
+    exerciseName: "Butt Kick Running Drills",
     equipment: "Running Shoes",
     difficulty: "Beginner",
-    sets: 1,
-    reps: "5-10 KM",
-    duration: "50 mins",
-    instructions: ["Brisk aerobic walk or gentle run. Workouts removed today so muscles can recover completely."],
-    restTime: "Post-cardio rest"
+    sets: 3,
+    reps: "40s work / 20s rest",
+    duration: "40s set",
+    instructions: ["Jog in place kicking heels straight up toward glutes to stretch quads and build hamstring speed."],
+    restTime: "20s",
+    coachingCues: ["Keep knees pointing down", "Pump arms in rhythm"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Cardio",
+    muscleGroup: ["Cardio"],
+    exerciseName: "Shadow Boxing 1-2 Combo Drills",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "45s dynamic rounds",
+    duration: "45s set",
+    instructions: ["Staggered athletic stance. Throw crisp jab-cross combinations with body rotation and core bracing."],
+    restTime: "20s",
+    coachingCues: ["Pivot on rear foot during cross", "Keep guard up at chin level"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Cardio",
+    muscleGroup: ["Cardio"],
+    exerciseName: "Cardio Step-Up Bursts",
+    equipment: "Low Step or Sturdy Box",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "20 alternating step-ups",
+    duration: "40s set",
+    instructions: ["Step up briskly with right foot, bring left to tap, step down and alternate leading foot."],
+    restTime: "30s",
+    coachingCues: ["Drive through full foot", "Maintain quick rhythmic cadence"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Cardio",
+    muscleGroup: ["Cardio"],
+    exerciseName: "Fast-Paced Air Squat Burnout",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "20 continuous squats",
+    duration: "40s set",
+    instructions: ["Descend to parallel and stand quickly without locking knees, creating sustained metabolic burn in quads."],
+    restTime: "35s",
+    coachingCues: ["Chest stays tall", "Squeeze glutes at top"]
   }
 ];
 
+export const WOMEN_LEGS_EXERCISES: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Legs",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Goblet Squats",
+    equipment: "Single Dumbbell or Kettlebell",
+    difficulty: "Beginner",
+    sets: 4,
+    reps: "12 reps",
+    duration: "45s set",
+    instructions: ["Hold dumbbell vertically at chest. Squat between knees tracking toes, pause at parallel, drive up."],
+    restTime: "60s",
+    coachingCues: ["Elbows track inside knees at bottom", "Keep chest proud and spine neutral"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Legs",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Dumbbell Romanian Deadlift (Hamstring Focus)",
+    equipment: "Pair of Dumbbells",
+    difficulty: "Beginner",
+    sets: 4,
+    reps: "10-12",
+    duration: "45s set",
+    instructions: ["Soft knee bend, push hips far back feeling deep stretch in hamstring bellies, return with glute squeeze."],
+    restTime: "60s",
+    coachingCues: ["Keep weights touching shins on way down", "Do not round upper back"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Legs",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Walking Lunges with Controlled Drop",
+    equipment: "Bodyweight or Dumbbells",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "20 total lunges",
+    duration: "50s set",
+    instructions: ["Step forward into a 90/90 knee angle, back knee hovering 1 inch off floor, push off front heel."],
+    restTime: "60s",
+    coachingCues: ["Keep front knee over ankle", "Torso tall with core braced"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Legs",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Curtsy Lunges (Outer Hip & Glute Sculpt)",
+    equipment: "Dumbbells or Bodyweight",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10 per leg",
+    duration: "45s set",
+    instructions: ["Step one leg backward and across behind supporting leg, bending knees to lower hips like a curtsy."],
+    restTime: "60s",
+    coachingCues: ["Keep front knee aligned with front toes", "Targets outer glutes and adductors"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Legs",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Bulgarian Split Squats (Quad Dominant)",
+    equipment: "Bench and Dumbbells",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10 per leg",
+    duration: "45s set",
+    instructions: ["Rear foot on bench, upright torso posture, descend straight down to load front quadriceps deeply."],
+    restTime: "60s",
+    coachingCues: ["Upright torso shifts focus from glutes to quads", "Smooth continuous movement"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Legs",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Sumo Deadlift with Dumbbells",
+    equipment: "Two Heavy Dumbbells",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10-12",
+    duration: "45s set",
+    instructions: ["Extra wide stance with toes flared. Hinge down gripping dumbbells between feet, stand tall with glute lock."],
+    restTime: "60s",
+    coachingCues: ["Pushes through heels and outside edges of feet", "Great inner thigh & glute tie-in"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Legs",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Standing Calf Raises with Pause",
+    equipment: "Step or Flat Surface",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "20 reps with 2s squeeze",
+    duration: "40s set",
+    instructions: ["Elevate on balls of feet, drive heels as high as possible, pause for 2 seconds, lower slowly."],
+    restTime: "45s",
+    coachingCues: ["Full plantarflexion at the peak", "No bouncing at bottom"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Legs",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Wall Sit Hold with Isometric Adduction",
+    equipment: "Wall & Yoga Block or Towel",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "45s hold",
+    duration: "45s set",
+    instructions: ["Back flat against wall, knees and hips at 90 degrees. Squeeze yoga block between knees while holding."],
+    restTime: "45s",
+    coachingCues: ["Keep thighs parallel to ground", "Breathe steadily and do not push hands on knees"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Legs",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Single-Leg Romanian Deadlift",
+    equipment: "Single Dumbbell & Wall Balance",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10 per leg",
+    duration: "45s set",
+    instructions: ["Balance on one foot, hinge forward sending opposite leg straight back like a lever, squeeze glute to rise."],
+    restTime: "45s",
+    coachingCues: ["Keep hips parallel to floor", "Feel intense hamstring stretch on standing leg"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Legs",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Deficit Reverse Lunges",
+    equipment: "Step or Bumper Plate & Dumbbells",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10 per leg",
+    duration: "45s set",
+    instructions: ["Stand on 2-4 inch platform, step backward into deep lunge getting extra depth and glute-hamstring stretch."],
+    restTime: "60s",
+    coachingCues: ["Take advantage of the extra depth", "Drive up through front heel"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Legs",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Lying Dumbbell Hamstring Curl",
+    equipment: "Dumbbell & Yoga Mat",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12 reps",
+    duration: "40s set",
+    instructions: ["Lie face down clamping dumbbell between feet. Curl heels toward glutes, pause, lower slowly."],
+    restTime: "50s",
+    coachingCues: ["Control the negative return", "Keep pelvis anchored to mat"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Legs",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Quad Burnout Heel-Elevated Squat",
+    equipment: "Books/Weight Plate under Heels",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "15-20 reps",
+    duration: "45s set",
+    instructions: ["Elevate heels 1 inch on plates or small book. Squat straight down with upright torso, pumping quads."],
+    restTime: "45s",
+    coachingCues: ["Allows deeper knee flexion without hip restriction", "Continuous smooth tension"]
+  }
+];
+
+export const WOMEN_UPPER_BODY_EXERCISES: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Upper body",
+    muscleGroup: ["Upper body", "Back", "Shoulders"],
+    exerciseName: "Incline Dumbbell Chest Press",
+    equipment: "Dumbbells & Incline Bench",
+    difficulty: "Beginner",
+    sets: 4,
+    reps: "10-12",
+    duration: "45s set",
+    instructions: ["Set bench to 30 degrees. Press dumbbells upward, squeezing upper pecs and anterior delts at top."],
+    restTime: "60s",
+    coachingCues: ["Lower weights with elbows at 45 degrees", "Great for upper chest posture support"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Upper body",
+    muscleGroup: ["Upper body", "Back", "Shoulders"],
+    exerciseName: "Single-Arm Supported Dumbbell Row",
+    equipment: "Dumbbell & Bench/Chair",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12 per arm",
+    duration: "40s set",
+    instructions: ["One hand and knee on bench, pull dumbbell toward hip pocket pinning shoulder blade tightly inward."],
+    restTime: "45s",
+    coachingCues: ["Drive with your elbow", "Avoid twisting torso"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Upper body",
+    muscleGroup: ["Upper body", "Back", "Shoulders"],
+    exerciseName: "Lat Pulldown / Resistance Band Pulldown",
+    equipment: "Lat Machine or Overhead Band",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12-15",
+    duration: "45s set",
+    instructions: ["Grip bar wide, pull down toward upper collarbone while pulling shoulder blades down and back."],
+    restTime: "60s",
+    coachingCues: ["Squeeze lats at bottom of pull", "Control the upward stretch"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Upper body",
+    muscleGroup: ["Upper body", "Back", "Shoulders"],
+    exerciseName: "Dumbbell Overhead Shoulder Press",
+    equipment: "Dumbbells & Bench",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "10-12",
+    duration: "45s set",
+    instructions: ["Palms facing forward or neutral. Press dumbbells overhead until arms are extended, lower slowly."],
+    restTime: "60s",
+    coachingCues: ["Keep ribs tucked and core braced", "Do not arch lower back"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Upper body",
+    muscleGroup: ["Upper body", "Back", "Shoulders"],
+    exerciseName: "Dumbbell Lateral Raises (Shoulder Sculpt)",
+    equipment: "Light Dumbbells",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12-15",
+    duration: "40s set",
+    instructions: ["Slight forward lean, raise dumbbells outward until parallel to floor, leading slightly with elbows."],
+    restTime: "45s",
+    coachingCues: ["Pouring water motion at peak", "Avoid shrugging neck traps"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Upper body",
+    muscleGroup: ["Upper body", "Back", "Shoulders"],
+    exerciseName: "Face Pulls / Band Pull-Aparts",
+    equipment: "Cable Machine or Band",
+    difficulty: "Beginner",
+    sets: 4,
+    reps: "15 reps",
+    duration: "40s set",
+    instructions: ["Pull rope or band toward eyes while pulling hands apart, rotating shoulders externally."],
+    restTime: "45s",
+    coachingCues: ["Crucial for reversing rounded desk posture", "Squeeze rear delts and mid-traps"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Upper body",
+    muscleGroup: ["Upper body", "Back", "Shoulders"],
+    exerciseName: "Incline Push Ups (Bench / Countertop)",
+    equipment: "Bench, Step, or Wall",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "10-15",
+    duration: "40s set",
+    instructions: ["Hands on elevated surface shoulder-width. Lower chest to edge in a rigid plank, press away explosively."],
+    restTime: "45s",
+    coachingCues: ["Body forms one straight line from heels to crown", "Elbows tuck at 45 degrees"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Upper body",
+    muscleGroup: ["Upper body", "Back", "Shoulders"],
+    exerciseName: "Tricep Cable Rope Pushdowns",
+    equipment: "Cable Machine or Band",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12-15",
+    duration: "40s set",
+    instructions: ["Keep elbows pinned to ribs. Push rope down, flaring ends apart at bottom for peak tricep contraction."],
+    restTime: "45s",
+    coachingCues: ["Only forearms move; upper arms remain stationary", "Full lockout at bottom"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Upper body",
+    muscleGroup: ["Upper body", "Back", "Shoulders"],
+    exerciseName: "Standing Dumbbell Bicep Curls",
+    equipment: "Pair of Dumbbells",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12",
+    duration: "40s set",
+    instructions: ["Curl dumbbells upward while rotating wrists so palms face shoulders at top. Lower with 3-second tempo."],
+    restTime: "45s",
+    coachingCues: ["Do not swing hips", "Squeeze biceps at the peak"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Upper body",
+    muscleGroup: ["Upper body", "Back", "Shoulders"],
+    exerciseName: "Dumbbell Hammer Curls (Forearm & Arm Tone)",
+    equipment: "Pair of Dumbbells",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12",
+    duration: "40s set",
+    instructions: ["Neutral grip (palms facing each other). Curl dumbbells upward targeting the brachialis."],
+    restTime: "45s",
+    coachingCues: ["Builds firm arm definition", "Keep elbows tight to body"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Upper body",
+    muscleGroup: ["Upper body", "Back", "Shoulders"],
+    exerciseName: "Overhead Dumbbell Tricep Extension",
+    equipment: "Single Dumbbell",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12-15",
+    duration: "40s set",
+    instructions: ["Hold dumbbell overhead with both hands under top plate. Lower behind neck feeling deep tricep stretch, press up."],
+    restTime: "45s",
+    coachingCues: ["Keep elbows pointing forward, not flaring out", "Brace core tight"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Upper body",
+    muscleGroup: ["Upper body", "Back", "Shoulders"],
+    exerciseName: "Bent-Over Rear Delt Flyes",
+    equipment: "Light Dumbbells",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "15 reps",
+    duration: "40s set",
+    instructions: ["Hinge forward 60 degrees with flat back. Raise dumbbells outward like wings, pinching rear shoulder blades."],
+    restTime: "45s",
+    coachingCues: ["Lead with pinkies slightly", "Key for posture alignment and sculpted back lines"]
+  }
+];
+
+export const WOMEN_WELLNESS_EXERCISES: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Confidence and wellness sessions",
+    muscleGroup: ["Mobility and recovery"],
+    exerciseName: "Child's Pose Spinal Reach & Decompression",
+    equipment: "Quiet Room & Yoga Mat",
+    difficulty: "Beginner",
+    sets: 2,
+    reps: "60s deep hold",
+    duration: "2 mins",
+    instructions: ["Knees wide on mat, big toes touching. Sink hips onto heels, crawl fingertips forward and rest forehead."],
+    restTime: "Rest",
+    coachingCues: ["Breathe deeply into back ribcage", "Allow entire lumbar spine to release"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Confidence and wellness sessions",
+    muscleGroup: ["Mobility and recovery"],
+    exerciseName: "Cat-Cow Dynamic Breathing Flow",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 2,
+    reps: "10 slow cycles",
+    duration: "2 mins",
+    instructions: ["Tabletop stance. Inhale, arch back, gaze up. Exhale, round spine upward like an angry cat, tucking chin."],
+    restTime: "Rest",
+    coachingCues: ["Mobilizes every spinal segment", "Synchronize every movement with deep belly breath"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Confidence and wellness sessions",
+    muscleGroup: ["Mobility and recovery"],
+    exerciseName: "90/90 Hip Opener Stretch",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 2,
+    reps: "45s per side",
+    duration: "2 mins",
+    instructions: ["Sit with front leg bent 90 degrees in front and back leg bent 90 degrees behind. Hinge chest over front shin."],
+    restTime: "Rest",
+    coachingCues: ["Opens internal and external hip rotators", "Relieves pelvic and glute tightness"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Confidence and wellness sessions",
+    muscleGroup: ["Mobility and recovery"],
+    exerciseName: "World's Greatest Stretch & Thoracic Rotation",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 2,
+    reps: "6 per side",
+    duration: "2 mins",
+    instructions: ["From deep runner's lunge, drop inside elbow toward floor, then reach arm skyward opening chest to ceiling."],
+    restTime: "Rest",
+    coachingCues: ["Follow top hand with your gaze", "Unlocks tight hips, thoracic spine, and ankles"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Confidence and wellness sessions",
+    muscleGroup: ["Mobility and recovery"],
+    exerciseName: "Cobra to Downward Dog Restorative Flow",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 2,
+    reps: "8 slow transitions",
+    duration: "2 mins",
+    instructions: ["Slide from prone into gentle cobra stretching anterior abdomen, then push hips high into downward facing dog."],
+    restTime: "Rest",
+    coachingCues: ["Pedal feet in downward dog to stretch calves", "Do not force lumbar arch in cobra"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Confidence and wellness sessions",
+    muscleGroup: ["Mobility and recovery"],
+    exerciseName: "Pigeon Pose Deep Glute Opener",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 2,
+    reps: "60s per side",
+    duration: "2 mins",
+    instructions: ["Bring one knee behind wrist, extend back leg long behind you. Fold forward over front leg resting on forearms."],
+    restTime: "Rest",
+    coachingCues: ["Releases piriformis and deep glute tension", "Exhale and let your weight melt downward"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Confidence and wellness sessions",
+    muscleGroup: ["Mobility and recovery"],
+    exerciseName: "Butterfly Hip Opener with Forward Fold",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 2,
+    reps: "60s hold",
+    duration: "2 mins",
+    instructions: ["Sit tall with soles of feet together, knees dropping toward sides. Gently hinge forward with a flat back."],
+    restTime: "Rest",
+    coachingCues: ["Releases adductors and pelvic floor tension", "Breathe through tightness without bouncing"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Confidence and wellness sessions",
+    muscleGroup: ["Mobility and recovery"],
+    exerciseName: "Thoracic Thread the Needle Stretch",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 2,
+    reps: "45s per side",
+    duration: "2 mins",
+    instructions: ["From all fours, slide right arm underneath chest across floor, resting right shoulder and ear gently on mat."],
+    restTime: "Rest",
+    coachingCues: ["Releases shoulder blade knots and upper back tension", "Keep hips square"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Confidence and wellness sessions",
+    muscleGroup: ["Mobility and recovery"],
+    exerciseName: "Standing Side Bend Lateral Stretch",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    sets: 2,
+    reps: "30s per side",
+    duration: "1.5 mins",
+    instructions: ["Reach right arm overhead, cross left foot behind right, bend gently to left opening the entire right ribcage."],
+    restTime: "Rest",
+    coachingCues: ["Breathe into intercostal muscles", "Lengthen tall before bending"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Confidence and wellness sessions",
+    muscleGroup: ["Mobility and recovery"],
+    exerciseName: "Hamstring Floss & Decompression",
+    equipment: "Yoga Mat & Strap/Towel",
+    difficulty: "Beginner",
+    sets: 2,
+    reps: "45s per leg",
+    duration: "2 mins",
+    instructions: ["Lie on back with strap around ball of one foot. Gently pull leg toward ceiling with soft knee, flexing ankle."],
+    restTime: "Rest",
+    coachingCues: ["Releases posterior kinetic chain", "Keep opposing leg grounded"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Confidence and wellness sessions",
+    muscleGroup: ["Mobility and recovery"],
+    exerciseName: "Deep Diaphragmatic Breath & Pelvic Reset",
+    equipment: "Quiet Space & Pillow/Mat",
+    difficulty: "Beginner",
+    sets: 1,
+    reps: "5 Mins Relaxation",
+    duration: "5 mins",
+    instructions: ["Lie comfortably on back, one hand on heart, one on belly. Inhale 4 seconds expanding ribs 360°, exhale 6 seconds."],
+    restTime: "Rest",
+    coachingCues: ["Activates parasympathetic rest-and-digest state", "Lowers cortisol and accelerates muscular recovery"]
+  },
+  {
+    programId: "women_confidence",
+    programName: "Women Confidence Program",
+    category: "Confidence and wellness sessions",
+    muscleGroup: ["Mobility and recovery"],
+    exerciseName: "Low Lunge Quad & Hip Flexor Stretch",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 2,
+    reps: "45s per side",
+    duration: "2 mins",
+    instructions: ["Drop into low lunge with back knee resting on mat. Gently tuck pelvis and shift weight forward into hip flexor."],
+    restTime: "Rest",
+    coachingCues: ["Squeeze glute of trailing leg to deepen psoas stretch", "Keep chest lifted"]
+  }
+];
+
+// Combined pool for metadata / lookups
+const WOMEN_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+  ...WOMEN_GLUTES_EXERCISES,
+  ...WOMEN_CORE_EXERCISES,
+  ...WOMEN_CARDIO_EXERCISES,
+  ...WOMEN_LEGS_EXERCISES,
+  ...WOMEN_UPPER_BODY_EXERCISES,
+  ...WOMEN_WELLNESS_EXERCISES
+];
+
 // --- PROGRAM 4: BELLY FAT SHRED SYSTEM CATALOG ---
-const BELLY_FAT_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+const _OLD_BELLY_FAT_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
   {
     programId: "belly_fat_shred",
     programName: "Belly Fat Shred System",
@@ -1435,7 +2505,7 @@ const BELLY_FAT_EXERCISES_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[
 ];
 
 // --- PROGRAM 5: RECLAIM YOUR POSTURE & VITALITY CATALOG ---
-const POSTURE_VITALITY_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+const _OLD_POSTURE_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
   {
     programId: "posture_vitality",
     programName: "Reclaim Your Posture & Vitality",
@@ -1916,35 +2986,41 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
   // --------------------------------------------------------------------------
   if (programId === "home_180") {
     const dayMod = ((safeDay - 1) % 6);
-    let category = "Full body";
-    let targetMuscles = ["Full body"];
-    let exercisesToUse = HOME_180_EXERCISES_POOL;
+    let category = "Upper body";
+    let targetMuscles = ["Chest", "Shoulders", "Arms"];
+    let pool = HOME_UPPER_BODY_EXERCISES;
 
     if (dayMod === 0) {
       category = "Upper body";
       targetMuscles = ["Chest", "Shoulders", "Arms"];
-      exercisesToUse = HOME_180_EXERCISES_POOL.filter(e => ["Chest", "Upper body", "Shoulders", "Arms"].includes(e.category));
+      pool = HOME_UPPER_BODY_EXERCISES;
     } else if (dayMod === 1) {
       category = "Legs and glutes";
       targetMuscles = ["Legs", "Glutes"];
-      exercisesToUse = HOME_180_EXERCISES_POOL.filter(e => e.category === "Legs and glutes");
+      pool = HOME_LEGS_GLUTES_EXERCISES;
     } else if (dayMod === 2) {
       category = "Cardio";
       targetMuscles = ["Cardio"];
-      exercisesToUse = HOME_180_EXERCISES_POOL.filter(e => e.category === "Cardio");
+      pool = HOME_CARDIO_EXERCISES;
     } else if (dayMod === 3) {
       category = "Back";
       targetMuscles = ["Back", "Arms"];
-      exercisesToUse = HOME_180_EXERCISES_POOL.filter(e => ["Back", "Arms"].includes(e.category));
+      pool = HOME_BACK_EXERCISES;
     } else if (dayMod === 4) {
       category = "Core and abs";
       targetMuscles = ["Abs"];
-      exercisesToUse = HOME_180_EXERCISES_POOL.filter(e => e.category === "Core and abs");
+      pool = HOME_CORE_ABS_EXERCISES;
     } else {
       category = "Mobility and recovery";
       targetMuscles = ["Mobility and recovery"];
-      exercisesToUse = HOME_180_EXERCISES_POOL.filter(e => e.category === "Mobility and recovery");
+      pool = HOME_MOBILITY_EXERCISES;
     }
+
+    // Dynamic rotation for fresh variety across 180 days while guaranteeing exactly 12 exercises
+    const cycleIndex = Math.floor((safeDay - 1) / 6);
+    const rotationOffset = cycleIndex % 12;
+    const rotated = [...pool.slice(rotationOffset), ...pool.slice(0, rotationOffset)];
+    const exercisesToUse = rotated.slice(0, 12);
 
     const meta: DayWorkoutMeta = {
       dayNumber: safeDay,
@@ -1959,7 +3035,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
       guidelines: [
         "Home equipment & bodyweight priority.",
         "Zero gym machine dependencies.",
-        "Strict category assignment without pulling from Immortal 90 Day Challenge."
+        "12 targeted exercises daily calibrated for progressive calisthenics mastery."
       ],
       coachingNotes: "180 Day Home Challenge maintains strict bodyweight and home-compatible biomechanics."
     };
@@ -1978,34 +3054,40 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
   if (programId === "women_confidence") {
     const dayMod = ((safeDay - 1) % 6);
     let category = "Glutes";
-    let targetMuscles = ["Glutes"];
-    let exercisesToUse = WOMEN_EXERCISES_POOL;
+    let targetMuscles = ["Glutes", "Lower body"];
+    let pool = WOMEN_GLUTES_EXERCISES;
 
     if (dayMod === 0) {
       category = "Glutes";
       targetMuscles = ["Glutes", "Lower body"];
-      exercisesToUse = WOMEN_EXERCISES_POOL.filter(e => ["Glutes", "Lower body"].includes(e.category));
+      pool = WOMEN_GLUTES_EXERCISES;
     } else if (dayMod === 1) {
       category = "Core and abs";
-      targetMuscles = ["Abs"];
-      exercisesToUse = WOMEN_EXERCISES_POOL.filter(e => e.category === "Core and abs");
+      targetMuscles = ["Abs", "Core"];
+      pool = WOMEN_CORE_EXERCISES;
     } else if (dayMod === 2) {
       category = "Cardio";
       targetMuscles = ["Cardio"];
-      exercisesToUse = WOMEN_EXERCISES_POOL.filter(e => e.category === "Cardio");
+      pool = WOMEN_CARDIO_EXERCISES;
     } else if (dayMod === 3) {
       category = "Legs";
       targetMuscles = ["Legs", "Glutes"];
-      exercisesToUse = WOMEN_EXERCISES_POOL.filter(e => ["Legs", "Glutes"].includes(e.category));
+      pool = WOMEN_LEGS_EXERCISES;
     } else if (dayMod === 4) {
       category = "Upper body";
-      targetMuscles = ["Back", "Upper body"];
-      exercisesToUse = WOMEN_EXERCISES_POOL.filter(e => ["Upper body", "Back"].includes(e.category));
+      targetMuscles = ["Upper body", "Back", "Shoulders"];
+      pool = WOMEN_UPPER_BODY_EXERCISES;
     } else {
       category = "Confidence and wellness sessions";
       targetMuscles = ["Mobility and recovery"];
-      exercisesToUse = WOMEN_EXERCISES_POOL.filter(e => e.category === "Confidence and wellness sessions");
+      pool = WOMEN_WELLNESS_EXERCISES;
     }
+
+    // Dynamic rotation for fresh variety across 180 days while guaranteeing exactly 12 exercises
+    const cycleIndex = Math.floor((safeDay - 1) / 6);
+    const rotationOffset = cycleIndex % 12;
+    const rotated = [...pool.slice(rotationOffset), ...pool.slice(0, rotationOffset)];
+    const exercisesToUse = rotated.slice(0, 12);
 
     const meta: DayWorkoutMeta = {
       dayNumber: safeDay,
@@ -2019,7 +3101,8 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
       isCardioOnly: category === "Cardio",
       guidelines: [
         "Specifically engineered around women's aesthetic, posture, and wellness goals.",
-        "Zero cross-contamination with unrelated Immortal 90 workouts."
+        "12 targeted exercises daily calibrated for continuous tone and empowerment.",
+        "Zero cross-contamination with unrelated workouts."
       ],
       coachingNotes: "Women Confidence Program: Focus on glute drive, transverse abdominis vacuuming, and empowered consistency."
     };
@@ -2039,29 +3122,35 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
     const dayMod = ((safeDay - 1) % 5);
     let category = "Core";
     let targetMuscles = ["Abs"];
-    let exercisesToUse = BELLY_FAT_EXERCISES_POOL;
+    let pool = BELLY_CORE_EXERCISES;
 
     if (dayMod === 0) {
       category = "Core";
       targetMuscles = ["Abs"];
-      exercisesToUse = BELLY_FAT_EXERCISES_POOL.filter(e => e.category === "Core" || e.category === "Obliques");
+      pool = BELLY_CORE_EXERCISES;
     } else if (dayMod === 1) {
       category = "HIIT";
       targetMuscles = ["Full body"];
-      exercisesToUse = BELLY_FAT_EXERCISES_POOL.filter(e => e.category === "HIIT" || e.category === "Full body conditioning");
+      pool = BELLY_HIIT_EXERCISES;
     } else if (dayMod === 2) {
       category = "Walking or running";
       targetMuscles = ["Cardio"];
-      exercisesToUse = BELLY_FAT_EXERCISES_POOL.filter(e => e.category === "Walking or running");
+      pool = BELLY_CARDIO_EXERCISES;
     } else if (dayMod === 3) {
       category = "Obliques";
       targetMuscles = ["Abs"];
-      exercisesToUse = BELLY_FAT_EXERCISES_POOL.filter(e => e.category === "Obliques" || e.category === "Core");
+      pool = BELLY_OBLIQUES_EXERCISES;
     } else {
       category = "Full body conditioning";
       targetMuscles = ["Full body"];
-      exercisesToUse = BELLY_FAT_EXERCISES_POOL.filter(e => e.category === "Full body conditioning" || e.category === "HIIT");
+      pool = BELLY_CONDITIONING_EXERCISES;
     }
+
+    // Dynamic rotation for fresh variety across 150 days while guaranteeing exactly 12 exercises
+    const cycleIndex = Math.floor((safeDay - 1) / 5);
+    const rotationOffset = cycleIndex % 12;
+    const rotated = [...pool.slice(rotationOffset), ...pool.slice(0, rotationOffset)];
+    const exercisesToUse = rotated.slice(0, 12);
 
     const meta: DayWorkoutMeta = {
       dayNumber: safeDay,
@@ -2076,6 +3165,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
       cardioDistance: category === "Walking or running" ? "5 to 10 KM" : undefined,
       guidelines: [
         "Core stabilization and systemic lipid oxidation.",
+        "12 targeted exercises daily designed for core density and metabolic burn.",
         "Remember: Abdominal movements strengthen core muscles; overall fat loss comes from sustained energy balance and activity."
       ],
       coachingNotes: "Belly Fat Shred System builds deep core density while elevating caloric expenditure safely."
@@ -2094,34 +3184,40 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
   // --------------------------------------------------------------------------
   const dayMod = ((safeDay - 1) % 6);
   let category = "Posture correction";
-  let targetMuscles = ["Upper back"];
-  let exercisesToUse = POSTURE_VITALITY_POOL;
+  let targetMuscles = ["Upper back", "Neck mobility"];
+  let pool = POSTURE_CORRECTION_EXERCISES;
 
   if (dayMod === 0) {
     category = "Posture correction";
     targetMuscles = ["Upper back", "Neck mobility"];
-    exercisesToUse = POSTURE_VITALITY_POOL.filter(e => ["Posture correction", "Neck mobility"].includes(e.category));
+    pool = POSTURE_CORRECTION_EXERCISES;
   } else if (dayMod === 1) {
     category = "Chest opening";
     targetMuscles = ["Chest", "Shoulders"];
-    exercisesToUse = POSTURE_VITALITY_POOL.filter(e => e.category === "Chest opening");
+    pool = POSTURE_CHEST_OPENING_EXERCISES;
   } else if (dayMod === 2) {
     category = "Hip mobility";
     targetMuscles = ["Hip mobility", "Glutes"];
-    exercisesToUse = POSTURE_VITALITY_POOL.filter(e => ["Hip mobility", "Glute activation"].includes(e.category));
+    pool = POSTURE_HIP_MOBILITY_EXERCISES;
   } else if (dayMod === 3) {
     category = "Spinal mobility";
     targetMuscles = ["Spinal mobility"];
-    exercisesToUse = POSTURE_VITALITY_POOL.filter(e => e.category === "Spinal mobility");
+    pool = POSTURE_SPINAL_MOBILITY_EXERCISES;
   } else if (dayMod === 4) {
     category = "Glute activation";
     targetMuscles = ["Glutes", "Core stability"];
-    exercisesToUse = POSTURE_VITALITY_POOL.filter(e => e.category === "Glute activation");
+    pool = POSTURE_GLUTE_ACTIVATION_EXERCISES;
   } else {
     category = "Daily movement";
     targetMuscles = ["Daily movement", "Mobility and recovery"];
-    exercisesToUse = POSTURE_VITALITY_POOL.filter(e => e.category === "Daily movement");
+    pool = POSTURE_DAILY_MOVEMENT_EXERCISES;
   }
+
+  // Dynamic rotation for fresh variety across 60 days while guaranteeing exactly 12 exercises
+  const cycleIndex = Math.floor((safeDay - 1) / 6);
+  const rotationOffset = cycleIndex % 12;
+  const rotated = [...pool.slice(rotationOffset), ...pool.slice(0, rotationOffset)];
+  const exercisesToUse = rotated.slice(0, 12);
 
   const meta: DayWorkoutMeta = {
     dayNumber: safeDay,
@@ -2135,7 +3231,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
     isCardioOnly: false,
     guidelines: [
       "Corrective biomechanics, spinal elongation, and postural alignment.",
-      "Move with mindful breathing and zero joint compression."
+      "12 targeted therapeutic exercises daily with mindful breathing and zero joint compression."
     ],
     coachingNotes: "Reclaim Your Posture & Vitality repairs anterior shoulder rounding, neck tension, and hip tightness."
   };

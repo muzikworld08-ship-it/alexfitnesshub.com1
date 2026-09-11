@@ -751,6 +751,86 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     beginnerModification: "Perform lying on back with knees bent.",
     advancedProgression: "Hold for 30 seconds while standing tall.",
     gifUrl: getExerciseGifUrl("Stomach Vacuum & Core Bracing")
+  },
+  "cat_cow_breathing_reset": {
+    id: "wc_cat_cow",
+    name: "Cat-Cow Dynamic Breathing Flow",
+    muscleGroups: ["Spinal Erector", "Thoracic Spine", "Diaphragm"],
+    targetMuscles: "Spinal Mobility, Decompression & Breathing Alignment",
+    sets: 3,
+    reps: "10-12 slow cycles",
+    restPeriod: "30s",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    instructions: [
+      "Begin on all fours with wrists under shoulders and knees under hips.",
+      "Inhale, drop belly toward floor, lift chest and gaze toward ceiling (Cow).",
+      "Exhale, push through hands, round spine toward ceiling, and tuck chin (Cat)."
+    ],
+    formTips: ["Move with your natural breath cadence.", "Do not force lumbar hyperextension."],
+    beginnerModification: "Perform seated in a chair.",
+    advancedProgression: "Add lateral ribcage circles between transitions.",
+    gifUrl: getExerciseGifUrl("Cat-Cow Stretch")
+  },
+  "childs_pose_stretch": {
+    id: "wc_childs_pose",
+    name: "Child's Pose Spinal Reach & Decompression",
+    muscleGroups: ["Lats", "Lower Back", "Glutes", "Hip Flexors"],
+    targetMuscles: "Posterior Chain Release & Parasympathetic Recovery",
+    sets: 3,
+    reps: "45-60s hold",
+    restPeriod: "30s",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    instructions: [
+      "Kneel on the floor with big toes touching and knees flared wide.",
+      "Sit hips back onto heels, fold forward reaching arms long in front.",
+      "Rest forehead on the floor and breathe deeply into back ribcage."
+    ],
+    formTips: ["Allow hips to sink heavier with every exhalation.", "Keep elbows soft."],
+    beginnerModification: "Place a folded blanket between calves and thighs.",
+    advancedProgression: "Walk hands diagonally to each side for 30 seconds to lengthen lats.",
+    gifUrl: getExerciseGifUrl("Child's Pose")
+  },
+  "banded_clamshells": {
+    id: "wc_banded_clamshells",
+    name: "Banded Clamshells with Abduction",
+    muscleGroups: ["Gluteus Medius", "Gluteus Minimus", "Hip Abductors"],
+    targetMuscles: "Upper Outer Glute Lift & Pelvic Stabilization",
+    sets: 3,
+    reps: "15 reps per side",
+    restPeriod: "30s",
+    equipment: "Resistance Band",
+    difficulty: "Beginner",
+    instructions: [
+      "Lie on your side with knees bent at 90 degrees and band above knees.",
+      "Keep heels glued together and rotate top knee upward like a clamshell.",
+      "Pause for 1 second at the top, then lower with control."
+    ],
+    formTips: ["Do not let hips roll backward; keep pelvis stacked perpendicular to floor."],
+    beginnerModification: "Perform without resistance band.",
+    advancedProgression: "Elevate both feet 3 inches off the ground while opening the knee.",
+    gifUrl: getExerciseGifUrl("Banded Clamshells")
+  },
+  "frog_pumps": {
+    id: "wc_frog_pumps",
+    name: "Frog Pumps",
+    muscleGroups: ["Gluteus Maximus", "Gluteus Medius"],
+    targetMuscles: "High-Rep Glute Peak Squeeze & Burnout",
+    sets: 3,
+    reps: "20-25 reps",
+    restPeriod: "30s",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    instructions: [
+      "Lie on back with soles of feet pressed firmly together and knees open wide.",
+      "Drive heels together and lift hips upward, contracting glutes hard at the apex.",
+      "Lower quickly and repeat in a rapid, controlled pumping cadence."
+    ],
+    formTips: ["Tuck chin to chest to prevent lumbar hyperextension."],
+    beginnerModification: "Elevate upper back on a couch or step.",
+    advancedProgression: "Place a dumbbell across hips for added load.",
+    gifUrl: getExerciseGifUrl("Frog Pumps")
   }
 };
 
@@ -785,16 +865,18 @@ export function getDailyWorkoutForDay(
     focus = "Glutes, Hamstrings & Hip Stability";
     intensity = phaseNum >= 4 ? "Challenging" : "Moderate";
     dayExerciseTemplates = [
-      "glute_bridge",
       "barbell_hip_thrust",
+      "glute_bridge",
       "romanian_deadlift",
+      "bulgarian_split_squat",
       "cable_glute_kickback",
       "lateral_band_walk",
       "sumo_squat",
-      "dead_bug_core",
+      "step_ups",
+      "banded_clamshells",
+      "frog_pumps",
       "stomach_vacuum",
-      "side_plank_hip_dips",
-      "face_pulls_or_band_pullaparts"
+      "dead_bug_core"
     ];
   } else if (dayInWeek === 2) {
     dayType = "strength";
@@ -812,19 +894,29 @@ export function getDailyWorkoutForDay(
       "tricep_extension",
       "hammer_curls",
       "bird_dog",
-      "plank_dips"
+      "plank_dips",
+      "bicycle_crunches",
+      "stomach_vacuum"
     ];
   } else if (dayInWeek === 3) {
     dayType = "active_recovery";
-    title += "5-10 KM Cardio Session & Complete Rest";
-    subtitle = "Complete your 5-10 KM aerobic run or walk. Workouts are removed today so you can rest and recover completely after your cardio.";
-    focus = "5-10 KM Cardio & Complete Muscular Rest";
+    title += "5-10 KM Cardio Session & Deep Recovery";
+    subtitle = "Complete your 5-10 KM aerobic run or walk. Workouts are complemented with active recovery and core reinforcement.";
+    focus = "5-10 KM Cardio & Core Decompression";
     intensity = "Low";
     dayExerciseTemplates = [
       "stomach_vacuum",
       "dead_bug_core",
+      "bird_dog",
       "cat_cow_breathing_reset",
-      "childs_pose_stretch"
+      "childs_pose_stretch",
+      "side_plank_hip_dips",
+      "glute_bridge",
+      "banded_clamshells",
+      "frog_pumps",
+      "lateral_band_walk",
+      "plank_dips",
+      "bicycle_crunches"
     ];
   } else if (dayInWeek === 4) {
     dayType = "strength";
@@ -839,10 +931,12 @@ export function getDailyWorkoutForDay(
       "barbell_hip_thrust",
       "curtsy_lunge",
       "step_ups",
+      "sumo_squat",
+      "cable_glute_kickback",
+      "banded_clamshells",
+      "frog_pumps",
       "side_plank_hip_dips",
-      "bird_dog",
-      "stomach_vacuum",
-      "face_pulls_or_band_pullaparts"
+      "stomach_vacuum"
     ];
   } else if (dayInWeek === 5) {
     dayType = daysPerWeek >= 5 ? "strength" : "walking";
@@ -858,6 +952,8 @@ export function getDailyWorkoutForDay(
       "overhead_dumbbell_press",
       "lat_pulldown",
       "lateral_band_walk",
+      "curtsy_lunge",
+      "face_pulls_or_band_pullaparts",
       "bicycle_crunches",
       "bird_dog",
       "stomach_vacuum"
@@ -868,8 +964,10 @@ export function getDailyWorkoutForDay(
     subtitle = "Decompress lumbar spine, open tight hip flexors, and release neck tension.";
     focus = "Hip Flexor Length, Thoracic Mobility & Recovery";
     intensity = "Low";
-    estimatedMinutes = 20;
+    estimatedMinutes = 25;
     dayExerciseTemplates = [
+      "cat_cow_breathing_reset",
+      "childs_pose_stretch",
       "face_pulls_or_band_pullaparts",
       "bird_dog",
       "dead_bug_core",
@@ -877,21 +975,30 @@ export function getDailyWorkoutForDay(
       "glute_bridge",
       "lateral_band_walk",
       "side_plank_hip_dips",
+      "banded_clamshells",
+      "frog_pumps",
       "sumo_squat"
     ];
   } else {
     dayType = "active_recovery";
     title += "Sunday 5-10 KM Running or Walking & Complete Rest";
-    subtitle = "Complete your 5-10 KM running or walking session today. Workouts are removed so your body and muscles can rest completely after your cardio.";
-    focus = "5-10 KM Running or Walking & Complete Muscular Rest";
+    subtitle = "Complete your 5-10 KM running or walking session today. Recover deeply with full kinetic restoration.";
+    focus = "5-10 KM Running or Walking & Kinetic Recovery";
     intensity = "Low";
     estimatedMinutes = 45;
     dayExerciseTemplates = [
+      "cat_cow_breathing_reset",
+      "childs_pose_stretch",
       "dead_bug_core",
       "bird_dog",
       "stomach_vacuum",
-      "cat_cow_breathing_reset",
-      "childs_pose_stretch"
+      "glute_bridge",
+      "banded_clamshells",
+      "frog_pumps",
+      "side_plank_hip_dips",
+      "plank_dips",
+      "bicycle_crunches",
+      "face_pulls_or_band_pullaparts"
     ];
   }
 
@@ -958,8 +1065,8 @@ export function getDailyWorkoutForDay(
     dayType,
     estimatedMinutes,
     intensity,
-    calorieEstimate: dayType === "active_recovery" ? 60 : dayType === "mobility" ? 110 : estimatedMinutes * 6.5,
-    exercises: dayType === "active_recovery" ? scaledExercises.slice(0, 5) : scaledExercises.slice(0, duration === "20-30" ? 8 : 10),
+    calorieEstimate: dayType === "active_recovery" ? 180 : dayType === "mobility" ? 220 : estimatedMinutes * 8,
+    exercises: scaledExercises.slice(0, 12),
     coachingCue
   };
 }

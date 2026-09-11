@@ -15,7 +15,7 @@ import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
 import { sendEmail } from "../services/emailNotificationService";
 
 export default function WorkoutChallengeDashboard() {
-  const { user } = useApp();
+  const { user, resetAllSettings } = useApp();
   const isAdmin = user?.role === "admin" || (user?.email && isEmailAdmin(user.email));
 
   const {
@@ -43,6 +43,8 @@ export default function WorkoutChallengeDashboard() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   // Viewed day vs actual current prescribed day
   const viewingDay = selectedDay ?? currentProgress.currentDay;
@@ -123,33 +125,45 @@ export default function WorkoutChallengeDashboard() {
               </h1>
             </div>
 
-            {/* Independent Programs Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
-              {(Object.keys(CHALLENGE_PROGRAMS_METADATA) as ProgramId[]).map((pid) => {
-                const p = CHALLENGE_PROGRAMS_METADATA[pid];
-                const pProgress = allProgramStates[pid];
-                const isActive = activeProgramId === pid;
+            {/* Independent Programs Tabs & Reset Settings */}
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+                {(Object.keys(CHALLENGE_PROGRAMS_METADATA) as ProgramId[]).map((pid) => {
+                  const p = CHALLENGE_PROGRAMS_METADATA[pid];
+                  const pProgress = allProgramStates[pid];
+                  const isActive = activeProgramId === pid;
 
-                return (
-                  <button
-                    key={pid}
-                    onClick={() => {
-                      setActiveProgramId(pid);
-                      setSelectedDay(null);
-                    }}
-                    className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                      isActive 
-                        ? "bg-red-600 text-white shadow-lg shadow-red-600/25 ring-1 ring-red-500" 
-                        : "bg-neutral-800/80 text-neutral-300 hover:bg-neutral-700/80 hover:text-white"
-                    }`}
-                  >
-                    <span>{p.badge}</span>
-                    <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-neutral-900/60 text-neutral-200">
-                      D{pProgress.currentDay}
-                    </span>
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={pid}
+                      onClick={() => {
+                        setActiveProgramId(pid);
+                        setSelectedDay(null);
+                      }}
+                      className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                        isActive 
+                          ? "bg-red-600 text-white shadow-lg shadow-red-600/25 ring-1 ring-red-500" 
+                          : "bg-neutral-800/80 text-neutral-300 hover:bg-neutral-700/80 hover:text-white"
+                      }`}
+                    >
+                      <span>{p.badge}</span>
+                      <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-neutral-900/60 text-neutral-200">
+                        D{pProgress.currentDay}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsResetModalOpen(true)}
+                className="shrink-0 px-3 py-2 rounded-xl text-xs font-bold bg-neutral-800/80 hover:bg-red-950/60 text-neutral-400 hover:text-red-400 border border-neutral-700/60 hover:border-red-500/50 transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Reset settings and start new"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Reset Settings</span>
+              </button>
             </div>
           </div>
         </div>
@@ -209,22 +223,13 @@ export default function WorkoutChallengeDashboard() {
               const dayNum = (selectedWeek - 1) * 7 + dayIdxInWeek + 1;
               if (dayNum > metadata.totalDays) return null;
 
-              const cycleDayIdx = (dayNum - 1) % 7; // 0..6
               const isSelected = viewingDay === dayNum;
               const isPrescribedToday = currentProgress.currentDay === dayNum;
 
-              // Day Focus Titles
-              const cycleTitles = [
-                "Chest + Triceps",
-                "Back + Biceps + Forearm",
-                "5-10 KM Cardio / Walk",
-                "Legs + Shoulders + Abs",
-                "Chest + Triceps",
-                "Back + Biceps",
-                "5-10 KM Run / Walk"
-              ];
-              const cycleLabel = cycleTitles[cycleDayIdx];
-              const isCardioDay = cycleDayIdx === 2 || cycleDayIdx === 6;
+              // Dynamically retrieve exact verified program workout meta for this day
+              const dayPlan = getWorkoutForProgramAndDay(activeProgramId, dayNum);
+              const cycleLabel = dayPlan.meta.category;
+              const isCardioDay = dayPlan.meta.isCardioOnly || dayPlan.meta.isRestDay;
 
               return (
                 <button
@@ -249,11 +254,11 @@ export default function WorkoutChallengeDashboard() {
                     )}
                   </div>
                   <div className="mt-1.5">
-                    <p className={`text-xs font-extrabold leading-tight ${isSelected ? "text-white" : isCardioDay ? "text-sky-300" : "text-neutral-300"}`}>
+                    <p className={`text-xs font-extrabold leading-tight line-clamp-1 ${isSelected ? "text-white" : isCardioDay ? "text-sky-300" : "text-neutral-300"}`}>
                       {cycleLabel}
                     </p>
                     <span className={`text-[10px] font-mono mt-1 inline-block ${isCardioDay ? "text-sky-400" : "text-neutral-500"}`}>
-                      {isCardioDay ? "Zero Lifting" : "Resistance"}
+                      {dayPlan.meta.isRestDay ? "Rest & Recovery" : isCardioDay ? "Cardio" : "Resistance"}
                     </span>
                   </div>
                 </button>
@@ -670,6 +675,71 @@ export default function WorkoutChallengeDashboard() {
           )}
         </div>
       </div>
+
+      {/* RESET SETTINGS CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {isResetModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5"
+            >
+              <div className="flex items-center gap-3 text-red-400">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+                  <RefreshCw className={`w-6 h-6 ${isResetting ? "animate-spin" : ""}`} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">Reset Program Settings</h3>
+                  <p className="text-xs text-neutral-400">Restart fresh with updated engine & database</p>
+                </div>
+              </div>
+
+              <div className="bg-neutral-950 p-4 rounded-2xl border border-neutral-800 text-xs text-neutral-300 space-y-2">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                  <ShieldCheck className="w-4 h-4 shrink-0" />
+                  <span>Your historical workout logs and logs are preserved.</span>
+                </div>
+                <p className="text-neutral-400 leading-relaxed">
+                  This resets all active workout timers, unlocks, search filters, and cooldown gates to clean Day 1 defaults across all programs.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={isResetting}
+                  onClick={() => setIsResetModalOpen(false)}
+                  className="flex-1 py-3 px-4 rounded-xl border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-xs transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isResetting}
+                  onClick={async () => {
+                    setIsResetting(true);
+                    try {
+                      resetProgramProgress(activeProgramId);
+                      await resetAllSettings();
+                      setIsResetModalOpen(false);
+                    } catch (e) {
+                      console.error("Reset failed:", e);
+                    } finally {
+                      setIsResetting(false);
+                    }
+                  }}
+                  className="flex-1 py-3 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs shadow-lg shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isResetting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  <span>{isResetting ? "Resetting..." : "Confirm Reset"}</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

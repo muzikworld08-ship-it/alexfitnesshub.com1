@@ -356,25 +356,25 @@ export function getImmortalChallengeDayPlan(dayNumber: number, allExercises: Exe
     const seen = new Set<string>();
     const selected: Exercise[] = [];
 
-    // Select 8 Chest exercises
+    // Select 7 Chest exercises
     for (const ex of rotatedChest) {
-      if (!seen.has(ex.id) && selected.length < 8) {
+      if (!seen.has(ex.id) && selected.length < 7) {
         seen.add(ex.id);
         selected.push(ex);
       }
     }
-    // Select 5 Triceps exercises (totaling 13)
+    // Select 5 Triceps exercises (totaling 12)
     for (const ex of rotatedTriceps) {
-      if (!seen.has(ex.id) && selected.length < 13) {
+      if (!seen.has(ex.id) && selected.length < 12) {
         seen.add(ex.id);
         selected.push(ex);
       }
     }
-    // Safeguard: Ensure at least 13 exercises
-    if (selected.length < 13) {
+    // Safeguard: Ensure at least 12 exercises
+    if (selected.length < 12) {
       const extras = allExercises.filter(e => !seen.has(e.id) && !e.name.toLowerCase().includes("squat"));
       for (const ex of extras) {
-        if (selected.length >= 13) break;
+        if (selected.length >= 12) break;
         seen.add(ex.id);
         selected.push(ex);
       }
@@ -474,26 +474,19 @@ export function getImmortalChallengeDayPlan(dayNumber: number, allExercises: Exe
         selected.push(ex);
       }
     }
-    // 2 Forearm exercises
+    // 3 Forearm exercises (totaling 12)
     for (const ex of rotatedForearms) {
-      if (!seen.has(ex.id) && selected.length < 11) {
-        seen.add(ex.id);
-        selected.push(ex);
-      }
-    }
-    // 2 Abs exercises (totaling 13)
-    for (const ex of rotatedAbs) {
-      if (!seen.has(ex.id) && selected.length < 13) {
+      if (!seen.has(ex.id) && selected.length < 12) {
         seen.add(ex.id);
         selected.push(ex);
       }
     }
 
-    // Safeguard: Ensure at least 13 exercises
-    if (selected.length < 13) {
+    // Safeguard: Ensure at least 12 exercises
+    if (selected.length < 12) {
       const extras = allExercises.filter(e => !seen.has(e.id) && !e.name.toLowerCase().includes("squat"));
       for (const ex of extras) {
-        if (selected.length >= 13) break;
+        if (selected.length >= 12) break;
         seen.add(ex.id);
         selected.push(ex);
       }
@@ -584,26 +577,26 @@ export function getImmortalChallengeDayPlan(dayNumber: number, allExercises: Exe
         selected.push(ex);
       }
     }
-    // 5 Shoulders exercises
+    // 4 Shoulders exercises
     for (const ex of rotatedShoulders) {
-      if (!seen.has(ex.id) && selected.length < 10) {
+      if (!seen.has(ex.id) && selected.length < 9) {
         seen.add(ex.id);
         selected.push(ex);
       }
     }
-    // 3 Abs exercises (totaling 13)
+    // 3 Abs exercises (totaling 12)
     for (const ex of rotatedAbs) {
-      if (!seen.has(ex.id) && selected.length < 13) {
+      if (!seen.has(ex.id) && selected.length < 12) {
         seen.add(ex.id);
         selected.push(ex);
       }
     }
 
-    // Safeguard: Ensure at least 13 exercises
-    if (selected.length < 13) {
+    // Safeguard: Ensure at least 12 exercises
+    if (selected.length < 12) {
       const extras = allExercises.filter(e => !seen.has(e.id));
       for (const ex of extras) {
-        if (selected.length >= 13) break;
+        if (selected.length >= 12) break;
         seen.add(ex.id);
         selected.push(ex);
       }
@@ -613,7 +606,7 @@ export function getImmortalChallengeDayPlan(dayNumber: number, allExercises: Exe
 
   // Final fallback safeguard
   if (dayExercises.length === 0) {
-    dayExercises = allExercises.slice(0, 13);
+    dayExercises = allExercises.slice(0, 12);
   }
 
   return {
@@ -763,7 +756,7 @@ export function getWomen180DayPlan(dayNumber: number, allExercises: Exercise[]):
     const poolOrdered = cycleDay === 4 ? [...pool].reverse() : pool;
     const seen = new Set<string>();
     for (const ex of poolOrdered) {
-      if (!seen.has(ex.id) && selected.length < 7) {
+      if (!seen.has(ex.id) && selected.length < 12) {
         seen.add(ex.id);
         selected.push(ex);
       }
@@ -781,7 +774,7 @@ export function getWomen180DayPlan(dayNumber: number, allExercises: Exercise[]):
     const poolOrdered = cycleDay === 5 ? [...pool].reverse() : pool;
     const seen = new Set<string>();
     for (const ex of poolOrdered) {
-      if (!seen.has(ex.id) && selected.length < 7) {
+      if (!seen.has(ex.id) && selected.length < 12) {
         seen.add(ex.id);
         selected.push(ex);
       }

@@ -128,6 +128,24 @@ const CHALLENGE_SPLITS: Record<string, string[]> = {
     "Back + Biceps",
     "5 to 10 KM Running or Walking"
   ],
+  "90_day_immortal": [
+    "Chest + Triceps",
+    "Back + Biceps + Forearm",
+    "5 to 10 KM Cardio or Walking",
+    "Legs + Shoulders + Abs",
+    "Chest + Triceps",
+    "Back + Biceps",
+    "5 to 10 KM Running or Walking"
+  ],
+  "90-days-immortal": [
+    "Chest + Triceps",
+    "Back + Biceps + Forearm",
+    "5 to 10 KM Cardio or Walking",
+    "Legs + Shoulders + Abs",
+    "Chest + Triceps",
+    "Back + Biceps",
+    "5 to 10 KM Running or Walking"
+  ],
   lean_muscle: [
     "Chest + Triceps",
     "Back + Biceps + Forearm",
@@ -495,7 +513,15 @@ export default function Premium90DayChallenge() {
     }
 
     // Delegate directly to the strictly organized 7-day repeating Challenge Engine for Immortal 90 / Lean Muscle
-    if (challengeId === "immortal_90" || challengeId === "lean_muscle" || !challengeId) {
+    const isImmortalVariant = 
+      !challengeId ||
+      challengeId === "immortal_90" || 
+      challengeId === "90_day_immortal" || 
+      challengeId === "90-days-immortal" || 
+      challengeId.includes("immortal") ||
+      challengeId === "lean_muscle";
+
+    if (isImmortalVariant) {
       const enginePlan = getWorkoutForProgramAndDay("immortal_90", dayNum);
       const isCardioDay = enginePlan.meta.isCardioOnly;
 
@@ -640,15 +666,22 @@ export default function Premium90DayChallenge() {
       return matchCat && matchFocus;
     });
 
-    // Select exercises matching this day's routine strictly
-    let matchedExercises = filtered.slice(0, 9);
-    if (matchedExercises.length < 5) {
+    // Select exercises matching this day's routine strictly - guarantee 12 exercises
+    let matchedExercises = filtered.slice(0, 12);
+    if (matchedExercises.length < 12) {
       // Only pull extras that match the target muscle groups
       const muscleExtras = exercises.filter(ex => 
         !matchedExercises.some(m => m.id === ex.id) &&
         ex.muscleGroups?.some(m => focusWords.some(fw => m.toLowerCase().includes(fw)))
-      ).slice(0, 8 - matchedExercises.length);
+      ).slice(0, 12 - matchedExercises.length);
       matchedExercises = [...matchedExercises, ...muscleExtras];
+    }
+    if (matchedExercises.length < 12) {
+      const categoryExtras = exercises.filter(ex =>
+        !matchedExercises.some(m => m.id === ex.id) &&
+        (ex.category === targetCategory || ex.categories?.includes(targetCategory))
+      ).slice(0, 12 - matchedExercises.length);
+      matchedExercises = [...matchedExercises, ...categoryExtras];
     }
 
     // Construct exercises details list
@@ -1017,7 +1050,7 @@ export default function Premium90DayChallenge() {
             <span>AlexFitnessHub Premium Flagship</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tight leading-tight">
-            Immortal 90-Day Challenge Engine
+            Immortal 90-Day Challenge Hub
           </h1>
           <p className="text-white/95 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed font-semibold">
             Unlock your physical limits with a fully automated, personalized Personal Trainer engine. Dynamically generated progressive overloads updated every day for 90 days.
@@ -1538,6 +1571,7 @@ export default function Premium90DayChallenge() {
 
                           const isViewingThis = activeDisplayDay === calculatedDay;
                           const isTrackedToday = dbState.currentDay === calculatedDay;
+                          const itemDetail = getDailyWorkoutDetail(calculatedDay, dbState.challengeId);
 
                           return (
                             <button
@@ -1565,12 +1599,12 @@ export default function Premium90DayChallenge() {
                                 Day {calculatedDay}
                               </div>
                               <div className="text-xs font-bold truncate mt-0.5">
-                                {cadenceItem.focus}
+                                {itemDetail.focus || cadenceItem.focus}
                               </div>
                               <div className={`text-[9px] font-mono mt-1 ${
                                 isViewingThis ? "text-red-200" : "text-slate-400"
                               }`}>
-                                {cadenceItem.badge}
+                                {itemDetail.isRecoveryDay ? "Cardio" : cadenceItem.badge}
                               </div>
                             </button>
                           );
