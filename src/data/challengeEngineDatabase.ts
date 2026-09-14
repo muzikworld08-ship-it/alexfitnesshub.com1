@@ -48,7 +48,14 @@ export {
   POSTURE_SPINAL_MOBILITY_EXERCISES,
   POSTURE_GLUTE_ACTIVATION_EXERCISES,
   POSTURE_DAILY_MOVEMENT_EXERCISES,
-  POSTURE_VITALITY_POOL
+  POSTURE_VITALITY_POOL,
+  IMMORTAL_CHEST_TRICEPS,
+  IMMORTAL_BACK_BICEPS,
+  IMMORTAL_LEGS_SHOULDERS,
+  IMMORTAL_CARDIO_RECOVERY,
+  IMMORTAL_BACK_BICEPS_FOREARMS,
+  IMMORTAL_LEGS_SHOULDERS_ABS,
+  IMMORTAL_PURE_LOWER_BODY
 };
 
 // ============================================================================
@@ -820,6 +827,54 @@ const IMMORTAL_LEGS_SHOULDERS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[]
       "Hinge forward at hips, fly dumbbells out wide squeezing posterior deltoids."
     ],
     restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Legs + Shoulders",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Bulgarian Split Squats",
+    equipment: "Dumbbells & Bench",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10-12 each leg",
+    duration: "45s set",
+    instructions: [
+      "Elevate rear foot on bench behind you. Lower front thigh parallel to floor and drive through front heel."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Legs + Shoulders",
+    muscleGroup: ["Legs", "Hamstrings"],
+    exerciseName: "Lying Leg Curls",
+    equipment: "Leg Curl Machine",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12-15",
+    duration: "40s set",
+    instructions: [
+      "Lie face down with roller padded behind ankles. Curl heels toward glutes and control eccentric descent."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Legs + Shoulders",
+    muscleGroup: ["Shoulders"],
+    exerciseName: "Arnold Dumbbell Press",
+    equipment: "Dumbbells & Bench",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10-12",
+    duration: "45s set",
+    instructions: [
+      "Hold dumbbells in front with palms facing you. Rotate wrists outward as you press up into overhead extension."
+    ],
+    restTime: "60s"
   }
 ];
 
@@ -881,7 +936,7 @@ const IMMORTAL_BACK_BICEPS_FOREARMS: Omit<ChallengeExerciseItem, "id" | "dayNumb
 ];
 
 const IMMORTAL_LEGS_SHOULDERS_ABS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
-  ...IMMORTAL_LEGS_SHOULDERS.map(ex => ({ ...ex, category: "Legs + Shoulders + Abs" })),
+  ...IMMORTAL_LEGS_SHOULDERS.slice(0, 9).map(ex => ({ ...ex, category: "Legs + Shoulders + Abs" })),
   {
     programId: "immortal_90",
     programName: "Immortal 90 Day Challenge",
@@ -934,6 +989,136 @@ const IMMORTAL_LEGS_SHOULDERS_ABS: Omit<ChallengeExerciseItem, "id" | "dayNumber
       "Crunch elbows down towards mid-thighs, rolling spine like a carpet."
     ],
     restTime: "60s"
+  }
+];
+
+const IMMORTAL_PURE_LOWER_BODY: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+  ...IMMORTAL_LEGS_SHOULDERS.slice(0, 5).map(ex => ({ ...ex, category: "Legs & Lower Body" })),
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Legs & Lower Body",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Bulgarian Split Squat",
+    equipment: "Dumbbells & Bench",
+    difficulty: "Advanced",
+    sets: 3,
+    reps: "10-12 per leg",
+    duration: "45s set",
+    instructions: [
+      "Place rear foot on bench behind you.",
+      "Lower front knee toward floor while keeping torso upright.",
+      "Drive through front heel to return to top."
+    ],
+    restTime: "75s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Legs & Lower Body",
+    muscleGroup: ["Hamstrings"],
+    exerciseName: "Lying Leg Curls",
+    equipment: "Leg Curl Machine",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12-15",
+    duration: "40s set",
+    instructions: [
+      "Lie face down with roller padded behind ankles.",
+      "Curl heels smoothly toward glutes, pausing for 1 second at top.",
+      "Lower under control for 3 seconds."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Legs & Lower Body",
+    muscleGroup: ["Glutes"],
+    exerciseName: "Barbell Hip Thrust",
+    equipment: "Barbell & Bench",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "10-12",
+    duration: "45s set",
+    instructions: [
+      "Rest upper back on bench with padded barbell across pelvis.",
+      "Drive hips toward ceiling until thighs and torso align.",
+      "Squeeze glutes hard at apex for 2 seconds."
+    ],
+    restTime: "90s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Legs & Lower Body",
+    muscleGroup: ["Legs", "Quads"],
+    exerciseName: "Goblet Squat",
+    equipment: "Kettlebell or Dumbbell",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12-15",
+    duration: "40s set",
+    instructions: [
+      "Hold weight vertically against chest with elbows tucked.",
+      "Squat deeply between hips, keeping chest elevated.",
+      "Drive up through midfoot."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Legs & Lower Body",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Sumo Deadlift",
+    equipment: "Barbell or Dumbbells",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10-12",
+    duration: "45s set",
+    instructions: [
+      "Set a wide stance with toes pointed 45 degrees outward.",
+      "Hinge hips back and grasp barbell inside knees.",
+      "Drive floor away through heels, locking out hips cleanly."
+    ],
+    restTime: "90s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Legs & Lower Body",
+    muscleGroup: ["Legs", "Quads"],
+    exerciseName: "Dumbbell Step-Ups",
+    equipment: "Dumbbells & Plyo Box",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12 per leg",
+    duration: "45s set",
+    instructions: [
+      "Step whole foot firmly onto box surface.",
+      "Drive through lead heel to elevate body without pushing off back toes.",
+      "Step down smoothly under control."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Legs & Lower Body",
+    muscleGroup: ["Calves"],
+    exerciseName: "Seated Calf Raise",
+    equipment: "Calf Machine or Dumbbells",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "15-20",
+    duration: "40s set",
+    instructions: [
+      "Sit with knees bent at 90 degrees and weight resting on lower thighs.",
+      "Lower heels below platform edge for deep stretch.",
+      "Elevate toes as high as possible, holding contraction."
+    ],
+    restTime: "45s"
   }
 ];
 
@@ -2782,7 +2967,11 @@ function finalizePlan(meta: DayWorkoutMeta, exercises: ChallengeExerciseItem[]):
   };
 }
 
-export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: number): DayExecutionPlan {
+export function getWorkoutForProgramAndDay(
+  programId: ProgramId, 
+  dayNumber: number, 
+  targetMuscleHint?: string
+): DayExecutionPlan {
   const safeDay = Math.max(1, dayNumber);
 
   // --------------------------------------------------------------------------
@@ -2796,7 +2985,75 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
   // Day 7: Rest + Walking (recovery instructions and optional walking, no resistance training)
   // --------------------------------------------------------------------------
   if (programId === "immortal_90") {
-    const cycleDay = ((safeDay - 1) % 7) + 1; // 1 to 7
+    let cycleDay = ((safeDay - 1) % 7) + 1; // 1 to 7
+
+    // If targetMuscleHint is explicitly provided, intelligently route or isolate
+    if (targetMuscleHint) {
+      const hint = targetMuscleHint.toLowerCase();
+      if (
+        hint.includes("leg") || 
+        hint.includes("lower") || 
+        hint.includes("glute") || 
+        hint.includes("quad") || 
+        hint.includes("hamstring") || 
+        hint.includes("squat")
+      ) {
+        // Return 100% pure lower body & leg routine with 12 verified leg exercises (zero chest/triceps!)
+        const meta: DayWorkoutMeta = {
+          dayNumber: safeDay,
+          programId: "immortal_90",
+          title: `Day ${safeDay}: Lower Body & Glutes Power`,
+          category: "Legs & Lower Body",
+          targetMuscles: ["Legs", "Glutes", "Hamstrings", "Quads", "Calves"],
+          estimatedDuration: "55-65 mins",
+          estimatedCalories: 560,
+          isRestDay: false,
+          isCardioOnly: false,
+          guidelines: [
+            "Display 12 leg and lower body exercises ONLY.",
+            "Prioritize deep squat biomechanics, hinge depth, and knee stabilization.",
+            "Complete all quad, hamstring, glute, and calf drills with zero chest or upper body overlap."
+          ],
+          coachingNotes: "Immortal Lower Body Focus: Pure quad, hamstring, glute, and calf hypertrophy."
+        };
+        const exercises: ChallengeExerciseItem[] = IMMORTAL_PURE_LOWER_BODY.slice(0, 12).map((ex, idx) => ({
+          ...ex,
+          id: `immortal_d${safeDay}_ex_${idx + 1}`,
+          dayNumber: safeDay
+        }));
+        return finalizePlan(meta, exercises);
+      } else if (
+        hint.includes("back") || 
+        hint.includes("bicep") || 
+        hint.includes("pull") || 
+        hint.includes("lat") || 
+        hint.includes("row")
+      ) {
+        cycleDay = 2;
+      } else if (
+        hint.includes("chest") || 
+        hint.includes("tricep") || 
+        hint.includes("push") || 
+        hint.includes("bench") || 
+        hint.includes("pec")
+      ) {
+        cycleDay = 1;
+      } else if (
+        hint.includes("cardio") || 
+        hint.includes("walk") || 
+        hint.includes("run") || 
+        hint.includes("stamina")
+      ) {
+        cycleDay = 3;
+      } else if (
+        hint.includes("shoulder") || 
+        hint.includes("delt") ||
+        hint.includes("abs") ||
+        hint.includes("core")
+      ) {
+        cycleDay = 4;
+      }
+    }
 
     if (cycleDay === 1) {
       const meta: DayWorkoutMeta = {
@@ -2816,7 +3073,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
         ],
         coachingNotes: "Immortal Day 1 strictly targets the anterior pushing chain: pectorals (upper, mid, lower) and all three triceps heads."
       };
-      const exercises: ChallengeExerciseItem[] = IMMORTAL_CHEST_TRICEPS.map((ex, idx) => ({
+      const exercises: ChallengeExerciseItem[] = IMMORTAL_CHEST_TRICEPS.slice(0, 12).map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
@@ -2842,7 +3099,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
         ],
         coachingNotes: "Immortal Day 2 exclusively engages vertical and horizontal pulling: latissimus dorsi, rhomboids, trapezius, biceps, and forearm wrist flexors/extensors."
       };
-      const exercises: ChallengeExerciseItem[] = IMMORTAL_BACK_BICEPS_FOREARMS.map((ex, idx) => ({
+      const exercises: ChallengeExerciseItem[] = IMMORTAL_BACK_BICEPS_FOREARMS.slice(0, 12).map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
@@ -2895,7 +3152,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
         ],
         coachingNotes: "Immortal Day 4: High metabolic demand combining lower body quad/hamstring power, 3D shoulder sculpting, and core armor."
       };
-      const exercises: ChallengeExerciseItem[] = IMMORTAL_LEGS_SHOULDERS_ABS.map((ex, idx) => ({
+      const exercises: ChallengeExerciseItem[] = IMMORTAL_LEGS_SHOULDERS_ABS.slice(0, 12).map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
@@ -2920,7 +3177,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
         ],
         coachingNotes: "Immortal Day 5: Re-stimulates the anterior pushing chain with heavy volume on pectorals and triceps."
       };
-      const exercises: ChallengeExerciseItem[] = IMMORTAL_CHEST_TRICEPS.map((ex, idx) => ({
+      const exercises: ChallengeExerciseItem[] = IMMORTAL_CHEST_TRICEPS.slice(0, 12).map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
@@ -2945,7 +3202,7 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
         ],
         coachingNotes: "Immortal Day 6: Total pulling density targeting lat width, mid-back thickness, and bicep peaks."
       };
-      const exercises: ChallengeExerciseItem[] = IMMORTAL_BACK_BICEPS.map((ex, idx) => ({
+      const exercises: ChallengeExerciseItem[] = IMMORTAL_BACK_BICEPS.slice(0, 12).map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
         dayNumber: safeDay
@@ -2985,7 +3242,17 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
   // PROGRAM 2: 180 DAY HOME WORKOUT CHALLENGE (CALISTHENICS & BODYWEIGHT ONLY)
   // --------------------------------------------------------------------------
   if (programId === "home_180") {
-    const dayMod = ((safeDay - 1) % 6);
+    let dayMod = ((safeDay - 1) % 6);
+    if (targetMuscleHint) {
+      const hint = targetMuscleHint.toLowerCase();
+      if (hint.includes("leg") || hint.includes("lower") || hint.includes("glute")) dayMod = 1;
+      else if (hint.includes("upper") || hint.includes("chest") || hint.includes("push") || hint.includes("arm")) dayMod = 0;
+      else if (hint.includes("cardio") || hint.includes("hiit")) dayMod = 2;
+      else if (hint.includes("back") || hint.includes("pull")) dayMod = 3;
+      else if (hint.includes("core") || hint.includes("abs")) dayMod = 4;
+      else if (hint.includes("mobility") || hint.includes("recovery") || hint.includes("stretch")) dayMod = 5;
+    }
+
     let category = "Upper body";
     let targetMuscles = ["Chest", "Shoulders", "Arms"];
     let pool = HOME_UPPER_BODY_EXERCISES;
@@ -3052,7 +3319,17 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
   // PROGRAM 3: WOMEN CONFIDENCE PROGRAM (180 DAYS)
   // --------------------------------------------------------------------------
   if (programId === "women_confidence") {
-    const dayMod = ((safeDay - 1) % 6);
+    let dayMod = ((safeDay - 1) % 6);
+    if (targetMuscleHint) {
+      const hint = targetMuscleHint.toLowerCase();
+      if (hint.includes("glute") || hint.includes("booty") || hint.includes("hip")) dayMod = 0;
+      else if (hint.includes("core") || hint.includes("abs") || hint.includes("waist")) dayMod = 1;
+      else if (hint.includes("cardio") || hint.includes("burn") || hint.includes("fat")) dayMod = 2;
+      else if (hint.includes("leg") || hint.includes("lower") || hint.includes("thigh")) dayMod = 3;
+      else if (hint.includes("upper") || hint.includes("arm") || hint.includes("back") || hint.includes("shoulder")) dayMod = 4;
+      else if (hint.includes("wellness") || hint.includes("mobility") || hint.includes("recovery")) dayMod = 5;
+    }
+
     let category = "Glutes";
     let targetMuscles = ["Glutes", "Lower body"];
     let pool = WOMEN_GLUTES_EXERCISES;
@@ -3119,7 +3396,16 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
   // PROGRAM 4: BELLY FAT SHRED SYSTEM (150 DAYS)
   // --------------------------------------------------------------------------
   if (programId === "belly_fat_shred") {
-    const dayMod = ((safeDay - 1) % 5);
+    let dayMod = ((safeDay - 1) % 5);
+    if (targetMuscleHint) {
+      const hint = targetMuscleHint.toLowerCase();
+      if (hint.includes("core") || hint.includes("abs") || hint.includes("transverse")) dayMod = 0;
+      else if (hint.includes("hiit") || hint.includes("tabata") || hint.includes("interval")) dayMod = 1;
+      else if (hint.includes("walk") || hint.includes("running") || hint.includes("cardio")) dayMod = 2;
+      else if (hint.includes("oblique") || hint.includes("side") || hint.includes("waist")) dayMod = 3;
+      else if (hint.includes("condition") || hint.includes("full body") || hint.includes("metabolic")) dayMod = 4;
+    }
+
     let category = "Core";
     let targetMuscles = ["Abs"];
     let pool = BELLY_CORE_EXERCISES;
@@ -3180,9 +3466,99 @@ export function getWorkoutForProgramAndDay(programId: ProgramId, dayNumber: numb
   }
 
   // --------------------------------------------------------------------------
-  // PROGRAM 5: RECLAIM YOUR POSTURE & VITALITY (60 DAYS)
+  // PROGRAM 5: LIFESTYLE FITNESS ACADEMY (POSTURE, SEDENTARY REVERSAL & LONGEVITY)
   // --------------------------------------------------------------------------
-  const dayMod = ((safeDay - 1) % 6);
+  if (programId === "lifestyle_academy" as any) {
+    let dayMod = ((safeDay - 1) % 7);
+    if (targetMuscleHint) {
+      const hint = targetMuscleHint.toLowerCase();
+      if (hint.includes("posture") || hint.includes("neck") || hint.includes("slouch")) dayMod = 0;
+      else if (hint.includes("hip") || hint.includes("psoas") || hint.includes("pelvis")) dayMod = 1;
+      else if (hint.includes("walk") || hint.includes("cardio") || hint.includes("circulation")) dayMod = 2;
+      else if (hint.includes("chest") || hint.includes("shoulder") || hint.includes("doorway")) dayMod = 3;
+      else if (hint.includes("spine") || hint.includes("core") || hint.includes("back")) dayMod = 4;
+      else if (hint.includes("glute") || hint.includes("lower") || hint.includes("leg")) dayMod = 5;
+      else if (hint.includes("rest") || hint.includes("recovery") || hint.includes("mobility")) dayMod = 6;
+    }
+
+    let category = "Posture Alignment & Posterior Chain";
+    let targetMuscles = ["Upper Back", "Scapular Stabilizers"];
+    let pool = POSTURE_CORRECTION_EXERCISES;
+
+    if (dayMod === 0) {
+      category = "Posture Alignment & Posterior Chain";
+      targetMuscles = ["Upper Back", "Scapular Stabilizers"];
+      pool = POSTURE_CORRECTION_EXERCISES;
+    } else if (dayMod === 1) {
+      category = "Hip Flexor Decompression & Sedentary Reset";
+      targetMuscles = ["Hip Flexors", "Pelvis", "Glutes"];
+      pool = POSTURE_HIP_MOBILITY_EXERCISES;
+    } else if (dayMod === 2) {
+      category = "Aerobic Circulation & 5-10 KM Brisk Walking";
+      targetMuscles = ["Cardio", "Vascular Health"];
+      pool = POSTURE_DAILY_MOVEMENT_EXERCISES;
+    } else if (dayMod === 3) {
+      category = "Chest Opening & Anterior Shoulder Mobility";
+      targetMuscles = ["Pectorals", "Anterior Deltoids"];
+      pool = POSTURE_CHEST_OPENING_EXERCISES;
+    } else if (dayMod === 4) {
+      category = "Spinal Decompression & Core Pillar Stability";
+      targetMuscles = ["Spine", "Transverse Abdominis"];
+      pool = POSTURE_SPINAL_MOBILITY_EXERCISES;
+    } else if (dayMod === 5) {
+      category = "Glute Activation & Lower Body Kinetic Chain";
+      targetMuscles = ["Glutes", "Hamstrings", "Quads"];
+      pool = POSTURE_GLUTE_ACTIVATION_EXERCISES;
+    } else {
+      category = "Restorative Mobility & Parasympathetic Recovery";
+      targetMuscles = ["Total Body Recovery"];
+      pool = POSTURE_DAILY_MOVEMENT_EXERCISES;
+    }
+
+    const cycleIndex = Math.floor((safeDay - 1) / 7);
+    const rotationOffset = cycleIndex % 12;
+    const rotated = [...pool.slice(rotationOffset), ...pool.slice(0, rotationOffset)];
+    const exercisesToUse = rotated.slice(0, 12);
+
+    const meta: DayWorkoutMeta = {
+      dayNumber: safeDay,
+      programId: "lifestyle_academy" as any,
+      title: `Day ${safeDay}: ${category}`,
+      category,
+      targetMuscles,
+      estimatedDuration: "30-40 mins",
+      estimatedCalories: 240,
+      isRestDay: dayMod === 6,
+      isCardioOnly: dayMod === 2,
+      guidelines: [
+        "Specifically engineered to counteract prolonged sitting, tech neck, and sedentary stiffness.",
+        "12 targeted exercises daily designed for posture alignment, joint longevity, and metabolic renewal."
+      ],
+      coachingNotes: "Lifestyle Academy: Reverse the sedentary curve with clinical movement patterns and active breathing."
+    };
+
+    const exercises = exercisesToUse.map((ex, idx) => ({
+      ...ex,
+      id: `lifestyle_d${safeDay}_ex_${idx + 1}`,
+      dayNumber: safeDay
+    }));
+    return finalizePlan(meta, exercises);
+  }
+
+  // --------------------------------------------------------------------------
+  // PROGRAM 6: RECLAIM YOUR POSTURE & VITALITY (60 DAYS)
+  // --------------------------------------------------------------------------
+  let dayMod = ((safeDay - 1) % 6);
+  if (targetMuscleHint) {
+    const hint = targetMuscleHint.toLowerCase();
+    if (hint.includes("posture") || hint.includes("neck") || hint.includes("slouch")) dayMod = 0;
+    else if (hint.includes("chest") || hint.includes("shoulder") || hint.includes("anterior")) dayMod = 1;
+    else if (hint.includes("hip") || hint.includes("psoas") || hint.includes("pelvis")) dayMod = 2;
+    else if (hint.includes("spine") || hint.includes("back") || hint.includes("thoracic")) dayMod = 3;
+    else if (hint.includes("glute") || hint.includes("butt") || hint.includes("bridge")) dayMod = 4;
+    else if (hint.includes("daily") || hint.includes("walk") || hint.includes("step")) dayMod = 5;
+  }
+
   let category = "Posture correction";
   let targetMuscles = ["Upper back", "Neck mobility"];
   let pool = POSTURE_CORRECTION_EXERCISES;

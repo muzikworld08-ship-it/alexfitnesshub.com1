@@ -24,14 +24,27 @@ interface ContinueProgramTrackerProps {
 
 export default function ContinueProgramTracker({ compact = false, onNavigate }: ContinueProgramTrackerProps) {
   const { 
+    user,
     programProgress, 
     resumeProgram, 
     setView, 
-    getActiveEnrolledPrograms,
-    enrollProgram
+    getActiveEnrolledPrograms
   } = useApp();
 
-  const activePrograms = getActiveEnrolledPrograms();
+  const isSubscribedOrTrial = Boolean(
+    user?.role === "admin" ||
+    user?.subscriptionStatus === "premium" ||
+    user?.isPremium ||
+    user?.isFreeTrial ||
+    user?.freeTrialStatus === "active"
+  );
+
+  const activePrograms = getActiveEnrolledPrograms().filter(p => p.enrolled);
+
+  // New users or users who have not joined & subscribed to any workout program see no advertisement banner
+  if (!isSubscribedOrTrial || activePrograms.length === 0) {
+    return null;
+  }
 
   const handleResume = (item: ProgramProgressItem) => {
     if (onNavigate) {
@@ -40,58 +53,6 @@ export default function ContinueProgramTracker({ compact = false, onNavigate }: 
       resumeProgram(item.programId);
     }
   };
-
-  const handleEnrollOrResume = (programId: string, title: string, viewName: string) => {
-    if (!programProgress[programId]) {
-      enrollProgram(programId, { programTitle: title, viewName });
-    }
-    if (onNavigate) {
-      onNavigate(viewName);
-    } else {
-      setView(viewName);
-    }
-  };
-
-  if (activePrograms.length === 0) {
-    return (
-      <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 text-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-[#D32F2F]/10 text-[#D32F2F] flex items-center justify-center mx-auto">
-          <BookmarkCheck className="w-6 h-6" />
-        </div>
-        <div>
-          <h3 className="text-base font-black uppercase tracking-tight text-slate-900 font-sans">
-            Start Your First Training Program
-          </h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 font-semibold">
-            Choose an elite transformation challenge below. Your exact workout stopping point and progress will be tracked automatically across sessions.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-          <button
-            onClick={() => handleEnrollOrResume("90_day_immortal", "90 Days Immortal Challenge", "challenges")}
-            className="px-4 py-2.5 bg-[#D32F2F] hover:bg-[#B71C1C] text-white text-xs font-black uppercase tracking-wider rounded-xl transition shadow-sm cursor-pointer inline-flex items-center gap-2"
-          >
-            <Flame className="w-4 h-4" />
-            <span>90 Days Immortal</span>
-          </button>
-          <button
-            onClick={() => handleEnrollOrResume("belly_fat_shred", "Belly Fat Shred", "belly-fat-shred")}
-            className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white text-xs font-black uppercase tracking-wider rounded-xl transition shadow-sm cursor-pointer inline-flex items-center gap-2"
-          >
-            <Activity className="w-4 h-4" />
-            <span>Belly Fat Shred</span>
-          </button>
-          <button
-            onClick={() => handleEnrollOrResume("lifestyle_academy", "Lifestyle Academy", "lifestyle-academy")}
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-black uppercase tracking-wider rounded-xl transition border border-slate-250 cursor-pointer inline-flex items-center gap-2"
-          >
-            <Layers className="w-4 h-4" />
-            <span>Lifestyle Academy</span>
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // Primary top program (most recently stopped / active)
   const primaryProgram = activePrograms[0];

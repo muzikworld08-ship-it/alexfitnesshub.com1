@@ -7,6 +7,7 @@ import {
 import { useStore } from "../../context/StoreContext";
 import { Product, StoreOrder, ProductCategory, ProductColor } from "../../types";
 import { AdminProductGalleryManager } from "./AdminProductGalleryManager";
+import { ProductPermanentDeleteModal } from "../store/ProductPermanentDeleteModal";
 
 export const AdminStoreManager: React.FC = () => {
   const { 
@@ -14,7 +15,8 @@ export const AdminStoreManager: React.FC = () => {
     orders, 
     addProduct, 
     updateProduct, 
-    deleteProduct, 
+    deleteProduct,
+    permanentlyDeleteProduct, 
     updateOrderStatus,
     resetToDefaultProducts
   } = useStore();
@@ -24,7 +26,7 @@ export const AdminStoreManager: React.FC = () => {
   // Product Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   // Form State for Add / Edit
   const [formName, setFormName] = useState("");
@@ -159,7 +161,7 @@ export const AdminStoreManager: React.FC = () => {
 
   const handleDeleteProduct = async (id: string) => {
     await deleteProduct(id);
-    setDeleteConfirmId(null);
+    setProductToDelete(null);
   };
 
   // KPIs
@@ -391,33 +393,14 @@ export const AdminStoreManager: React.FC = () => {
                             <Edit2 className="w-4 h-4" />
                           </button>
 
-                          {deleteConfirmId === p.id ? (
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteProduct(p.id)}
-                                className="px-2 py-1 bg-red-600 text-white rounded-md text-[10px] font-bold"
-                              >
-                                Confirm
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setDeleteConfirmId(null)}
-                                className="p-1 text-slate-400 hover:text-slate-700"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setDeleteConfirmId(p.id)}
-                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                              title="Delete Product"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setProductToDelete(p)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer group"
+                            title="Permanently Delete Product"
+                          >
+                            <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -769,30 +752,59 @@ export const AdminStoreManager: React.FC = () => {
               </div>
 
               {/* Submit Buttons */}
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAddModalOpen(false);
-                    setEditingProduct(null);
-                  }}
-                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>{editingProduct ? "Update Product" : "Save Product"}</span>
-                </button>
+              <div className="pt-4 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-100">
+                <div>
+                  {editingProduct && (
+                    <button
+                      type="button"
+                      onClick={() => setProductToDelete(editingProduct)}
+                      className="px-3.5 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-red-200"
+                      title="Permanently remove from catalog"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Permanently Delete</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddModalOpen(false);
+                      setEditingProduct(null);
+                    }}
+                    className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>{editingProduct ? "Update Product" : "Save Product"}</span>
+                  </button>
+                </div>
               </div>
 
             </form>
           </div>
         </div>
       )}
+
+      {/* Permanent Deletion Confirmation Modal */}
+      <ProductPermanentDeleteModal
+        product={productToDelete}
+        isOpen={!!productToDelete}
+        onClose={() => setProductToDelete(null)}
+        onDeleted={(deletedId) => {
+          if (editingProduct?.id === deletedId) {
+            setEditingProduct(null);
+            setIsAddModalOpen(false);
+          }
+        }}
+      />
 
     </div>
   );

@@ -26,7 +26,6 @@ import BellyFatShredView from "./components/BellyFatShredView";
 import LifestyleFitnessAcademy from "./components/LifestyleFitnessAcademy";
 import WomenConfidenceProgram from "./components/WomenConfidenceProgram";
 import HomeWorkoutChallengeView from "./components/HomeWorkoutChallengeView";
-import WorkoutChallengeDashboard from "./components/WorkoutChallengeDashboard";
 import BodyStatsCalculatorView from "./components/BodyStatsCalculatorView";
 import PricingView from "./components/PricingView";
 import { TestimonialPopup } from "./components/TestimonialPopup";
@@ -44,7 +43,6 @@ import { CartDrawer } from "./components/store/CartDrawer";
 import { CartAddedToast } from "./components/store/CartAddedToast";
 import { CheckoutModal } from "./components/store/CheckoutModal";
 import FloatingWorkoutTimerOverlay from "./components/FloatingWorkoutTimerOverlay";
-import MorningWorkoutBanner from "./components/MorningWorkoutBanner";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 
 const pageTransitionVariants: Variants = {
@@ -92,11 +90,11 @@ const PATH_TO_VIEW_MAP: Record<string, string> = {
   "/premium/daily-plan": "daily-plan",
   "/challenges": "challenges",
   "/premium/challenges": "challenges",
-  "/challenge-engine": "challenge-engine",
-  "/premium/challenge-engine": "challenge-engine",
-  "/workout-engine": "challenge-engine",
-  "/posture-vitality": "challenge-engine",
-  "/reclaim-posture": "challenge-engine",
+  "/challenge-engine": "challenges",
+  "/premium/challenge-engine": "challenges",
+  "/workout-engine": "challenges",
+  "/posture-vitality": "lifestyle-academy",
+  "/reclaim-posture": "lifestyle-academy",
   "/community": "community",
   "/premium/community": "community",
   "/weekly-reports": "weekly-reports",
@@ -640,21 +638,6 @@ function FitnessAppContent() {
 
       {/* Main Switchboard Route Mounting with Staggered Transitions */}
       <main className="pt-20 lg:pt-24 pb-16 min-h-screen w-full max-w-full flex flex-col justify-start overflow-x-hidden">
-        {/* Next Day Morning Notification Banner across all programs */}
-        <MorningWorkoutBanner 
-          onNavigateToProgram={(programId) => {
-            if (programId === "belly_fat_shred") {
-              handleSetView("belly-fat-shred");
-            } else if (programId === "women_confidence") {
-              handleSetView("women-confidence");
-            } else if (programId === "home_180_challenge") {
-              handleSetView("home-workout-challenge");
-            } else {
-              handleSetView("challenges");
-            }
-          }}
-        />
-
         <AnimatePresence mode="wait">
           <motion.div
             key={currentView}
@@ -716,8 +699,8 @@ function FitnessAppContent() {
               {["home-workout-challenge", "180-day-challenge", "home-challenge"].includes(currentView) && (
                 <HomeWorkoutChallengeView />
               )}
-              {["challenge-engine", "workout-engine", "posture-vitality", "reclaim-posture"].includes(currentView) && (
-                <WorkoutChallengeDashboard />
+              {["challenges", "challenge-engine", "workout-engine"].includes(currentView) && (
+                <FitnessChallenges />
               )}
               {currentView === "lifestyle-academy" && (
                 <LifestyleFitnessAcademy />

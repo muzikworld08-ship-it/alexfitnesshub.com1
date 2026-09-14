@@ -18,7 +18,16 @@ import {
 } from "recharts";
 import PersistentDashboardTabs from "./PersistentDashboardTabs";
 import { getChallengeWorkouts } from "../data/challenges";
-import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
+import { 
+  getWorkoutForProgramAndDay,
+  IMMORTAL_CHEST_TRICEPS,
+  IMMORTAL_BACK_BICEPS,
+  IMMORTAL_LEGS_SHOULDERS,
+  IMMORTAL_CARDIO_RECOVERY,
+  IMMORTAL_BACK_BICEPS_FOREARMS,
+  IMMORTAL_LEGS_SHOULDERS_ABS,
+  IMMORTAL_PURE_LOWER_BODY
+} from "../data/challengeEngineDatabase";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
 import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
 import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
@@ -676,12 +685,46 @@ export default function Premium90DayChallenge() {
       ).slice(0, 12 - matchedExercises.length);
       matchedExercises = [...matchedExercises, ...muscleExtras];
     }
+    // If still under 12, fill strictly from the corresponding muscle category pool — NEVER cross-contaminate chest into legs!
     if (matchedExercises.length < 12) {
-      const categoryExtras = exercises.filter(ex =>
-        !matchedExercises.some(m => m.id === ex.id) &&
-        (ex.category === targetCategory || ex.categories?.includes(targetCategory))
-      ).slice(0, 12 - matchedExercises.length);
-      matchedExercises = [...matchedExercises, ...categoryExtras];
+      const isLegsFocus = focusWords.some(w => ["leg", "legs", "lower", "squat", "quad", "hamstring", "glute", "calf"].includes(w));
+      const isChestFocus = focusWords.some(w => ["chest", "tricep", "triceps", "push", "bench", "pec"].includes(w));
+      const isBackFocus = focusWords.some(w => ["back", "bicep", "biceps", "pull", "lat", "row", "forearm"].includes(w));
+      const isShoulderFocus = focusWords.some(w => ["shoulder", "shoulders", "delt", "overhead"].includes(w));
+
+      let targetedPool: any[] = [];
+      if (isLegsFocus) {
+        targetedPool = IMMORTAL_PURE_LOWER_BODY;
+      } else if (isChestFocus) {
+        targetedPool = IMMORTAL_CHEST_TRICEPS;
+      } else if (isBackFocus) {
+        targetedPool = IMMORTAL_BACK_BICEPS_FOREARMS;
+      } else if (isShoulderFocus) {
+        targetedPool = IMMORTAL_LEGS_SHOULDERS;
+      } else {
+        targetedPool = IMMORTAL_LEGS_SHOULDERS_ABS;
+      }
+
+      const poolExtras = targetedPool
+        .filter(pEx => !matchedExercises.some(m => m.name.toLowerCase() === pEx.exerciseName.toLowerCase()))
+        .slice(0, 12 - matchedExercises.length)
+        .map((pEx, idx) => ({
+          id: `challenge_fallback_d${dayNum}_${idx + 1}`,
+          name: pEx.exerciseName,
+          category: pEx.category,
+          muscleGroups: pEx.muscleGroup,
+          equipment: [pEx.equipment],
+          sets: setsMultiplier,
+          reps: pEx.reps || repScheme,
+          weight: "Standard Load",
+          rest: pEx.restTime || restTime,
+          calories: 80,
+          instruction: pEx.instructions?.[0] || "Execute with controlled posture and full range of motion.",
+          mistake: "Avoid swinging or utilizing momentum.",
+          safety: "Keep core locked. Maintain neutral spine alignment throughout."
+        }));
+
+      matchedExercises = [...matchedExercises, ...poolExtras as any];
     }
 
     // Construct exercises details list
@@ -848,6 +891,8 @@ export default function Premium90DayChallenge() {
     try {
       await saveChallengeData(user.uid, updatedState);
       setDbState(updatedState);
+      const nextDayUnclocked = Math.min(90, currentDay + 1);
+      setBrowsingDay(nextDayUnclocked);
       if (markProgramWorkoutComplete) {
         markProgramWorkoutComplete(
           "90_day_immortal",
@@ -979,6 +1024,7 @@ export default function Premium90DayChallenge() {
   const [browsingDay, setBrowsingDay] = useState<number | null>(null);
   const [previewDay, setPreviewDay] = useState<number>(1);
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
+  const [previewModeUnlocked, setPreviewModeUnlocked] = useState(false);
 
   const activeDisplayDay = browsingDay ?? (dbState?.currentDay || 1);
   const isViewingToday = !browsingDay || browsingDay === dbState?.currentDay;
@@ -1493,7 +1539,7 @@ export default function Premium90DayChallenge() {
                     {/* 5-Hour Cooldown Recovery Guard */}
                     {(() => {
                       const waitState = getProgramWaitState("90_day_immortal");
-                      if (waitState.isWaiting && activeDisplayDay > waitState.completedDay) {
+                      if (!previewModeUnlocked && waitState.isWaiting && activeDisplayDay > waitState.completedDay) {
                         return (
                           <ProgramCooldownWaitingScreen
                             programId="90_day_immortal"
@@ -1502,7 +1548,11 @@ export default function Premium90DayChallenge() {
                             nextDay={waitState.nextDay}
                             nextUnlockAt={waitState.nextUnlockAt}
                             onReviewTodayWorkout={() => setBrowsingDay(waitState.completedDay)}
-                            onUnlocked={() => setBrowsingDay(waitState.nextDay)}
+                            onPreviewNextWorkout={() => setPreviewModeUnlocked(true)}
+                            onUnlocked={() => {
+                              setPreviewModeUnlocked(true);
+                              setBrowsingDay(waitState.nextDay);
+                            }}
                           />
                         );
                       }
@@ -1524,8 +1574,8 @@ export default function Premium90DayChallenge() {
                           </h4>
                         </div>
 
-                        {/* Week selection buttons */}
-                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                        {/* Day and Week selection buttons */}
+                        <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
                           <button
                             type="button"
                             onClick={() => {
@@ -1533,13 +1583,36 @@ export default function Premium90DayChallenge() {
                               setBrowsingDay(newDay);
                             }}
                             disabled={activeDisplayDay <= 7}
-                            className="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="px-2 py-1 text-[11px] font-bold rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                            title="Go back 7 days"
                           >
-                            ← Prev Week
+                            « Prev Week
                           </button>
-                          <span className="text-xs font-mono font-bold text-slate-600 px-1">
-                            Day {activeDisplayDay}/90
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newDay = Math.max(1, activeDisplayDay - 1);
+                              setBrowsingDay(newDay);
+                            }}
+                            disabled={activeDisplayDay <= 1}
+                            className="px-2.5 py-1 text-xs font-bold rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1"
+                          >
+                            ← Prev Day
+                          </button>
+                          <span className="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg">
+                            Day {activeDisplayDay} / 90
                           </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newDay = Math.min(90, activeDisplayDay + 1);
+                              setBrowsingDay(newDay);
+                            }}
+                            disabled={activeDisplayDay >= 90}
+                            className="px-2.5 py-1 text-xs font-bold rounded-lg border border-red-600 bg-red-600 text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1 shadow-sm"
+                          >
+                            Next Day →
+                          </button>
                           <button
                             type="button"
                             onClick={() => {
@@ -1547,9 +1620,10 @@ export default function Premium90DayChallenge() {
                               setBrowsingDay(newDay);
                             }}
                             disabled={activeDisplayDay >= 84}
-                            className="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="px-2 py-1 text-[11px] font-bold rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                            title="Advance 7 days"
                           >
-                            Next Week →
+                            Next Week »
                           </button>
                         </div>
                       </div>
@@ -1646,6 +1720,41 @@ export default function Premium90DayChallenge() {
                         
                         {/* Active Workout Goal block */}
                         <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+                          {/* Quick Day Stepper Bar */}
+                          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setBrowsingDay(Math.max(1, activeDisplayDay - 1))}
+                                disabled={activeDisplayDay <= 1}
+                                className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1 shadow-2xs transition-all"
+                              >
+                                ← Prev Day
+                              </button>
+                              <span className="text-xs font-mono font-black text-slate-900 px-2 py-1 bg-white rounded-lg border border-slate-200">
+                                Day {activeDisplayDay} of 90
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setBrowsingDay(Math.min(90, activeDisplayDay + 1))}
+                                disabled={activeDisplayDay >= 90}
+                                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1 shadow-sm transition-all"
+                              >
+                                Next Day →
+                              </button>
+                            </div>
+                            
+                            {!isViewingToday && (
+                              <button
+                                type="button"
+                                onClick={() => setBrowsingDay(null)}
+                                className="text-xs font-bold text-amber-700 hover:text-amber-800 bg-amber-100/70 hover:bg-amber-100 px-3 py-1.5 rounded-xl border border-amber-200 cursor-pointer transition-all flex items-center gap-1"
+                              >
+                                Return to Today (Day {dbState.currentDay})
+                              </button>
+                            )}
+                          </div>
+
                           <div className="flex flex-wrap justify-between items-start gap-4 border-b border-slate-100 pb-5">
                             <div>
                               <span className="text-[10px] text-red-600 font-mono font-black uppercase tracking-widest">{todayWorkoutDetail.phase}</span>
@@ -2381,7 +2490,11 @@ export default function Premium90DayChallenge() {
       {celebrationModalData && (
         <WorkoutCelebrationModal
           isOpen={celebrationModalData.isOpen}
-          onClose={() => setCelebrationModalData(null)}
+          onClose={() => {
+            const nextDayNumber = Math.min(90, (celebrationModalData.completedDay || dbState?.currentDay || 1) + 1);
+            setCelebrationModalData(null);
+            setBrowsingDay(nextDayNumber);
+          }}
           programId="90_day_immortal"
           programName={PREMIUM_CHALLENGES.find(c => c.id === dbState?.challengeId)?.title || "90 Day Immortal Challenge"}
           completedDay={celebrationModalData.completedDay}
@@ -2390,7 +2503,9 @@ export default function Premium90DayChallenge() {
           caloriesBurned={celebrationModalData.caloriesBurned}
           exercisesCompletedCount={celebrationModalData.exercisesCount}
           onContinue={() => {
+            const nextDayNumber = Math.min(90, (celebrationModalData.completedDay || dbState?.currentDay || 1) + 1);
             setCelebrationModalData(null);
+            setBrowsingDay(nextDayNumber);
             setActiveSubTab("workout");
           }}
         />

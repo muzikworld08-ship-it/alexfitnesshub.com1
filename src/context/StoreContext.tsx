@@ -8,7 +8,8 @@ import {
   updateDoc, 
   deleteDoc,
   query,
-  orderBy
+  orderBy,
+  arrayUnion
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useApp, isEmailAdmin } from "./AppContext";
@@ -57,6 +58,7 @@ interface StoreContextType {
   addProduct: (productData: Omit<Product, "id">) => Promise<{ success: boolean; id?: string; error?: string }>;
   updateProduct: (productId: string, updates: Partial<Product>) => Promise<{ success: boolean; error?: string }>;
   deleteProduct: (productId: string) => Promise<{ success: boolean; error?: string }>;
+  permanentlyDeleteProduct: (productId: string) => Promise<{ success: boolean; error?: string }>;
   updateOrderStatus: (orderId: string, orderStatus: StoreOrder["orderStatus"], trackingNumber?: string, notes?: string) => Promise<{ success: boolean; error?: string }>;
   resetToDefaultProducts: () => Promise<void>;
 }
@@ -65,13 +67,51 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 const CART_STORAGE_KEY = "afh_fitness_wear_cart_v1";
 const PROMO_STORAGE_KEY = "afh_applied_promo_v1";
+const PRODUCTS_CACHE_KEY = "afh_store_products_cache_v2";
+const DELETED_PRODUCT_IDS_KEY = "afh_permanently_deleted_product_ids";
+
+function getStoredDeletedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DELETED_PRODUCT_IDS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveStoredDeletedIds(set: Set<string>) {
+  try {
+    localStorage.setItem(DELETED_PRODUCT_IDS_KEY, JSON.stringify(Array.from(set)));
+  } catch (e) {
+    console.warn("Failed to persist deleted product IDs:", e);
+  }
+}
+
+function getInitialCachedProducts(): Product[] {
+  const deletedSet = getStoredDeletedIds();
+  try {
+    const raw = localStorage.getItem(PRODUCTS_CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Product[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter(p => !deletedSet.has(p.id));
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to read cached store products:", e);
+  }
+  return INITIAL_STORE_PRODUCTS.filter(p => !deletedSet.has(p.id));
+}
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useApp();
   const isAdmin = user?.role === "admin" || (user?.email ? isEmailAdmin(user.email) : false);
 
-  const [products, setProducts] = useState<Product[]>(INITIAL_STORE_PRODUCTS);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [permanentlyDeletedIds, setPermanentlyDeletedIds] = useState<Set<string>>(() => getStoredDeletedIds());
+  const [products, setProducts] = useState<Product[]>(() => getInitialCachedProducts());
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
 
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
@@ -110,46 +150,91 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [cart]);
 
+  // Synchronize permanently deleted product IDs from Firestore store_meta
+  useEffect(() => {
+    let unsub: () => void = () => {};
+    try {
+      const metaRef = doc(db, "store_meta", "deleted_products");
+      unsub = onSnapshot(metaRef, (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (Array.isArray(data.ids) && data.ids.length > 0) {
+            setPermanentlyDeletedIds((prev) => {
+              const merged = new Set([...prev, ...data.ids]);
+              saveStoredDeletedIds(merged);
+              return merged;
+            });
+            // Also filter existing products immediately
+            setProducts((prev) => {
+              const filtered = prev.filter((p) => !data.ids.includes(p.id));
+              try {
+                localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(filtered));
+              } catch (e) {}
+              return filtered;
+            });
+          }
+        }
+      }, (err) => {
+        console.warn("[Store] Deleted products listener error:", err);
+      });
+    } catch (e) {
+      console.warn("[Store] Error setting up deleted products listener:", e);
+    }
+    return () => unsub();
+  }, []);
+
   // Load and subscribe to products from Firestore
   useEffect(() => {
-    setIsLoadingProducts(true);
     let unsubscribe: () => void = () => {};
 
     try {
       const productsCollectionRef = collection(db, "products");
       unsubscribe = onSnapshot(productsCollectionRef, (snapshot) => {
+        const currentDeletedIds = getStoredDeletedIds();
         if (!snapshot.empty) {
           const loaded: Product[] = [];
           snapshot.forEach((docSnap) => {
-            const data = docSnap.data() as Product;
-            loaded.push({
-              ...data,
-              id: docSnap.id
-            });
-          });
-          setProducts(loaded);
-          setIsLoadingProducts(false);
-        } else {
-          // If Firestore collection is empty, populate it with initial seed items
-          console.log("[Store] Initializing Firestore products collection with initial catalog...");
-          INITIAL_STORE_PRODUCTS.forEach(async (prod) => {
-            try {
-              await setDoc(doc(db, "products", prod.id), prod);
-            } catch (err) {
-              console.warn("Error seeding product:", prod.id, err);
+            const data = docSnap.data() as Product & { isDeleted?: boolean };
+            if (!currentDeletedIds.has(docSnap.id) && !data.isDeleted) {
+              loaded.push({
+                ...data,
+                id: docSnap.id
+              });
             }
           });
-          setProducts(INITIAL_STORE_PRODUCTS);
+          setProducts(loaded);
+          try {
+            localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(loaded));
+          } catch (e) {}
+          setIsLoadingProducts(false);
+        } else {
+          // If Firestore collection is empty, only seed default products that have not been permanently deleted
+          const candidates = INITIAL_STORE_PRODUCTS.filter((p) => !currentDeletedIds.has(p.id));
+          if (candidates.length > 0 && currentDeletedIds.size === 0) {
+            console.log("[Store] Initializing Firestore products collection with initial catalog...");
+            candidates.forEach(async (prod) => {
+              try {
+                await setDoc(doc(db, "products", prod.id), prod);
+              } catch (err) {
+                console.warn("Error seeding product:", prod.id, err);
+              }
+            });
+            setProducts(candidates);
+          } else {
+            setProducts(candidates);
+          }
           setIsLoadingProducts(false);
         }
       }, (error) => {
         console.warn("[Store] Firestore products listener fallback:", error);
-        setProducts(INITIAL_STORE_PRODUCTS);
+        const currentDeletedIds = getStoredDeletedIds();
+        setProducts((prev) => (prev.length > 0 ? prev : INITIAL_STORE_PRODUCTS.filter(p => !currentDeletedIds.has(p.id))));
         setIsLoadingProducts(false);
       });
     } catch (err) {
       console.warn("[Store] Error setting up products subscription:", err);
-      setProducts(INITIAL_STORE_PRODUCTS);
+      const currentDeletedIds = getStoredDeletedIds();
+      setProducts((prev) => (prev.length > 0 ? prev : INITIAL_STORE_PRODUCTS.filter(p => !currentDeletedIds.has(p.id))));
       setIsLoadingProducts(false);
     }
 
@@ -445,14 +530,81 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const deleteProduct = async (productId: string): Promise<{ success: boolean; error?: string }> => {
+  const permanentlyDeleteProduct = async (productId: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      await deleteDoc(doc(db, "products", productId));
+      // 1. Mark in memory & local storage immediately for 0ms UI latency
+      const currentSet = getStoredDeletedIds();
+      currentSet.add(productId);
+      setPermanentlyDeletedIds(new Set(currentSet));
+      saveStoredDeletedIds(currentSet);
+
+      // 2. Filter from products state immediately
+      setProducts((prev) => {
+        const next = prev.filter((p) => p.id !== productId);
+        try {
+          localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(next));
+        } catch (e) {}
+        return next;
+      });
+
+      // 3. Purge from active user cart
+      setCart((prev) => prev.filter((item) => item.productId !== productId));
+
+      // 4. Close any open detail or checkout modals pointing to this product
+      if (selectedProductForDetail?.id === productId) {
+        setSelectedProductForDetail(null);
+      }
+      if (selectedProductForBuyNow?.id === productId) {
+        setSelectedProductForBuyNow(null);
+      }
+
+      // 5. Delete document from Firestore products collection
+      try {
+        await deleteDoc(doc(db, "products", productId));
+      } catch (delErr) {
+        console.warn("[Store] deleteDoc warning:", delErr);
+      }
+
+      // 6. Record tombstone in deleted_products collection
+      try {
+        await setDoc(doc(db, "deleted_products", productId), {
+          id: productId,
+          deletedAt: new Date().toISOString(),
+          deletedBy: user?.email || "admin",
+          source: "alexfitness_admin_desk"
+        }, { merge: true });
+      } catch (tombErr) {
+        console.warn("[Store] Tombstone record warning:", tombErr);
+      }
+
+      // 7. Synchronize store_meta deleted array so other devices stay updated
+      try {
+        await setDoc(doc(db, "store_meta", "deleted_products"), {
+          ids: arrayUnion(productId),
+          lastDeletedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (metaErr) {
+        console.warn("[Store] store_meta update warning:", metaErr);
+      }
+
+      // 8. Add audit log
+      try {
+        await setDoc(doc(db, "admin_logs", `del_prod_${Date.now()}`), {
+          action: "PERMANENT_DELETE_STORE_PRODUCT",
+          productId,
+          performedBy: user?.email || "admin",
+          timestamp: new Date().toISOString()
+        });
+      } catch (logErr) {}
+
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err.message || "Failed to delete product." };
+      console.error("[Store] Failed to permanently delete product:", err);
+      return { success: false, error: err.message || "Failed to permanently delete product." };
     }
   };
+
+  const deleteProduct = permanentlyDeleteProduct;
 
   const updateOrderStatus = async (
     orderId: string, 
@@ -520,6 +672,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addProduct,
         updateProduct,
         deleteProduct,
+        permanentlyDeleteProduct,
         updateOrderStatus,
         resetToDefaultProducts
       }}

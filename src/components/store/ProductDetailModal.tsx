@@ -2,12 +2,14 @@ import React, { useState } from "react";
 import { 
   X, Star, ShoppingBag, Zap, Ruler, ShieldCheck, 
   RotateCcw, Truck, Check, AlertCircle, Eye, Flame,
-  Sparkles, CheckCircle2, ChevronRight, Info
+  Sparkles, CheckCircle2, ChevronRight, Info, Trash2
 } from "lucide-react";
 import { Product } from "../../types";
 import { useStore } from "../../context/StoreContext";
+import { useApp, isEmailAdmin } from "../../context/AppContext";
 import { SizeGuideModal } from "./SizeGuideModal";
 import { ProductImageGallery } from "./ProductImageGallery";
+import { ProductPermanentDeleteModal } from "./ProductPermanentDeleteModal";
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -19,6 +21,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onClose
 }) => {
   const { addToCart, buyNow } = useStore();
+  const { user } = useApp();
+  const isAdmin = Boolean(user?.role === "admin" || (user?.email && isEmailAdmin(user.email)));
 
   const [activeView, setActiveView] = useState<"front" | "back">("front");
   const [selectedSize, setSelectedSize] = useState<string>(() => product?.sizes[0] || "M");
@@ -26,6 +30,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [quantity, setQuantity] = useState<number>(1);
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   // Sync state if product changes
   React.useEffect(() => {
@@ -76,6 +81,18 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col md:flex-row max-h-[94vh]"
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Admin Permanent Delete Button */}
+          {isAdmin && (
+            <button
+              onClick={() => setIsDeleteConfirmOpen(true)}
+              className="absolute top-4 right-16 z-30 px-3 py-1.5 text-red-600 hover:text-white hover:bg-red-600 bg-red-50 rounded-full shadow-md border border-red-200 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+              title="Admin: Permanently delete product from store"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Delete Product</span>
+            </button>
+          )}
+
           {/* Close Button - Crisp Solid Button, No Blur */}
           <button
             onClick={onClose}
@@ -415,6 +432,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         category={product.category}
         productName={product.name}
         sizeGuide={product.sizeGuide}
+      />
+
+      {/* Admin Permanent Deletion Confirmation Modal */}
+      <ProductPermanentDeleteModal
+        product={product}
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onDeleted={() => {
+          setIsDeleteConfirmOpen(false);
+          onClose();
+        }}
       />
     </>
   );

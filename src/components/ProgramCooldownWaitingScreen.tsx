@@ -24,6 +24,7 @@ interface ProgramCooldownWaitingScreenProps {
   nextDay: number;
   nextUnlockAt: number;
   onReviewTodayWorkout?: () => void;
+  onPreviewNextWorkout?: () => void;
   onUnlocked?: () => void;
 }
 
@@ -34,6 +35,7 @@ export default function ProgramCooldownWaitingScreen({
   nextDay,
   nextUnlockAt,
   onReviewTodayWorkout,
+  onPreviewNextWorkout,
   onUnlocked
 }: ProgramCooldownWaitingScreenProps) {
   const [remainingMs, setRemainingMs] = useState<number>(() => Math.max(0, nextUnlockAt - Date.now()));
@@ -168,22 +170,35 @@ export default function ProgramCooldownWaitingScreen({
 
         {/* Actions / Navigation Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-neutral-800">
-          {onReviewTodayWorkout && (
-            <button
-              type="button"
-              onClick={onReviewTodayWorkout}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Review Day {completedDay} Completed Drills</span>
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            {onReviewTodayWorkout && (
+              <button
+                type="button"
+                onClick={onReviewTodayWorkout}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Review Day {completedDay} Completed Drills</span>
+              </button>
+            )}
+
+            {onPreviewNextWorkout && (
+              <button
+                type="button"
+                onClick={onPreviewNextWorkout}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              >
+                <ArrowRight className="w-3.5 h-3.5" />
+                <span>Preview Day {nextDay} Workout Drills</span>
+              </button>
+            )}
+          </div>
 
           <div className="w-full sm:w-auto flex items-center justify-end gap-3 text-right">
             <button
               type="button"
               onClick={handleBypassForTesting}
-              className="text-[11px] font-mono text-neutral-500 hover:text-neutral-300 underline cursor-pointer"
+              className="text-[11px] font-mono text-neutral-400 hover:text-white underline cursor-pointer"
               title="Instantly bypass the 5-hour wait period for testing"
             >
               [Admin / Test Bypass: Unlock Next Day Now]

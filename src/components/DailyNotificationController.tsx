@@ -1,13 +1,97 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { Bell, BellOff, CheckCircle2, Circle, Clock, Flame, Info, Sparkles, X, ChevronRight, Activity } from "lucide-react";
+import { Bell, BellOff, CheckCircle2, Circle, Clock, Flame, Info, Sparkles, X, ChevronRight, Activity, Sliders } from "lucide-react";
+import { dispatchMorningWorkoutEmailNotification } from "../utils/notificationScheduler";
+import {
+  getSavedReminderSchedule,
+  checkAndTriggerScheduledReminder,
+  NOTIFICATION_CLICK_NAV_EVENT,
+  formatTime12Hour,
+  REMINDER_SCHEDULE_EVENT,
+  WorkoutReminderSchedule
+} from "../utils/pushNotificationService";
+import WorkoutReminderModal from "./WorkoutReminderModal";
 
 export default function DailyNotificationController() {
-  const { user } = useApp();
+  const { user, setView } = useApp();
+
+  // Automatically dispatch next-day workout notification email via Resend API on active workout days
+  useEffect(() => {
+    if (user?.email) {
+      dispatchMorningWorkoutEmailNotification(user.email, user.displayName).catch(err => {
+        console.warn("[NotificationController] Email dispatch check:", err);
+      });
+    }
+  }, [user?.email, user?.displayName]);
   const [isOpen, setIsOpen] = useState(false);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [workoutSchedule, setWorkoutSchedule] = useState<WorkoutReminderSchedule>(() => getSavedReminderSchedule());
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [reminderTime, setReminderTime] = useState(() => localStorage.getItem("alexfit_reminder_time") || "08:00");
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem("alexfit_notify_enabled") === "true");
+
+  // Sync workout schedule updates
+  useEffect(() => {
+    const handleScheduleUpdate = (e: any) => {
+      setWorkoutSchedule(getSavedReminderSchedule());
+    };
+    window.addEventListener(REMINDER_SCHEDULE_EVENT, handleScheduleUpdate);
+    return () => window.removeEventListener(REMINDER_SCHEDULE_EVENT, handleScheduleUpdate);
+  }, []);
+
+  // Listen for Notification click events to navigate directly to workout view
+  useEffect(() => {
+    const handleNav = (e: any) => {
+      const data = e.detail;
+      const url = data?.url || "";
+      if (url.includes("challenges")) {
+        setView("challenges");
+      } else if (url.includes("daily-plan")) {
+        setView("daily-plan");
+      } else {
+        setView("challenges");
+      }
+    };
+
+    const handleSWMessage = (event: MessageEvent) => {
+      if (event.data?.type === "ALEXFIT_NOTIFICATION_CLICKED") {
+        const url = event.data.url || "";
+        if (url.includes("challenges")) {
+          setView("challenges");
+        } else if (url.includes("daily-plan")) {
+          setView("daily-plan");
+        } else {
+          setView("challenges");
+        }
+      }
+    };
+
+    window.addEventListener(NOTIFICATION_CLICK_NAV_EVENT, handleNav);
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("message", handleSWMessage);
+    }
+
+    return () => {
+      window.removeEventListener(NOTIFICATION_CLICK_NAV_EVENT, handleNav);
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.removeEventListener("message", handleSWMessage);
+      }
+    };
+  }, [setView]);
+
+  // Periodic check loop for scheduled workout push notifications (runs every 30 seconds)
+  useEffect(() => {
+    const checkReminder = () => {
+      const schedule = getSavedReminderSchedule();
+      checkAndTriggerScheduledReminder(schedule, user?.displayName);
+    };
+
+    // Run initial check
+    checkReminder();
+
+    const interval = setInterval(checkReminder, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, [user?.displayName]);
   
   // Track daily tasks list (saved in localStorage to persist completion state)
   const [tasks, setTasks] = useState<{ id: string; text: string; done: boolean; category: string }[]>(() => {
@@ -266,15 +350,22 @@ export default function DailyNotificationController() {
                 </div>
 
                 {/* Reminder Schedule time */}
-                <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="text-[11px] font-semibold text-slate-600">Daily Alert Schedule:</span>
-                  <input
-                    type="time"
-                    value={reminderTime}
-                    onChange={(e) => handleTimeChange(e.target.value)}
-                    className="ml-auto text-xs px-2 py-1 rounded bg-slate-50 border border-slate-200 font-mono text-slate-800 focus:outline-none focus:border-[#C0392B]"
-                  />
+                <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="text-[11px] font-semibold text-slate-600">Daily Push Reminder:</span>
+                    <span className="text-[11px] font-mono font-bold text-red-600">
+                      {formatTime12Hour(workoutSchedule.scheduledTime)}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsReminderModalOpen(true)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-mono font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <Sliders className="w-3 h-3 text-red-600" />
+                    <span>Configure</span>
+                  </button>
                 </div>
               </div>
 
@@ -328,6 +419,12 @@ export default function DailyNotificationController() {
           </div>
         </div>
       )}
+
+      {/* Standalone Workout Reminder Modal */}
+      <WorkoutReminderModal
+        isOpen={isReminderModalOpen}
+        onClose={() => setIsReminderModalOpen(false)}
+      />
     </>
   );
 }

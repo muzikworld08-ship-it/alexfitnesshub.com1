@@ -90,3 +90,71 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
+// Push Notification Event Listener for background alerts
+self.addEventListener("push", (event) => {
+  let data = {
+    title: "🏋️ AlexFitnessHub Workout Reminder",
+    body: "Time for your scheduled workout session! Let's crush today's physical training.",
+    icon: "/icons/icon-192.png",
+    badge: "/favicon.png",
+    tag: "alexfit-workout-reminder",
+    data: { url: "/?view=challenges" }
+  };
+
+  if (event.data) {
+    try {
+      data = Object.assign(data, event.data.json());
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon || "/icons/icon-192.png",
+    badge: data.badge || "/favicon.png",
+    tag: data.tag || "alexfit-workout-reminder",
+    data: data.data || { url: "/?view=challenges" },
+    vibrate: [200, 100, 200],
+    requireInteraction: true,
+    actions: [
+      { action: "start", title: "🚀 Start Workout" },
+      { action: "dismiss", title: "Dismiss" }
+    ]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// Notification Click Event Listener
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  if (event.action === "dismiss") {
+    return;
+  }
+
+  const targetUrl = (event.notification.data && event.notification.data.url) || "/";
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // If a window is already open, focus it and broadcast event
+      for (const client of clientList) {
+        if ("focus" in client) {
+          client.postMessage({
+            type: "ALEXFIT_NOTIFICATION_CLICKED",
+            url: targetUrl
+          });
+          return client.focus();
+        }
+      }
+      // Otherwise open a new window
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});

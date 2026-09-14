@@ -108,6 +108,15 @@ service cloud.firestore {
       allow write: if true;
     }
 
+    // --- Store Meta & Deleted Products Tombstones ---
+    match /store_meta/{docId} {
+      allow read, write: if true;
+    }
+
+    match /deleted_products/{productId} {
+      allow read, write: if true;
+    }
+
     // --- Orders (Store) ---
     match /orders/{orderId} {
       allow read, write: if true;

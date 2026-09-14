@@ -969,6 +969,9 @@ async function checkPremiumStatus(req: any, res: any, next: any) {
                             profile.subscription === "active" ||
                             profile.isPremium === true ||
                             profile.premiumAccess === true ||
+                            profile.isFreeTrial === true ||
+                            profile.freeTrialStatus === "active" ||
+                            profile.subscriptionTier === "trial" ||
                             profile.paymentStatus === "paid";
     
     // Validate expiration if set
@@ -1055,6 +1058,9 @@ async function requirePremium(req: any, res: any, next: any) {
                             profile.subscription === "active" ||
                             profile.isPremium === true ||
                             profile.premiumAccess === true ||
+                            profile.isFreeTrial === true ||
+                            profile.freeTrialStatus === "active" ||
+                            profile.subscriptionTier === "trial" ||
                             profile.paymentStatus === "paid";
 
     // Expiration check: if subscription expiry date has passed, automatically revert status and block

@@ -3,12 +3,14 @@ import {
   ArrowLeft, Star, ShoppingBag, Zap, Ruler, ShieldCheck, 
   RotateCcw, Truck, Check, AlertCircle, Eye, Flame,
   CheckCircle2, ChevronRight, Info, Heart, Share2, HelpCircle,
-  Clock, Package, Award
+  Clock, Package, Award, Trash2
 } from "lucide-react";
 import { Product } from "../types";
 import { useStore } from "../context/StoreContext";
+import { useApp, isEmailAdmin } from "../context/AppContext";
 import { SizeGuideModal } from "./store/SizeGuideModal";
 import { ProductImageGallery } from "./store/ProductImageGallery";
+import { ProductPermanentDeleteModal } from "./store/ProductPermanentDeleteModal";
 
 interface ProductDetailViewProps {
   setView: (view: string) => void;
@@ -21,9 +23,12 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ setView })
     setSelectedProductForDetail,
     addToCart, 
     buyNow,
-    cartCount,
+    cartCount, 
     setIsCartOpen 
   } = useStore();
+
+  const { user } = useApp();
+  const isAdmin = Boolean(user?.role === "admin" || (user?.email && isEmailAdmin(user.email)));
 
   // If no product is specifically selected, fallback to first product or redirect
   const product: Product | undefined = selectedProductForDetail || products[0];
@@ -36,6 +41,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ setView })
   const [justAdded, setJustAdded] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeTab, setActiveTab] = useState<"specs" | "sizing" | "shipping" | "reviews">("specs");
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   // Scroll to top on mount
   useEffect(() => {
@@ -128,6 +134,18 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ setView })
           </div>
 
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setIsDeleteConfirmOpen(true)}
+                className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                title="Admin: Permanently delete this product"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Delete Product</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleShare}
@@ -879,6 +897,17 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ setView })
         category={product.category}
         productName={product.name}
         sizeGuide={product.sizeGuide}
+      />
+
+      {/* Admin Permanent Delete Confirmation Modal */}
+      <ProductPermanentDeleteModal
+        product={product}
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onDeleted={() => {
+          setIsDeleteConfirmOpen(false);
+          setView("store");
+        }}
       />
     </div>
   );

@@ -15,6 +15,7 @@ import {
   formatRemainingTime
 } from "../utils/programWaitManager";
 import { sendEmail } from "../services/emailNotificationService";
+import WorkoutReminderCard from "./WorkoutReminderCard";
 
 interface DailyPlanSchema {
   wakeUpTime: string;
@@ -476,6 +477,9 @@ export default function DailyPlanView() {
         {/* LEFT COLUMN: THE MASTER PLAN & NOTIFICATION DESK */}
         <div className="lg:col-span-2 space-y-6">
           
+          {/* SCHEDULED WORKOUT PUSH NOTIFICATIONS CARD */}
+          <WorkoutReminderCard />
+
           {/* TODAY'S PLAN TIMELINE ROUTINE */}
           <div id="todays_plan_card" className="bg-white border border-slate-200 rounded-2xl p-6 relative overflow-hidden transition-all shadow-sm">
             

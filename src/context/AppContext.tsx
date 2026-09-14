@@ -49,7 +49,7 @@ export const DEFAULT_PROGRAM_PROGRESS: Record<string, ProgramProgressItem> = {
     programId: "90_day_immortal",
     programTitle: "90 Days Immortal Challenge",
     category: "Elite Transformation",
-    imageUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80",
+    imageUrl: "https://raw.githubusercontent.com/muzikworld08-ship-it/image/refs/heads/main/Gemini_Generated_Image_mufztbmufztbmufz%20(1).jfif",
     viewName: "challenges",
     enrolled: true,
     enrolledAt: new Date().toISOString(),
@@ -67,7 +67,7 @@ export const DEFAULT_PROGRAM_PROGRESS: Record<string, ProgramProgressItem> = {
     programId: "belly_fat_shred",
     programTitle: "Belly Fat Shred Transformation",
     category: "Fat Loss & Midsection",
-    imageUrl: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&auto=format&fit=crop&q=80",
+    imageUrl: "https://raw.githubusercontent.com/muzikworld08-ship-it/image/refs/heads/main/Gemini_Generated_Image_7ipmfi7ipmfi7ipm.jfif",
     viewName: "belly-fat-shred",
     enrolled: true,
     enrolledAt: new Date().toISOString(),
@@ -85,7 +85,7 @@ export const DEFAULT_PROGRAM_PROGRESS: Record<string, ProgramProgressItem> = {
     programId: "lifestyle_academy",
     programTitle: "Lifestyle Fitness Academy",
     category: "Athletic Longevity & Posture",
-    imageUrl: "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&auto=format&fit=crop&q=80",
+    imageUrl: "https://raw.githubusercontent.com/muzikworld08-ship-it/image/refs/heads/main/Gemini_Generated_Image_i9962i9962i9962i.jfif",
     viewName: "lifestyle-academy",
     enrolled: true,
     enrolledAt: new Date().toISOString(),
@@ -103,7 +103,7 @@ export const DEFAULT_PROGRAM_PROGRESS: Record<string, ProgramProgressItem> = {
     programId: "women_confidence",
     programTitle: "Women Confidence Program",
     category: "180-Day Transformation & Strength",
-    imageUrl: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&auto=format&fit=crop&q=80",
+    imageUrl: "https://raw.githubusercontent.com/muzikworld08-ship-it/image/refs/heads/main/Gemini_Generated_Image_asozeoasozeoasoz.jfif",
     viewName: "women-confidence",
     enrolled: true,
     enrolledAt: new Date().toISOString(),
@@ -3849,23 +3849,93 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
   // --- ACTIONS ---
   const completeOnboarding = async (onboardingData: Partial<UserProfile>) => {
-    if (!user) return;
-    const userWeight = onboardingData.weight || user.weight || 75;
-    let baseGoal = userWeight * 35;
-    if (onboardingData.activityLevel?.includes("Very") || onboardingData.activityLevel?.includes("Super")) {
-      baseGoal += 500;
-    }
-    const finalWaterGoal = Math.round(baseGoal);
+    try {
+      let currentUser = user;
+      if (!currentUser) {
+        const storedUid = localStorage.getItem("fit_active_uid");
+        if (storedUid) {
+          const cached = localStorage.getItem(`fit_user_${storedUid}`);
+          if (cached) {
+            try { currentUser = JSON.parse(cached); } catch (e) {}
+          }
+        }
+      }
+      if (!currentUser && auth.currentUser) {
+        currentUser = {
+          uid: auth.currentUser.uid,
+          email: auth.currentUser.email || "athlete@alexfitnesshub.com",
+          displayName: auth.currentUser.displayName || "Elite Athlete",
+          role: "user",
+          subscriptionStatus: "free",
+          subscriptionTier: "none",
+          accountType: "Free Trial",
+          badge: "Active Trial",
+          isFreeTrial: true,
+          freeTrialStatus: "active",
+          freeTrialDaysRemaining: 7,
+          createdAt: new Date().toISOString(),
+          onboarded: false
+        };
+      }
+      if (!currentUser) {
+        const tempUid = "athlete_" + Date.now();
+        currentUser = {
+          uid: tempUid,
+          email: "athlete@alexfitnesshub.com",
+          displayName: "Elite Athlete",
+          role: "user",
+          subscriptionStatus: "free",
+          subscriptionTier: "none",
+          accountType: "Free Trial",
+          badge: "Active Trial",
+          isFreeTrial: true,
+          freeTrialStatus: "active",
+          freeTrialDaysRemaining: 7,
+          createdAt: new Date().toISOString(),
+          onboarded: false
+        };
+      }
 
-    const updated: UserProfile = {
-      ...user,
-      ...onboardingData,
-      onboarded: true,
-      waterGoal: finalWaterGoal,
-      waterIntakeToday: 0,
-      waterLastLogged: new Date().toISOString().split("T")[0]
-    };
-    await syncUserToStorageAndPlatform(updated);
+      const safeUser = currentUser;
+      const userWeight = onboardingData.weight || safeUser.weight || 75;
+      let baseGoal = userWeight * 35;
+      if (onboardingData.activityLevel?.includes("Very") || onboardingData.activityLevel?.includes("Super")) {
+        baseGoal += 500;
+      }
+      const finalWaterGoal = Math.round(baseGoal);
+
+      const updated: UserProfile = {
+        ...safeUser,
+        ...onboardingData,
+        onboarded: true,
+        subscriptionStatus: safeUser.subscriptionStatus === "premium" ? "premium" : "free",
+        subscriptionTier: safeUser.subscriptionTier || "none",
+        isFreeTrial: safeUser.role === "admin" ? false : true,
+        freeTrialStatus: safeUser.role === "admin" ? "none" : "active",
+        waterGoal: finalWaterGoal,
+        waterIntakeToday: 0,
+        waterLastLogged: new Date().toISOString().split("T")[0]
+      };
+
+      setUser(updated);
+      localStorage.setItem(`fit_user_${updated.uid}`, JSON.stringify(updated));
+      localStorage.setItem("fit_active_uid", updated.uid);
+      await syncUserToStorageAndPlatform(updated).catch(e => {
+        console.warn("Background user sync warning during onboarding:", e);
+      });
+    } catch (err) {
+      console.warn("Soft handling completeOnboarding fallback:", err);
+      if (user) {
+        const softUpdated: UserProfile = {
+          ...user,
+          ...onboardingData,
+          onboarded: true,
+          subscriptionStatus: user.subscriptionStatus || "active"
+        };
+        setUser(softUpdated);
+        localStorage.setItem(`fit_user_${softUpdated.uid}`, JSON.stringify(softUpdated));
+      }
+    }
   };
 
   const updateWaterIntake = async (amountMl: number) => {

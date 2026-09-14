@@ -50,6 +50,19 @@ export interface UserProfile {
   waterLastLogged?: string; // date string YYYY-MM-DD
   status?: string;
   isBlocked?: boolean;
+  workoutReminderSchedule?: WorkoutReminderSchedule;
+}
+
+export interface WorkoutReminderSchedule {
+  enabled: boolean;
+  scheduledTime: string; // "HH:mm" 24h format, e.g. "08:00"
+  leadTimeMinutes: number; // 0, 15, 30, 60
+  activeDays: number[]; // 0=Sun, 1=Mon, ..., 6=Sat
+  soundEnabled: boolean;
+  programPreference?: string; // e.g. "90_day_immortal" | "daily_plan" | "all"
+  customLabel?: string;
+  lastFiredDate?: string; // "YYYY-MM-DD"
+  lastFiredTimestamp?: number;
 }
 
 export interface SavedWorkout {
@@ -298,6 +311,7 @@ export interface Product {
   stock: number;
   sizeStock?: Record<string, number | undefined>;
   sizeGuide?: ProductSizeGuide;
+  fitType?: string;
   fabric?: string;
   features?: string[];
   featured?: boolean;

@@ -5,8 +5,9 @@ import {
   Activity, Droplet, Moon, Heart, Sparkles, CheckCircle2, 
   Info, Clock, Flame, Trash2, Calendar, AlertCircle, 
   TrendingUp, Zap, Award, ArrowUpRight, BarChart3, Plus, Minus,
-  Target, Settings2, Sliders, Check, RefreshCw
+  Target, Settings2, Sliders, Check, RefreshCw, Bell
 } from "lucide-react";
+import WorkoutReminderModal from "./WorkoutReminderModal";
 import {
   ResponsiveContainer,
   LineChart,
@@ -47,6 +48,7 @@ export default function DailyCalibrationDesk() {
   
   // Goals Configuration Form State
   const [showGoalsModal, setShowGoalsModal] = useState(false);
+  const [showReminderModal, setShowReminderModal] = useState(false);
   const [goalHydration, setGoalHydration] = useState<number>(calibrationGoals?.dailyHydrationGoal || 10);
   const [goalSleep, setGoalSleep] = useState<number>(calibrationGoals?.dailySleepGoal || 8.0);
   const [goalReadiness, setGoalReadiness] = useState<number>(calibrationGoals?.targetReadinessScore || 85);
@@ -1159,17 +1161,28 @@ export default function DailyCalibrationDesk() {
             </div>
 
             {/* Reminder Setting */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-[#D32F2F]" />
-                Daily Alert Time
-              </span>
-              <input 
-                type="time" 
-                value={remTime}
-                onChange={(e) => saveReminder(e.target.value)}
-                className="p-1.5 px-3 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-[#D32F2F]"
-              />
+                <span className="text-[11px] font-bold text-slate-500">
+                  Daily Alert Time
+                </span>
+                <input 
+                  type="time" 
+                  value={remTime}
+                  onChange={(e) => saveReminder(e.target.value)}
+                  className="p-1.5 px-2.5 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-[#D32F2F]"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowReminderModal(true)}
+                className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-[#D32F2F] text-[11px] font-mono font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-red-200/60"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                <span>Configure Push Reminders</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1333,6 +1346,12 @@ export default function DailyCalibrationDesk() {
           </div>
         )}
       </div>
+
+      {/* WORKOUT PUSH REMINDER MODAL */}
+      <WorkoutReminderModal
+        isOpen={showReminderModal}
+        onClose={() => setShowReminderModal(false)}
+      />
     </div>
   );
 }

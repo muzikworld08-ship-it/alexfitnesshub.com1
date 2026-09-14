@@ -11,6 +11,7 @@ import Logo from "./Logo";
 import { OptimizedImage } from "./OptimizedImage";
 import { PWAInstallButton } from "./PWAInstallButton";
 import { useStore } from "../context/StoreContext";
+import WorkoutReminderBell from "./WorkoutReminderBell";
 
 interface NavbarProps {
   currentView: string;
@@ -311,6 +312,9 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                 </button>
               </div>
             )}
+
+            {/* WORKOUT REMINDERS & PUSH ALERTS */}
+            <WorkoutReminderBell />
 
             {/* QUICK STORE / CART ACCESS BUTTON */}
             <button
