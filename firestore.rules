@@ -62,11 +62,6 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // --- Session Ratings ---
-    match /session_ratings/{ratingId} {
-      allow read, write: if true;
-    }
-
     // --- Progress Logs ---
     match /progress_logs/{logId} {
       allow read, write: if true;

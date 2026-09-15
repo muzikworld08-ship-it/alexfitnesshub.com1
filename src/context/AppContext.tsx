@@ -2204,19 +2204,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           saveProgramProgressToFirebase(uid, next);
         }
       } catch (e) {}
-
-      // Notify app listeners (e.g. DashboardView) that a workout session has completed
-      try {
-        window.dispatchEvent(new CustomEvent("alexfit:workout_session_completed", {
-          detail: {
-            title: `${(existing.programName || programId.replace(/_/g, " ")).toUpperCase()} Session`,
-            subtitle: `Workout ${workoutId} marked complete`,
-            setsCount: completed.length,
-            totalSets: total
-          }
-        }));
-      } catch (e) {}
-
       return next;
     });
   }, []);

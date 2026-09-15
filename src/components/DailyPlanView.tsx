@@ -117,18 +117,6 @@ export default function DailyPlanView() {
     recordDailyWorkoutCompletion("daily_plan", currentPlanDay);
     setCooldownState(getProgramWaitState("daily_plan"));
 
-    // Notify DashboardView to show "Rate your session" modal
-    try {
-      window.dispatchEvent(new CustomEvent("alexfit:workout_session_completed", {
-        detail: {
-          title: `Day ${currentPlanDay} Daily Adaptive Routine`,
-          subtitle: "Daily Adaptive Training Protocol",
-          setsCount: Object.values(completedExercises).filter(Boolean).length || 4,
-          totalSets: plan?.workoutExercises?.length || 4
-        }
-      }));
-    } catch (e) {}
-
     if (user?.email) {
       sendEmail({
         to: user.email,
