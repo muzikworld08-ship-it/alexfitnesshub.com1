@@ -51,7 +51,9 @@ export const DEFAULT_PROGRAM_PROGRESS: Record<string, ProgramProgressItem> = {
     category: "Elite Transformation",
     imageUrl: "https://raw.githubusercontent.com/muzikworld08-ship-it/image/refs/heads/main/Gemini_Generated_Image_mufztbmufztbmufz%20(1).jfif",
     viewName: "challenges",
-    enrolled: true,
+    enrolled: false,
+    hasJoined: false,
+    enrolledByUser: false,
     enrolledAt: new Date().toISOString(),
     currentDay: 1,
     currentWeek: 1,
@@ -69,7 +71,9 @@ export const DEFAULT_PROGRAM_PROGRESS: Record<string, ProgramProgressItem> = {
     category: "Fat Loss & Midsection",
     imageUrl: "https://raw.githubusercontent.com/muzikworld08-ship-it/image/refs/heads/main/Gemini_Generated_Image_7ipmfi7ipmfi7ipm.jfif",
     viewName: "belly-fat-shred",
-    enrolled: true,
+    enrolled: false,
+    hasJoined: false,
+    enrolledByUser: false,
     enrolledAt: new Date().toISOString(),
     currentDay: 1,
     currentWeek: 1,
@@ -87,7 +91,9 @@ export const DEFAULT_PROGRAM_PROGRESS: Record<string, ProgramProgressItem> = {
     category: "Athletic Longevity & Posture",
     imageUrl: "https://raw.githubusercontent.com/muzikworld08-ship-it/image/refs/heads/main/Gemini_Generated_Image_i9962i9962i9962i.jfif",
     viewName: "lifestyle-academy",
-    enrolled: true,
+    enrolled: false,
+    hasJoined: false,
+    enrolledByUser: false,
     enrolledAt: new Date().toISOString(),
     currentDay: 1,
     currentWeek: 1,
@@ -105,7 +111,9 @@ export const DEFAULT_PROGRAM_PROGRESS: Record<string, ProgramProgressItem> = {
     category: "180-Day Transformation & Strength",
     imageUrl: "https://raw.githubusercontent.com/muzikworld08-ship-it/image/refs/heads/main/Gemini_Generated_Image_asozeoasozeoasoz.jfif",
     viewName: "women-confidence",
-    enrolled: true,
+    enrolled: false,
+    hasJoined: false,
+    enrolledByUser: false,
     enrolledAt: new Date().toISOString(),
     currentDay: 1,
     currentWeek: 1,
@@ -2022,6 +2030,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         imageUrl: details?.imageUrl || "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80",
         viewName: details?.viewName || "challenges",
         enrolled: true,
+        hasJoined: true,
+        enrolledByUser: true,
         enrolledAt: now,
         currentDay: 1,
         currentWeek: 1,
@@ -2038,6 +2048,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...existing,
         ...details,
         enrolled: true,
+        hasJoined: true,
+        enrolledByUser: true,
         enrolledAt: existing.enrolled ? existing.enrolledAt : now,
         lastStoppedAt: now
       };
@@ -2063,6 +2075,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const updated: ProgramProgressItem = {
         ...existing,
         ...updates,
+        enrolled: updates.enrolled ?? existing.enrolled,
+        hasJoined: updates.hasJoined ?? existing.hasJoined ?? true,
+        enrolledByUser: updates.enrolledByUser ?? existing.enrolledByUser ?? true,
         lastStoppedAt: updates.lastStoppedAt || new Date().toISOString()
       };
 
@@ -2107,6 +2122,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         imageUrl: extra?.imageUrl || "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80",
         viewName: extra?.viewName || "challenges",
         enrolled: true,
+        hasJoined: true,
+        enrolledByUser: true,
         enrolledAt: now,
         currentDay: day || 1,
         currentWeek: week || 1,
@@ -2123,6 +2140,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...base,
         ...extra,
         enrolled: true,
+        hasJoined: true,
+        enrolledByUser: true,
         currentDay: day !== undefined ? day : base.currentDay,
         currentWeek: week !== undefined ? week : base.currentWeek,
         lastStoppedWorkoutName: workoutName,
@@ -2164,6 +2183,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const updated: ProgramProgressItem = {
         ...existing,
+        enrolled: true,
+        hasJoined: true,
+        enrolledByUser: true,
         completedWorkoutIds: completed,
         progressPercent,
         currentDay: resolvedDay,
@@ -2182,6 +2204,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           saveProgramProgressToFirebase(uid, next);
         }
       } catch (e) {}
+
+      // Notify app listeners (e.g. DashboardView) that a workout session has completed
+      try {
+        window.dispatchEvent(new CustomEvent("alexfit:workout_session_completed", {
+          detail: {
+            title: `${(existing.programName || programId.replace(/_/g, " ")).toUpperCase()} Session`,
+            subtitle: `Workout ${workoutId} marked complete`,
+            setsCount: completed.length,
+            totalSets: total
+          }
+        }));
+      } catch (e) {}
+
       return next;
     });
   }, []);
@@ -2207,7 +2242,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const getActiveEnrolledPrograms = useCallback((): ProgramProgressItem[] => {
     return Object.values(programProgress)
-      .filter(p => p.enrolled)
+      .filter(p => p.enrolled && (p.hasJoined || p.enrolledByUser || (p.completedWorkoutIds && p.completedWorkoutIds.length > 0) || (p.progressPercent && p.progressPercent > 0)))
       .sort((a, b) => new Date(b.lastStoppedAt || 0).getTime() - new Date(a.lastStoppedAt || 0).getTime());
   }, [programProgress]);
 

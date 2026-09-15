@@ -4,14 +4,23 @@ import {
   Menu, X, Shield, Lock, Award, ChevronDown, Calendar, Flame, 
   Dumbbell, Sparkles, BookOpen, Activity, Heart, Users, Video, 
   Bookmark, BarChart3, Calculator, Crown, Star, ArrowRight, LogOut,
-  ShoppingBag, RotateCcw
+  ShoppingBag, RotateCcw, Bell, BellRing, Mail, Clock
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import Logo from "./Logo";
 import { OptimizedImage } from "./OptimizedImage";
 import { PWAInstallButton } from "./PWAInstallButton";
 import { useStore } from "../context/StoreContext";
-import WorkoutReminderBell from "./WorkoutReminderBell";
+import WorkoutReminderModal from "./WorkoutReminderModal";
+import { 
+  getSavedReminderSchedule, 
+  saveReminderSchedule, 
+  formatTime12Hour, 
+  requestNotificationPermission, 
+  getNotificationPermission, 
+  REMINDER_SCHEDULE_EVENT, 
+  WorkoutReminderSchedule 
+} from "../utils/pushNotificationService";
 
 interface NavbarProps {
   currentView: string;
@@ -24,19 +33,36 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
   const { cartCount, setIsCartOpen } = useStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [reminderSchedule, setReminderSchedule] = useState<WorkoutReminderSchedule>(() => getSavedReminderSchedule());
+  const [notificationPerm, setNotificationPerm] = useState<string>(() => getNotificationPermission());
 
   const isPremium = checkIsUserPremium(user);
   const [upgradeToast, setUpgradeToast] = useState<{ message: string; visible: boolean } | null>(null);
 
-  // Close hamburger menu on window resize to desktop
+  // Sync reminder schedule and permission
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1280) {
+    const handleScheduleUpdate = () => {
+      setReminderSchedule(getSavedReminderSchedule());
+      setNotificationPerm(getNotificationPermission());
+    };
+    window.addEventListener(REMINDER_SCHEDULE_EVENT, handleScheduleUpdate);
+    window.addEventListener("focus", handleScheduleUpdate);
+    return () => {
+      window.removeEventListener(REMINDER_SCHEDULE_EVENT, handleScheduleUpdate);
+      window.removeEventListener("focus", handleScheduleUpdate);
+    };
+  }, []);
+
+  // Keyboard ESC listener to close drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
         setIsMenuOpen(false);
       }
     };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const PREMIUM_PROGRAMS_MAP: Record<string, string> = {
@@ -131,40 +157,10 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     }, 180);
   };
 
-  // Top horizontal bar items
-  const topMenuItems = isPremium ? [
-    { id: "home", label: "HOME", action: () => handleCustomNav("home") },
-    { id: "dashboard", label: "DASHBOARD", action: () => handleCustomNav("dashboard") },
-    { id: "store", label: "STORE", action: () => handleCustomNav("store") },
-    { id: "daily-plan", label: "DAILY PLAN", action: () => handleCustomNav("daily-plan") },
-    { id: "home-workout-challenge", label: "180-DAY CHALLENGE", action: () => handleCustomNav("home-workout-challenge") },
-    { id: "women-confidence", label: "WOMEN CONFIDENCE", action: () => handleCustomNav("women-confidence") },
-    { id: "belly-fat-shred", label: "BELLY SHRED", action: () => handleCustomNav("belly-fat-shred") },
-    { id: "challenges", label: "90-DAY CHALLENGES", action: () => handleCustomNav("challenges") },
-    { id: "lifestyle-academy", label: "PROGRAMS", action: () => handleCustomNav("lifestyle-academy") },
-    { id: "library", label: "WORKOUTS", action: () => handleCustomNav("library") },
-    { id: "nutrition", label: "NUTRITION", action: () => handleCustomNav("nutrition") },
-    { id: "coach", label: "AI COACH", action: () => handleCustomNav("coach") },
-    { id: "community", label: "COMMUNITY", action: () => handleCustomNav("community") }
-  ] : [
-    { id: "home", label: "HOME", action: () => handleCustomNav("home") },
-    { id: "store", label: "STORE", action: () => handleCustomNav("store") },
-    { id: "home-workout-challenge", label: "180-DAY CHALLENGE", action: () => handleCustomNav("home-workout-challenge"), isPro: true },
-    { id: "women-confidence", label: "WOMEN CONFIDENCE", action: () => handleCustomNav("women-confidence"), isPro: true },
-    { id: "belly-fat-shred", label: "BELLY SHRED", action: () => handleCustomNav("belly-fat-shred"), isPro: true },
-    { id: "challenges", label: "90-DAY CHALLENGES", action: () => handleCustomNav("challenges"), isPro: true },
-    { id: "lifestyle-academy", label: "PROGRAMS", action: () => handleCustomNav("lifestyle-academy") },
-    { id: "library", label: "WORKOUTS", action: () => handleCustomNav("library") },
-    { id: "workout-videos", label: "EXERCISES", action: () => handleCustomNav("workout-videos") },
-    { id: "nutrition", label: "NUTRITION", action: () => handleCustomNav("nutrition") },
-    { id: "coach", label: "AI COACH", action: () => handleCustomNav("coach"), isPro: true },
-    { id: "community", label: "COMMUNITY", action: () => handleCustomNav("community") },
-    { id: "pricing", label: "PRICING", action: () => handleCustomNav("pricing") }
-  ];
-
   // Unified single drawer menu items (dynamic based on subscription)
   const drawerMenuItems = isPremium ? [
     { id: "dashboard", label: "Athlete Performance Desk", desc: "Your metrics, streaks & performance reports", icon: Shield, color: "text-sky-600 bg-sky-50" },
+    { id: "notification-settings", label: "Notification Settings", desc: "Alarm schedule, sound chime & email alerts", icon: Bell, color: "text-amber-600 bg-amber-50" },
     { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
     { id: "home-workout-challenge", label: "180 Day Home Workout Challenge", desc: "Zero equipment bodyweight transformation & 5KM cardio", icon: Dumbbell, color: "text-amber-600 bg-amber-50" },
     { id: "daily-plan", label: "My Daily Plan", desc: "Personalized daily schedule & drills", icon: Calendar, color: "text-red-600 bg-red-50" },
@@ -186,6 +182,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
       { id: "admin", label: "Admin Management Console", desc: "System settings, analytics & user controls", icon: Shield, color: "text-red-700 bg-red-100" }
     ] : [])
   ] : [
+    { id: "notification-settings", label: "Notification Settings", desc: "Alarm schedule, sound chime & email alerts", icon: Bell, color: "text-amber-600 bg-amber-50" },
     { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
     { id: "home-workout-challenge", label: "180 Day Home Workout Challenge", desc: "Zero equipment bodyweight transformation & 5KM cardio", icon: Dumbbell, color: "text-amber-600 bg-amber-50", isProBadge: true },
     { id: "women-confidence", label: "Women Confidence Program", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-50", isProBadge: true },
@@ -228,29 +225,8 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
             </a>
           </div>
 
-          {/* Horizontal Quick Links Bar */}
-          <nav className="hidden lg:flex items-center gap-2 sm:gap-4 lg:gap-5 overflow-x-auto whitespace-nowrap scrollbar-none py-1 min-w-0 flex-1 justify-end" aria-label="Main Desktop Navigation Menu">
-            {topMenuItems.map((item) => {
-              const isActive = currentView === item.id;
-                
-              return (
-                <button
-                  key={item.id}
-                  onClick={item.action}
-                  className={`text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-250 cursor-pointer border-b-2 py-1 shrink-0 flex items-center gap-1 ${
-                    isActive 
-                      ? "text-[#E53935] border-[#E53935]" 
-                      : "text-[#2B2B2B] border-transparent hover:text-[#E53935]"
-                  }`}
-                >
-                  <span>{item.label}</span>
-                  {(item as any).isPro && !isPremium && (
-                    <Crown className="w-3 h-3 text-amber-500 shrink-0" />
-                  )}
-                </button>
-              );
-            })}
-          </nav>
+          {/* Center spacer: unified single navigation codebase across both mobile and desktop */}
+          <div className="flex-1" />
 
           {/* Right Control Bar (Auth + PWA Install + Prominent Hamburger Toggle) */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -313,15 +289,12 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
               </div>
             )}
 
-            {/* WORKOUT REMINDERS & PUSH ALERTS */}
-            <WorkoutReminderBell />
-
             {/* QUICK STORE / CART ACCESS BUTTON */}
             <button
               onClick={() => {
                 setIsCartOpen(true);
               }}
-              className="relative p-2.5 rounded-xl border border-slate-200 hover:border-red-200 bg-slate-50 hover:bg-red-50 text-slate-700 hover:text-[#E53935] transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
+              className="relative p-2.5 rounded-xl border border-slate-200 hover:border-red-200 bg-slate-50 hover:bg-red-50 text-slate-700 hover:text-[#E53935] transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
               title="Shopping Cart & Fitness Apparel Store"
               aria-label="Open Shopping Cart"
             >
@@ -333,23 +306,27 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
               )}
             </button>
 
-            {/* EFFECTIVE HAMBURGER MENU BUTTON TOGGLE */}
+            {/* PRIMARY TOP HAMBURGER MENU BUTTON - VISIBLE, PROMINENT & UNCLIPPED */}
             <button
+              id="top-hamburger-menu-button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className={`p-2.5 rounded-xl border transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 shrink-0 z-20 shadow-sm ${
                 isMenuOpen 
-                  ? "bg-[#E53935] text-white border-[#E53935] shadow-md" 
-                  : "bg-slate-50 hover:bg-red-50 text-slate-800 hover:text-[#E53935] border-slate-200 hover:border-red-200"
+                  ? "bg-[#E53935] text-white border-[#E53935] shadow-md ring-2 ring-red-300" 
+                  : "bg-slate-900 hover:bg-slate-800 text-white border-slate-900 hover:border-slate-800"
               }`}
               aria-label="Toggle Navigation Hamburger Drawer Menu"
               title="Open Navigation Menu"
             >
               {isMenuOpen ? (
-                <X className="w-5 h-5 stroke-[2.5]" />
+                <>
+                  <X className="w-5 h-5 stroke-[2.5]" />
+                  <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider">CLOSE</span>
+                </>
               ) : (
                 <>
-                  <Menu className="w-5 h-5 stroke-[2.5]" />
-                  <span className="hidden md:inline text-[11px] font-extrabold uppercase tracking-wider ml-0.5">MENU</span>
+                  <Menu className="w-5 h-5 stroke-[2.5] text-amber-300" />
+                  <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-white">MENU</span>
                 </>
               )}
             </button>
@@ -371,13 +348,13 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
               className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs transition-opacity"
             />
 
-            {/* Slide-out Drawer Panel */}
+            {/* Slide-out Drawer Panel (Unified across mobile, tablet and desktop) */}
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 220 }}
-              className="fixed inset-y-0 right-0 z-50 w-full max-w-sm sm:max-w-md bg-white shadow-2xl border-l border-slate-200 flex flex-col justify-between overflow-hidden"
+              className="fixed inset-y-0 right-0 z-50 w-full max-w-sm sm:max-w-md lg:max-w-lg bg-white shadow-2xl border-l border-slate-200 flex flex-col justify-between overflow-hidden"
             >
               {/* Drawer Top Header */}
               <div className="p-4 sm:p-5 border-b border-slate-150 flex items-center justify-between bg-slate-50/80">
@@ -465,6 +442,84 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                 )}
               </div>
 
+              {/* NOTIFICATION SETTINGS CARD IN HAMBURGER DRAWER */}
+              <div className="px-4 sm:px-5 pt-3">
+                <div className="p-3.5 bg-gradient-to-br from-amber-500/10 via-red-500/5 to-slate-50 border border-amber-300/50 rounded-2xl shadow-2xs">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-2xs shrink-0">
+                        <BellRing className="w-4 h-4 animate-pulse" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="text-xs font-black uppercase text-slate-900 tracking-tight">
+                            Workout Notifications
+                          </h4>
+                          {reminderSchedule.enabled ? (
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          ) : (
+                            <span className="w-2 h-2 rounded-full bg-slate-300" />
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-600 mt-0.5">
+                          {reminderSchedule.enabled 
+                            ? `Active at ${formatTime12Hour(reminderSchedule.scheduledTime)}` 
+                            : "Alerts & Dispatches Off"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Quick Toggle Switch */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!reminderSchedule.enabled && notificationPerm !== "granted") {
+                          const perm = await requestNotificationPermission();
+                          setNotificationPerm(perm);
+                          if (perm !== "granted") {
+                            setIsReminderModalOpen(true);
+                            return;
+                          }
+                        }
+                        const updated = { ...reminderSchedule, enabled: !reminderSchedule.enabled };
+                        setReminderSchedule(updated);
+                        await saveReminderSchedule(updated, user?.uid);
+                      }}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                        reminderSchedule.enabled ? "bg-emerald-600" : "bg-slate-300"
+                      }`}
+                      aria-label="Toggle workout reminders"
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-2xs ring-0 transition duration-200 ease-in-out ${
+                          reminderSchedule.enabled ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Email & Settings action bar */}
+                  <div className="mt-2.5 pt-2 border-t border-amber-200/50 flex items-center justify-between text-[10px] text-slate-600">
+                    <span className="flex items-center gap-1 truncate max-w-[200px]" title={user?.email || reminderSchedule.notificationEmail || "Direct to Email"}>
+                      <Mail className="w-3 h-3 text-red-600 shrink-0" />
+                      <span className="truncate">
+                        Email: {reminderSchedule.emailNotificationsEnabled !== false ? (user?.email || reminderSchedule.notificationEmail || "Active") : "Muted"}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setIsReminderModalOpen(true);
+                      }}
+                      className="text-red-600 hover:text-red-700 font-bold uppercase tracking-wider text-[10px] cursor-pointer hover:underline shrink-0"
+                    >
+                      Settings &rarr;
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Scrollable Single Navigation Section */}
               <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
                 <div className="flex items-center justify-between px-1 pb-1">
@@ -483,7 +538,14 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                     return (
                       <button
                         key={item.id}
-                        onClick={() => handleCustomNav(item.id)}
+                        onClick={() => {
+                          if (item.id === "notification-settings") {
+                            setIsMenuOpen(false);
+                            setIsReminderModalOpen(true);
+                          } else {
+                            handleCustomNav(item.id);
+                          }
+                        }}
                         className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all cursor-pointer border ${
                           isCurrent 
                             ? "bg-red-50/80 border-red-200 text-[#E53935] shadow-2xs font-bold" 
@@ -607,6 +669,12 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Daily Workout Reminder & Notification Settings Modal */}
+      <WorkoutReminderModal
+        isOpen={isReminderModalOpen}
+        onClose={() => setIsReminderModalOpen(false)}
+      />
     </>
   );
 }

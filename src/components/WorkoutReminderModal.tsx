@@ -12,7 +12,8 @@ import {
   Check,
   Zap,
   Sparkles,
-  Info
+  Info,
+  Mail
 } from "lucide-react";
 import {
   WorkoutReminderSchedule,
@@ -454,6 +455,69 @@ export default function WorkoutReminderModal({ isOpen, onClose }: WorkoutReminde
               {schedule.soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
               <span>{schedule.soundEnabled ? "On" : "Muted"}</span>
             </button>
+          </div>
+
+          {/* Section 5: Direct Email Workout Dispatches */}
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Mail className="w-4 h-4 text-red-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900">Direct Email Dispatches</p>
+                  <p className="text-[11px] text-slate-500">
+                    Deliver morning workout alerts directly to your personal email based on your program & tracking.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const updated = {
+                    ...schedule,
+                    emailNotificationsEnabled: schedule.emailNotificationsEnabled !== false ? false : true,
+                    notificationEmail: schedule.notificationEmail || user?.email || ""
+                  };
+                  setSchedule(updated);
+                  saveReminderSchedule(updated, user?.uid);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  schedule.emailNotificationsEnabled !== false
+                    ? "bg-red-50 text-red-700 border-red-200"
+                    : "bg-white text-slate-400 border-slate-200"
+                }`}
+              >
+                <span>{schedule.emailNotificationsEnabled !== false ? "Enabled" : "Disabled"}</span>
+              </button>
+            </div>
+
+            {schedule.emailNotificationsEnabled !== false && (
+              <div className="pt-2 border-t border-slate-200/60 flex flex-col sm:flex-row items-center gap-2">
+                <input
+                  type="email"
+                  placeholder="Enter email for daily workout dispatches"
+                  value={schedule.notificationEmail ?? (user?.email || "")}
+                  onChange={(e) => {
+                    const updated = { ...schedule, notificationEmail: e.target.value };
+                    setSchedule(updated);
+                  }}
+                  className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 font-sans"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (schedule.notificationEmail) {
+                      localStorage.setItem("alexfit_reminder_email", schedule.notificationEmail);
+                    }
+                    saveReminderSchedule(schedule, user?.uid);
+                  }}
+                  className="w-full sm:w-auto px-3 py-2 bg-slate-900 hover:bg-black text-white text-xs font-bold uppercase rounded-xl tracking-wider shrink-0 cursor-pointer"
+                >
+                  Save Email
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Next Reminder Occurrence Display */}

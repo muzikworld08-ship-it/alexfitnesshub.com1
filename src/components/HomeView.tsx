@@ -14,6 +14,7 @@ import { NewsletterSubscription } from "./NewsletterSubscription";
 import Logo from "./Logo";
 import { OptimizedImage } from "./OptimizedImage";
 import ContinueProgramTracker from "./ContinueProgramTracker";
+import MorningWorkoutBanner from "./MorningWorkoutBanner";
 import { PROGRAMS } from "../data/exercises";
 
 const workoutCategories = [
@@ -292,8 +293,13 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
     communityPosts, 
     addCommunityPost, 
     likePost, 
-    commentOnPost 
+    commentOnPost,
+    getActiveEnrolledPrograms 
   } = useApp();
+
+  const activeJoinedPrograms = getActiveEnrolledPrograms().filter(p => 
+    p.enrolled && (p.hasJoined || p.enrolledByUser || (p.completedWorkoutIds && p.completedWorkoutIds.length > 0) || (p.progressPercent && p.progressPercent > 0))
+  );
 
   const { products, setSelectedProductForDetail, setIsCartOpen, addToCart, buyNow } = useStore();
   const [storeFlipState, setStoreFlipState] = useState<Record<string, boolean>>({});
@@ -680,6 +686,16 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
   return (
     <div id="home-view-root" className="bg-background text-foreground min-h-screen relative font-sans animate-fade-in">
       
+      {/* MORNING / SCHEDULED WORKOUT NOTIFICATION BANNER - DELIVERS TO USER EMAIL */}
+      <MorningWorkoutBanner 
+        onNavigateToProgram={(progId) => {
+          if (progId === "90_day_immortal") setView("challenges");
+          else if (progId === "belly_fat_shred") setView("belly-fat-shred");
+          else if (progId === "lifestyle_academy") setView("lifestyle-academy");
+          else setView("challenges");
+        }} 
+      />
+
       {/* 1. HERO SECTION - COMPELLING BRIGHT SOLO VISUAL BANNER */}
       <section id="hero-segment" className="relative h-[55vh] sm:h-[65vh] lg:h-[75vh] w-full overflow-hidden bg-background border-b border-border">
         
@@ -708,12 +724,14 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
         </div>
       </section>
 
-      {/* CONTINUATION SECTION - RESUME WHERE YOU LEFT OFF */}
-      <section id="continue-program-section" className="py-6 sm:py-8 bg-background border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <ContinueProgramTracker onNavigate={setView} />
-        </div>
-      </section>
+      {/* CONTINUATION SECTION - RESUME WHERE YOU LEFT OFF (ONLY SHOWN IF USER HAS JOINED) */}
+      {activeJoinedPrograms.length > 0 && (
+        <section id="continue-program-section" className="py-6 sm:py-8 bg-background border-b border-border">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ContinueProgramTracker onNavigate={setView} />
+          </div>
+        </section>
+      )}
 
       {/* NEW PROMOTIONAL ADVERT BANNER - LIFESTYLE FITNESS ACADEMY */}
       <section id="academy-promo-advert" className="py-8 bg-background border-b border-border">

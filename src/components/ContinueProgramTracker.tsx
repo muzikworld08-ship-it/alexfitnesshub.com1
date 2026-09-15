@@ -39,10 +39,12 @@ export default function ContinueProgramTracker({ compact = false, onNavigate }: 
     user?.freeTrialStatus === "active"
   );
 
-  const activePrograms = getActiveEnrolledPrograms().filter(p => p.enrolled);
+  const activePrograms = getActiveEnrolledPrograms().filter(p => 
+    p.enrolled && (p.hasJoined || p.enrolledByUser || (p.completedWorkoutIds && p.completedWorkoutIds.length > 0) || (p.progressPercent && p.progressPercent > 0))
+  );
 
-  // New users or users who have not joined & subscribed to any workout program see no advertisement banner
-  if (!isSubscribedOrTrial || activePrograms.length === 0) {
+  // Only show the continue section to users that have joined a particular exercise or program
+  if (activePrograms.length === 0) {
     return null;
   }
 

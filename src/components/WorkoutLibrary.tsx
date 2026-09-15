@@ -10,7 +10,7 @@ import {
   Search, SlidersHorizontal, Lock, CheckCircle, PlusCircle, Sparkles, X, 
   ChevronRight, HelpCircle, AlertTriangle, Play, Shield, Calendar, Apple, Dumbbell, ArrowRight, Clipboard,
   Compass, CheckCircle2, UploadCloud, FileVideo, FileImage, Trash2, ArrowLeft, RotateCcw, Award, Activity,
-  Heart, Bookmark, Crown
+  Heart, Bookmark, Crown, Flame
 } from "lucide-react";
 import WorkoutVisual from "./WorkoutVisual";
 import MuscleAnatomyVisual from "./MuscleAnatomyVisual";
@@ -341,7 +341,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
 
   const setSelectedCategory = (val: string | ((p: string) => string)) => {
     const nextVal = typeof val === "function" ? val(selectedCategory) : val;
-    setWorkoutFilters({ selectedCategory: nextVal, searchQuery: "" });
+    setWorkoutFilters({ selectedCategory: nextVal });
     setCurrentPage(1);
   };
 
@@ -353,7 +353,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
 
   const setSelectedMuscleGroup = (val: string | ((p: string) => string)) => {
     const nextVal = typeof val === "function" ? val(selectedMuscleGroup) : val;
-    setWorkoutFilters({ selectedMuscleGroup: nextVal, searchQuery: "" });
+    setWorkoutFilters({ selectedMuscleGroup: nextVal });
     setCurrentPage(1);
   };
 
@@ -518,7 +518,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
   }, [selectedExerciseId, selectedProgram]);
 
   // Active view tabs for search results
-  const [activeSearchTab, setActiveSearchTab] = useState<"exercises" | "mealplans">("exercises");
+  const [activeSearchTab, setActiveSearchTab] = useState<"all" | "workouts" | "exercises" | "mealplans">("all");
 
   // Pagination for heavy exercise cards lists
   const [visibleCount, setVisibleCount] = useState(12);
@@ -785,7 +785,57 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
         exCategory === selectedCategory || 
         exCategories.includes(selectedCategory);
       const matchesDifficulty = selectedDifficulty === "All" || exDifficulty === selectedDifficulty;
-      const matchesMuscleGroup = selectedMuscleGroup === "All" || exMuscleGroups.includes(selectedMuscleGroup);
+      
+      let matchesMuscleGroup = selectedMuscleGroup === "All";
+      if (!matchesMuscleGroup) {
+        const smLower = selectedMuscleGroup.toLowerCase();
+        matchesMuscleGroup = exMuscleGroups.some(m => m && m.toLowerCase() === smLower) ||
+          exMusclesWorked.some(m => m && m.toLowerCase() === smLower) ||
+          (ex.bodyPart || "").toLowerCase() === smLower;
+
+        if (!matchesMuscleGroup) {
+          if (smLower === "core" || smLower === "abs") {
+            matchesMuscleGroup = exMuscleGroups.some(m => {
+              const ml = (m || "").toLowerCase();
+              return ml.includes("ab") || ml.includes("core") || ml.includes("oblique") || ml.includes("transverse");
+            }) || (ex.bodyPart || "").toLowerCase().includes("core") || (ex.bodyPart || "").toLowerCase().includes("ab");
+          } else if (smLower === "legs") {
+            matchesMuscleGroup = exMuscleGroups.some(m => {
+              const ml = (m || "").toLowerCase();
+              return ml.includes("leg") || ml.includes("quad") || ml.includes("hamstring") || ml.includes("calf") || ml.includes("calves") || ml.includes("thigh");
+            }) || (ex.bodyPart || "").toLowerCase().includes("leg");
+          } else if (smLower === "arms") {
+            matchesMuscleGroup = exMuscleGroups.some(m => {
+              const ml = (m || "").toLowerCase();
+              return ml.includes("arm") || ml.includes("bicep") || ml.includes("tricep") || ml.includes("forearm");
+            }) || (ex.bodyPart || "").toLowerCase().includes("arm");
+          } else if (smLower === "back") {
+            matchesMuscleGroup = exMuscleGroups.some(m => {
+              const ml = (m || "").toLowerCase();
+              return ml.includes("back") || ml.includes("lat") || ml.includes("trapezius") || ml.includes("rhomboid") || ml.includes("spine");
+            }) || (ex.bodyPart || "").toLowerCase().includes("back");
+          } else if (smLower === "chest") {
+            matchesMuscleGroup = exMuscleGroups.some(m => {
+              const ml = (m || "").toLowerCase();
+              return ml.includes("chest") || ml.includes("pec");
+            }) || (ex.bodyPart || "").toLowerCase().includes("chest");
+          } else if (smLower === "shoulders") {
+            matchesMuscleGroup = exMuscleGroups.some(m => {
+              const ml = (m || "").toLowerCase();
+              return ml.includes("shoulder") || ml.includes("delt");
+            }) || (ex.bodyPart || "").toLowerCase().includes("shoulder");
+          } else if (smLower === "glutes") {
+            matchesMuscleGroup = exMuscleGroups.some(m => {
+              const ml = (m || "").toLowerCase();
+              return ml.includes("glute") || ml.includes("butt") || ml.includes("hip");
+            }) || (ex.bodyPart || "").toLowerCase().includes("glute");
+          } else if (smLower === "cardio") {
+            matchesMuscleGroup = (ex.category || "").toLowerCase().includes("cardio") || (ex.category || "").toLowerCase().includes("hiit") || exCategories.some(c => (c || "").toLowerCase().includes("cardio"));
+          } else if (smLower === "full body") {
+            matchesMuscleGroup = (ex.category || "").toLowerCase().includes("full body") || (ex.bodyPart || "").toLowerCase().includes("full") || exCategories.some(c => (c || "").toLowerCase().includes("full body"));
+          }
+        }
+      }
       
       let matchesEquipment = true;
       if (selectedEquipment === "No Equipment Required") {
@@ -963,6 +1013,76 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
     return deduplicated;
   }, [exercises, searchQuery, selectedCategory, selectedDifficulty, selectedMuscleGroup, selectedEquipment, selectedExerciseType, selectedTrainingGoal, isUserPremium]);
 
+  // Real-time Curated Workouts filter
+  const filteredWorkouts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const muscleFilter = selectedMuscleGroup === "All" ? "" : selectedMuscleGroup.toLowerCase();
+
+    return WORKOUTS_DATABASE.filter(workout => {
+      if (!workout) return false;
+
+      // Difficulty filter
+      if (selectedDifficulty !== "All" && workout.difficulty !== selectedDifficulty) {
+        return false;
+      }
+
+      const targetLower = (workout.targetMuscle || "").toLowerCase();
+      const nameLower = (workout.name || "").toLowerCase();
+      const descLower = (workout.description || "").toLowerCase();
+      const equipLower = (workout.equipmentNeeded || "").toLowerCase();
+
+      // Check muscle filter if selected
+      if (muscleFilter) {
+        let matchesMuscle = targetLower.includes(muscleFilter) ||
+          workout.exercises.some(e => (e.name || "").toLowerCase().includes(muscleFilter));
+
+        if (!matchesMuscle) {
+          if (muscleFilter === "core" || muscleFilter === "abs") {
+            matchesMuscle = targetLower.includes("ab") || targetLower.includes("core") || targetLower.includes("waist") || targetLower.includes("midsection");
+          } else if (muscleFilter === "arms") {
+            matchesMuscle = targetLower.includes("bicep") || targetLower.includes("tricep") || targetLower.includes("arm");
+          } else if (muscleFilter === "legs") {
+            matchesMuscle = targetLower.includes("quad") || targetLower.includes("hamstring") || targetLower.includes("glute") || targetLower.includes("calf") || targetLower.includes("leg") || targetLower.includes("lower body");
+          } else if (muscleFilter === "back") {
+            matchesMuscle = targetLower.includes("lat") || targetLower.includes("rhomboid") || targetLower.includes("trapezius") || targetLower.includes("back");
+          } else if (muscleFilter === "chest") {
+            matchesMuscle = targetLower.includes("chest") || targetLower.includes("pec") || targetLower.includes("push");
+          } else if (muscleFilter === "shoulders") {
+            matchesMuscle = targetLower.includes("shoulder") || targetLower.includes("delt") || targetLower.includes("rotator");
+          } else if (muscleFilter === "glutes") {
+            matchesMuscle = targetLower.includes("glute") || targetLower.includes("butt") || targetLower.includes("hip");
+          } else if (muscleFilter === "full body") {
+            matchesMuscle = targetLower.includes("full body") || targetLower.includes("total body") || targetLower.includes("compound");
+          } else if (muscleFilter === "cardio") {
+            matchesMuscle = targetLower.includes("cardio") || targetLower.includes("hiit") || targetLower.includes("fat burn") || targetLower.includes("aerobic");
+          }
+        }
+
+        if (!matchesMuscle) return false;
+      }
+
+      if (!query) return true;
+
+      const queryTerms = query.split(/\s+/).filter(t => t.length > 0);
+      return queryTerms.every(term => {
+        if (nameLower.includes(term)) return true;
+        if (targetLower.includes(term)) return true;
+        if (descLower.includes(term)) return true;
+        if (equipLower.includes(term)) return true;
+        if (workout.exercises.some(e => (e.name || "").toLowerCase().includes(term))) return true;
+
+        if (term === "chest" && (targetLower.includes("pec") || targetLower.includes("push"))) return true;
+        if ((term === "abs" || term === "core") && (targetLower.includes("ab") || targetLower.includes("core") || targetLower.includes("waist") || targetLower.includes("midsection") || targetLower.includes("belly"))) return true;
+        if ((term === "arms" || term === "arm") && (targetLower.includes("bicep") || targetLower.includes("tricep") || targetLower.includes("arm"))) return true;
+        if ((term === "legs" || term === "leg") && (targetLower.includes("quad") || targetLower.includes("hamstring") || targetLower.includes("glute") || targetLower.includes("calf") || targetLower.includes("leg") || targetLower.includes("lower body"))) return true;
+        if (term === "back" && (targetLower.includes("lat") || targetLower.includes("rhomboid") || targetLower.includes("back") || targetLower.includes("pull"))) return true;
+        if ((term === "glute" || term === "glutes") && (targetLower.includes("glute") || targetLower.includes("hip") || targetLower.includes("cellulite"))) return true;
+
+        return false;
+      });
+    });
+  }, [searchQuery, selectedMuscleGroup, selectedDifficulty]);
+
   // Display all matching exercises
   const displayedExercises = useMemo(() => {
     return filteredExercises;
@@ -1127,11 +1247,119 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
 
   const handleTriggerQuickSearch = (term: string) => {
     setSearchQuery(term);
+    setActiveBrowseTab("all");
     if (term === "Weight Loss") {
       setActiveSearchTab("mealplans");
     } else {
-      setActiveSearchTab("exercises");
+      setActiveSearchTab("all");
     }
+  };
+
+  const renderWorkoutCard = (workout: Workout) => {
+    const isBookmarked = savedWorkouts.includes(workout.id);
+    return (
+      <motion.div
+        key={workout.id}
+        whileHover={{ y: -2, transition: { duration: 0.2, ease: "easeOut" } }}
+        className="group bg-white border border-[#ECECEC] hover:border-[#C0392B]/50 hover:shadow-md rounded-2xl p-5 sm:p-6 transition-all duration-200 flex flex-col sm:flex-row gap-5 items-stretch text-left w-full"
+      >
+        {/* Media */}
+        <div className="relative w-full sm:w-64 h-40 bg-slate-900 overflow-hidden rounded-xl shrink-0 flex items-center justify-center">
+          <OptimizedImage
+            src={workout.imageUrl}
+            alt={workout.name}
+            aspectRatio="16/9"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+          
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleSaveWorkout(workout.id);
+            }}
+            className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-slate-400 hover:text-[#C0392B] transition-colors shadow-xs border border-white/50 cursor-pointer z-10"
+            aria-label="Bookmark Workout"
+          >
+            <Heart className={`w-4 h-4 ${isBookmarked ? "text-[#C0392B] fill-[#C0392B]" : "text-slate-400"}`} />
+          </button>
+
+          <div className="absolute bottom-2.5 left-2.5 bg-black/75 backdrop-blur-xs border border-white/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white uppercase z-10 flex items-center gap-1">
+            <Dumbbell className="w-3 h-3 text-red-400" />
+            <span>{workout.targetMuscle}</span>
+          </div>
+        </div>
+
+        {/* Details & Actions */}
+        <div className="flex-1 w-full flex flex-col justify-between space-y-2">
+          <div>
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <h4 className="text-base font-black text-slate-900 uppercase leading-snug group-hover:text-[#C0392B] transition-colors font-sans">
+                {workout.name}
+              </h4>
+              <span className="text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-red-50 text-[#C0392B] border border-red-100 whitespace-nowrap shrink-0">
+                {workout.exercises.length} Drills
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+              {workout.description}
+            </p>
+
+            <div className="grid grid-cols-3 gap-2 py-2 mt-2 border-y border-[#F0F0F0] text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+              <div>
+                <span className="text-slate-400 block text-[9px]">Level</span>
+                <span className="font-bold text-slate-800">{workout.difficulty}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[9px]">Time</span>
+                <span className="font-bold text-slate-800">{workout.duration}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[9px]">Burn</span>
+                <span className="font-bold text-[#C0392B]">{workout.caloriesBurned} kcal</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-1 mt-2">
+              {workout.exercises.slice(0, 3).map((ex, idx) => (
+                <span key={idx} className="text-[9px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-sm">
+                  {ex.name}
+                </span>
+              ))}
+              {workout.exercises.length > 3 && (
+                <span className="text-[9px] font-mono text-slate-400 py-0.5">
+                  +{workout.exercises.length - 3} more
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setActiveWorkout(workout)}
+              className="flex-1 py-2 bg-white border border-slate-200 hover:border-[#C0392B] text-slate-700 hover:text-[#C0392B] rounded-xl text-xs font-bold uppercase transition-all cursor-pointer flex items-center justify-center gap-1 font-mono"
+            >
+              Routine Details
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const workoutExs = workout.exercises.map(we => getOrCreateExercise(we.name, exercises));
+                setActivePlayerSession({
+                  exercises: workoutExs,
+                  title: workout.name
+                });
+              }}
+              className="flex-1 py-2 bg-[#C0392B] hover:bg-[#A82E22] text-white rounded-xl text-xs font-bold uppercase transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs font-mono"
+            >
+              <Play className="w-3.5 h-3.5 fill-white" />
+              Start Routine
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
   };
 
   if (!isUserPremium) {
@@ -2151,7 +2379,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
       </div>
 
       {/* 2. INSTANT SEARCH ENGINE BAR */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-3">
         {/* Search input field */}
         <div className="md:col-span-8 relative">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#C0392B]">
@@ -2159,7 +2387,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
           </span>
           <input
             type="text"
-            placeholder="Search e.g., 'Chest', 'Legs', 'Abs', 'Dumbbells', 'Cardio', etc..."
+            placeholder="Search workouts or exercises by name or muscle group (e.g. Chest, Squat, Annihilator)..."
             value={searchQuery}
             onChange={(e) => {
               const val = e.target.value;
@@ -2167,15 +2395,24 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
               if (val) {
                 setActiveBrowseTab("all");
               }
-              // Proactively switch tabs when specialized searches take place to focus results
               if (val.toLowerCase().includes("weight") || val.toLowerCase().includes("loss")) {
                 setActiveSearchTab("mealplans");
               } else {
-                setActiveSearchTab("exercises");
+                setActiveSearchTab("all");
               }
             }}
-            className="w-full pl-10 pr-4 py-3 bg-white text-[#C0392B] border-2 border-[#C0392B]/20 rounded-xl text-xs focus:outline-none focus:border-[#C0392B] placeholder:text-[#C0392B]/40 font-bold tracking-wide shadow-xs transition-colors"
+            className="w-full pl-10 pr-10 py-3 bg-white text-slate-800 border-2 border-[#C0392B]/20 rounded-xl text-xs focus:outline-none focus:border-[#C0392B] placeholder:text-slate-400 font-bold tracking-wide shadow-xs transition-colors"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-[#C0392B] cursor-pointer"
+              aria-label="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Filters Toggle Button */}
@@ -2198,6 +2435,60 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             )}
           </button>
         </div>
+      </div>
+
+      {/* Quick Muscle Group Real-Time Filter Pills */}
+      <div className="mb-4 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono whitespace-nowrap flex items-center gap-1 mr-1">
+          <Dumbbell className="w-3.5 h-3.5 text-[#C0392B]" />
+          Target Muscle:
+        </span>
+        {[
+          { label: "All Muscles", value: "All" },
+          { label: "Chest", value: "Chest" },
+          { label: "Back", value: "Back" },
+          { label: "Shoulders", value: "Shoulders" },
+          { label: "Arms", value: "Arms" },
+          { label: "Legs", value: "Legs" },
+          { label: "Core & Abs", value: "Core" },
+          { label: "Glutes", value: "Glutes" },
+          { label: "Full Body", value: "Full Body" },
+          { label: "Cardio", value: "Cardio" }
+        ].map((muscle) => {
+          const isSelected = selectedMuscleGroup.toLowerCase() === muscle.value.toLowerCase() || (muscle.value === "All" && selectedMuscleGroup === "All");
+          return (
+            <button
+              key={muscle.value}
+              type="button"
+              onClick={() => {
+                setSelectedMuscleGroup(muscle.value);
+                if (muscle.value !== "All") {
+                  setActiveBrowseTab("all");
+                  setActiveSearchTab("all");
+                }
+              }}
+              className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 ${
+                isSelected
+                  ? "bg-[#C0392B] text-white shadow-xs"
+                  : "bg-white border border-slate-200 text-slate-600 hover:border-[#C0392B]/50 hover:text-[#C0392B]"
+              }`}
+            >
+              {muscle.label}
+              {isSelected && muscle.value !== "All" && (
+                <span className="ml-1 text-[10px] opacity-90">✓</span>
+              )}
+            </button>
+          );
+        })}
+        {selectedMuscleGroup !== "All" && (
+          <button
+            type="button"
+            onClick={() => setSelectedMuscleGroup("All")}
+            className="text-[11px] font-bold text-[#C0392B] hover:underline whitespace-nowrap ml-1 cursor-pointer"
+          >
+            Clear Muscle Filter
+          </button>
+        )}
       </div>
 
       {/* Advanced Filter Panel Dropdown */}
@@ -2366,57 +2657,127 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
         ))}
       </div>
 
-      {/* 4. MULTIPLEX INSTANT ORGANIZER TABS (Visible especially when searching) */}
-      <div id="search-multiplex-tabs" className="mb-6 border-b-2 border-red-100 flex items-center justify-between">
-        <div className="flex gap-4">
+      {/* 4. MULTIPLEX INSTANT ORGANIZER TABS */}
+      <div id="search-multiplex-tabs" className="mb-6 border-b-2 border-red-100 flex items-center justify-between overflow-x-auto scrollbar-none">
+        <div className="flex gap-2 sm:gap-4">
           <button
             onClick={() => {
-              triggerLiveLoad("Fetching exercises list...", 300, () => setActiveSearchTab("exercises"));
+              setActiveSearchTab("all");
             }}
-            className={`pb-3 text-xs uppercase tracking-wider font-bold font-mono transition-all flex items-center gap-2 border-b-2 relative -mb-[2px] ${
+            className={`pb-3 text-xs uppercase tracking-wider font-bold font-mono transition-all flex items-center gap-1.5 border-b-2 relative -mb-[2px] cursor-pointer whitespace-nowrap ${
+              activeSearchTab === "all" 
+                ? "text-[#C0392B] border-[#C0392B]" 
+                : "text-slate-400 border-transparent hover:text-slate-600"
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-[#C0392B]" />
+            All Results ({filteredExercises.length + filteredWorkouts.length})
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveSearchTab("workouts");
+            }}
+            className={`pb-3 text-xs uppercase tracking-wider font-bold font-mono transition-all flex items-center gap-1.5 border-b-2 relative -mb-[2px] cursor-pointer whitespace-nowrap ${
+              activeSearchTab === "workouts" 
+                ? "text-[#C0392B] border-[#C0392B]" 
+                : "text-slate-400 border-transparent hover:text-slate-600"
+            }`}
+          >
+            <Flame className="w-4 h-4 text-[#C0392B]" />
+            Workouts ({filteredWorkouts.length})
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveSearchTab("exercises");
+            }}
+            className={`pb-3 text-xs uppercase tracking-wider font-bold font-mono transition-all flex items-center gap-1.5 border-b-2 relative -mb-[2px] cursor-pointer whitespace-nowrap ${
               activeSearchTab === "exercises" 
                 ? "text-[#C0392B] border-[#C0392B]" 
                 : "text-slate-400 border-transparent hover:text-slate-600"
             }`}
           >
             <Dumbbell className="w-4 h-4 text-[#C0392B]" />
-            Exercises Matching ({filteredExercises.length})
+            Exercises ({filteredExercises.length})
           </button>
+
           {searchQuery && (searchQuery.toLowerCase().includes("weight") || searchQuery.toLowerCase().includes("loss")) && (
             <button
               onClick={() => {
-                triggerLiveLoad("Fetching regional meal plans...", 300, () => setActiveSearchTab("mealplans"));
+                setActiveSearchTab("mealplans");
               }}
-              className={`pb-3 text-xs uppercase tracking-wider font-bold font-mono transition-all flex items-center gap-2 border-b-2 relative -mb-[2px] ${
+              className={`pb-3 text-xs uppercase tracking-wider font-bold font-mono transition-all flex items-center gap-1.5 border-b-2 relative -mb-[2px] cursor-pointer whitespace-nowrap ${
                 activeSearchTab === "mealplans" 
                   ? "text-[#C0392B] border-[#C0392B]" 
                   : "text-slate-400 border-transparent hover:text-slate-600"
             }`}
             >
               <Apple className="w-4 h-4 text-[#C0392B]" />
-              Weight Loss Meal Plans ({filteredMealPlans.length})
+              Meal Plans ({filteredMealPlans.length})
             </button>
           )}
         </div>
 
-        {searchQuery && (
-          <div className="text-[10px] text-[#C0392B] font-mono tracking-wide uppercase select-none pb-3 hidden sm:block font-bold">
-            Found {filteredExercises.length} drills & {filteredPrograms.length} premium tracks for <span className="font-extrabold text-[#C0392B] underline">"{searchQuery}"</span>
+        {(searchQuery || selectedMuscleGroup !== "All") && (
+          <div className="text-[10px] text-[#C0392B] font-mono tracking-wide uppercase select-none pb-3 hidden lg:block font-bold">
+            Found {filteredWorkouts.length} workouts & {filteredExercises.length} exercises {searchQuery ? <>for <span className="font-extrabold text-[#C0392B] underline">"{searchQuery}"</span></> : <>targeting {selectedMuscleGroup}</>}
           </div>
         )}
       </div>
 
-      {/* 5. MATCHING EXERCISES TAB RENDER */}
-      {activeSearchTab === "exercises" && (
+      {/* 5. MATCHING EXERCISES & WORKOUTS TAB RENDER */}
+      {(activeSearchTab === "all" || activeSearchTab === "exercises") && (
         <div>
-          {searchQuery && (
+          {(searchQuery || selectedMuscleGroup !== "All") && (
             <div className="mb-6 p-4 rounded-xl border border-red-100 bg-red-50/20 text-xs text-[#C0392B] font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
               <div>
-                <span className="uppercase tracking-widest text-[9px] block text-[#C0392B]/70 font-mono">Real-Time Search Generation</span>
-                <span className="text-sm font-black">Generated 9 Custom Workouts for "{searchQuery}"</span>
+                <span className="uppercase tracking-widest text-[9px] block text-[#C0392B]/70 font-mono">Real-Time Search Engine Active</span>
+                <span className="text-sm font-black">
+                  {searchQuery ? `Showing results for "${searchQuery}"` : `Filtered by muscle: ${selectedMuscleGroup}`}
+                </span>
               </div>
-              <div className="text-[10px] bg-white border border-[#C0392B]/25 py-1 px-2.5 rounded-md tracking-wider font-mono">
-                100% KINESIOLOGY VERIFIED
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSelectedMuscleGroup("All");
+                    setSelectedCategory("All");
+                    setSelectedDifficulty("All");
+                  }}
+                  className="text-[10px] bg-white hover:bg-red-50 border border-[#C0392B]/25 py-1 px-2.5 rounded-md tracking-wider font-mono font-bold text-[#C0392B] transition-colors cursor-pointer"
+                >
+                  Reset Search
+                </button>
+                <div className="text-[10px] bg-[#C0392B] text-white py-1 px-2.5 rounded-md tracking-wider font-mono font-bold">
+                  {filteredWorkouts.length + filteredExercises.length} TOTAL FOUND
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Curated Workouts matching section (when in 'all' tab and search/filter is active) */}
+          {activeSearchTab === "all" && filteredWorkouts.length > 0 && (
+            <div className="mb-10 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-[#C0392B]" />
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase font-sans">
+                    Matching Workout Routines ({filteredWorkouts.length})
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveSearchTab("workouts")}
+                  className="text-xs font-bold text-[#C0392B] hover:underline font-mono uppercase cursor-pointer"
+                >
+                  View All Workouts →
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {filteredWorkouts.slice(0, 4).map((workout) => renderWorkoutCard(workout))}
               </div>
             </div>
           )}
@@ -3316,13 +3677,21 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
               )}
             </div>
           ) : filteredExercises.length === 0 ? (
-            <div className="p-12 text-center border-2 border-dashed border-red-100 rounded-2xl bg-white shadow-xs">
-              <HelpCircle className="w-10 h-10 text-[#C0392B] mx-auto mb-3" />
-              <h4 className="text-sm font-bold text-[#C0392B]">No compound exercises match the query</h4>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">Reset filters or browse other sections using the recommendations above.</p>
-              <button 
-                onClick={() => {
-                  triggerLiveLoad("Resetting parameters...", 400, () => {
+            filteredWorkouts.length > 0 && activeSearchTab === "all" ? (
+              <div className="p-8 text-center border border-dashed border-red-100 rounded-2xl bg-white shadow-xs">
+                <Dumbbell className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                <h4 className="text-sm font-bold text-slate-800">No individual exercise drills found for "{searchQuery || selectedMuscleGroup}"</h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                  Check out the matching curated workout routines displayed above, or try adjusting your search terms.
+                </p>
+              </div>
+            ) : (
+              <div className="p-12 text-center border-2 border-dashed border-red-100 rounded-2xl bg-white shadow-xs">
+                <HelpCircle className="w-10 h-10 text-[#C0392B] mx-auto mb-3" />
+                <h4 className="text-sm font-bold text-[#C0392B]">No workouts or exercises match "{searchQuery || selectedMuscleGroup}"</h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">Reset filters or browse by target muscle group.</p>
+                <button 
+                  onClick={() => {
                     setSearchQuery("");
                     setSelectedCategory("All");
                     setSelectedDifficulty("All");
@@ -3330,24 +3699,25 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                     setSelectedEquipment("All");
                     setSelectedExerciseType("All");
                     setSelectedTrainingGoal("All");
-                  });
-                }}
-                className="mt-4 px-5 py-2 bg-[#C0392B] hover:bg-[#A82E22] text-white text-[10px] font-bold rounded-lg uppercase tracking-widest font-mono transition-all"
-              >
-                Reset Search Filters
-              </button>
-
-              <div className="mt-6 pt-4 border-t border-red-100 max-w-sm mx-auto">
-                <p className="text-[10px] text-[#C0392B] font-mono uppercase mb-2 font-bold">Or Craft It Instantly:</p>
-                <button
-                  onClick={() => setView?.("workout-generator")}
-                  className="w-full py-2.5 bg-[#C0392B] hover:bg-[#A82E22] text-white text-[10px] font-bold uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 duration-150 transition-all font-mono"
+                    setActiveSearchTab("all");
+                  }}
+                  className="mt-4 px-5 py-2 bg-[#C0392B] hover:bg-[#A82E22] text-white text-[10px] font-bold rounded-lg uppercase tracking-widest font-mono transition-all cursor-pointer"
                 >
-                  <Sparkles className="w-4 h-4 animate-pulse text-yellow-300" />
-                  Forge "{searchQuery}" with AI
+                  Reset Search & Filters
                 </button>
+
+                <div className="mt-6 pt-4 border-t border-red-100 max-w-sm mx-auto">
+                  <p className="text-[10px] text-[#C0392B] font-mono uppercase mb-2 font-bold">Or Craft It Instantly:</p>
+                  <button
+                    onClick={() => setView?.("workout-generator")}
+                    className="w-full py-2.5 bg-[#C0392B] hover:bg-[#A82E22] text-white text-[10px] font-bold uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 duration-150 transition-all font-mono cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4 animate-pulse text-yellow-300" />
+                    Forge "{searchQuery || 'Custom Routine'}" with AI
+                  </button>
+                </div>
               </div>
-            </div>
+            )
           ) : selectedCategory === "All" ? (
             /* CATEGORY-GROUPED PRESENTATION: Organizes workouts strictly by their category */
             <div className="space-y-12">
@@ -3713,7 +4083,58 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
         </div>
       )}
 
+      {/* 6. CURATED WORKOUTS DEDICATED TAB RENDER */}
+      {activeSearchTab === "workouts" && (
+        <div className="space-y-6">
+          {(searchQuery || selectedMuscleGroup !== "All" || selectedDifficulty !== "All") && (
+            <div className="p-4 rounded-xl border border-red-100 bg-red-50/20 text-xs text-[#C0392B] font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+              <div>
+                <span className="uppercase tracking-widest text-[9px] block text-[#C0392B]/70 font-mono">Curated Workout Routines</span>
+                <span className="text-sm font-black">
+                  {filteredWorkouts.length} {filteredWorkouts.length === 1 ? "routine" : "routines"} matching criteria
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedMuscleGroup("All");
+                  setSelectedDifficulty("All");
+                }}
+                className="text-[10px] bg-white hover:bg-red-50 border border-[#C0392B]/25 py-1 px-2.5 rounded-md tracking-wider font-mono font-bold text-[#C0392B] transition-colors cursor-pointer self-start sm:self-auto"
+              >
+                Reset Filters
+              </button>
+            </div>
+          )}
 
+          {filteredWorkouts.length === 0 ? (
+            <div className="p-12 text-center border-2 border-dashed border-red-100 rounded-2xl bg-white shadow-xs">
+              <HelpCircle className="w-10 h-10 text-[#C0392B] mx-auto mb-3" />
+              <h4 className="text-sm font-bold text-[#C0392B]">No workout routines match the criteria</h4>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                Try searching for muscle groups like "Chest", "Legs", or "Core", or check individual exercises.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedMuscleGroup("All");
+                  setSelectedDifficulty("All");
+                  setActiveSearchTab("all");
+                }}
+                className="mt-4 px-5 py-2 bg-[#C0392B] hover:bg-[#A82E22] text-white text-[10px] font-bold rounded-lg uppercase tracking-widest font-mono transition-all cursor-pointer"
+              >
+                Show All Workouts
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {filteredWorkouts.map((workout) => renderWorkoutCard(workout))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 7. WEIGHT LOSS MEAL PLANS TAB (Visible strictly when searching weight loss) */}
       {activeSearchTab === "mealplans" && (

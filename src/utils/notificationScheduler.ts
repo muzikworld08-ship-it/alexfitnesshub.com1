@@ -266,3 +266,178 @@ export async function dispatchMorningWorkoutEmailNotification(
   return { sent: false, message: "No workout notifications due for today." };
 }
 
+export interface ProgramEmailDeliveryParams {
+  userEmail: string;
+  userName?: string;
+  programId: string;
+  programName: string;
+  completedDay?: number;
+  nextDay: number;
+  totalDays: number;
+  progressPercent?: number;
+  completedWorkoutCount?: number;
+  lastStoppedWorkoutName?: string;
+  forceSend?: boolean;
+}
+
+/**
+ * Delivers program workout notifications directly to the user's email address
+ * based on their enrolled program, tracking progress, and next scheduled day.
+ */
+export async function deliverProgramNotificationToEmail(
+  params: ProgramEmailDeliveryParams
+): Promise<{ sent: boolean; message: string }> {
+  const {
+    userEmail,
+    userName,
+    programId,
+    programName,
+    completedDay = 0,
+    nextDay,
+    totalDays,
+    progressPercent = 0,
+    completedWorkoutCount = 0,
+    lastStoppedWorkoutName,
+    forceSend = false
+  } = params;
+
+  if (!userEmail || !userEmail.includes("@")) {
+    return { sent: false, message: "No valid user email provided." };
+  }
+
+  const todayStr = getFormattedDate(new Date());
+  const emailSentKey = `alexfit_email_sent_${programId}_d${nextDay}_${todayStr}`;
+  
+  // Prevent duplicate sending on the same day unless forceSend is requested
+  if (!forceSend && typeof localStorage !== "undefined" && localStorage.getItem(emailSentKey)) {
+    return { sent: true, message: `Notification already delivered to ${userEmail} today.` };
+  }
+
+  const recipientName = userName || userEmail.split("@")[0] || "Athlete";
+  const workoutTitle = lastStoppedWorkoutName || `Day ${nextDay} Power Protocol`;
+  const calculatedPercent = progressPercent || Math.min(100, Math.round((nextDay / totalDays) * 100));
+
+  const subject = `🔥 Workout Alert: Day ${nextDay} of ${programName} is Ready!`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f3f4f6;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 32px 20px; background-color: #0f172a; border-radius: 16px; border: 1px solid #1e293b; margin-top: 20px; margin-bottom: 20px;">
+          
+          <!-- Header Logo & Subtitle -->
+          <div style="text-align: center; border-bottom: 2px solid #ef4444; padding-bottom: 20px; margin-bottom: 24px;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 900; letter-spacing: -0.5px;">
+              ALEX<span style="color: #ef4444;">FITNESSHUB</span>
+            </h1>
+            <p style="color: #94a3b8; font-size: 11px; margin: 6px 0 0; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;">
+              ATHLETE PROGRAM TRACKING &amp; WORKOUT DISPATCH
+            </p>
+          </div>
+
+          <!-- Hero Greeting -->
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="background-color: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; padding: 6px 14px; border-radius: 9999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+              ${programName}
+            </span>
+            <h2 style="color: #ffffff; font-size: 22px; font-weight: 800; margin: 16px 0 8px;">
+              Good Day, ${recipientName}!
+            </h2>
+            <p style="color: #94a3b8; font-size: 14px; line-height: 1.5; margin: 0;">
+              Your scheduled program workout is ready. Consistent execution is the bridge between goals and reality.
+            </p>
+          </div>
+
+          <!-- Program & Tracking Summary Card -->
+          <div style="background-color: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; margin-bottom: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 12px; margin-bottom: 14px;">
+              <div>
+                <p style="margin: 0; font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Next Scheduled Session</p>
+                <p style="margin: 4px 0 0; font-size: 16px; color: #ffffff; font-weight: 800;">Day ${nextDay} of ${totalDays}</p>
+              </div>
+              <div style="text-align: right;">
+                <p style="margin: 0; font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Program Progress</p>
+                <p style="margin: 4px 0 0; font-size: 16px; color: #22c55e; font-weight: 800;">${calculatedPercent}%</p>
+              </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div style="width: 100%; background-color: #0f172a; height: 8px; border-radius: 9999px; overflow: hidden; margin-bottom: 16px;">
+              <div style="background: linear-gradient(90deg, #ef4444, #f97316); width: ${calculatedPercent}%; height: 100%; border-radius: 9999px;"></div>
+            </div>
+
+            <!-- Session Details -->
+            <div style="background-color: #0f172a; border-radius: 8px; padding: 12px 14px; border-left: 4px solid #ef4444;">
+              <p style="margin: 0; font-size: 12px; color: #ef4444; font-weight: 700; text-transform: uppercase;">Session Focus</p>
+              <p style="margin: 4px 0 0; font-size: 14px; color: #ffffff; font-weight: 700;">${workoutTitle}</p>
+              ${completedDay > 0 ? `<p style="margin: 4px 0 0; font-size: 12px; color: #94a3b8;">Completed checkpoint: Day ${completedDay}</p>` : ""}
+            </div>
+          </div>
+
+          <!-- Direct Execution Button -->
+          <div style="text-align: center; margin: 32px 0 24px;">
+            <a href="https://alexfitnesshub.com" style="background-color: #ef4444; color: #ffffff; padding: 16px 32px; font-size: 15px; font-weight: 800; text-decoration: none; border-radius: 10px; display: inline-block; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);">
+              Start Day ${nextDay} Workout Now
+            </a>
+          </div>
+
+          <!-- Athlete Directives & Nutrition Tips -->
+          <div style="background-color: #182234; border-radius: 10px; padding: 16px; border: 1px dashed #3b82f6; margin-bottom: 24px;">
+            <p style="margin: 0 0 8px; font-size: 13px; color: #60a5fa; font-weight: 700; text-transform: uppercase;">
+              ⚡ Athlete Performance Checklist
+            </p>
+            <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+              <li>Drink 400ml - 500ml water 20 minutes before workout initiation</li>
+              <li>Focus on full range of motion over sheer movement velocity</li>
+              <li>Log your weight sets and reps to keep your progressive overload on target</li>
+            </ul>
+          </div>
+
+          <!-- Footer -->
+          <div style="border-top: 1px solid #1e293b; padding-top: 20px; text-align: center; color: #64748b; font-size: 12px; line-height: 1.5;">
+            <p style="margin: 0;">Delivered directly to ${userEmail} according to your program and tracking schedule.</p>
+            <p style="margin: 4px 0 0;">Manage alert frequency anytime in the Hamburger Menu > Notification Settings.</p>
+            <p style="margin: 12px 0 0; color: #475569;">AlexFitnessHub &copy; 2026. All rights reserved.</p>
+          </div>
+
+        </div>
+      </body>
+    </html>
+  `;
+
+  try {
+    const res = await fetch("/api/resend/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: userEmail,
+        subject,
+        html,
+        programName,
+        dayNumber: nextDay
+      })
+    });
+
+    if (res.ok) {
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(emailSentKey, new Date().toISOString());
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("alexfit:email_notification_delivered", {
+          detail: { email: userEmail, programName, nextDay, timestamp: Date.now() }
+        }));
+      }
+      return { sent: true, message: `Delivered workout notification to ${userEmail}` };
+    }
+  } catch (err) {
+    console.warn("[deliverProgramNotificationToEmail] Failed:", err);
+  }
+
+  return { sent: false, message: "Could not send email. Please check network connectivity." };
+}
+

@@ -61,6 +61,8 @@ export interface WorkoutReminderSchedule {
   soundEnabled: boolean;
   programPreference?: string; // e.g. "90_day_immortal" | "daily_plan" | "all"
   customLabel?: string;
+  emailNotificationsEnabled?: boolean;
+  notificationEmail?: string;
   lastFiredDate?: string; // "YYYY-MM-DD"
   lastFiredTimestamp?: number;
 }
@@ -231,6 +233,8 @@ export interface ProgramProgressItem {
   imageUrl?: string;
   viewName?: string; // view to navigate to e.g. "90-day-challenge", "belly-fat-shred", "academy", etc.
   enrolled: boolean;
+  hasJoined?: boolean;
+  enrolledByUser?: boolean;
   enrolledAt: string;
   currentDay: number;
   currentWeek?: number;
