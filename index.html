@@ -42,10 +42,10 @@
 
     <script async src="https://js.paystack.co/v2/inline.js"></script>
     <script>
-      // Build Hash Version Identifier
-      window.__APP_BUILD_ID__ = "2.6.0-20260903-RELEASE";
+      // Build Hash Version Identifier - Unified Single Codebase
+      window.__APP_BUILD_ID__ = "3.0.0-20260916-UNIFIED-RELEASE";
 
-      // Service Worker Handling: avoid cache conflicts in dev/preview environments
+      // Service Worker Handling: ensure immediate update across all mobile devices
       if ("serviceWorker" in navigator) {
         const isDevHost = window.location.hostname === "localhost" || 
                           window.location.hostname.includes("ais-dev") ||
@@ -61,6 +61,8 @@
         } else {
           window.addEventListener("load", () => {
             navigator.serviceWorker.register("/service-worker.js").then((registration) => {
+              // Immediately check for updates so mobile devices get newest code immediately
+              registration.update();
               console.log("[Service Worker] Registered with scope:", registration.scope);
             }).catch((err) => {
               console.warn("[Service Worker] Registration failed:", err);

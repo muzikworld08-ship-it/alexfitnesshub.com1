@@ -1,10 +1,8 @@
 // ALEX FITNESS HUB Service Worker
-// Version: alexfitnesshub-cache-v1
+// Version: alexfitnesshub-cache-v2-unified
 
-const CACHE_NAME = "alexfitnesshub-cache-v1";
+const CACHE_NAME = "alexfitnesshub-cache-v2-unified";
 const urlsToCache = [
-  "/",
-  "/index.html",
   "/manifest.json",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
@@ -45,16 +43,25 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  // Let API and WebSocket calls pass directly through to network
+  // 1. Let API and WebSocket calls pass directly through to network
   if (event.request.url.includes("/api/") || event.request.url.startsWith("ws:") || event.request.url.startsWith("wss:")) {
     return;
   }
 
-  // Handle standard document navigations and static requests
+  // 2. Navigation / Document requests: ALWAYS network first so user gets the latest single unified codebase instantly
+  if (event.request.mode === "navigate" || event.request.destination === "document" || event.request.headers.get("accept")?.includes("text/html")) {
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => caches.match("/index.html"))
+    );
+    return;
+  }
+
+  // Handle standard static assets with stale-while-revalidate
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Fetch in background to update cache for next time (stale-while-revalidate for static assets)
+        // Fetch in background to update cache for next time
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200 && event.request.method === "GET") {
             const responseToCache = networkResponse.clone();
@@ -82,7 +89,6 @@ self.addEventListener("fetch", (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // If network fails (offline), fallback to index.html for navigation requests
           if (event.request.mode === "navigate" || event.request.destination === "document") {
             return caches.match("/index.html");
           }

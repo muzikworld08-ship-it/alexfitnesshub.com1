@@ -128,18 +128,27 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     ? getSupabaseSrcSet(src, targetWidths, options)
     : undefined;
 
+  const isGifMedia = Boolean(
+    (src && (src.toLowerCase().includes(".gif") || src.includes("giphy.com") || src.includes("giphy.net"))) ||
+    className?.includes("workout-gif")
+  );
+
   const containerStyle: React.CSSProperties = {
     position: "relative",
-    display: "inline-block",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
     overflow: "hidden",
-    ...(aspectRatio ? { aspectRatio } : {}),
+    width: "100%",
+    height: "100%",
+    ...(aspectRatio && aspectRatio !== "auto" ? { aspectRatio } : {}),
     ...style,
   };
 
   return (
     <div className={`optimized-image-container ${className}`} style={containerStyle}>
       {/* Non-shifting skeleton placeholder */}
-      {showSkeleton && !isLoaded && (
+      {showSkeleton && !isLoaded && !isGifMedia && (
         <div
           className="absolute inset-0 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-[inherit] z-10 flex items-center justify-center transition-opacity duration-300"
           aria-hidden="true"
@@ -164,8 +173,8 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           referrerPolicy={referrerPolicy}
           onError={handleImageError}
           onLoad={handleImageLoad}
-          className={`w-full h-full ${className?.includes('object-contain') ? 'object-contain' : 'object-cover'} transition-opacity duration-200 ${
-            isLoaded ? "opacity-100" : "opacity-0"
+          className={`w-full h-full ${isGifMedia || className?.includes('object-contain') ? 'object-contain' : 'object-cover'} transition-opacity duration-200 ${
+            isGifMedia || isLoaded ? "opacity-100" : "opacity-0"
           }`}
           {...restProps}
         />

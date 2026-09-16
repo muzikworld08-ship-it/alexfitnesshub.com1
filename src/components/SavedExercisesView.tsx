@@ -236,13 +236,13 @@ export default function SavedExercisesView({ setView }: SavedExercisesViewProps)
                 className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white border-2 border-red-100 hover:border-[#C0392B] hover:shadow-lg transition-all"
               >
                 {/* Visual Media Header Block */}
-                <div className="relative w-full">
+                <div className="relative w-full aspect-[16/10] bg-slate-50/60 overflow-hidden flex items-center justify-center">
                   <WorkoutVisual 
                     exerciseId={ex.id}
                     category={ex.category} 
                     muscleGroups={ex.muscleGroups} 
                     exerciseName={ex.name} 
-                    className="w-full" 
+                    className="w-full h-full object-contain" 
                     customMediaUrl={ex.customMediaUrl}
                     customMediaType={ex.customMediaType}
                     isCard={true}

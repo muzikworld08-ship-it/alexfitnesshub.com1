@@ -3773,13 +3773,13 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                               className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all"
                             >
                             {/* Visual Media Block */}
-                            <div className="relative w-full">
+                            <div className="relative w-full aspect-[16/10] bg-slate-50/60 overflow-hidden flex items-center justify-center">
                               <WorkoutVisual 
                                 exerciseId={ex.id}
                                 category={ex.category} 
                                 muscleGroups={ex.muscleGroups} 
                                 exerciseName={ex.name} 
-                                className="w-full" 
+                                className="w-full h-full object-contain" 
                                 customMediaUrl={ex.customMediaUrl}
                                 customMediaType={ex.customMediaType}
                                 isCard={true}
@@ -3931,13 +3931,13 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                         className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all"
                       >
                       {/* Visual Media Block */}
-                      <div className="relative w-full">
+                      <div className="relative w-full aspect-[16/10] bg-slate-50/60 overflow-hidden flex items-center justify-center">
                         <WorkoutVisual 
                           exerciseId={ex.id}
                           category={ex.category} 
                           muscleGroups={ex.muscleGroups} 
                           exerciseName={ex.name} 
-                          className="w-full" 
+                          className="w-full h-full object-contain" 
                           customMediaUrl={ex.customMediaUrl}
                           customMediaType={ex.customMediaType}
                           isCard={true}
