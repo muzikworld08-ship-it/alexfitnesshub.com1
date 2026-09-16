@@ -204,7 +204,16 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
         });
       }
 
+      let frameCount = 0;
+      const maxFrames = 180; // ~3 seconds at 60fps
+
       const drawConfetti = () => {
+        frameCount++;
+        if (frameCount > maxFrames) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          return;
+        }
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         let active = false;
 
@@ -216,10 +225,11 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
 
           if (p.y <= canvas.height) {
             active = true;
-          } else {
-            // Reset to top
+          } else if (frameCount < maxFrames - 40) {
+            // Only reset if well before expiration
             p.y = -20;
             p.x = Math.random() * canvas.width;
+            active = true;
           }
 
           ctx.beginPath();
@@ -230,8 +240,10 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
           ctx.stroke();
         });
 
-        if (active) {
+        if (active && frameCount <= maxFrames) {
           animationFrameRef.current = requestAnimationFrame(drawConfetti);
+        } else {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
       };
 

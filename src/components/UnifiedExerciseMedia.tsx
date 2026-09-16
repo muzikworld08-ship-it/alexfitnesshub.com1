@@ -29,8 +29,10 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
   // Search for the centralized exercise matching ID or Name cleanly
   const exercise = findMatchingExercise(exercises, exerciseId, exerciseName);
 
+  const canonicalName = exercise?.name || exerciseName;
+
   const defaultFallbackUrl = useMemo(() => {
-    return getExerciseGifUrl(exerciseName || exerciseId || exercise?.name || "");
+    return getExerciseGifUrl(exercise?.name || exerciseName || exerciseId || "");
   }, [exerciseName, exerciseId, exercise?.name]);
 
   const rawMediaUrl = exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl || defaultFallbackUrl;
@@ -96,7 +98,7 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
       <div className={`flex flex-col items-center justify-center bg-transparent workout-gif-frameless ${className}`}>
         <Dumbbell className="w-5 h-5 text-slate-400 animate-pulse" />
         <span className="text-[10px] font-mono font-bold text-slate-400 mt-2 uppercase tracking-tight text-center px-2 truncate w-full">
-          {exerciseName || exercise?.name || "EXERCISE DEMO"}
+          {canonicalName || "EXERCISE DEMO"}
         </span>
       </div>
     );

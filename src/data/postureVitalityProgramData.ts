@@ -832,7 +832,7 @@ export const POSTURE_GLUTE_ACTIVATION_EXERCISES: Omit<ChallengeExerciseItem, "id
     programName: "Reclaim Your Posture & Vitality",
     category: "Glute activation",
     muscleGroup: ["Glutes"],
-    exerciseName: "Frog Pumps (Feet Soles Together)",
+    exerciseName: "Frog Pump Glute Burner",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 3,

@@ -1633,7 +1633,7 @@ export const WOMEN_GLUTES_EXERCISES: Omit<ChallengeExerciseItem, "id" | "dayNumb
     programName: "Women Confidence Program",
     category: "Glutes",
     muscleGroup: ["Glutes", "Lower body"],
-    exerciseName: "Frog Pumps",
+    exerciseName: "Frog Pump Glute Burner",
     equipment: "Yoga Mat & Dumbbell",
     difficulty: "Beginner",
     sets: 3,

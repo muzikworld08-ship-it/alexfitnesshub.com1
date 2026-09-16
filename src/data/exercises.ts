@@ -98,6 +98,7 @@ export function getExerciseGifUrl(name: string, category: string = ""): string {
     nameLower.includes("hip thrust") ||
     (nameLower.includes("kickback") && nameLower.includes("glute")) ||
     nameLower.includes("frog pump") ||
+    nameLower.includes("clamshell") ||
     nameLower.includes("pull-through") ||
     nameLower.includes("kas glute") ||
     nameLower.includes("glute walk") ||
@@ -622,6 +623,18 @@ const RAW_EXERCISES_DATA: RawExerciseData[] = [
   { name: "Plank Hip Dips", displayName: "Plank Hip Dips", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Bodyweight"], primary: "Obliques", secondary: ["Core"], diff: "Intermediate" },
   { name: "Bicycle Crunches", displayName: "Bicycle Crunches", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Bodyweight"], primary: "Core", secondary: ["Abs", "Obliques"], diff: "Beginner" },
   { name: "Stomach Vacuum & Core Bracing", displayName: "Stomach Vacuum & Core Bracing", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Bodyweight"], primary: "Core", secondary: ["Transverse Abdominis"], diff: "Beginner" },
+  { name: "Banded Clamshells with Abduction", displayName: "Banded Clamshells with Abduction", category: "Home Workouts", sub: "Women Confidence Program", equipment: ["Resistance Band"], primary: "Glutes", secondary: ["Hip Abductors"], diff: "Beginner" },
+  { name: "Prone Superman Holds", displayName: "Prone Superman Holds", category: "Home Workouts", sub: "Core", equipment: ["Bodyweight"], primary: "Lower Back", secondary: ["Glutes", "Hamstrings"], diff: "Beginner" },
+  { name: "Hand Walkout Inchworms", displayName: "Hand Walkout Inchworms", category: "Home Workouts", sub: "Full Body", equipment: ["Bodyweight"], primary: "Core", secondary: ["Shoulders", "Hamstrings"], diff: "Intermediate" },
+  { name: "Dynamic Cardio Butt Kicks", displayName: "Dynamic Cardio Butt Kicks", category: "Cardio Workouts", sub: "HIIT Cardio", equipment: ["Bodyweight"], primary: "Cardio", secondary: ["Hamstrings", "Quads"], diff: "Beginner" },
+  { name: "Lateral Speed Skater Hops", displayName: "Lateral Speed Skater Hops", category: "Cardio Workouts", sub: "HIIT Cardio", equipment: ["Bodyweight"], primary: "Cardio", secondary: ["Glutes", "Quads"], diff: "Intermediate" },
+  { name: "Low-Impact Cardio Step Jacks", displayName: "Low-Impact Cardio Step Jacks", category: "Cardio Workouts", sub: "Aerobic Cardio", equipment: ["Bodyweight"], primary: "Cardio", secondary: ["Calves", "Shoulders"], diff: "Beginner" },
+  { name: "Standing Knee-to-Elbow Oblique Crunches", displayName: "Standing Knee-to-Elbow Oblique Crunches", category: "Home Workouts", sub: "Core", equipment: ["Bodyweight"], primary: "Obliques", secondary: ["Core", "Hip Flexors"], diff: "Beginner" },
+  { name: "Quadruped Thoracic Spine Rotations", displayName: "Quadruped Thoracic Spine Rotations", category: "Home Workouts", sub: "Mobility", equipment: ["Bodyweight"], primary: "Upper Back", secondary: ["Spine", "Shoulders"], diff: "Beginner" },
+  { name: "Standing Unilateral Quad Stretch", displayName: "Standing Unilateral Quad Stretch", category: "Home Workouts", sub: "Mobility", equipment: ["Bodyweight"], primary: "Quadriceps", secondary: ["Hip Flexors"], diff: "Beginner" },
+  { name: "Dumbbell Pullover", displayName: "Dumbbell Pullover", category: "Gym Workouts", sub: "Back", equipment: ["Dumbbell", "Bench"], primary: "Back", secondary: ["Lats", "Chest"], diff: "Intermediate" },
+  { name: "Lying Leg Curls", displayName: "Lying Leg Curls", category: "Gym Workouts", sub: "Legs", equipment: ["Leg Curl Machine"], primary: "Hamstrings", secondary: ["Calves"], diff: "Intermediate" },
+  { name: "Sumo Deadlift", displayName: "Sumo Deadlift", category: "Gym Workouts", sub: "Legs", equipment: ["Barbell"], primary: "Glutes", secondary: ["Hamstrings", "Adductors", "Lower Back"], diff: "Advanced" },
 
   // ================= 60 NEW EXPANSION EXERCISES ACROSS ALL CATEGORIES =================
   // --- CHEST & UPPER BODY PRESSING ---
@@ -699,7 +712,51 @@ const RAW_EXERCISES_DATA: RawExerciseData[] = [
   { name: "Couch Stretch for Tight Hip Flexors", displayName: "Couch Stretch for Tight Hip Flexors", category: "Home Workouts", sub: "Stretching", equipment: ["Wall / Couch", "Mat"], primary: "Mobility", secondary: ["Quadriceps", "Glutes"], diff: "Beginner" },
   { name: "Pigeon Pose with Active Thoracic Reach", displayName: "Pigeon Pose with Active Thoracic Reach", category: "Home Workouts", sub: "Stretching", equipment: ["Mat"], primary: "Mobility", secondary: ["Glutes", "Lower Back"], diff: "Beginner" },
   { name: "Shin Box Hip Internal-External Rotations", displayName: "Shin Box Hip Internal-External Rotations", category: "Home Workouts", sub: "Warm-up", equipment: ["Mat"], primary: "Mobility", secondary: ["Glutes", "Lower Back"], diff: "Beginner" },
-  { name: "Pike Push Ups", displayName: "Pike Push Ups", category: "Calisthenics Workouts", sub: "Beginner Calisthenics", equipment: ["Bodyweight"], primary: "Shoulders", secondary: ["Triceps", "Upper Chest"], diff: "Intermediate" }
+  { name: "Pike Push Ups", displayName: "Pike Push Ups", category: "Calisthenics Workouts", sub: "Beginner Calisthenics", equipment: ["Bodyweight"], primary: "Shoulders", secondary: ["Triceps", "Upper Chest"], diff: "Intermediate" },
+
+  // --- POSTURE, VITALITY & MOBILITY RESTORATION ---
+  { name: "Wall Angels (Flat Back & Scapular Slide)", displayName: "Wall Angels (Flat Back & Scapular Slide)", category: "Home Workouts", sub: "Posture Correction", equipment: ["Bodyweight", "Wall"], primary: "Upper Back", secondary: ["Shoulders", "Posture"], diff: "Beginner" },
+  { name: "Cervical Retraction Chin Tucks", displayName: "Cervical Retraction Chin Tucks", category: "Home Workouts", sub: "Posture Correction", equipment: ["Bodyweight"], primary: "Neck", secondary: ["Upper Back", "Posture"], diff: "Beginner" },
+  { name: "Scapular Push-Up Protraction/Retraction", displayName: "Scapular Push-Up Protraction/Retraction", category: "Calisthenics Workouts", sub: "Posture Correction", equipment: ["Bodyweight"], primary: "Upper Back", secondary: ["Serratus Anterior", "Core"], diff: "Beginner" },
+  { name: "Doorway Scapular Retraction & Hold", displayName: "Doorway Scapular Retraction & Hold", category: "Home Workouts", sub: "Posture Correction", equipment: ["Bodyweight", "Doorframe"], primary: "Upper Back", secondary: ["Chest", "Posture"], diff: "Beginner" },
+  { name: "Quadruped Scapular Clock Taps", displayName: "Quadruped Scapular Clock Taps", category: "Home Workouts", sub: "Posture Correction", equipment: ["Mat"], primary: "Upper Back", secondary: ["Core", "Shoulders"], diff: "Beginner" },
+  { name: "Standing Posture Wall Reset Alignment", displayName: "Standing Posture Wall Reset Alignment", category: "Home Workouts", sub: "Posture Correction", equipment: ["Wall"], primary: "Posture", secondary: ["Spine", "Core"], diff: "Beginner" },
+  { name: "Upper Trapezius & Levator Scapulae Active Release", displayName: "Upper Trapezius & Levator Scapulae Active Release", category: "Home Workouts", sub: "Stretching", equipment: ["Bodyweight"], primary: "Neck", secondary: ["Trapezius"], diff: "Beginner" },
+  { name: "Doorframe Pectoral Stretch (90-Degree Angle)", displayName: "Doorframe Pectoral Stretch (90-Degree Angle)", category: "Home Workouts", sub: "Stretching", equipment: ["Doorframe"], primary: "Chest", secondary: ["Shoulders"], diff: "Beginner" },
+  { name: "Doorframe High Pectoral Minor Stretch (120 Degrees)", displayName: "Doorframe High Pectoral Minor Stretch (120 Degrees)", category: "Home Workouts", sub: "Stretching", equipment: ["Doorframe"], primary: "Chest", secondary: ["Shoulders"], diff: "Beginner" },
+  { name: "Foam Roller Longitudinal Chest Expander", displayName: "Foam Roller Longitudinal Chest Expander", category: "Home Workouts", sub: "Stretching", equipment: ["Foam Roller", "Mat"], primary: "Chest", secondary: ["Upper Back"], diff: "Beginner" },
+  { name: "Sphinx Pose Symmetrical Chest Extension", displayName: "Sphinx Pose Symmetrical Chest Extension", category: "Home Workouts", sub: "Stretching", equipment: ["Mat"], primary: "Chest", secondary: ["Spine", "Lower Back"], diff: "Beginner" },
+  { name: "Hip 90/90 Kinetic Switch & Flow", displayName: "Hip 90/90 Kinetic Switch & Flow", category: "Home Workouts", sub: "Warm-up", equipment: ["Mat"], primary: "Hips", secondary: ["Glutes", "Mobility"], diff: "Beginner" },
+  { name: "Frog Pose Deep Adductor & Groin Opener", displayName: "Frog Pose Deep Adductor & Groin Opener", category: "Home Workouts", sub: "Stretching", equipment: ["Mat"], primary: "Hips", secondary: ["Adductors", "Groin"], diff: "Beginner" },
+  { name: "Deep Primal Squat Pry & Hold", displayName: "Deep Primal Squat Pry & Hold", category: "Home Workouts", sub: "Warm-up", equipment: ["Bodyweight"], primary: "Hips", secondary: ["Glutes", "Ankles"], diff: "Beginner" },
+  { name: "Cossack Squat Dynamic Lateral Shift", displayName: "Cossack Squat Dynamic Lateral Shift", category: "Home Workouts", sub: "Legs", equipment: ["Bodyweight"], primary: "Quadriceps", secondary: ["Adductors", "Glutes"], diff: "Intermediate" },
+  { name: "Lying Figure-4 Piriformis Stretch", displayName: "Lying Figure-4 Piriformis Stretch", category: "Home Workouts", sub: "Stretching", equipment: ["Mat"], primary: "Glutes", secondary: ["Hips"], diff: "Beginner" },
+  { name: "Standing Hip CARs (Controlled Articular Rotations)", displayName: "Standing Hip CARs (Controlled Articular Rotations)", category: "Home Workouts", sub: "Warm-up", equipment: ["Bodyweight"], primary: "Hips", secondary: ["Core"], diff: "Beginner" },
+  { name: "Kouch Stretch (Rear Foot Elevated on Wall)", displayName: "Kouch Stretch (Rear Foot Elevated on Wall)", category: "Home Workouts", sub: "Stretching", equipment: ["Wall", "Mat"], primary: "Quadriceps", secondary: ["Hip Flexors"], diff: "Beginner" },
+  { name: "Butterfly Adductor Gravity Release", displayName: "Butterfly Adductor Gravity Release", category: "Home Workouts", sub: "Stretching", equipment: ["Mat"], primary: "Hips", secondary: ["Adductors"], diff: "Beginner" },
+  { name: "Cobra to Downward Dog Spinal Transition", displayName: "Cobra to Downward Dog Spinal Transition", category: "Home Workouts", sub: "Stretching", equipment: ["Mat"], primary: "Spine", secondary: ["Hamstrings", "Chest"], diff: "Beginner" },
+  { name: "Prone Swimmers Segmental Extension", displayName: "Prone Swimmers Segmental Extension", category: "Home Workouts", sub: "Posture Correction", equipment: ["Mat"], primary: "Upper Back", secondary: ["Shoulders", "Spine"], diff: "Beginner" },
+  { name: "Standing Side Bend & Intercostal Reach", displayName: "Standing Side Bend & Intercostal Reach", category: "Home Workouts", sub: "Stretching", equipment: ["Bodyweight"], primary: "Spine", secondary: ["Obliques", "Lats"], diff: "Beginner" },
+  { name: "Full Spinal Roll-Down & Slow Unfurl", displayName: "Full Spinal Roll-Down & Slow Unfurl", category: "Home Workouts", sub: "Stretching", equipment: ["Bodyweight"], primary: "Spine", secondary: ["Hamstrings"], diff: "Beginner" },
+  { name: "Quadruped Donkey Kickback", displayName: "Quadruped Donkey Kickback", category: "Home Workouts", sub: "Legs", equipment: ["Mat"], primary: "Glutes", secondary: ["Hamstrings", "Core"], diff: "Beginner" },
+  { name: "Fire Hydrant Hip Abductions", displayName: "Fire Hydrant Hip Abductions", category: "Home Workouts", sub: "Legs", equipment: ["Mat"], primary: "Glutes", secondary: ["Hips"], diff: "Beginner" },
+  { name: "Prone Glute Lift (Straight Leg Pulse)", displayName: "Prone Glute Lift (Straight Leg Pulse)", category: "Home Workouts", sub: "Legs", equipment: ["Mat"], primary: "Glutes", secondary: ["Lower Back"], diff: "Beginner" },
+  { name: "Quadruped Rainbow Leg Arcs", displayName: "Quadruped Rainbow Leg Arcs", category: "Home Workouts", sub: "Legs", equipment: ["Mat"], primary: "Glutes", secondary: ["Hips", "Core"], diff: "Beginner" },
+  { name: "Standing Whole-Body Energizing Flow", displayName: "Standing Whole-Body Energizing Flow", category: "Home Workouts", sub: "Warm-up", equipment: ["Bodyweight"], primary: "Full Body", secondary: ["Cardio"], diff: "Beginner" },
+  { name: "Neck Joint 8-Directional Gentle Range", displayName: "Neck Joint 8-Directional Gentle Range", category: "Home Workouts", sub: "Stretching", equipment: ["Bodyweight"], primary: "Neck", secondary: ["Trapezius"], diff: "Beginner" },
+  { name: "Shoulder CARs Controlled Large Circles", displayName: "Shoulder CARs Controlled Large Circles", category: "Home Workouts", sub: "Warm-up", equipment: ["Bodyweight"], primary: "Shoulders", secondary: ["Upper Back"], diff: "Beginner" },
+  { name: "Dynamic Torso Arm-Swing Rotations (Qi Gong Style)", displayName: "Dynamic Torso Arm-Swing Rotations (Qi Gong Style)", category: "Home Workouts", sub: "Warm-up", equipment: ["Bodyweight"], primary: "Spine", secondary: ["Core"], diff: "Beginner" },
+  { name: "Standing Quadriceps & Iliopsoas Balance Reach", displayName: "Standing Quadriceps & Iliopsoas Balance Reach", category: "Home Workouts", sub: "Stretching", equipment: ["Bodyweight"], primary: "Quadriceps", secondary: ["Hip Flexors"], diff: "Beginner" },
+  { name: "Hamstring Dynamic Sweeps", displayName: "Hamstring Dynamic Sweeps", category: "Home Workouts", sub: "Warm-up", equipment: ["Bodyweight"], primary: "Hamstrings", secondary: ["Calves"], diff: "Beginner" },
+  { name: "Wrist, Hand & Forearm Desk Decompression", displayName: "Wrist, Hand & Forearm Desk Decompression", category: "Home Workouts", sub: "Stretching", equipment: ["Bodyweight"], primary: "Forearms", secondary: ["Wrists"], diff: "Beginner" },
+  { name: "Pelvic Clock & Tilts (Supine)", displayName: "Pelvic Clock & Tilts (Supine)", category: "Home Workouts", sub: "Posture Correction", equipment: ["Mat"], primary: "Core", secondary: ["Pelvis", "Lower Back"], diff: "Beginner" },
+  { name: "Side-Lying Ribcage Sternal Expansion", displayName: "Side-Lying Ribcage Sternal Expansion", category: "Home Workouts", sub: "Stretching", equipment: ["Mat"], primary: "Chest", secondary: ["Intercostals"], diff: "Beginner" },
+  { name: "Constructive Rest Position (Psoas Passive Release)", displayName: "Constructive Rest Position (Psoas Passive Release)", category: "Home Workouts", sub: "Stretching", equipment: ["Mat"], primary: "Hips", secondary: ["Lower Back"], diff: "Beginner" },
+  { name: "Abdominal Slider Pike / Knee Tucks", displayName: "Abdominal Slider Pike / Knee Tucks", category: "Home Workouts", sub: "Abs and Core", equipment: ["Sliders", "Mat"], primary: "Core", secondary: ["Abs", "Shoulders"], diff: "Intermediate" },
+  { name: "Dumbbell / Kettlebell Swing", displayName: "Dumbbell / Kettlebell Swing", category: "Cardio Workouts", sub: "HIIT Cardio", equipment: ["Kettlebell", "Dumbbell"], primary: "Glutes", secondary: ["Hamstrings", "Cardio"], diff: "Intermediate" },
+  { name: "Cobra to Downward Dog Restorative Flow", displayName: "Cobra to Downward Dog Restorative Flow", category: "Home Workouts", sub: "Stretching", equipment: ["Mat"], primary: "Spine", secondary: ["Hamstrings", "Chest"], diff: "Beginner" },
+  { name: "Thoracic Thread the Needle Stretch", displayName: "Thoracic Thread the Needle Stretch", category: "Home Workouts", sub: "Stretching", equipment: ["Mat"], primary: "Upper Back", secondary: ["Shoulders", "Spine"], diff: "Beginner" },
+  { name: "Hamstring Floss & Decompression", displayName: "Hamstring Floss & Decompression", category: "Home Workouts", sub: "Stretching", equipment: ["Mat"], primary: "Hamstrings", secondary: ["Sciatic Nerve", "Calves"], diff: "Beginner" }
 ];
 
 export function determineCategories(

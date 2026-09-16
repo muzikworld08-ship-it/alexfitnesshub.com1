@@ -810,11 +810,11 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Do not let hips roll backward; keep pelvis stacked perpendicular to floor."],
     beginnerModification: "Perform without resistance band.",
     advancedProgression: "Elevate both feet 3 inches off the ground while opening the knee.",
-    gifUrl: getExerciseGifUrl("Banded Clamshells")
+    gifUrl: getExerciseGifUrl("Banded Clamshells with Abduction")
   },
   "frog_pumps": {
-    id: "wc_frog_pumps",
-    name: "Frog Pumps",
+    id: "exercise-frog-pump-glute-burner",
+    name: "Frog Pump Glute Burner",
     muscleGroups: ["Gluteus Maximus", "Gluteus Medius"],
     targetMuscles: "High-Rep Glute Peak Squeeze & Burnout",
     sets: 3,
@@ -830,7 +830,7 @@ export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {
     formTips: ["Tuck chin to chest to prevent lumbar hyperextension."],
     beginnerModification: "Elevate upper back on a couch or step.",
     advancedProgression: "Place a dumbbell across hips for added load.",
-    gifUrl: getExerciseGifUrl("Frog Pumps")
+    gifUrl: getExerciseGifUrl("Frog Pump Glute Burner")
   }
 };
 

@@ -305,7 +305,16 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
       });
     }
 
+    let frameCount = 0;
+    const maxFrames = 200; // ~3.5 seconds
+
     const drawConfetti = () => {
+      frameCount++;
+      if (frameCount > maxFrames) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       let remaining = false;
 
@@ -327,8 +336,10 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
         ctx.stroke();
       });
 
-      if (remaining) {
+      if (remaining && frameCount <= maxFrames) {
         animationFrameRef.current = requestAnimationFrame(drawConfetti);
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     };
 
