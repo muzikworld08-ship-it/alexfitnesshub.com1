@@ -5768,7 +5768,9 @@ async function startServer() {
       setHeaders: (res, filePath) => {
         const lowerPath = filePath.toLowerCase();
         if (lowerPath.endsWith(".html") || filePath.includes("index.html") || lowerPath.endsWith("sw.js") || lowerPath.endsWith("service-worker.js") || lowerPath.endsWith("manifest.json")) {
-          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+          res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate, max-age=0, s-maxage=0");
+          res.setHeader("CDN-Cache-Control", "no-store");
+          res.setHeader("Cloudflare-CDN-Cache-Control", "no-store");
           res.setHeader("Surrogate-Control", "no-store");
           res.setHeader("Pragma", "no-cache");
           res.setHeader("Expires", "0");
@@ -5792,13 +5794,25 @@ async function startServer() {
         return res.status(404).json({ error: "API endpoint not found", path: req.path });
       }
 
+      // Critical fix: If a static asset was requested that does not exist in dist (e.g. stale chunk from old build),
+      // DO NOT return index.html! Returning HTML for a .js file causes SyntaxError: Unexpected token '<'
+      // and poisons mobile service worker caches. Return a clean 404 instead.
+      if (
+        req.path.startsWith("/assets/") ||
+        /\.(js|mjs|cjs|css|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|map)$/i.test(req.path)
+      ) {
+        return res.status(404).type("text/plain").send("Asset not found");
+      }
+
       // Only handle GET and HEAD requests for client-side routing
       if (req.method !== "GET" && req.method !== "HEAD") {
         return next();
       }
 
-      // Force index.html to NEVER be cached so users always receive the newest build mapping instantly
-      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+      // Force index.html to NEVER be cached by browser, mobile proxy, carrier, or CDN
+      res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate, max-age=0, s-maxage=0");
+      res.setHeader("CDN-Cache-Control", "no-store");
+      res.setHeader("Cloudflare-CDN-Cache-Control", "no-store");
       res.setHeader("Surrogate-Control", "no-store");
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");

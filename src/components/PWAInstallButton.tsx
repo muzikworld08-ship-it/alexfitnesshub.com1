@@ -11,11 +11,11 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
   className = "",
   variant = "primary"
 }) => {
-  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
+  const { isInstallable, isInstalled, isIOS, install, markInstalledManually } = usePWAInstall();
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const [installSuccess, setInstallSuccess] = useState(false);
 
-  // Suppress if already installed in standalone mode
+  // Suppress completely if already installed
   if (isInstalled) {
     return null;
   }
@@ -32,7 +32,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
     }
   };
 
-  // If browser does not support install prompt and is not iOS, keep it subtle or hidden
+  // If browser does not support install prompt and is not iOS, keep it hidden
   if (!isInstallable && !isIOS) {
     return null;
   }
@@ -59,7 +59,15 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           )}
         </button>
 
-        {showIOSGuide && <IOSGuideModal onClose={() => setShowIOSGuide(false)} />}
+        {showIOSGuide && (
+          <IOSGuideModal
+            onClose={() => setShowIOSGuide(false)}
+            onMarkInstalled={() => {
+              markInstalledManually();
+              setShowIOSGuide(false);
+            }}
+          />
+        )}
       </>
     );
   }
@@ -77,12 +85,20 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         <span>{isIOS ? "Add to Home Screen" : "Install App"}</span>
       </button>
 
-      {showIOSGuide && <IOSGuideModal onClose={() => setShowIOSGuide(false)} />}
+      {showIOSGuide && (
+        <IOSGuideModal
+          onClose={() => setShowIOSGuide(false)}
+          onMarkInstalled={() => {
+            markInstalledManually();
+            setShowIOSGuide(false);
+          }}
+        />
+      )}
     </>
   );
 };
 
-const IOSGuideModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+const IOSGuideModal: React.FC<{ onClose: () => void; onMarkInstalled: () => void }> = ({ onClose, onMarkInstalled }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 text-slate-900 relative space-y-4">
@@ -125,12 +141,20 @@ const IOSGuideModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           </div>
         </div>
 
-        <button
-          onClick={onClose}
-          className="w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs uppercase tracking-wider hover:bg-slate-800 transition cursor-pointer"
-        >
-          Got It
-        </button>
+        <div className="space-y-2 pt-2">
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs uppercase tracking-wider hover:bg-slate-800 transition cursor-pointer"
+          >
+            Got It
+          </button>
+          <button
+            onClick={onMarkInstalled}
+            className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-[11px] uppercase tracking-wider transition cursor-pointer"
+          >
+            Already Added To Home Screen
+          </button>
+        </div>
       </div>
     </div>
   );

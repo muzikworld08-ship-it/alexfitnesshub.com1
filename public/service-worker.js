@@ -1,19 +1,19 @@
 // ALEX FITNESS HUB Service Worker
-// Version: alexfitnesshub-cache-v2-unified
+// Version: alexfitnesshub-cache-v3.1-unified
 
-const CACHE_NAME = "alexfitnesshub-cache-v2-unified";
+const CACHE_NAME = "alexfitnesshub-cache-v3.1-unified";
 const urlsToCache = [
-  "/manifest.json",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/favicon.png"
 ];
 
 self.addEventListener("install", (event) => {
+  // Activate immediately without waiting for existing tabs to close
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log("[Service Worker] Pre-caching offline essentials:", urlsToCache);
+      console.log("[Service Worker] Pre-caching core offline assets:", urlsToCache);
       return cache.addAll(urlsToCache);
     }).catch((err) => {
       console.warn("[Service Worker] Cache pre-fill error:", err);
@@ -25,6 +25,11 @@ self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING" || (event.data && event.data.type === "SKIP_WAITING")) {
     self.skipWaiting();
   }
+  if (event.data === "CLEAR_CACHE" || (event.data && event.data.type === "CLEAR_CACHE")) {
+    caches.keys().then((names) => {
+      names.forEach((name) => caches.delete(name));
+    });
+  }
 });
 
 self.addEventListener("activate", (event) => {
@@ -32,67 +37,94 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((names) =>
       Promise.all(
         names.filter((n) => n !== CACHE_NAME).map((n) => {
-          console.log("[Service Worker] Removing old cache:", n);
+          console.log("[Service Worker] Purging outdated cache:", n);
           return caches.delete(n);
         })
       )
     ).then(() => {
+      // Take control of all clients immediately
       return self.clients.claim();
     })
   );
 });
 
 self.addEventListener("fetch", (event) => {
-  // 1. Let API and WebSocket calls pass directly through to network
-  if (event.request.url.includes("/api/") || event.request.url.startsWith("ws:") || event.request.url.startsWith("wss:")) {
+  const url = new URL(event.request.url);
+
+  // 1. Let API and WebSocket calls pass directly through to network without interception
+  if (url.pathname.startsWith("/api/") || url.protocol === "ws:" || url.protocol === "wss:") {
     return;
   }
 
-  // 2. Navigation / Document requests: ALWAYS network first so user gets the latest single unified codebase instantly
-  if (event.request.mode === "navigate" || event.request.destination === "document" || event.request.headers.get("accept")?.includes("text/html")) {
+  // 2. Service Worker scripts and Web App Manifest must NEVER be served from cache
+  if (
+    url.pathname.endsWith("/service-worker.js") ||
+    url.pathname.endsWith("/sw.js") ||
+    url.pathname.endsWith("/manifest.json")
+  ) {
+    return;
+  }
+
+  // 3. Navigation / Document requests: ALWAYS Network-First
+  // Guarantees users always receive the newest HTML and build chunk hashes on page load or reload
+  if (
+    event.request.mode === "navigate" ||
+    event.request.destination === "document" ||
+    event.request.headers.get("accept")?.includes("text/html")
+  ) {
     event.respondWith(
       fetch(event.request)
-        .catch(() => caches.match("/index.html"))
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", copy));
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // Fallback to cached index.html only when completely offline
+          return caches.match("/index.html");
+        })
     );
     return;
   }
 
-  // Handle standard static assets with stale-while-revalidate
+  // 4. Immutable hashed production assets (/assets/[name]-[hash].js/css)
+  // Because Vite hashes content into the filename, Cache-First is fast and safe.
+  if (url.pathname.startsWith("/assets/")) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && event.request.method === "GET") {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return networkResponse;
+        });
+      })
+    );
+    return;
+  }
+
+  // 5. General static files (icons, images): Stale-while-revalidate
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Fetch in background to update cache for next time
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && event.request.method === "GET") {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          }
-        }).catch(() => { /* offline - ignore */ });
-
-        return cachedResponse;
-      }
-
-      // If not in cache, fetch from network and cache successful GET responses
-      return fetch(event.request)
+      const fetchPromise = fetch(event.request)
         .then((networkResponse) => {
-          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== "basic" || event.request.method !== "GET") {
-            return networkResponse;
+          if (networkResponse && networkResponse.status === 200 && event.request.method === "GET") {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
           }
-
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-
           return networkResponse;
         })
         .catch(() => {
-          if (event.request.mode === "navigate" || event.request.destination === "document") {
-            return caches.match("/index.html");
-          }
+          /* ignore network errors when fetching in background */
         });
+
+      return cachedResponse || fetchPromise;
     })
   );
 });

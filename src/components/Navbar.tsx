@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "motion/react";
 import Logo from "./Logo";
 import { OptimizedImage } from "./OptimizedImage";
 import { PWAInstallButton } from "./PWAInstallButton";
+import { usePWAInstall } from "../hooks/usePWAInstall";
 import { useStore } from "../context/StoreContext";
 import WorkoutReminderModal from "./WorkoutReminderModal";
 import { 
@@ -31,6 +32,7 @@ interface NavbarProps {
 export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps) {
   const { user, logout, resetAllSettings } = useApp();
   const { cartCount, setIsCartOpen } = useStore();
+  const { isInstalled, isInstallable, isIOS } = usePWAInstall();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
@@ -230,7 +232,9 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
 
           {/* Right Control Bar (Auth + PWA Install + Prominent Hamburger Toggle) */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <PWAInstallButton variant="compact" className="hidden sm:inline-flex" />
+            {!isInstalled && (
+              <PWAInstallButton variant="compact" className="hidden sm:inline-flex" />
+            )}
 
             {!user ? (
               <div className="flex items-center gap-2">
@@ -584,19 +588,21 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
                 </div>
               </div>
 
-              {/* In-App Mobile PWA Install Prompt */}
-              <div className="px-4 py-3 border-t border-slate-100 bg-orange-50/40">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <img src="/icons/icon-192.png" alt="AFH" className="w-8 h-8 rounded-lg shadow-2xs" />
-                    <div>
-                      <span className="text-[11px] font-black uppercase text-slate-900 block leading-tight">Install AFH App</span>
-                      <span className="text-[10px] text-slate-500 block leading-tight">Instant 1-tap home screen access</span>
+              {/* In-App Mobile PWA Install Prompt (disappears completely when installed) */}
+              {!isInstalled && (isInstallable || isIOS) && (
+                <div className="px-4 py-3 border-t border-slate-100 bg-orange-50/40">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <img src="/icons/icon-192.png" alt="AFH" className="w-8 h-8 rounded-lg shadow-2xs" />
+                      <div>
+                        <span className="text-[11px] font-black uppercase text-slate-900 block leading-tight">Install AFH App</span>
+                        <span className="text-[10px] text-slate-500 block leading-tight">Instant 1-tap home screen access</span>
+                      </div>
                     </div>
+                    <PWAInstallButton variant="compact" />
                   </div>
-                  <PWAInstallButton variant="compact" />
                 </div>
-              </div>
+              )}
 
               {/* Drawer Bottom Footer */}
               <div className="p-4 border-t border-slate-200 bg-slate-50/80 flex flex-col gap-2">
