@@ -1712,5 +1712,22 @@ export const MUSCLE_GROUPS = [
 ];
 
 export const WORKOUT_CATEGORIES = [
-  "Gym Workouts", "Home Workouts", "Cardio Workouts", "Calisthenics Workouts", "Military Style Fitness", "Women Confidence Program", "Women's Programs"
+  "Chest",
+  "Back",
+  "Shoulders",
+  "Biceps",
+  "Triceps",
+  "Forearms",
+  "Legs",
+  "Glutes",
+  "Core & Abs",
+  "Cardio",
+  "HIIT & Fat Burning",
+  "Gym Workouts",
+  "Home Workouts",
+  "Calisthenics Workouts",
+  "Military Style Fitness",
+  "Women Confidence Program",
+  "Mobility & Recovery",
+  "Full Body"
 ];

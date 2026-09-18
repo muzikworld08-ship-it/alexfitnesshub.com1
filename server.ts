@@ -290,6 +290,7 @@ const PORT = Number(process.env.PORT) || 3000;
 
 // Custom exercise overrides local file path
 const OVERRIDES_FILE_PATH = path.join(process.cwd(), "src", "data", "custom_exercise_overrides.json");
+const DELETED_EXERCISES_FILE_PATH = path.join(process.cwd(), "src", "data", "custom_deleted_exercises.json");
 const CHALLENGES_FILE_PATH = path.join(process.cwd(), "src", "data", "custom_challenges.json");
 
 // Ensure the directory and base JSON files are created cleanly
@@ -299,6 +300,9 @@ if (!fs.existsSync(overridesDir)) {
 }
 if (!fs.existsSync(OVERRIDES_FILE_PATH)) {
   fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify({}, null, 2), "utf-8");
+}
+if (!fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
+  fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify([], null, 2), "utf-8");
 }
 if (!fs.existsSync(CHALLENGES_FILE_PATH)) {
   fs.writeFileSync(CHALLENGES_FILE_PATH, JSON.stringify([], null, 2), "utf-8");
@@ -3149,7 +3153,7 @@ app.get("/api/diagnostics/subscription-sync", async (req: any, res: any) => {
 });
 
 
-// GET custom exercise media overrides
+// GET custom exercise media overrides and deleted exercise IDs
 app.get("/api/exercises/custom-media", (req, res) => {
   try {
     let data = {};
@@ -3166,7 +3170,20 @@ app.get("/api/exercises/custom-media", (req, res) => {
     } else {
       fs.writeFileSync(OVERRIDES_FILE_PATH, "{}", "utf-8");
     }
-    res.json({ success: true, overrides: data });
+
+    let deletedExercises: string[] = [];
+    if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
+      try {
+        const rawDeleted = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
+        if (rawDeleted) {
+          deletedExercises = JSON.parse(rawDeleted);
+        }
+      } catch (dErr) {
+        console.error("Error reading DELETED_EXERCISES_FILE_PATH:", dErr);
+      }
+    }
+
+    res.json({ success: true, overrides: data, deletedExerciseIds: deletedExercises });
   } catch (error: any) {
     console.error("Failed to read custom exercise overrides file:", error);
     res.status(500).json({ success: false, error: "Failed to read overrides file." });
@@ -3563,6 +3580,21 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
       fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
     }
 
+    // Persist to DELETED_EXERCISES_FILE_PATH permanently
+    try {
+      let deletedList: string[] = [];
+      if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
+        const rawDel = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
+        if (rawDel) deletedList = JSON.parse(rawDel);
+      }
+      if (!deletedList.includes(exerciseId)) {
+        deletedList.push(exerciseId);
+        fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(deletedList, null, 2), "utf-8");
+      }
+    } catch (writeDelErr) {
+      console.error("Failed saving to DELETED_EXERCISES_FILE_PATH:", writeDelErr);
+    }
+
     // Mark deleted in Firestore or remove
     try {
       await setServerFirestoreDoc("exercises", exerciseId, {
@@ -3578,11 +3610,11 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
       req.user?.email || "",
       req.user?.uid || "",
       "WORKOUT_DELETE",
-      `Admin deleted custom workout ${exerciseId}`,
+      `Admin permanently deleted workout ${exerciseId}`,
       { exerciseId }
     );
 
-    res.json({ success: true, message: "Workout deleted successfully." });
+    res.json({ success: true, message: "Workout permanently deleted successfully.", deletedExerciseId: exerciseId });
   } catch (error: any) {
     console.error("Failed to delete workout:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });

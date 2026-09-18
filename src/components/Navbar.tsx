@@ -230,12 +230,8 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
           {/* Center spacer: unified single navigation codebase across both mobile and desktop */}
           <div className="flex-1" />
 
-          {/* Right Control Bar (Auth + PWA Install + Prominent Hamburger Toggle) */}
+          {/* Right Control Bar (Only Sign In and Hamburger Menu button) */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {!isInstalled && (
-              <PWAInstallButton variant="compact" className="hidden sm:inline-flex" />
-            )}
-
             {!user ? (
               <div className="flex items-center gap-2">
                 <button
@@ -248,67 +244,15 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                {(user.role === "admin" || isEmailAdmin(user.email)) && (
-                  <button
-                    onClick={() => handleCustomNav("admin")}
-                    className="bg-[#D32F2F] hover:bg-red-700 text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider px-3 py-1.5 rounded-[8px] transition-all cursor-pointer flex items-center gap-1 shadow-xs"
-                  >
-                    <Shield className="w-3.5 h-3.5" />
-                    <span>ADMIN</span>
-                  </button>
-                )}
                 <button
-                  onClick={() => handleCustomNav("dashboard")}
-                  className="flex items-center gap-1.5 focus:outline-hidden cursor-pointer hover:opacity-90 transition-opacity"
-                  title="Go to Dashboard"
+                  onClick={() => handleCustomNav("login")}
+                  className="bg-[#E53935] hover:bg-[#C62828] text-white text-[11px] sm:text-[13px] font-bold uppercase tracking-wider px-3 sm:px-5 py-2 rounded-[10px] transition-all duration-250 cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
-                  {user.photoURL && user.photoURL.trim() !== "" ? (
-                    <OptimizedImage
-                      src={user.photoURL}
-                      alt={user.displayName || "User"}
-                      priority={true}
-                      loading="eager"
-                      fetchPriority="high"
-                      width={64}
-                      height={64}
-                      quality={85}
-                      format="webp"
-                      className="w-8 h-8 rounded-full object-cover border border-[#E8E8E8]"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-[#E53935] flex items-center justify-center text-white font-black text-xs uppercase shadow-sm">
-                      {user.displayName ? user.displayName[0] : (user.email ? user.email[0] : "A")}
-                    </div>
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    logout();
-                    setView("home");
-                  }}
-                  className="hidden sm:flex border border-[#E8E8E8] hover:border-[#E53935] text-[#707070] hover:text-[#E53935] text-[10px] sm:text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-[8px] transition-all cursor-pointer whitespace-nowrap"
-                >
-                  Sign Out
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Sign In</span>
                 </button>
               </div>
             )}
-
-            {/* QUICK STORE / CART ACCESS BUTTON */}
-            <button
-              onClick={() => {
-                setIsCartOpen(true);
-              }}
-              className="relative p-2.5 rounded-xl border border-slate-200 hover:border-red-200 bg-slate-50 hover:bg-red-50 text-slate-700 hover:text-[#E53935] transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
-              title="Shopping Cart & Fitness Apparel Store"
-              aria-label="Open Shopping Cart"
-            >
-              <ShoppingBag className="w-5 h-5 stroke-[2.2]" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-[#E53935] text-white text-[10px] font-black flex items-center justify-center shadow-sm animate-scale-in">
-                  {cartCount}
-                </span>
-              )}
-            </button>
 
             {/* PRIMARY TOP HAMBURGER MENU BUTTON - VISIBLE, PROMINENT & UNCLIPPED */}
             <button

@@ -672,6 +672,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try { cachedOverrides = JSON.parse(storedOverridesStr); } catch {}
     }
 
+    let deletedIdsSet = new Set<string>();
+    try {
+      const storedDeleted = localStorage.getItem("fit_deleted_exercises");
+      if (storedDeleted) {
+        const parsedDel = JSON.parse(storedDeleted);
+        if (Array.isArray(parsedDel)) deletedIdsSet = new Set(parsedDel);
+      }
+    } catch {}
+
     const storedExercises = localStorage.getItem("fit_exercises");
     if (storedExercises) {
       try {
@@ -679,6 +688,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (Array.isArray(parsed) && parsed.length > 0) {
           const map = new Map<string, Exercise>();
           EXERCISES.forEach(e => {
+            if (deletedIdsSet.has(e.id)) return;
             let mediaOverride = cachedOverrides[e.id];
             if (!mediaOverride) {
               const matchedKey = Object.keys(cachedOverrides).find(k => isExerciseMatch(k, e.id) || isExerciseMatch(k, e.name));
@@ -693,6 +703,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           
           // Preserve any custom user-added exercises (gen_ or cust_)
           parsed.forEach(p => {
+            if (deletedIdsSet.has(p.id)) return;
             if (p.id.startsWith("gen_") || p.id.startsWith("cust_")) {
               map.set(p.id, p);
             } else if (map.has(p.id)) {
@@ -715,22 +726,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch (e) {}
     }
     
-    // Default base with cached overrides
-    const initialList = EXERCISES.map(e => {
-      let mediaOverride = cachedOverrides[e.id];
-      if (!mediaOverride) {
-        const matchedKey = Object.keys(cachedOverrides).find(k => isExerciseMatch(k, e.id) || isExerciseMatch(k, e.name));
-        if (matchedKey) mediaOverride = cachedOverrides[matchedKey];
-      }
-      if (mediaOverride) {
-        return {
-          ...e,
-          customMediaUrl: mediaOverride.customMediaUrl || e.customMediaUrl,
-          customMediaType: mediaOverride.customMediaType || e.customMediaType
-        };
-      }
-      return e;
-    });
+    // Default base with cached overrides (excluding deleted)
+    const initialList = EXERCISES
+      .filter(e => !deletedIdsSet.has(e.id))
+      .map(e => {
+        let mediaOverride = cachedOverrides[e.id];
+        if (!mediaOverride) {
+          const matchedKey = Object.keys(cachedOverrides).find(k => isExerciseMatch(k, e.id) || isExerciseMatch(k, e.name));
+          if (matchedKey) mediaOverride = cachedOverrides[matchedKey];
+        }
+        if (mediaOverride) {
+          return {
+            ...e,
+            customMediaUrl: mediaOverride.customMediaUrl || e.customMediaUrl,
+            customMediaType: mediaOverride.customMediaType || e.customMediaType
+          };
+        }
+        return e;
+      });
     setExercisesState(initialList);
     localStorage.setItem("fit_exercises", JSON.stringify(initialList));
   }, []);
@@ -749,6 +762,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // 1. Fetch from Local Express Server JSON file
         const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
         let serverOverrides: Record<string, any> = {};
+        let serverDeletedIds: string[] = [];
         try {
           const apiRes = await fetch("/api/exercises/custom-media", {
             headers: token ? { "Authorization": `Bearer ${token}` } : {}
@@ -756,6 +770,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const apiData = await apiRes.json();
           if (apiData.success && apiData.overrides) {
             serverOverrides = apiData.overrides;
+          }
+          if (apiData.success && Array.isArray(apiData.deletedExerciseIds)) {
+            serverDeletedIds = apiData.deletedExerciseIds;
+            try {
+              localStorage.setItem("fit_deleted_exercises", JSON.stringify(serverDeletedIds));
+            } catch {}
           }
         } catch (sErr) {
           console.warn("Server overrides fetch warning:", sErr);
@@ -813,8 +833,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem("fit_custom_exercise_overrides", JSON.stringify(mergedOverrides));
         } catch {}
 
+        const activeDeletedIds = new Set<string>(serverDeletedIds);
+        try {
+          const cachedDeleted = localStorage.getItem("fit_deleted_exercises");
+          if (cachedDeleted) {
+            const parsed = JSON.parse(cachedDeleted);
+            if (Array.isArray(parsed)) parsed.forEach((id: string) => activeDeletedIds.add(id));
+          }
+        } catch {}
+
         setExercisesState(prev => {
-          const baseList = [...EXERCISES];
+          const baseList = [...EXERCISES].filter(e => !activeDeletedIds.has(e.id));
           const mapped = baseList.map(ex => {
             let override = mergedOverrides[ex.id];
             if (!override) {
@@ -850,9 +879,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             return ex;
           });
 
-          // Avoid duplicates
+          // Avoid duplicates and deleted items
           const filteredGenerated = fetchedGeneratedExercises.filter(
-            g => !mapped.some(m => m.name.toLowerCase() === g.name.toLowerCase())
+            g => !activeDeletedIds.has(g.id) && !mapped.some(m => m.name.toLowerCase() === g.name.toLowerCase())
           );
 
           // Get local storage generated exercises
@@ -861,13 +890,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (storedEx) {
             try {
               const parsed = JSON.parse(storedEx) as Exercise[];
-              localExercisesList = parsed.filter(p => p.id.startsWith("gen_") || p.id.startsWith("cust_"));
+              localExercisesList = parsed.filter(p => !activeDeletedIds.has(p.id) && (p.id.startsWith("gen_") || p.id.startsWith("cust_")));
             } catch {}
           }
 
           const combinedGenerated = [...filteredGenerated];
           localExercisesList.forEach(le => {
-            if (!combinedGenerated.some(cg => cg.name.toLowerCase() === le.name.toLowerCase()) && 
+            if (!activeDeletedIds.has(le.id) &&
+                !combinedGenerated.some(cg => cg.name.toLowerCase() === le.name.toLowerCase()) && 
                 !mapped.some(m => m.name.toLowerCase() === le.name.toLowerCase())) {
               combinedGenerated.push(le);
             }
@@ -4418,12 +4448,67 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
   };
 
   const deleteWorkout = async (exerciseId: string): Promise<boolean> => {
+    // 1. Identify exercise to be deleted and find a replacement from the same category
+    const targetExercise = exercises.find(e => e.id === exerciseId);
+    const targetCategory = targetExercise?.category || "Gym Workouts";
+    const availableReplacements = exercises.filter(e => 
+      e.id !== exerciseId && 
+      (e.category.toLowerCase() === targetCategory.toLowerCase() || 
+       e.categories?.some(c => c.toLowerCase() === targetCategory.toLowerCase()))
+    );
+    const replacement = availableReplacements.length > 0 ? availableReplacements[0] : null;
+
+    // 2. Persist deleted ID locally in fit_deleted_exercises
+    try {
+      const stored = localStorage.getItem("fit_deleted_exercises");
+      let deletedList: string[] = stored ? JSON.parse(stored) : [];
+      if (!deletedList.includes(exerciseId)) {
+        deletedList.push(exerciseId);
+        localStorage.setItem("fit_deleted_exercises", JSON.stringify(deletedList));
+      }
+    } catch {}
+
+    // 3. Update active exercises state
     setExercisesState(prev => {
       const next = prev.filter(e => e.id !== exerciseId);
       safeSetItem("fit_exercises", JSON.stringify(next));
       return next;
     });
 
+    // 4. If any custom challenge or program was referencing this workout, auto-replace with matching category exercise
+    if (replacement) {
+      setCustomChallenges(prev => {
+        let changed = false;
+        const updated = prev.map(c => {
+          if (c.workouts && c.workouts.some(w => w.id === exerciseId)) {
+            changed = true;
+            return {
+              ...c,
+              workouts: c.workouts.map(w => w.id === exerciseId ? {
+                id: replacement.id,
+                name: replacement.name,
+                sets: w.sets || replacement.recommendedSets || "3-4",
+                reps: w.reps || replacement.recommendedReps || "10-12",
+                customMediaUrl: replacement.customMediaUrl || replacement.gifUrl || replacement.imageUrl,
+                customMediaType: replacement.customMediaType || "image",
+                gifUrl: replacement.gifUrl || replacement.imageUrl,
+                imageUrl: replacement.imageUrl || replacement.gifUrl,
+                category: replacement.category,
+                muscleGroups: replacement.muscleGroups,
+                restTime: w.restTime || replacement.restTime || "60s"
+              } : w)
+            };
+          }
+          return c;
+        });
+        if (changed) {
+          safeSetItem("fit_custom_challenges", JSON.stringify(updated));
+        }
+        return updated;
+      });
+    }
+
+    // 5. Notify server to persist permanently
     try {
       const token = await auth.currentUser?.getIdToken();
       const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -4435,6 +4520,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       });
     } catch (e) {}
 
+    // 6. Delete from Firestore if configured
     if (!isMockFirebase) {
       try {
         await deleteDoc(doc(db, "exercises", exerciseId)).catch(() => {});
