@@ -14,6 +14,7 @@ import {
   Ban,
   Moon,
   ShieldCheck,
+  Activity,
   X
 } from "lucide-react";
 import { scheduleNextDayMorningNotification } from "../utils/notificationScheduler";
@@ -290,6 +291,18 @@ export default function WorkoutCelebrationModal({
             >
               <span>Claim Victory & Continue</span>
               <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                window.location.hash = "progress-tracker";
+                window.dispatchEvent(new CustomEvent("alexfit_navigate", { detail: { view: "progress-tracker" } }));
+              }}
+              className="w-full py-2.5 px-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <Activity className="w-3.5 h-3.5 text-emerald-400" />
+              <span>View In Progress & Activity Tracker</span>
             </button>
           </div>
         </motion.div>

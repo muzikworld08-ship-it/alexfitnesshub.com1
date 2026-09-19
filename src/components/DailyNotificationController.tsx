@@ -5,6 +5,7 @@ import { dispatchMorningWorkoutEmailNotification } from "../utils/notificationSc
 import {
   getSavedReminderSchedule,
   checkAndTriggerScheduledReminder,
+  checkAndTriggerSevenDayProgressReminder,
   NOTIFICATION_CLICK_NAV_EVENT,
   formatTime12Hour,
   REMINDER_SCHEDULE_EVENT,
@@ -13,7 +14,7 @@ import {
 import WorkoutReminderModal from "./WorkoutReminderModal";
 
 export default function DailyNotificationController() {
-  const { user, setView } = useApp();
+  const { user, setView, activityLogs, vitalsLogs } = useApp();
 
   // Automatically dispatch next-day workout notification email via Resend API on active workout days
   useEffect(() => {
@@ -92,6 +93,37 @@ export default function DailyNotificationController() {
     const interval = setInterval(checkReminder, 30000); // Check every 30 seconds
     return () => clearInterval(interval);
   }, [user?.displayName]);
+
+  // Periodic 7-day progress reminder check (reminds every 7 days about progress and effort)
+  useEffect(() => {
+    if (!user) return;
+    const runSevenDayProgressCheck = () => {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const recentWorkouts = (activityLogs || []).filter(l => new Date(l.date) >= sevenDaysAgo);
+      const recentVitals = (vitalsLogs || []).filter(l => new Date(l.date) >= sevenDaysAgo);
+      const waterCompliance = recentVitals.length > 0 
+        ? Math.min(100, Math.round((recentVitals.reduce((acc, v) => acc + (v.hydrationGlasses || 0), 0) / (recentVitals.length * 8)) * 100))
+        : 70;
+
+      checkAndTriggerSevenDayProgressReminder(
+        user.displayName || "Athlete",
+        user.email,
+        recentWorkouts.length,
+        waterCompliance,
+        false
+      );
+    };
+
+    // Run after mount
+    const timeout = setTimeout(runSevenDayProgressCheck, 5000);
+    const interval = setInterval(runSevenDayProgressCheck, 60 * 60 * 1000); // Check hourly
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }, [user, activityLogs, vitalsLogs]);
   
   // Track daily tasks list (saved in localStorage to persist completion state)
   const [tasks, setTasks] = useState<{ id: string; text: string; done: boolean; category: string }[]>(() => {

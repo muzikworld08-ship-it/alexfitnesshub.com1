@@ -20,6 +20,7 @@ import SavedExercisesView from "./components/SavedExercisesView";
 import WorkoutVideos from "./components/WorkoutVideos";
 import DailyPlanView from "./components/DailyPlanView";
 import DashboardView from "./components/DashboardView";
+import ProgressTrackerView from "./components/ProgressTrackerView";
 import PaymentSuccessView from "./components/PaymentSuccessView";
 import FitnessChallenges from "./components/FitnessChallenges";
 import BellyFatShredView from "./components/BellyFatShredView";
@@ -109,6 +110,10 @@ const PATH_TO_VIEW_MAP: Record<string, string> = {
   "/premium/weight-trajectory": "weight-trajectory",
   "/dashboard": "dashboard",
   "/premium/dashboard": "dashboard",
+  "/progress-tracker": "progress-tracker",
+  "/tracker": "progress-tracker",
+  "/activity-tracker": "progress-tracker",
+  "/premium/progress-tracker": "progress-tracker",
   "/belly-fat-shred": "belly-fat-shred",
   "/premium/belly-fat-shred": "belly-fat-shred",
   "/women-confidence": "women-confidence",
@@ -671,6 +676,9 @@ function FitnessAppContent() {
               )}
               {["dashboard", "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", "handbook", "weight-trajectory"].includes(currentView) && (
                 <DashboardView activeView={currentView} setView={handleSetView} />
+              )}
+              {["progress-tracker", "tracker", "activity-tracker"].includes(currentView) && (
+                <ProgressTrackerView setView={handleSetView} />
               )}
               {currentView === "coach" && (
                 <CoachView />

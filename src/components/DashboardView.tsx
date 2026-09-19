@@ -39,6 +39,7 @@ import PersistentDashboardTabs from "./PersistentDashboardTabs";
 import TodoRealtimeWidget from "./TodoRealtimeWidget";
 import ContinueProgramTracker from "./ContinueProgramTracker";
 import DailyCalibrationDesk from "./DailyCalibrationDesk";
+import ProgressTrackerView from "./ProgressTrackerView";
 
 interface DashboardProps {
   activeView?: string;
@@ -126,6 +127,7 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
   useEffect(() => {
     // If navigating directly from the Navbar, align the active tab with the clicked view ID
     if (activeView === "weekly-reports") setActiveTab("reports");
+    else if (activeView === "progress-tracker" || activeView === "tracker") setActiveTab("progress-tracker");
     else if (activeView === "daily-habit-tracker") setActiveTab("habits");
     else if (activeView === "daily-calibration-desk") setActiveTab("calibration");
     else if (activeView === "handbook") setActiveTab("handbook");
@@ -170,6 +172,7 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
     {
       title: "Biometrics & Analytics",
       items: [
+        { id: "progress-tracker", label: "Progress & Activity Tracker", icon: Activity, desc: "Workouts, Cardio, Water & Meals" },
         { id: "reports", label: "Weekly Audits", icon: Award, desc: "AI Progress Insights" },
         { id: "calibration", label: "Calibration Desk", icon: Clock, desc: "Physiological Metrics" },
         { id: "trajectory", label: "Weight Trajectory", icon: Scale, desc: "Recomposition Slopes" },
@@ -555,6 +558,11 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
 
                   {/* 8. Handbook */}
                   {activeTab === "handbook" && <HandbookView />}
+
+                  {/* 8b. Progress & Activity Tracker */}
+                  {activeTab === "progress-tracker" && (
+                    <ProgressTrackerView setView={setView} />
+                  )}
 
                   {/* 9. Weekly Audits */}
                   {activeTab === "reports" && <WeeklyReportsView reports={weeklyReports} onGenerate={triggerWeeklyReportGeneration} />}

@@ -1,14 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { 
   ShieldCheck, AlertTriangle, CheckCircle2, Search, Filter, 
   Layers, Dumbbell, Calendar, RefreshCw, Eye, Edit3, Trash2, 
-  Plus, Save, Check, ExternalLink, HelpCircle
+  Plus, Save, Check, ExternalLink, HelpCircle, ArrowRightLeft
 } from "lucide-react";
 import { ProgramId, ChallengeExerciseItem, ValidationError } from "../../types/challengeEngine";
 import { CHALLENGE_PROGRAMS_METADATA, getWorkoutForProgramAndDay } from "../../data/challengeEngineDatabase";
+import { getExerciseGifUrl } from "../../data/exercises";
 import { ChallengeValidationService } from "../../services/challengeValidationService";
+import { useApp } from "../../context/AppContext";
 
 export default function AdminWorkoutChallengeEngine() {
+  const { exercises: libraryExercises, deleteWorkout } = useApp();
   const [selectedProgramId, setSelectedProgramId] = useState<ProgramId>("immortal_90");
   const [selectedDayNumber, setSelectedDayNumber] = useState<number>(1);
   const [validationReports, setValidationReports] = useState<ValidationError[]>([]);
@@ -18,7 +21,9 @@ export default function AdminWorkoutChallengeEngine() {
   // Edit Exercise modal / panel
   const [editingExercise, setEditingExercise] = useState<ChallengeExerciseItem | null>(null);
   const [customExercises, setCustomExercises] = useState<Record<string, ChallengeExerciseItem>>({});
+  const [removedExerciseIds, setRemovedExerciseIds] = useState<Record<string, boolean>>({});
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [deleteAlert, setDeleteAlert] = useState<{ message: string; visible: boolean } | null>(null);
 
   // New Exercise Form State
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -33,6 +38,100 @@ export default function AdminWorkoutChallengeEngine() {
 
   const currentProgramMeta = CHALLENGE_PROGRAMS_METADATA[selectedProgramId];
   const dayPlan = getWorkoutForProgramAndDay(selectedProgramId, selectedDayNumber);
+
+  // Compute active exercises for the selected program day, reflecting custom overrides & permanent replacement
+  const activeExercisesList = useMemo(() => {
+    return dayPlan.exercises
+      .filter(ex => !removedExerciseIds[ex.id])
+      .map(ex => customExercises[ex.id] || ex);
+  }, [dayPlan.exercises, removedExerciseIds, customExercises]);
+
+  // Handle Permanent Delete of workout and immediately replace with another available workout from the same category
+  const handleDeleteAndReplaceWorkout = async (exerciseToDel: ChallengeExerciseItem) => {
+    const confirmDel = window.confirm(
+      `Are you sure you want to permanently delete "${exerciseToDel.exerciseName}"?\n\nIt will be permanently removed and another available drill from category "${exerciseToDel.category}" will replace it immediately.`
+    );
+    if (!confirmDel) return;
+
+    try {
+      // 1. Call global deleteWorkout (calls /api/exercises/delete & updates state)
+      await deleteWorkout(exerciseToDel.id);
+
+      // 2. Find replacement workout from library matching same category
+      const targetCategoryLower = (exerciseToDel.category || dayPlan.meta.category || "").toLowerCase();
+      const existingNames = new Set(activeExercisesList.map(e => e.exerciseName.toLowerCase()));
+
+      const availableCandidates = libraryExercises.filter(ex => {
+        const catMatch = ex.category?.toLowerCase() === targetCategoryLower || 
+                         (ex as any).muscleGroup?.toLowerCase() === targetCategoryLower;
+        const exName = ex.name || (ex as any).title || "";
+        const notCurrent = ex.id !== exerciseToDel.id && !existingNames.has(exName.toLowerCase());
+        return catMatch && notCurrent;
+      });
+
+      let replacementEx: ChallengeExerciseItem;
+
+      if (availableCandidates.length > 0) {
+        // Pick top available candidate
+        const candidate = availableCandidates[0];
+        const candidateName = candidate.name || (candidate as any).title || "Replacement Drill";
+        const candidateEquipment = Array.isArray(candidate.equipment) ? candidate.equipment.join(", ") : (candidate.equipment || exerciseToDel.equipment);
+        replacementEx = {
+          id: `repl_${selectedProgramId}_d${selectedDayNumber}_${candidate.id}_${Date.now()}`,
+          programId: selectedProgramId,
+          programName: currentProgramMeta.name,
+          dayNumber: selectedDayNumber,
+          category: exerciseToDel.category,
+          muscleGroup: exerciseToDel.muscleGroup,
+          exerciseName: candidateName,
+          equipment: candidateEquipment,
+          difficulty: (candidate.difficulty as any) || exerciseToDel.difficulty,
+          sets: exerciseToDel.sets,
+          reps: exerciseToDel.reps,
+          duration: "45s set",
+          instructions: Array.isArray(candidate.instructions) ? candidate.instructions : [candidate.instructions || "Execute standard form repetition with controlled biomechanics."],
+          gifUrl: candidate.gifUrl || getExerciseGifUrl(candidateName)
+        };
+      } else {
+        // Fallback replacement within category
+        const fallbackName = `Alternative ${exerciseToDel.category} Drill`;
+        replacementEx = {
+          id: `repl_${selectedProgramId}_d${selectedDayNumber}_alt_${Date.now()}`,
+          programId: selectedProgramId,
+          programName: currentProgramMeta.name,
+          dayNumber: selectedDayNumber,
+          category: exerciseToDel.category,
+          muscleGroup: exerciseToDel.muscleGroup,
+          exerciseName: fallbackName,
+          equipment: exerciseToDel.equipment,
+          difficulty: exerciseToDel.difficulty,
+          sets: exerciseToDel.sets,
+          reps: exerciseToDel.reps,
+          duration: "45s set",
+          instructions: ["Perform controlled biomechanical contractions with full range of motion."],
+          gifUrl: getExerciseGifUrl(fallbackName)
+        };
+      }
+
+      // Replace in customExercises map
+      setCustomExercises(prev => {
+        const next = { ...prev };
+        delete next[exerciseToDel.id];
+        next[exerciseToDel.id] = replacementEx;
+        return next;
+      });
+
+      setDeleteAlert({
+        message: `Deleted "${exerciseToDel.exerciseName}" permanently. Replaced immediately with "${replacementEx.exerciseName}" in category "${exerciseToDel.category}".`,
+        visible: true
+      });
+
+      setTimeout(() => setDeleteAlert(null), 5000);
+    } catch (err: any) {
+      console.error("Failed to delete exercise:", err);
+      alert(`Error deleting exercise: ${err?.message || "Internal server error"}`);
+    }
+  };
 
   // Run the validation tool across all programs
   const handleRunValidationAudit = () => {
@@ -246,10 +345,18 @@ export default function AdminWorkoutChallengeEngine() {
           <div className="flex items-center gap-2">
             <span className="text-xs text-neutral-400">Exercises count:</span>
             <span className="px-2.5 py-1 rounded-lg bg-neutral-800 text-white font-bold text-xs">
-              {dayPlan.exercises.length}
+              {activeExercisesList.length}
             </span>
           </div>
         </div>
+
+        {/* Real-time Replacement & Deletion Alert */}
+        {deleteAlert && deleteAlert.visible && (
+          <div className="mb-4 p-3.5 bg-emerald-950/50 border border-emerald-500/40 rounded-2xl flex items-center gap-2.5 text-emerald-300 text-xs animate-in fade-in duration-200">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span className="font-semibold">{deleteAlert.message}</span>
+          </div>
+        )}
 
         {/* Exercises Table */}
         <div className="overflow-x-auto">
@@ -266,12 +373,25 @@ export default function AdminWorkoutChallengeEngine() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-800/60">
-              {dayPlan.exercises.map((ex, index) => {
-                const currentEx = customExercises[ex.id] || ex;
+              {activeExercisesList.map((currentEx, index) => {
                 return (
-                  <tr key={ex.id} className="hover:bg-neutral-800/40 transition-colors">
+                  <tr key={currentEx.id} className="hover:bg-neutral-800/40 transition-colors">
                     <td className="py-3.5 pr-4 text-neutral-400 font-mono">{index + 1}</td>
-                    <td className="py-3.5 pr-4 font-bold text-white">{currentEx.exerciseName}</td>
+                    <td className="py-3.5 pr-4 font-bold text-white">
+                      <div className="flex items-center gap-2">
+                        <span>{currentEx.exerciseName}</span>
+                        {currentEx.id.startsWith("repl_") && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-900/60 text-emerald-300 border border-emerald-500/40 font-bold uppercase tracking-wider">
+                            Replaced
+                          </span>
+                        )}
+                        {currentEx.id.startsWith("custom_") && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] bg-sky-900/60 text-sky-300 border border-sky-500/40 font-bold uppercase tracking-wider">
+                            Added
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="py-3.5 pr-4">
                       <span className="px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-300 font-medium">
                         {currentEx.category}
@@ -279,20 +399,29 @@ export default function AdminWorkoutChallengeEngine() {
                     </td>
                     <td className="py-3.5 pr-4">
                       <span className="px-2 py-0.5 rounded-md bg-red-950/40 text-red-300 font-medium border border-red-500/20">
-                        {currentEx.muscleGroup.join(", ")}
+                        {Array.isArray(currentEx.muscleGroup) ? currentEx.muscleGroup.join(", ") : currentEx.muscleGroup}
                       </span>
                     </td>
                     <td className="py-3.5 pr-4 font-mono text-neutral-200">
                       {currentEx.sets} × {currentEx.reps}
                     </td>
                     <td className="py-3.5 pr-4 text-neutral-400">{currentEx.equipment}</td>
-                    <td className="py-3.5 text-right">
+                    <td className="py-3.5 text-right space-x-2 whitespace-nowrap">
                       <button
                         onClick={() => setEditingExercise(currentEx)}
                         className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white transition-all text-[11px] font-bold inline-flex items-center gap-1"
+                        title="Edit sets, reps or specs"
                       >
                         <Edit3 className="w-3 h-3" />
                         <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAndReplaceWorkout(currentEx)}
+                        className="px-2.5 py-1 rounded-lg bg-red-950/60 hover:bg-red-900/80 text-red-300 hover:text-red-100 border border-red-800/40 transition-all text-[11px] font-bold inline-flex items-center gap-1"
+                        title="Permanently delete and replace immediately from category"
+                      >
+                        <Trash2 className="w-3 h-3 text-red-400" />
+                        <span>Delete & Replace</span>
                       </button>
                     </td>
                   </tr>

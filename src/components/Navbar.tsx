@@ -161,6 +161,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
 
   // Unified single drawer menu items (dynamic based on subscription)
   const drawerMenuItems = isPremium ? [
+    { id: "progress-tracker", label: "Progress & Activity Tracker", desc: "Workouts, cardio, water intake, meals & 7-day reports", icon: Activity, color: "text-emerald-600 bg-emerald-50", isHighlight: true },
     { id: "dashboard", label: "Athlete Performance Desk", desc: "Your metrics, streaks & performance reports", icon: Shield, color: "text-sky-600 bg-sky-50" },
     { id: "notification-settings", label: "Notification Settings", desc: "Alarm schedule, sound chime & email alerts", icon: Bell, color: "text-amber-600 bg-amber-50" },
     { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
@@ -184,6 +185,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
       { id: "admin", label: "Admin Management Console", desc: "System settings, analytics & user controls", icon: Shield, color: "text-red-700 bg-red-100" }
     ] : [])
   ] : [
+    { id: "progress-tracker", label: "Progress & Activity Tracker", desc: "Workouts, cardio, water intake, meals & 7-day reports", icon: Activity, color: "text-emerald-600 bg-emerald-50", isHighlight: true },
     { id: "notification-settings", label: "Notification Settings", desc: "Alarm schedule, sound chime & email alerts", icon: Bell, color: "text-amber-600 bg-amber-50" },
     { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
     { id: "home-workout-challenge", label: "180 Day Home Workout Challenge", desc: "Zero equipment bodyweight transformation & 5KM cardio", icon: Dumbbell, color: "text-amber-600 bg-amber-50", isProBadge: true },
@@ -245,11 +247,16 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
             ) : (
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleCustomNav("login")}
-                  className="bg-[#E53935] hover:bg-[#C62828] text-white text-[11px] sm:text-[13px] font-bold uppercase tracking-wider px-3 sm:px-5 py-2 rounded-[10px] transition-all duration-250 cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  onClick={() => handleCustomNav("progress-tracker")}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] sm:text-[12px] font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-2 border border-slate-200"
+                  title="My Progress & Activity Record"
                 >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>Sign In</span>
+                  <div className="w-6 h-6 rounded-full bg-[#E53935] text-white flex items-center justify-center text-[10px] font-black uppercase">
+                    {(user.displayName || user.email || "A").charAt(0)}
+                  </div>
+                  <span className="hidden sm:inline-block max-w-[100px] truncate text-slate-700">
+                    {user.displayName?.split(" ")[0] || "Athlete"}
+                  </span>
                 </button>
               </div>
             )}

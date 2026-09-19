@@ -464,3 +464,98 @@ export async function sendTestWorkoutReminder(
       : "Could not display notification. Ensure system 'Do Not Disturb' or Focus mode is turned off."
   };
 }
+
+/**
+ * Checks and triggers a 7-day progress reminder to keep users accountable.
+ * Evaluates activity logged over the past 7 days.
+ * If user is on track: praises consistency.
+ * If user needs more effort (e.g., < 3 workouts): motivates them to step up.
+ */
+export async function checkAndTriggerSevenDayProgressReminder(
+  athleteName: string,
+  userEmail?: string,
+  weeklyCompletedWorkoutsCount: number = 0,
+  waterComplianceRate: number = 0,
+  forceSend: boolean = false
+): Promise<{ dispatched: boolean; message: string }> {
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const storageKey = "alexfit_last_7day_reminder_timestamp";
+  const lastFired = parseInt(localStorage.getItem(storageKey) || "0", 10);
+  const now = Date.now();
+
+  if (!forceSend && now - lastFired < SEVEN_DAYS_MS) {
+    const daysRemaining = Math.ceil((SEVEN_DAYS_MS - (now - lastFired)) / (24 * 60 * 60 * 1000));
+    return {
+      dispatched: false,
+      message: `Next 7-day progress checkpoint in ${daysRemaining} day(s).`
+    };
+  }
+
+  const name = athleteName ? athleteName.split(" ")[0] : "Athlete";
+  let title = "";
+  let body = "";
+
+  if (weeklyCompletedWorkoutsCount >= 4) {
+    title = `🔥 Phenomenal 7-Day Progress, ${name}!`;
+    body = `You crushed ${weeklyCompletedWorkoutsCount} workouts this past week with ${waterComplianceRate}% hydration consistency. Maintain this championship momentum!`;
+  } else if (weeklyCompletedWorkoutsCount >= 2) {
+    title = `⚡ 7-Day Fitness Checkpoint: Step Up Your Effort, ${name}!`;
+    body = `You logged ${weeklyCompletedWorkoutsCount} workouts this past week. You are progressing, but need more effort to reach peak transformation. Commit to 4 sessions this week!`;
+  } else {
+    title = `⚠️ 7-Day Progress Alert: More Effort Needed, ${name}!`;
+    body = `Only ${weeklyCompletedWorkoutsCount} workout logged in the last 7 days. Consistency drives transformation. Step into your workout today and get back on track!`;
+  }
+
+  let dispatched = false;
+  if (isPushNotificationSupported() && Notification.permission === "granted") {
+    dispatched = await dispatchBrowserWorkoutNotification({
+      title,
+      body,
+      tag: `alexfit-7day-progress-${Math.floor(now / SEVEN_DAYS_MS)}`,
+      playSound: true,
+      data: {
+        url: "/?view=progress-tracker",
+        action: "seven_day_progress_reminder"
+      }
+    });
+  }
+
+  // Also dispatch email alert if email is available
+  if (userEmail) {
+    try {
+      fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: userEmail,
+          subject: title,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 24px; border-radius: 16px;">
+              <h2 style="color: #ef4444; margin-top: 0;">${title}</h2>
+              <p style="font-size: 16px; line-height: 1.6; color: #cbd5e1;">${body}</p>
+              <div style="background: #1e293b; padding: 16px; border-radius: 12px; margin: 20px 0;">
+                <p style="margin: 4px 0; color: #94a3b8; font-size: 14px;">Past 7 Days Workouts: <strong style="color: #38bdf8;">${weeklyCompletedWorkoutsCount} sessions</strong></p>
+                <p style="margin: 4px 0; color: #94a3b8; font-size: 14px;">Hydration Tracking: <strong style="color: #38bdf8;">${waterComplianceRate}% compliance</strong></p>
+              </div>
+              <a href="https://alexfitnesshub.com/?view=progress-tracker" style="display: inline-block; background: #ef4444; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 12px;">Open Progress Tracker</a>
+            </div>
+          `
+        })
+      }).catch(() => {});
+    } catch {}
+  }
+
+  localStorage.setItem(storageKey, now.toString());
+  localStorage.setItem("alexfit_last_7day_reminder_summary", JSON.stringify({
+    title,
+    body,
+    date: new Date().toISOString(),
+    workoutsCount: weeklyCompletedWorkoutsCount
+  }));
+
+  return {
+    dispatched: true,
+    message: `7-Day progress notification dispatched: "${title}"`
+  };
+}
+
