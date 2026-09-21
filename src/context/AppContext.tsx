@@ -15,7 +15,7 @@ import {
 import { doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs, query, where, deleteDoc, onSnapshot } from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
 import { auth, db, isMockFirebase, handleFirestoreError, OperationType } from "../lib/firebase";
-import { supabase } from "../utils/supabase/client";
+import { supabase, isSupabaseConfigured } from "../utils/supabase/client";
 import { AssetManifestService } from "../services/AssetManifestService";
 import { 
   UserProfile, 
@@ -1205,6 +1205,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const syncProfileToSupabase = async (p: UserProfile) => {
+    if (!isSupabaseConfigured) return;
     try {
       const { error } = await supabase.from("profiles").upsert({
         id: p.uid,
@@ -1252,6 +1253,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const syncWeightLogToSupabase = async (userId: string, log: WeightGoalLog) => {
+    if (!isSupabaseConfigured) return;
     try {
       const { error } = await supabase.from("progress_logs").upsert({
         id: log.id,
@@ -1269,6 +1271,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const syncActivityLogToSupabase = async (userId: string, log: ActivityLog) => {
+    if (!isSupabaseConfigured) return;
     try {
       const { error } = await supabase.from("activity_logs").upsert({
         id: log.id,
@@ -1288,6 +1291,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const syncVitalsLogToSupabase = async (userId: string, log: VitalsLog) => {
+    if (!isSupabaseConfigured) return;
     try {
       const { error } = await supabase.from("vitals_logs").upsert({
         id: log.id,
@@ -1308,6 +1312,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const syncSavedWorkoutsToSupabase = async (userId: string, saves: string[]) => {
+    if (!isSupabaseConfigured) return;
     try {
       const { error } = await supabase.from("saved_workouts").upsert({
         user_id: userId,
@@ -1427,40 +1432,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             onboarded: fetchedData.onboarded !== undefined ? fetchedData.onboarded : !isNewUser
           };
         } else {
-          // Check Supabase profiles table as persistent backend database source
-          try {
-            const { data: sbProfile } = await supabase.from("profiles").select("*").eq("uid", uid).maybeSingle();
-            if (sbProfile) {
-              const userIsAdmin = isEmailAdmin(email);
-              const isUserPremium = userIsAdmin || (sbProfile.subscription_status === "premium" || sbProfile.subscription === "premium");
-              profile = {
-                ...baseProfile,
-                displayName: sbProfile.display_name || baseProfile.displayName,
-                photoURL: sbProfile.photo_url || baseProfile.photoURL,
-                role: userIsAdmin ? "admin" : "user",
-                subscription: isUserPremium ? "premium" : "free",
-                subscriptionStatus: isUserPremium ? "premium" : "free",
-                isPremium: isUserPremium,
-                premiumAccess: isUserPremium,
-                subscriptionTier: sbProfile.subscription_tier || baseProfile.subscriptionTier,
-                subscriptionPlan: sbProfile.subscription_plan || baseProfile.subscriptionPlan,
-                fitnessGoals: sbProfile.fitness_goals || baseProfile.fitnessGoals,
-                weight: sbProfile.weight || baseProfile.weight,
-                height: sbProfile.height || baseProfile.height,
-                targetWeight: sbProfile.target_weight || baseProfile.targetWeight,
-                gender: sbProfile.gender || baseProfile.gender,
-                onboarded: true,
-                age: sbProfile.age || baseProfile.age,
-                activityLevel: sbProfile.activity_level || baseProfile.activityLevel,
-                workoutExperience: sbProfile.workout_experience || baseProfile.workoutExperience,
-                trainingLocation: sbProfile.training_location || baseProfile.trainingLocation,
-                waterGoal: sbProfile.water_goal || baseProfile.waterGoal,
-                waterIntakeToday: sbProfile.water_intake_today || baseProfile.waterIntakeToday
-              };
-            } else {
+          // Check Supabase profiles table as persistent backend database source if configured
+          if (isSupabaseConfigured) {
+            try {
+              const { data: sbProfile } = await supabase.from("profiles").select("*").eq("uid", uid).maybeSingle();
+              if (sbProfile) {
+                const userIsAdmin = isEmailAdmin(email);
+                const isUserPremium = userIsAdmin || (sbProfile.subscription_status === "premium" || sbProfile.subscription === "premium");
+                profile = {
+                  ...baseProfile,
+                  displayName: sbProfile.display_name || baseProfile.displayName,
+                  photoURL: sbProfile.photo_url || baseProfile.photoURL,
+                  role: userIsAdmin ? "admin" : "user",
+                  subscription: isUserPremium ? "premium" : "free",
+                  subscriptionStatus: isUserPremium ? "premium" : "free",
+                  isPremium: isUserPremium,
+                  premiumAccess: isUserPremium,
+                  subscriptionTier: sbProfile.subscription_tier || baseProfile.subscriptionTier,
+                  subscriptionPlan: sbProfile.subscription_plan || baseProfile.subscriptionPlan,
+                  fitnessGoals: sbProfile.fitness_goals || baseProfile.fitnessGoals,
+                  weight: sbProfile.weight || baseProfile.weight,
+                  height: sbProfile.height || baseProfile.height,
+                  targetWeight: sbProfile.target_weight || baseProfile.targetWeight,
+                  gender: sbProfile.gender || baseProfile.gender,
+                  onboarded: true,
+                  age: sbProfile.age || baseProfile.age,
+                  activityLevel: sbProfile.activity_level || baseProfile.activityLevel,
+                  workoutExperience: sbProfile.workout_experience || baseProfile.workoutExperience,
+                  trainingLocation: sbProfile.training_location || baseProfile.trainingLocation,
+                  waterGoal: sbProfile.water_goal || baseProfile.waterGoal,
+                  waterIntakeToday: sbProfile.water_intake_today || baseProfile.waterIntakeToday
+                };
+              } else {
+                profile = baseProfile;
+              }
+            } catch (sErr) {
               profile = baseProfile;
             }
-          } catch (sErr) {
+          } else {
             profile = baseProfile;
           }
           setDoc(userDocRef, profile, { merge: true }).catch(err => {

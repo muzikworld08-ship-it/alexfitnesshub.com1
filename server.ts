@@ -20,7 +20,7 @@ import {
   startFirestoreMailWorker 
 } from "./src/server/mailUtility";
 import { EXERCISES, getExerciseGifUrl } from "./src/data/exercises";
-import { getWorkoutForProgramAndDay } from "./src/data/challengeEngineDatabase";
+import { getWorkoutForProgramAndDay, normalizeProgramId } from "./src/data/challengeEngineDatabase";
 
 // Load environment variables
 dotenv.config();
@@ -96,11 +96,21 @@ if (missingVars.length > 0) {
 const app = express();
 app.set("trust proxy", 1);
 
-// Secure application with Helmet (disabling CSP to prevent breaking iframes, Vite, and external assets in the dev environment)
+// Secure application with Helmet (disabling CSP, frameguard, and COOP to prevent breaking iframes, Vite, and external assets in the dev environment)
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+  xFrameOptions: false,
 }));
+
+// Ensure iframes can embed the preview without being blocked by legacy headers
+app.use((req, res, next) => {
+  res.removeHeader("X-Frame-Options");
+  res.removeHeader("Cross-Origin-Opener-Policy");
+  next();
+});
 
 // Configure CORS for authenticated client access
 app.use(cors({
@@ -286,12 +296,13 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = 3000;
 
 // Custom exercise overrides local file path
 const OVERRIDES_FILE_PATH = path.join(process.cwd(), "src", "data", "custom_exercise_overrides.json");
 const DELETED_EXERCISES_FILE_PATH = path.join(process.cwd(), "src", "data", "custom_deleted_exercises.json");
 const CHALLENGES_FILE_PATH = path.join(process.cwd(), "src", "data", "custom_challenges.json");
+const PROGRAM_SCHEDULE_OVERRIDES_PATH = path.join(process.cwd(), "src", "data", "program_schedule_overrides.json");
 
 // Ensure the directory and base JSON files are created cleanly
 const overridesDir = path.dirname(OVERRIDES_FILE_PATH);
@@ -306,6 +317,23 @@ if (!fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
 }
 if (!fs.existsSync(CHALLENGES_FILE_PATH)) {
   fs.writeFileSync(CHALLENGES_FILE_PATH, JSON.stringify([], null, 2), "utf-8");
+}
+if (!fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+  fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify({}, null, 2), "utf-8");
+}
+
+function loadProgramScheduleOverrides(): Record<string, any> {
+  try {
+    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to load program schedule overrides:", err);
+  }
+  return {};
 }
 
 // Lazy initialization of Gemini API SDK
@@ -2450,7 +2478,7 @@ Ensure that the JSON is perfectly valid and matches the requested structure exac
 });
 
 
-// Helper to resolve an exercise name against the 237 admin-uploaded library
+// Helper to resolve an exercise name against the 237 admin-uploaded library strictly for metadata enrichment
 function resolveMasterExercise(name: string, categoryHint: string = ""): any {
   if (!name) return null;
   const nameLower = name.trim().toLowerCase();
@@ -2464,15 +2492,15 @@ function resolveMasterExercise(name: string, categoryHint: string = ""): any {
   found = EXERCISES.find(e => e.name.toLowerCase().replace(/[^a-z0-9]/g, "") === nameNorm);
   if (found) return found;
 
-  // 3. Substring inclusion
+  // 3. Substring inclusion (high confidence only)
   found = EXERCISES.find(e => {
     const eNorm = e.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-    return eNorm.includes(nameNorm) || (nameNorm.length > 5 && nameNorm.includes(eNorm));
+    return (nameNorm.length >= 7 && eNorm.includes(nameNorm)) || (eNorm.length >= 7 && nameNorm.includes(eNorm));
   });
   if (found) return found;
 
-  // 4. Word tokens match
-  const words = nameLower.split(/\s+/).filter(w => w.length > 2 && !["and", "with", "the", "for"].includes(w));
+  // 4. Word tokens match (strict: requires high word overlap)
+  const words = nameLower.split(/\s+/).filter(w => w.length > 2 && !["and", "with", "the", "for", "set", "reps"].includes(w));
   let bestMatch = null;
   let bestScore = 0;
   for (const ex of EXERCISES) {
@@ -2480,30 +2508,20 @@ function resolveMasterExercise(name: string, categoryHint: string = ""): any {
     let score = 0;
     for (const w of words) {
       if (exWords.includes(w)) score += 2;
-      else if (exWords.some(ew => ew.includes(w) || w.includes(ew))) score += 1;
     }
     if (score > bestScore) {
       bestScore = score;
       bestMatch = ex;
     }
   }
-  if (bestScore >= 2 && bestMatch) return bestMatch;
+  if (bestScore >= 4 && bestMatch) return bestMatch;
 
-  // 5. Category hint fallback
-  if (categoryHint) {
-    const catLower = categoryHint.toLowerCase();
-    const catMatch = EXERCISES.find(e =>
-      e.category.toLowerCase().includes(catLower) ||
-      e.categories?.some(c => c.toLowerCase().includes(catLower)) ||
-      e.muscleGroups?.some(m => m.toLowerCase().includes(catLower))
-    );
-    if (catMatch) return catMatch;
-  }
-
-  return EXERCISES[0] || null;
+  // NEVER return EXERCISES[0] or an unrelated category match!
+  // Returning null ensures the prescribed exercise name from the program schedule remains authentic.
+  return null;
 }
 
-// Server-side fallback daily workout generator
+// Server-side daily workout generator strictly governed by program schedule
 function generateServerFallbackDailyWorkout(params: any): any {
   const {
     programType = "immortal_90",
@@ -2512,7 +2530,8 @@ function generateServerFallbackDailyWorkout(params: any): any {
     fitnessLevel = "Intermediate",
     equipment = "All",
     duration = 45,
-    customFocusPrompt = ""
+    customFocusPrompt = "",
+    userOnboarding
   } = params;
 
   const safeDay = Math.max(1, Number(dayNumber) || 1);
@@ -2529,90 +2548,227 @@ function generateServerFallbackDailyWorkout(params: any): any {
   };
 
   const programName = programNames[programType] || "AlexFitnessHub Daily Program";
-  let title = `${programName} • Day ${safeDay}`;
-  let tagline = "Clinical Biomechanics & Progressive Overload Protocol";
-  let coachingBrief = `Day ${safeDay} execution: Maintain strict 3-second eccentric tempo, lock in abdominal stability, and breathe rhythmically through each repetition.`;
-  let targetMusclesList = [targetMuscle || "Full Body"];
-  let rawExercises: any[] = [];
+  const engineProgramId = normalizeProgramId(programType);
 
-  if (
-    programType === "immortal_90" ||
-    programType === "women_confidence" ||
-    programType === "belly_fat_shred" ||
-    programType === "home_workout" ||
-    programType === "posture_vitality"
-  ) {
-    const engineProgramId = programType === "home_workout" ? "home_180" : programType;
-    try {
-      const plan = getWorkoutForProgramAndDay(engineProgramId as any, safeDay);
-      if (plan && plan.exercises && plan.exercises.length > 0) {
-        title = plan.meta.title || title;
-        tagline = plan.meta.category || tagline;
-        coachingBrief = plan.meta.coachingNotes || coachingBrief;
-        targetMusclesList = [plan.meta.category || "Full Body"];
-        rawExercises = plan.exercises.map(ex => ({
-          name: ex.exerciseName || (ex as any).name,
-          sets: typeof ex.sets === "number" ? ex.sets : parseInt(String(ex.sets)) || 3,
-          reps: String(ex.reps || "10-12 reps"),
-          rest: ex.restTime ? parseInt(ex.restTime) : 60,
-          notes: (Array.isArray(ex.coachingCues) ? ex.coachingCues.join(" ") : (ex as any).coachingCues) || (ex as any).notes || "Execute with maximum mind-muscle connection.",
-          targetMuscle: ex.category || plan.meta.category
-        }));
-      }
-    } catch (e) {
-      console.warn("Server fallback engine error:", e);
-    }
+  // 1. Check if admin created a schedule override for this program and day
+  let dayOverride: any = null;
+  try {
+    const allOverrides = loadProgramScheduleOverrides();
+    const programOverrides = allOverrides[engineProgramId] || allOverrides[programType];
+    dayOverride = programOverrides ? programOverrides[String(safeDay)] : null;
+  } catch (err) {
+    console.warn("[Daily Workout Generator] Error checking schedule overrides:", err);
   }
 
-  if (rawExercises.length === 0) {
-    // Filter from 237 exercises
-    let pool = EXERCISES;
-    if (targetMuscle) {
-      const tLower = targetMuscle.toLowerCase();
-      const matched = EXERCISES.filter(e =>
-        e.name.toLowerCase().includes(tLower) ||
-        e.category.toLowerCase().includes(tLower) ||
-        e.categories?.some(c => c.toLowerCase().includes(tLower)) ||
-        e.muscleGroups?.some(m => m.toLowerCase().includes(tLower))
-      );
-      if (matched.length >= 3) pool = matched;
-    }
-
-    const count = Math.min(6, pool.length);
-    for (let i = 0; i < count; i++) {
-      const ex = pool[(safeDay * 2 + i) % pool.length];
-      rawExercises.push({
-        name: ex.name,
-        sets: fitnessLevel === "Advanced" ? 4 : 3,
-        reps: "10-12 reps",
-        rest: 60,
-        notes: ex.movementExecution || "Maintain strict form through entire ROM.",
-        targetMuscle: ex.musclesWorked?.[0] || ex.muscleGroups?.[0] || "Target Muscle"
-      });
-    }
+  // 2. Query the authoritative schedule plan from challengeEngineDatabase
+  let plan: any = null;
+  try {
+    plan = getWorkoutForProgramAndDay(engineProgramId as any, safeDay, targetMuscle);
+  } catch (err) {
+    console.warn("[Daily Workout Generator] Error loading plan from database:", err);
   }
 
-  const exercises = rawExercises.map((raw, idx) => {
-    const matched = resolveMasterExercise(raw.name, raw.targetMuscle || targetMuscle);
-    const exName = matched ? matched.name : raw.name;
-    const sets = raw.sets || 3;
-    const reps = raw.reps || "10-12 reps";
-    const rest = raw.rest || 60;
-    const gif = matched ? matched.gifUrl : getExerciseGifUrl(exName, raw.targetMuscle);
+  const isRestDay = dayOverride ? Boolean(dayOverride.isRestDay) : Boolean(plan?.meta?.isRestDay);
+  const isCardioOnly = dayOverride ? Boolean(dayOverride.isCardioOnly) : Boolean(plan?.meta?.isCardioOnly);
+
+  // A. REST DAY HANDLING (Zero resistance exercises permitted)
+  if (isRestDay) {
+    const guidelines = plan?.meta?.guidelines || [
+      "Full rest day. Zero resistance weight training permitted.",
+      "Prioritize 8 to 9 hours of restorative, uninterrupted sleep.",
+      "Hydrate with at least 3.5 Liters of water and natural electrolytes.",
+      "Perform light walking or gentle mobility only if feeling muscular stiffness."
+    ];
 
     return {
-      id: matched ? matched.id : `gen_ex_${safeDay}_${idx + 1}`,
+      id: `daily_workout_${programType}_d${safeDay}_rest`,
+      title: plan?.meta?.title || dayOverride?.title || `Day ${safeDay}: Rest & Active Recovery Protocol`,
+      tagline: "Cellular Regeneration, Tissue Remodeling & CNS Decompression",
+      programType,
+      programName,
+      dayNumber: safeDay,
+      targetMuscles: ["Total Body Recovery", "Autonomic Nervous System"],
+      fitnessLevel,
+      equipmentRequired: ["None (Rest Day)"],
+      estimatedMinutes: 0,
+      estimatedCalories: "0 kcal",
+      coachingBrief: plan?.meta?.coachingNotes || `Rest and active recovery day for Day ${safeDay}. Cease heavy training to allow myofibrillar repair, replenish depleted glycogen, and restore neurological capacity.`,
+      warmup: [],
+      exercises: [],
+      cooldown: [],
+      guidelines,
+      nutritionTip: "Recovery Nutrition: Maintain high protein intake (1.6-2.2g/kg) and anti-inflammatory whole foods to rebuild damaged muscle fibers.",
+      hydrationTip: "Drink at least 3.5 Liters of water throughout the day. Cellular hydration is required for muscle protein synthesis.",
+      isRestDay: true,
+      isCardioOnly: false,
+      missingExercises: false,
+      isAiGenerated: false,
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  // B. CARDIO DAY HANDLING (Specific 5-10 KM distance, running & walking only, zero weight lifting)
+  if (isCardioOnly) {
+    const cardioDist = dayOverride?.cardioDistance || plan?.meta?.cardioDistance || "5 to 10 KM";
+    const cardioExercises = (plan?.exercises && plan.exercises.length > 0)
+      ? plan.exercises.map((ex: any, idx: number) => ({
+          id: ex.id || `cardio_ex_${safeDay}_${idx + 1}`,
+          name: ex.exerciseName || ex.name,
+          sets: ex.sets || 1,
+          reps: ex.reps || cardioDist,
+          restSeconds: 0,
+          tempo: "Continuous Zone 2 Cadence",
+          coachingCues: (Array.isArray(ex.coachingCues) ? ex.coachingCues.join(". ") : ex.coachingCues) || "Maintain steady conversational rhythm (130-145 BPM). Smooth midfoot cadence.",
+          targetMuscle: "Cardiovascular System",
+          equipment: ["Running Shoes / Outdoors or Treadmill"],
+          difficulty: "All Levels",
+          gifUrl: ex.gifUrl || getExerciseGifUrl("Treadmill Running", "Cardio"),
+          instructions: ex.instructions || ["Warm up with 5 minutes of brisk walking.", `Execute ${cardioDist} at continuous aerobic pace.`, "Cool down with light walking and hip stretches."]
+        }))
+      : [
+          {
+            id: `cardio_d${safeDay}_run`,
+            name: "Zone 2 Outdoor Running or Treadmill Jog",
+            sets: 1,
+            reps: cardioDist,
+            restSeconds: 0,
+            tempo: "Continuous Aerobic Cadence",
+            coachingCues: "Keep heart rate steady at 130-145 BPM. Conversational pace without gasping.",
+            targetMuscle: "Cardiovascular System",
+            equipment: ["Running Shoes / Treadmill"],
+            difficulty: "All Levels",
+            gifUrl: getExerciseGifUrl("Treadmill Running", "Cardio"),
+            instructions: ["Warm up with 5 minutes of brisk walking.", `Run or jog continuously for ${cardioDist}.`, "Cool down with light walking."]
+          }
+        ];
+
+    return {
+      id: `daily_workout_${programType}_d${safeDay}_cardio`,
+      title: plan?.meta?.title || dayOverride?.title || `Day ${safeDay}: ${cardioDist} Cardio & Recovery Protocol`,
+      tagline: "Aerobic Capacity, Mitochondrial Density & Accelerated Lipolysis",
+      programType,
+      programName,
+      dayNumber: safeDay,
+      targetMuscles: ["Cardiovascular System", "Aerobic Base", "Legs"],
+      fitnessLevel,
+      equipmentRequired: ["Running Shoes / Outdoors or Treadmill"],
+      estimatedMinutes: 50,
+      estimatedCalories: "450 - 650 kcal",
+      coachingBrief: plan?.meta?.coachingNotes || `Target ${cardioDist} of continuous running or brisk walking at steady Zone 2 tempo. No weight lifting is permitted on pure cardio days.`,
+      warmup: [
+        { name: "Dynamic Ankle & Calves Circles", durationOrReps: "45 Seconds", instructions: "Prepare Achilles tendon and calves for running impact." },
+        { name: "Walking Knee-to-Chest Hugs", durationOrReps: "60 Seconds", instructions: "Open gluteal chain and hip capsules prior to cardio cadence." }
+      ],
+      exercises: cardioExercises,
+      cooldown: [
+        { name: "Standing Quad & Hip Flexor Stretch", duration: "90 Seconds per side", instructions: "Release hip tension following continuous running." },
+        { name: "Downward Dog Calf & Achilles Decompression", duration: "60 Seconds", instructions: "Decompress calves and hamstrings." }
+      ],
+      guidelines: plan?.meta?.guidelines || [
+        `Target: ${cardioDist} continuous distance.`,
+        "Strictly Cardio & Recovery. Zero resistance weight training.",
+        "Hydrate before, during, and after the session."
+      ],
+      cardioDistance: cardioDist,
+      nutritionTip: `Cardio Fuel: Sip 500ml electrolyte water during your ${cardioDist} and consume light carbohydrates post-run.`,
+      hydrationTip: "Hydration Target: Drink at least 3.5 Liters of water today. Replace every liter of sweat with water and a pinch of sea salt.",
+      isRestDay: false,
+      isCardioOnly: true,
+      missingExercises: false,
+      isAiGenerated: false,
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  // C. REGULAR TRAINING SPLIT (Chest & Triceps, Back & Biceps, Legs, Shoulders, etc.)
+  let title = dayOverride?.title || plan?.meta?.title || `${programName} • Day ${safeDay}`;
+  let tagline = dayOverride?.focus || plan?.meta?.category || "Clinical Biomechanics & Progressive Overload Protocol";
+  let coachingBrief = dayOverride?.coachingNotes || plan?.meta?.coachingNotes || `Day ${safeDay} execution: Maintain strict 3-second eccentric tempo, lock in abdominal stability, and breathe rhythmically through each repetition.`;
+  let targetMusclesList = plan?.meta?.targetMuscles || (plan?.meta?.category ? [plan.meta.category] : [targetMuscle || "Prescribed Muscle Group"]);
+
+  const exercisesToMap = (dayOverride?.exercises && Array.isArray(dayOverride.exercises) && dayOverride.exercises.length > 0)
+    ? dayOverride.exercises
+    : (plan?.exercises || []);
+
+  // Strict check: if no approved exercises exist for this program day, DO NOT use random exercises!
+  if (!exercisesToMap || exercisesToMap.length === 0) {
+    return {
+      id: `daily_workout_${programType}_d${safeDay}_missing`,
+      title,
+      tagline,
+      programType,
+      programName,
+      dayNumber: safeDay,
+      targetMuscles: targetMusclesList,
+      fitnessLevel,
+      equipmentRequired: [equipment || "Gym Equipment"],
+      estimatedMinutes: duration || 45,
+      estimatedCalories: "380 - 480 kcal",
+      coachingBrief,
+      warmup: [],
+      exercises: [],
+      cooldown: [],
+      missingExercises: true,
+      message: `No approved exercises found for ${programName} Day ${safeDay} (${plan?.meta?.category || targetMuscle || 'Prescribed'}). Admin must add approved exercises to the Workout Library.`,
+      guidelines: [
+        "The daily workout generator is configured to only display approved exercises for this exact program and category.",
+        "Random exercises are strictly prevented from replacing missing exercises.",
+        "Please notify the administrator to curate exercises for this scheduled slot in the Workout Library."
+      ],
+      nutritionTip: "Post-workout: Fuel with 30-40g high quality protein within 45 minutes.",
+      hydrationTip: "Maintain 3.0+ Liters of daily hydration.",
+      createdAt: new Date().toISOString(),
+      isAiGenerated: false,
+      isRestDay: false,
+      isCardioOnly: false
+    };
+  }
+
+  // Personalization adjustments for onboarding goals without altering prescribed movements
+  if (userOnboarding) {
+    const userGoal = (userOnboarding.fitnessGoals || userOnboarding.goal || "").toLowerCase();
+    const restrictions = (userOnboarding.healthRestrictions || "").toLowerCase();
+
+    if (userGoal.includes("fat") || userGoal.includes("shred") || userGoal.includes("loss")) {
+      tagline += " • Calibrated for High-Metabolic Fat Shred";
+      coachingBrief += " Fast-paced sets with controlled recovery to optimize metabolic burn.";
+    } else if (userGoal.includes("muscle") || userGoal.includes("build") || userGoal.includes("bulk")) {
+      tagline += " • Calibrated for Mechanical Tension & Hypertrophy";
+      coachingBrief += " Focus on progressive loading and strict 3-second eccentric contraction.";
+    }
+
+    if (restrictions.includes("back") || restrictions.includes("spine")) {
+      coachingBrief += " Injury Notice: Spine-friendly mechanics. Keep spine neutral and avoid excessive lumbar hyperextension.";
+    } else if (restrictions.includes("knee")) {
+      coachingBrief += " Injury Notice: Knee-sparing depth. Keep shins vertical and drive through heels.";
+    }
+  }
+
+  // Map only the approved exercises for this program and day
+  const exercises = exercisesToMap.map((raw: any, idx: number) => {
+    const rawName = raw.exerciseName || raw.name;
+    const rawCat = raw.category || plan?.meta?.category || targetMuscle;
+    const matched = resolveMasterExercise(rawName, rawCat);
+    // Absolute source of truth: The program schedule's prescribed exercise name is strictly preserved
+    const exName = rawName;
+    const sets = typeof raw.sets === "number" ? raw.sets : (parseInt(String(raw.sets)) || 3);
+    const reps = String(raw.reps || "10-12 reps");
+    const rest = raw.restTime ? parseInt(String(raw.restTime)) : (raw.rest || 60);
+    const gif = raw.gifUrl || (matched ? matched.gifUrl : getExerciseGifUrl(exName, rawCat));
+
+    return {
+      id: raw.id || `prog_${engineProgramId}_d${safeDay}_${idx + 1}`,
       name: exName,
       sets,
       reps,
       restSeconds: rest,
-      tempo: "3-0-1-0",
-      coachingCues: raw.notes || matched?.movementExecution || "Brace your core, maintain neutral spine, and control negative.",
-      targetMuscle: raw.targetMuscle || matched?.musclesWorked?.[0] || matched?.muscleGroups?.[0] || "Target Muscle",
-      equipment: matched?.equipment || [equipment || "Bodyweight"],
-      difficulty: matched?.difficulty || fitnessLevel || "Intermediate",
+      tempo: raw.tempo || "3-0-1-0",
+      coachingCues: raw.notes || (Array.isArray(raw.coachingCues) ? raw.coachingCues.join(". ") : raw.coachingCues) || matched?.movementExecution || "Brace your core, maintain neutral spine, and control negative.",
+      targetMuscle: raw.category || rawCat || matched?.musclesWorked?.[0] || "Target Muscle",
+      equipment: raw.equipment ? [raw.equipment] : (matched?.equipment || [equipment || "Standard Equipment"]),
+      difficulty: raw.difficulty || matched?.difficulty || fitnessLevel || "Intermediate",
       gifUrl: gif,
-      instructions: matched?.instructions || ["Align body posture.", "Engage target muscle.", "Control eccentric tempo."],
+      instructions: Array.isArray(raw.instructions) ? raw.instructions : (matched?.instructions || ["Align body posture.", "Engage target muscle with controlled tempo.", "Complete repetition safely."]),
       startingPosition: matched?.startingPosition || "Assume balanced posture with braced abdominal wall.",
       movementExecution: matched?.movementExecution || "Drive with primary muscle group, avoiding momentum.",
       finishingPosition: matched?.finishingPosition || "Return under controlled tempo to initial position.",
@@ -2623,14 +2779,14 @@ function generateServerFallbackDailyWorkout(params: any): any {
 
   const warmup = [
     {
-      name: "Arm Circles & Dynamic Torso Rotations",
+      name: "Dynamic Arm Swings & Rotational Openers",
       durationOrReps: "60 Seconds",
-      instructions: "Rotate arms forward and back, swivel torso gently to warm shoulder capsules and spinal erectors."
+      instructions: "Rotate arms forward and back, swivel torso gently to warm joint capsules and spinal erectors."
     },
     {
-      name: "Hip Opener & Spider-man Lunges",
+      name: "Hip Opener & Spiderman Deep Lunges",
       durationOrReps: "45 Seconds per side",
-      instructions: "Step into deep lunge, press hips downward, and extend arm upward to mobilise thoracic spine."
+      instructions: "Step into deep lunge, press hips downward, and extend arm upward to mobilize thoracic spine."
     }
   ];
 
@@ -2641,9 +2797,9 @@ function generateServerFallbackDailyWorkout(params: any): any {
       instructions: "Inhale 4s, hold 4s, exhale 4s, hold 4s to transition into parasympathetic recovery."
     },
     {
-      name: "Full-Body Static Hamstring & Quad Stretch",
+      name: "Target Muscle Static Lengthening",
       duration: "90 Seconds per side",
-      instructions: "Gently stretch worked muscle groups under slow, deep respiration."
+      instructions: "Gently stretch worked muscle groups under slow, deep diaphragmatic respiration."
     }
   ];
 
@@ -2665,15 +2821,22 @@ function generateServerFallbackDailyWorkout(params: any): any {
     warmup,
     exercises,
     cooldown,
+    guidelines: plan?.meta?.guidelines || [
+      "Follow prescribed exercise order for optimal fatigue management.",
+      "Execute each working set to 1-2 reps shy of muscular failure.",
+      "Track loads to ensure progressive overload across weekly blocks."
+    ],
     nutritionTip: "Post-workout: Fuel with 30-40g high quality protein and drink 500ml water within 45 minutes.",
     hydrationTip: "Maintain 3.0+ Liters of daily hydration. Sip 250ml every 15 minutes during this session.",
     createdAt: new Date().toISOString(),
     isAiGenerated: false,
-    isFallback: true
+    missingExercises: false,
+    isRestDay: false,
+    isCardioOnly: false
   };
 }
 
-// 1.65. AI DAILY WORKOUT GENERATOR (GROUNDED IN 237 ADMIN GIF EXERCISES)
+// 1.65. AI DAILY WORKOUT GENERATOR (SCHEDULE-FIRST WITH AI COACHING ENHANCEMENT)
 app.post("/api/gemini/generate-daily-workout", requirePremium, async (req, res) => {
   const {
     programType = "immortal_90",
@@ -2684,185 +2847,422 @@ app.post("/api/gemini/generate-daily-workout", requirePremium, async (req, res) 
     duration = 45,
     intensity = "High",
     customFocusPrompt = "",
-    workoutStyle = "Hypertrophy"
+    workoutStyle = "Hypertrophy",
+    userOnboarding
   } = req.body;
 
   const safeDay = Math.max(1, Number(dayNumber) || 1);
 
-  const programNames: Record<string, string> = {
-    immortal_90: "Immortal 90 Day Challenge",
-    women_confidence: "Women Confidence Program",
-    lifestyle_academy: "Lifestyle Fitness Academy",
-    home_workout: "180-Day Home Workout Challenge",
-    belly_fat_shred: "5-Month Belly Fat Shred System",
-    gym_hypertrophy: "Gym Muscle Builder & Strength",
-    cardio_calisthenics: "Cardio, Calisthenics & Military",
-    posture_vitality: "Posture & Joint Vitality",
-    custom: "Custom AI Blueprint"
-  };
+  // 1. Program schedule ALWAYS decides what the user should do first
+  const scheduledWorkout = generateServerFallbackDailyWorkout({
+    programType,
+    dayNumber: safeDay,
+    targetMuscle,
+    fitnessLevel,
+    equipment,
+    duration,
+    customFocusPrompt,
+    userOnboarding
+  });
 
-  const programName = programNames[programType] || "AlexFitnessHub Daily Program";
+  // 2. If it's a Rest Day, Cardio Day, or has missing exercises, return the scheduled workout directly
+  // The AI is strictly prevented from inventing random workouts or replacing missing exercises!
+  if (scheduledWorkout.isRestDay || scheduledWorkout.isCardioOnly || scheduledWorkout.missingExercises) {
+    return res.json({ success: true, workout: scheduledWorkout });
+  }
 
+  // 3. For training days, the exercises and categories are 100% determined by the schedule.
+  // The AI is ONLY used to write personalized descriptions, advice, motivation, or explanations!
   try {
     const ai = getGeminiClient();
-
     if (!ai) {
-      console.log("[AI Workout] No Gemini client configured. Launching clinical kinesiology fallback engine.");
-      const fallback = generateServerFallbackDailyWorkout({
-        programType,
-        dayNumber: safeDay,
-        targetMuscle,
-        fitnessLevel,
-        equipment,
-        duration,
-        customFocusPrompt
-      });
-      return res.json({ success: true, workout: fallback });
+      return res.json({ success: true, workout: scheduledWorkout });
     }
 
-    // Build a compact sample list of verified 237 exercises for the prompt
-    // Categorize or filter so prompt stays concise and within limits
-    const relevantExercises = EXERCISES.slice(0, 120).map(e => e.name);
+    const exerciseNamesList = scheduledWorkout.exercises.map((e: any) => e.name).join(", ");
+    const prompt = `You are Coach Alex, head strength coach at AlexFitnessHub.
+Write an elite, highly motivating coaching brief and nutritional advice for today's scheduled workout:
+PROGRAM: ${scheduledWorkout.programName}
+DAY: Day ${safeDay}
+TARGET CATEGORY: ${scheduledWorkout.tagline || scheduledWorkout.title}
+EXERCISES PRESCRIBED: ${exerciseNamesList}
+ATHLETE LEVEL: ${fitnessLevel}
+${userOnboarding ? `ATHLETE GOAL: ${userOnboarding.fitnessGoals || userOnboarding.goal || "Hypertrophy"}` : ""}
+${userOnboarding?.healthRestrictions ? `INJURY PRECAUTIONS: ${userOnboarding.healthRestrictions}` : ""}
 
-    const contents = `Generate an elite, single-day workout session for the following training profile:
-PROGRAM: ${programName} (${programType})
-DAY NUMBER: Day ${safeDay}
-TARGET MUSCLE / SPLIT: ${targetMuscle || "Prescribed Program Split"}
-ATHLETE FITNESS LEVEL: ${fitnessLevel}
-EQUIPMENT AVAILABLE: ${equipment}
-SESSION DURATION: ${duration} minutes
-INTENSITY: ${intensity}
-WORKOUT STYLE: ${workoutStyle}
-${customFocusPrompt ? `USER CUSTOM FOCUS / NOTES: "${customFocusPrompt}"` : ""}
-
-IMPORTANT EXERCISE DATABASE CONSTRAINT:
-AlexFitnessHub features a master library of 237 administrator-uploaded workouts with animated GIFs.
-Choose exercise names that correspond directly to real bodybuilding/fitness movements such as:
-${relevantExercises.slice(0, 50).join(", ")}, etc.
-
-Return a strictly valid JSON object matching this schema (do NOT return any markdown backticks or prefaces, just raw JSON):
+Return a JSON object matching this schema:
 {
-  "title": "High-energy session title (e.g. Day ${safeDay}: Pectoral Cleaving & Triceps Annihilation)",
-  "tagline": "Biomechanical focus description",
-  "programName": "${programName}",
-  "dayNumber": ${safeDay},
-  "targetMuscles": ["Primary Muscle", "Secondary Muscle"],
-  "fitnessLevel": "${fitnessLevel}",
-  "estimatedMinutes": ${duration},
-  "estimatedCalories": "380 - 480 kcal",
-  "coachingBrief": "2-3 sentences of direct motivational instructions and form cues from Coach Alex for today's workout",
-  "warmup": [
-    { "name": "Dynamic Warmup Drill", "durationOrReps": "60 Seconds", "instructions": "Form cues for warmup" },
-    { "name": "Dynamic Activation Drill", "durationOrReps": "45 Seconds", "instructions": "Activation cues" }
-  ],
-  "exercises": [
-    {
-      "name": "Exact exercise name",
-      "sets": 3,
-      "reps": "10-12 reps",
-      "restSeconds": 60,
-      "tempo": "3-0-1-0",
-      "coachingCues": "Coach Alex execution cues for peak tension and safety",
-      "targetMuscle": "Specific muscle targeted"
-    }
-  ],
-  "cooldown": [
-    { "name": "Restorative stretch name", "duration": "90 Seconds", "instructions": "Deep breathing and release cues" }
-  ],
-  "nutritionTip": "Specific post-workout macro/fuel tip for this workout",
-  "hydrationTip": "Hydration strategy for today's session"
-}
-Ensure exactly 4 to 6 core exercises are generated in the exercises array, with realistic sets and reps.`;
-
-    const systemInstruction = `You are Coach Alex, the elite head strength coach and sports kinesiologist at AlexFitnessHub.
-You generate precise, scientifically sound daily training routines.
-You prioritize biomechanical safety, strict eccentric control, and muscle stimulation.
-Always return 100% valid JSON matching the requested structure.`;
+  "coachingBrief": "2-3 punchy, biomechanically precise motivational sentences from Coach Alex directing the athlete on today's execution and mindset",
+  "nutritionTip": "1-2 sentences of specific post-workout macronutrient and recovery fuel advice",
+  "hydrationTip": "1 sentence of hydration advice for today's session"
+}`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3.8-flash",
-      contents,
+      contents: prompt,
       config: {
-        systemInstruction,
-        temperature: 0.7,
-        responseMimeType: "application/json"
+        responseMimeType: "application/json",
+        temperature: 0.7
       }
     });
 
-    let responseText = response.text || "";
-    responseText = responseText.trim();
+    let responseText = (response.text || "").trim();
     if (responseText.startsWith("```")) {
       responseText = responseText.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
     }
 
     try {
-      const generated = JSON.parse(responseText);
-
-      // Enrich every exercise in generated.exercises with the 237 library data
-      if (Array.isArray(generated.exercises)) {
-        generated.exercises = generated.exercises.map((ex: any, idx: number) => {
-          const matched = resolveMasterExercise(ex.name, ex.targetMuscle || targetMuscle);
-          const exName = matched ? matched.name : ex.name;
-          const gif = matched ? matched.gifUrl : getExerciseGifUrl(exName, ex.targetMuscle);
-
-          return {
-            id: matched ? matched.id : `ai_ex_${safeDay}_${idx + 1}`,
-            name: exName,
-            sets: ex.sets || 3,
-            reps: ex.reps || "10-12 reps",
-            restSeconds: ex.restSeconds || 60,
-            tempo: ex.tempo || "3-0-1-0",
-            coachingCues: ex.coachingCues || matched?.movementExecution || "Maintain strict tempo and form.",
-            targetMuscle: ex.targetMuscle || matched?.musclesWorked?.[0] || matched?.muscleGroups?.[0] || "Target Muscle",
-            equipment: matched?.equipment || [equipment || "Gym Equipment"],
-            difficulty: matched?.difficulty || fitnessLevel || "Intermediate",
-            gifUrl: gif,
-            instructions: matched?.instructions || ["Set position.", "Execute with control.", "Return to start."],
-            startingPosition: matched?.startingPosition || "Position safely with neutral posture.",
-            movementExecution: matched?.movementExecution || "Drive with primary muscles through full range.",
-            finishingPosition: matched?.finishingPosition || "Complete movement smoothly.",
-            safetyTips: matched?.safetyTips || ["Breathe evenly.", "Keep core braced."],
-            commonMistakes: matched?.commonMistakes || ["Rushing reps.", "Losing posture."]
-          };
-        });
-      }
-
-      generated.id = `daily_ai_workout_${programType}_d${safeDay}_${Date.now()}`;
-      generated.programType = programType;
-      generated.programName = programName;
-      generated.dayNumber = safeDay;
-      generated.createdAt = new Date().toISOString();
-      generated.isAiGenerated = true;
-
-      return res.json({ success: true, workout: generated });
+      const aiAdvice = JSON.parse(responseText);
+      if (aiAdvice.coachingBrief) scheduledWorkout.coachingBrief = aiAdvice.coachingBrief;
+      if (aiAdvice.nutritionTip) scheduledWorkout.nutritionTip = aiAdvice.nutritionTip;
+      if (aiAdvice.hydrationTip) scheduledWorkout.hydrationTip = aiAdvice.hydrationTip;
+      scheduledWorkout.isAiGenerated = true;
     } catch (parseErr) {
-      console.error("[AI Workout] Failed to parse Gemini response, fallback used:", responseText);
-      const fallback = generateServerFallbackDailyWorkout({
-        programType,
-        dayNumber: safeDay,
-        targetMuscle,
-        fitnessLevel,
-        equipment,
-        duration,
-        customFocusPrompt
-      });
-      return res.json({ success: true, workout: fallback });
+      console.warn("[AI Workout Notice] AI coaching brief parse failed, using scheduled notes:", parseErr);
     }
 
+    return res.json({ success: true, workout: scheduledWorkout });
   } catch (error: any) {
-    console.error("[AI Workout] Error in generate-daily-workout endpoint:", error);
-    const fallback = generateServerFallbackDailyWorkout({
-      programType,
-      dayNumber: safeDay,
-      targetMuscle,
-      fitnessLevel,
-      equipment,
-      duration,
-      customFocusPrompt
-    });
-    return res.json({ success: true, workout: fallback, isFallback: true });
+    // If Gemini API fails (e.g. quota limit, overloaded, or network timeout), smoothly return the scheduled workout!
+    console.warn("[AI Workout Notice] Gemini advice generation skipped due to API state, using scheduled notes:", error.message || error);
+    return res.json({ success: true, workout: scheduledWorkout });
   }
 });
+
+// ============================================================================
+// 1.66. WORKOUT COOLDOWN & COMPLETION SYSTEM (BACKEND ENFORCED)
+// ============================================================================
+const WORKOUT_COOLDOWNS_FILE_PATH = path.join(process.cwd(), "src", "data", "workout_cooldowns.json");
+const SCHEDULED_REMINDERS_FILE_PATH = path.join(process.cwd(), "src", "data", "scheduled_reminders.json");
+
+function loadServerCooldowns(): Record<string, any> {
+  if (fs.existsSync(WORKOUT_COOLDOWNS_FILE_PATH)) {
+    try {
+      const raw = fs.readFileSync(WORKOUT_COOLDOWNS_FILE_PATH, "utf-8").trim();
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      console.warn("Failed reading workout_cooldowns.json:", e);
+    }
+  }
+  return {};
+}
+
+function saveServerCooldowns(data: Record<string, any>) {
+  try {
+    const dir = path.dirname(WORKOUT_COOLDOWNS_FILE_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(WORKOUT_COOLDOWNS_FILE_PATH, JSON.stringify(data, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Failed saving cooldowns:", e);
+  }
+}
+
+function loadScheduledReminders(): any[] {
+  if (fs.existsSync(SCHEDULED_REMINDERS_FILE_PATH)) {
+    try {
+      const raw = fs.readFileSync(SCHEDULED_REMINDERS_FILE_PATH, "utf-8").trim();
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      console.warn("Failed reading scheduled_reminders.json:", e);
+    }
+  }
+  return [];
+}
+
+function saveScheduledReminders(data: any[]) {
+  try {
+    const dir = path.dirname(SCHEDULED_REMINDERS_FILE_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(SCHEDULED_REMINDERS_FILE_PATH, JSON.stringify(data, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Failed saving scheduled reminders:", e);
+  }
+}
+
+// GET /api/workout/cooldown-status
+app.get("/api/workout/cooldown-status", (req: any, res: any) => {
+  const { programId = "immortal_90", userEmail = "" } = req.query;
+  const userKey = (userEmail || req.headers["x-user-email"] || req.user?.email || "default_athlete").toLowerCase().trim();
+  const cooldownKey = `${userKey}_${programId}`;
+
+  const allCooldowns = loadServerCooldowns();
+  const record = allCooldowns[cooldownKey];
+  const now = Date.now();
+
+  const waitHours = programId === "immortal_90" ? 7 : 5;
+
+  if (record && record.nextUnlockAt && record.nextUnlockAt > now) {
+    const remainingMs = record.nextUnlockAt - now;
+    return res.json({
+      isWaiting: true,
+      programId,
+      userKey,
+      completedDay: record.completedDay || 1,
+      nextDay: record.nextDay || (record.completedDay + 1),
+      nextUnlockAt: record.nextUnlockAt,
+      remainingMs,
+      waitDurationHours: record.waitDurationHours || waitHours,
+      completedAt: record.completedAt
+    });
+  }
+
+  return res.json({
+    isWaiting: false,
+    programId,
+    userKey,
+    completedDay: record?.completedDay || 0,
+    nextDay: (record?.completedDay ? record.completedDay + 1 : 1),
+    nextUnlockAt: 0,
+    remainingMs: 0,
+    waitDurationHours: waitHours
+  });
+});
+
+// POST /api/workout/complete-day
+app.post("/api/workout/complete-day", async (req: any, res: any) => {
+  const {
+    programId = "immortal_90",
+    completedDay = 1,
+    distanceKm = 0,
+    caloriesBurned = 450,
+    durationMinutes = 45,
+    timezoneOffset = 0,
+    userEmail = ""
+  } = req.body;
+
+  const userKey = (userEmail || req.headers["x-user-email"] || req.user?.email || "default_athlete").toLowerCase().trim();
+  const cooldownKey = `${userKey}_${programId}`;
+  const allCooldowns = loadServerCooldowns();
+  const now = Date.now();
+
+  const completedDayNum = Math.max(1, Number(completedDay) || 1);
+  const nextDayNum = completedDayNum + 1;
+
+  // Strict 7-hour wait for Immortal 90; 5 hours for all other programs
+  const waitHours = programId === "immortal_90" ? 7 : 5;
+  const waitDurationMs = waitHours * 3600 * 1000;
+
+  // Check duplicate completion: if active cooldown exists for the SAME completedDay, reject duplicate
+  const existing = allCooldowns[cooldownKey];
+  if (existing && existing.nextUnlockAt > now && existing.completedDay === completedDayNum) {
+    const remainingMs = existing.nextUnlockAt - now;
+    return res.status(409).json({
+      success: false,
+      isDuplicate: true,
+      message: `Workout for Day ${completedDayNum} is already completed. Mandatory ${waitHours}-hour recovery window in progress.`,
+      remainingMs,
+      nextUnlockAt: existing.nextUnlockAt,
+      waitDurationHours: waitHours
+    });
+  }
+
+  const nextUnlockAt = now + waitDurationMs;
+  const cooldownRecord = {
+    userKey,
+    userEmail: userKey,
+    programId,
+    completedDay: completedDayNum,
+    nextDay: nextDayNum,
+    completedAt: now,
+    nextUnlockAt,
+    waitDurationHours: waitHours,
+    durationMinutes,
+    caloriesBurned,
+    distanceKm
+  };
+
+  allCooldowns[cooldownKey] = cooldownRecord;
+  saveServerCooldowns(allCooldowns);
+
+  // Prepare tomorrow's 5:00 AM local reminder email
+  let nextDayPlan: any = null;
+  try {
+    const engineProgramId = normalizeProgramId(programId);
+    nextDayPlan = getWorkoutForProgramAndDay(engineProgramId as any, nextDayNum);
+  } catch (e) {
+    console.warn("Could not query next day plan for reminder:", e);
+  }
+
+  // Calculate 5:00 AM local time for tomorrow
+  // timezoneOffset is minutes between UTC and local time (e.g., standard browser getTimezoneOffset())
+  const offsetMs = (Number(timezoneOffset) || 0) * 60 * 1000;
+  const userLocalNow = new Date(now - offsetMs);
+  const tomorrowLocalDate = new Date(userLocalNow.getTime() + 24 * 3600 * 1000);
+  tomorrowLocalDate.setUTCHours(5, 0, 0, 0); // 5:00 AM local day
+  const scheduledTimeMs = tomorrowLocalDate.getTime() + offsetMs;
+
+  const targetDateStr = tomorrowLocalDate.toISOString().split("T")[0];
+  const dedupKey = `${userKey}_${programId}_d${nextDayNum}_${targetDateStr}`;
+
+  const programTitles: Record<string, string> = {
+    immortal_90: "Immortal 90 Day Challenge",
+    women_confidence: "Women Confidence Program",
+    lifestyle_academy: "Lifestyle Fitness Academy",
+    home_workout: "180-Day Home Workout Challenge",
+    home_180: "180-Day Home Workout Challenge",
+    belly_fat_shred: "5-Month Belly Fat Shred System"
+  };
+  const progDisplayName = programTitles[programId] || programId;
+
+  // Build specific reminder content
+  let emailSubject = `⏰ 5:00 AM Alert: Day ${nextDayNum} Workout Ready - ${progDisplayName}`;
+  let emailHtml = "";
+
+  if (nextDayPlan?.meta?.isRestDay) {
+    emailSubject = `🧘 5:00 AM Recovery Alert: Day ${nextDayNum} is Rest & Recovery - ${progDisplayName}`;
+    emailHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #030712; color: #f8fafc; border-radius: 16px; padding: 32px; border: 1px solid #1e293b;">
+        <h2 style="color: #38bdf8; margin-top: 0;">Day ${nextDayNum}: Scheduled Rest & Active Recovery</h2>
+        <p style="color: #cbd5e1; font-size: 15px; line-height: 1.6;">
+          Athlete, today is a dedicated <strong>Rest & Active Recovery</strong> day for ${progDisplayName}.
+        </p>
+        <div style="background-color: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin: 24px 0;">
+          <h3 style="color: #f1f5f9; margin: 0 0 12px; font-size: 16px;">🛌 Recovery Directives</h3>
+          <ul style="color: #94a3b8; font-size: 14px; line-height: 1.8; margin: 0; padding-left: 20px;">
+            <li>Zero resistance or weight training today. Allow muscle fibers to rebuild.</li>
+            <li>Prioritize 8-9 hours of restorative sleep to maximize growth hormone release.</li>
+            <li>Hydrate with at least 3.5 Liters of water and electrolytes.</li>
+            <li>Optional: 20 minutes of light walking or gentle mobility.</li>
+          </ul>
+        </div>
+        <p style="color: #64748b; font-size: 12px; margin-top: 24px;">Coach Alex &bull; AlexFitnessHub Performance System</p>
+      </div>
+    `;
+  } else if (nextDayPlan?.meta?.isCardioOnly) {
+    const dist = nextDayPlan.meta.cardioDistance || "5 to 10 KM";
+    emailSubject = `🏃 5:00 AM Cardio Alert: Day ${nextDayNum} is ${dist} Cardio & Walking - ${progDisplayName}`;
+    emailHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #030712; color: #f8fafc; border-radius: 16px; padding: 32px; border: 1px solid #1e293b;">
+        <h2 style="color: #10b981; margin-top: 0;">Day ${nextDayNum}: ${dist} Cardio & Aerobic Pacing</h2>
+        <p style="color: #cbd5e1; font-size: 15px; line-height: 1.6;">
+          Today is dedicated exclusively to <strong>${dist} of continuous outdoor running, jogging, or brisk walking</strong>.
+        </p>
+        <div style="background-color: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin: 24px 0;">
+          <h3 style="color: #f1f5f9; margin: 0 0 12px; font-size: 16px;">⚡ Cardio Guidelines</h3>
+          <ul style="color: #94a3b8; font-size: 14px; line-height: 1.8; margin: 0; padding-left: 20px;">
+            <li>Target distance: <strong>${dist}</strong> at steady conversational pace (Zone 2, 130-145 BPM).</li>
+            <li>No resistance or weight lifting exercises today.</li>
+            <li>After completing your ${dist}, rest and refuel with electrolyte water.</li>
+          </ul>
+        </div>
+        <p style="color: #64748b; font-size: 12px; margin-top: 24px;">Coach Alex &bull; AlexFitnessHub Performance System</p>
+      </div>
+    `;
+  } else {
+    const categoryName = nextDayPlan?.meta?.category || "Prescribed Muscle Split";
+    emailSubject = `🔥 5:00 AM Training Alert: Day ${nextDayNum} is ${categoryName} - ${progDisplayName}`;
+    const exListHtml = (nextDayPlan?.exercises && Array.isArray(nextDayPlan.exercises))
+      ? nextDayPlan.exercises.slice(0, 6).map((ex: any) => `<li><strong>${ex.exerciseName || ex.name}</strong> - ${ex.sets || 3} sets &bull; ${ex.reps || "10-12 reps"}</li>`).join("")
+      : `<li>Target Focus: ${categoryName}</li>`;
+
+    emailHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #030712; color: #f8fafc; border-radius: 16px; padding: 32px; border: 1px solid #1e293b;">
+        <h2 style="color: #f59e0b; margin-top: 0;">Day ${nextDayNum}: ${categoryName}</h2>
+        <p style="color: #cbd5e1; font-size: 15px; line-height: 1.6;">
+          Your training protocol for Day ${nextDayNum} is ready in the AlexFitnessHub app.
+        </p>
+        <div style="background-color: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin: 24px 0;">
+          <h3 style="color: #f1f5f9; margin: 0 0 12px; font-size: 16px;">📋 Prescribed Movements</h3>
+          <ul style="color: #94a3b8; font-size: 14px; line-height: 1.8; margin: 0; padding-left: 20px;">
+            ${exListHtml}
+          </ul>
+        </div>
+        <p style="color: #94a3b8; font-size: 13px;">
+          Lock in strict form, control your 3-second eccentric tempo, and dominate today's session.
+        </p>
+        <p style="color: #64748b; font-size: 12px; margin-top: 24px;">Coach Alex &bull; AlexFitnessHub Performance System</p>
+      </div>
+    `;
+  }
+
+  // Queue reminder with deduplication
+  const reminders = loadScheduledReminders();
+  const alreadyQueued = reminders.some(r => r.dedupKey === dedupKey);
+  if (!alreadyQueued && userKey.includes("@")) {
+    reminders.push({
+      id: `rem_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      dedupKey,
+      userEmail: userKey,
+      programId,
+      dayNumber: nextDayNum,
+      scheduledAt: scheduledTimeMs,
+      subject: emailSubject,
+      html: emailHtml,
+      isSent: false,
+      createdAt: new Date().toISOString()
+    });
+    saveScheduledReminders(reminders);
+    console.log(`[5 AM Reminder Queued] For ${userKey} on Day ${nextDayNum} at local 5:00 AM (dedup: ${dedupKey})`);
+  }
+
+  return res.json({
+    success: true,
+    isWaiting: true,
+    completedDay: completedDayNum,
+    nextDay: nextDayNum,
+    nextUnlockAt,
+    remainingMs: waitDurationMs,
+    waitDurationHours: waitHours,
+    reminderScheduled: userKey.includes("@"),
+    programName: progDisplayName
+  });
+});
+
+// POST /api/workout/reset-cooldown (Admin tool to clear cooldown for testing)
+app.post("/api/workout/reset-cooldown", requireAdmin, (req: any, res: any) => {
+  const { programId = "immortal_90", userEmail = "" } = req.body;
+  const userKey = (userEmail || "default_athlete").toLowerCase().trim();
+  const cooldownKey = `${userKey}_${programId}`;
+
+  const allCooldowns = loadServerCooldowns();
+  delete allCooldowns[cooldownKey];
+  saveServerCooldowns(allCooldowns);
+
+  return res.json({ success: true, message: `Cooldown reset for ${cooldownKey}` });
+});
+
+// Periodic background check to dispatch due 5 AM reminders
+setInterval(async () => {
+  try {
+    const reminders = loadScheduledReminders();
+    const now = Date.now();
+    let updated = false;
+
+    for (const r of reminders) {
+      if (!r.isSent && r.scheduledAt <= now) {
+        r.isSent = true;
+        r.sentAt = new Date().toISOString();
+        updated = true;
+        console.log(`[5 AM Reminder Dispatch] Delivering scheduled email to ${r.userEmail} for Day ${r.dayNumber}...`);
+
+        try {
+          const resend = getResend();
+          if (resend) {
+            await resend.emails.send({
+              from: 'onboarding@resend.dev',
+              to: r.userEmail,
+              subject: r.subject,
+              html: r.html
+            });
+            console.log(`[5 AM Reminder OK] Delivered via Resend to ${r.userEmail}`);
+          } else {
+            await sendEmailViaMailerSend(r.userEmail, r.subject, r.html, "");
+            console.log(`[5 AM Reminder OK] Delivered via MailerSend to ${r.userEmail}`);
+          }
+        } catch (mailErr) {
+          console.warn(`[5 AM Reminder Notice] Dispatch error for ${r.userEmail}:`, mailErr);
+        }
+      }
+    }
+
+    if (updated) {
+      saveScheduledReminders(reminders);
+    }
+  } catch (err) {
+    // Non-blocking catch
+  }
+}, 60000);
+
 
 
 // Helper for local fallback generation of single custom search exercise
@@ -3617,6 +4017,427 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
     res.json({ success: true, message: "Workout permanently deleted successfully.", deletedExerciseId: exerciseId });
   } catch (error: any) {
     console.error("Failed to delete workout:", error);
+    res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
+// ============================================================================
+// ADMIN PROGRAMS & CHALLENGES MANAGEMENT ENDPOINTS
+// Allows editing all programs/challenges: delete/add workouts, sets, cardio days,
+// and auto-assigning similar replacements on deletion.
+// ============================================================================
+
+// GET all program schedule overrides
+app.get("/api/admin/programs/overrides", async (req, res) => {
+  try {
+    let overrides: Record<string, any> = {};
+    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      try {
+        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+        if (raw) overrides = JSON.parse(raw);
+      } catch (err) {
+        console.error("Failed reading program schedule overrides:", err);
+      }
+    }
+    res.json({ success: true, overrides });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST save day schedule override (workouts, sets, reps, cardio settings, drag-reorder)
+app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any, res) => {
+  const { programId, dayNumber, cycleDay, dayOverride, applyToAllCycleWeeks, totalDays } = req.body;
+  if (!programId || (!dayNumber && !cycleDay) || !dayOverride) {
+    return res.status(400).json({ success: false, error: "programId, dayNumber or cycleDay, and dayOverride are required." });
+  }
+
+  try {
+    let allOverrides: Record<string, any> = {};
+    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      try {
+        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+        if (raw) allOverrides = JSON.parse(raw);
+      } catch (err) {
+        console.error("Failed parsing program schedule overrides:", err);
+      }
+    }
+
+    if (!allOverrides[programId]) {
+      allOverrides[programId] = {};
+    }
+
+    const maxDays = Number(totalDays) || 90;
+    const computedCycleDay = Number(cycleDay) || (((Number(dayNumber) - 1) % 7) + 1);
+
+    const baseRecord = {
+      ...dayOverride,
+      updatedAt: new Date().toISOString(),
+      updatedBy: req.user?.email || "admin"
+    };
+
+    if (dayNumber) {
+      allOverrides[programId][String(dayNumber)] = {
+        ...baseRecord,
+        dayNumber: Number(dayNumber)
+      };
+    }
+
+    // Always update cycle key so new/future days also adopt this 7-day template
+    if (computedCycleDay) {
+      allOverrides[programId][`cycle_${computedCycleDay}`] = {
+        ...baseRecord,
+        cycleDay: computedCycleDay
+      };
+    }
+
+    // If applyToAllCycleWeeks is requested, replicate to all recurring days across the entire program (Days 1, 8, 15... up to maxDays)
+    if (applyToAllCycleWeeks && computedCycleDay) {
+      for (let d = computedCycleDay; d <= maxDays; d += 7) {
+        allOverrides[programId][String(d)] = {
+          ...baseRecord,
+          dayNumber: d
+        };
+      }
+    }
+
+    fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
+
+    // Also persist to Firestore
+    try {
+      if (dayNumber) {
+        await setServerFirestoreDoc("program_overrides", `${programId}_d${dayNumber}`, {
+          programId,
+          dayNumber,
+          ...dayOverride,
+          updatedAt: new Date().toISOString(),
+          updatedBy: req.user?.email || "admin"
+        }, true);
+      }
+      if (computedCycleDay) {
+        await setServerFirestoreDoc("program_overrides", `${programId}_cycle_${computedCycleDay}`, {
+          programId,
+          cycleDay: computedCycleDay,
+          ...dayOverride,
+          updatedAt: new Date().toISOString(),
+          updatedBy: req.user?.email || "admin"
+        }, true);
+      }
+    } catch (fsErr) {
+      console.warn("Firestore program override sync warning:", fsErr);
+    }
+
+    await logAdminActivityOnFirebase(
+      req.user?.email || "",
+      req.user?.uid || "",
+      "PROGRAM_DAY_UPDATE",
+      `Admin updated program ${programId} ${applyToAllCycleWeeks ? `All Repeating Cycle Day ${computedCycleDay}s` : `Day ${dayNumber}`} schedule`,
+      { programId, dayNumber, cycleDay: computedCycleDay, applyToAllCycleWeeks }
+    );
+
+    res.json({
+      success: true,
+      message: applyToAllCycleWeeks 
+        ? `Cycle Day ${computedCycleDay} split applied to all repeating weeks across ${programId} (Days ${computedCycleDay}..${maxDays}).`
+        : `Day ${dayNumber} schedule for ${programId} updated successfully.`,
+      savedOverride: allOverrides[programId][String(dayNumber || computedCycleDay)],
+      allProgramOverrides: allOverrides[programId]
+    });
+  } catch (error: any) {
+    console.error("Failed to save day override:", error);
+    res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
+// POST save entire 7-day cycle template (Days 1 to 7) for any program
+app.post("/api/admin/programs/save-cycle-template", requireAdmin, async (req: any, res) => {
+  const { programId, cycleOverrides, applyToAllWeeks = true, totalDays = 90 } = req.body;
+  if (!programId || !cycleOverrides || typeof cycleOverrides !== "object") {
+    return res.status(400).json({ success: false, error: "programId and cycleOverrides are required." });
+  }
+
+  try {
+    let allOverrides: Record<string, any> = {};
+    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      try {
+        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+        if (raw) allOverrides = JSON.parse(raw);
+      } catch (err) {}
+    }
+
+    if (!allOverrides[programId]) allOverrides[programId] = {};
+
+    const maxDays = Number(totalDays) || 90;
+
+    // Iterate through provided cycle days 1 to 7
+    for (let cDay = 1; cDay <= 7; cDay++) {
+      const dayData = cycleOverrides[String(cDay)] || cycleOverrides[`cycle_${cDay}`];
+      if (!dayData) continue;
+
+      const record = {
+        ...dayData,
+        cycleDay: cDay,
+        updatedAt: new Date().toISOString(),
+        updatedBy: req.user?.email || "admin"
+      };
+
+      allOverrides[programId][`cycle_${cDay}`] = record;
+
+      if (applyToAllWeeks) {
+        for (let d = cDay; d <= maxDays; d += 7) {
+          allOverrides[programId][String(d)] = {
+            ...record,
+            dayNumber: d
+          };
+        }
+      }
+    }
+
+    fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
+
+    // Sync to Firestore
+    try {
+      await setServerFirestoreDoc("program_cycle_templates", programId, {
+        programId,
+        cycleOverrides,
+        applyToAllWeeks,
+        totalDays: maxDays,
+        updatedAt: new Date().toISOString()
+      }, true);
+    } catch (fsErr) {
+      console.warn("Firestore program cycle template sync warning:", fsErr);
+    }
+
+    res.json({
+      success: true,
+      message: `7-Day repeating cadence for ${programId} saved and propagated across all ${maxDays} days.`,
+      programOverrides: allOverrides[programId]
+    });
+  } catch (error: any) {
+    console.error("Failed saving cycle template:", error);
+    res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
+// POST delete workout from program day & automatically fetch or assign replacement
+app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any, res) => {
+  const { 
+    programId, 
+    dayNumber, 
+    cycleDay, 
+    exerciseId, 
+    currentExercises, 
+    replacementExercise: explicitReplacement,
+    mode = "auto_replace", // "auto_replace" | "replace_specific" | "delete_only"
+    categoryHint, 
+    muscleGroupHint,
+    applyToAllCycleWeeks = false,
+    totalDays = 90
+  } = req.body;
+
+  if (!programId || (!dayNumber && !cycleDay) || !exerciseId) {
+    return res.status(400).json({ success: false, error: "programId, dayNumber or cycleDay, and exerciseId are required." });
+  }
+
+  try {
+    const exercisesList: any[] = Array.isArray(currentExercises) ? currentExercises : [];
+    const exerciseToDelete = exercisesList.find((e: any) => e.id === exerciseId) || {
+      id: exerciseId,
+      exerciseName: "Exercise",
+      category: categoryHint || "General",
+      muscleGroup: [muscleGroupHint || "Full Body"],
+      sets: 3,
+      reps: "10-12"
+    };
+
+    let updatedExercises: any[];
+    let resultingReplacement: any = null;
+
+    if (mode === "delete_only") {
+      // Simply delete from list without replacement
+      updatedExercises = exercisesList.filter((e: any) => e.id !== exerciseId);
+    } else if (explicitReplacement) {
+      // Use chosen explicit replacement
+      resultingReplacement = {
+        ...explicitReplacement,
+        id: explicitReplacement.id || `repl_${programId}_${Date.now()}`,
+        programId,
+        dayNumber: Number(dayNumber) || 1,
+        sets: explicitReplacement.sets || exerciseToDelete.sets || 3,
+        reps: explicitReplacement.reps || exerciseToDelete.reps || "10-12 reps"
+      };
+
+      const targetIdx = exercisesList.findIndex((e: any) => e.id === exerciseId);
+      if (targetIdx !== -1) {
+        updatedExercises = [...exercisesList];
+        updatedExercises[targetIdx] = resultingReplacement;
+      } else {
+        updatedExercises = exercisesList.filter((e: any) => e.id !== exerciseId).concat(resultingReplacement);
+      }
+    } else {
+      // Auto-assign smart matching replacement from library
+      const targetCategory = (exerciseToDelete.category || categoryHint || "").toLowerCase().trim();
+      const targetMuscles: string[] = Array.isArray(exerciseToDelete.muscleGroup) 
+        ? exerciseToDelete.muscleGroup.map((m: any) => String(m).toLowerCase().trim())
+        : [String(exerciseToDelete.muscleGroup || muscleGroupHint || "").toLowerCase().trim()];
+
+      const assignedNames = new Set(
+        exercisesList
+          .filter((e: any) => e.id !== exerciseId)
+          .map((e: any) => (e.exerciseName || e.name || "").toLowerCase().trim())
+      );
+
+      let masterPool = [...EXERCISES];
+      if (fs.existsSync(OVERRIDES_FILE_PATH)) {
+        try {
+          const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
+          if (raw) {
+            const customMap = JSON.parse(raw);
+            const customList = Object.values(customMap);
+            masterPool = [...masterPool, ...customList as any[]];
+          }
+        } catch (e) {}
+      }
+
+      let candidates = masterPool.filter(ex => {
+        const exName = (ex.name || (ex as any).exerciseName || "").toLowerCase().trim();
+        if (!exName || assignedNames.has(exName) || ex.id === exerciseId) return false;
+
+        const cat = (ex.category || "").toLowerCase().trim();
+        const cats = Array.isArray(ex.categories) ? ex.categories.map(c => c.toLowerCase().trim()) : [];
+        const muscles = Array.isArray(ex.muscleGroups) ? ex.muscleGroups.map(m => m.toLowerCase().trim()) : [];
+
+        const matchesCat = targetCategory && (cat.includes(targetCategory) || cats.some(c => c.includes(targetCategory)));
+        const matchesMuscle = targetMuscles.some(tm => 
+          tm && (muscles.some(m => m.includes(tm)) || cat.includes(tm) || cats.some(c => c.includes(tm)))
+        );
+
+        return matchesCat || matchesMuscle;
+      });
+
+      if (candidates.length === 0) {
+        candidates = masterPool.filter(ex => {
+          const exName = (ex.name || (ex as any).exerciseName || "").toLowerCase().trim();
+          return exName && !assignedNames.has(exName) && ex.id !== exerciseId;
+        });
+      }
+
+      const chosen = candidates[Math.floor(Math.random() * Math.min(candidates.length, 5))] || candidates[0];
+      const candidateName = chosen ? (chosen.name || (chosen as any).exerciseName) : `Alternative ${exerciseToDelete.category || "Fitness"} Drill`;
+      const candidateEquipment = chosen && chosen.equipment ? (Array.isArray(chosen.equipment) ? chosen.equipment.join(", ") : String(chosen.equipment)) : (exerciseToDelete.equipment || "Bodyweight");
+      const candidateGif = chosen?.gifUrl || getExerciseGifUrl(candidateName, exerciseToDelete.category);
+
+      resultingReplacement = {
+        id: `repl_${programId}_d${dayNumber || cycleDay}_${Date.now()}`,
+        programId,
+        programName: programId,
+        dayNumber: Number(dayNumber) || 1,
+        category: exerciseToDelete.category || chosen?.category || "Strength",
+        muscleGroup: exerciseToDelete.muscleGroup || chosen?.muscleGroups || ["Full Body"],
+        exerciseName: candidateName,
+        equipment: candidateEquipment,
+        difficulty: chosen?.difficulty || exerciseToDelete.difficulty || "Intermediate",
+        sets: typeof exerciseToDelete.sets === "number" ? exerciseToDelete.sets : 3,
+        reps: exerciseToDelete.reps || "10-12 reps",
+        duration: exerciseToDelete.duration || "45s set",
+        instructions: chosen?.instructions 
+          ? (Array.isArray(chosen.instructions) ? chosen.instructions : [chosen.instructions])
+          : ["Execute controlled biomechanics through full active range of motion."],
+        restTime: exerciseToDelete.restTime || "45s",
+        gifUrl: candidateGif,
+        coachingCues: chosen?.movementExecution 
+          ? [chosen.movementExecution] 
+          : ["Maintain rigid core stability and steady breathing cadence."]
+      };
+
+      const targetIdx = exercisesList.findIndex((e: any) => e.id === exerciseId);
+      if (targetIdx !== -1) {
+        updatedExercises = [...exercisesList];
+        updatedExercises[targetIdx] = resultingReplacement;
+      } else {
+        updatedExercises = exercisesList.filter((e: any) => e.id !== exerciseId).concat(resultingReplacement);
+      }
+    }
+
+    // Persist to PROGRAM_SCHEDULE_OVERRIDES_PATH
+    let allOverrides: Record<string, any> = {};
+    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      try {
+        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+        if (raw) allOverrides = JSON.parse(raw);
+      } catch (err) {}
+    }
+
+    if (!allOverrides[programId]) allOverrides[programId] = {};
+    const effectiveDay = dayNumber ? String(dayNumber) : `cycle_${cycleDay}`;
+    const existingOverride = allOverrides[programId][effectiveDay] || {};
+
+    const baseUpdate = {
+      ...existingOverride,
+      exercises: updatedExercises,
+      updatedAt: new Date().toISOString(),
+      lastAction: mode === "delete_only" 
+        ? `Deleted ${exerciseToDelete.exerciseName}` 
+        : `Replaced ${exerciseToDelete.exerciseName} with ${resultingReplacement?.exerciseName || "replacement"}`
+    };
+
+    allOverrides[programId][effectiveDay] = baseUpdate;
+
+    const computedCycleDay = Number(cycleDay) || (((Number(dayNumber) - 1) % 7) + 1);
+    if (computedCycleDay) {
+      allOverrides[programId][`cycle_${computedCycleDay}`] = {
+        ...(allOverrides[programId][`cycle_${computedCycleDay}`] || {}),
+        exercises: updatedExercises,
+        updatedAt: new Date().toISOString()
+      };
+    }
+
+    if (applyToAllCycleWeeks && computedCycleDay) {
+      const maxDays = Number(totalDays) || 90;
+      for (let d = computedCycleDay; d <= maxDays; d += 7) {
+        allOverrides[programId][String(d)] = {
+          ...(allOverrides[programId][String(d)] || {}),
+          exercises: updatedExercises,
+          updatedAt: new Date().toISOString()
+        };
+      }
+    }
+
+    fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
+
+    // Also sync to Firestore
+    try {
+      await setServerFirestoreDoc("program_overrides", `${programId}_d${dayNumber || computedCycleDay}`, {
+        programId,
+        dayNumber: Number(dayNumber) || computedCycleDay,
+        exercises: updatedExercises,
+        updatedAt: new Date().toISOString()
+      }, true);
+    } catch (fsErr) {
+      console.warn("Firestore program override sync warning:", fsErr);
+    }
+
+    await logAdminActivityOnFirebase(
+      req.user?.email || "",
+      req.user?.uid || "",
+      "WORKOUT_DELETE_AND_REPLACE",
+      mode === "delete_only"
+        ? `Admin deleted "${exerciseToDelete.exerciseName}" from ${programId} Day ${dayNumber || computedCycleDay}.`
+        : `Admin replaced "${exerciseToDelete.exerciseName}" with "${resultingReplacement?.exerciseName}" in ${programId}.`,
+      { programId, dayNumber, deletedExerciseId: exerciseId, mode }
+    );
+
+    res.json({
+      success: true,
+      message: mode === "delete_only"
+        ? `Workout "${exerciseToDelete.exerciseName}" removed from routine.`
+        : `Workout "${exerciseToDelete.exerciseName}" replaced with "${resultingReplacement?.exerciseName}".`,
+      deletedExerciseId: exerciseId,
+      replacementExercise: resultingReplacement,
+      updatedExercises
+    });
+  } catch (error: any) {
+    console.error("Failed to delete and replace workout:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });
   }
 });

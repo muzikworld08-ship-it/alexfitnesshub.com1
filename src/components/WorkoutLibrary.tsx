@@ -2760,20 +2760,41 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
           {/* Curated Workouts matching section (when in 'all' tab and search/filter is active) */}
           {activeSearchTab === "all" && filteredWorkouts.length > 0 && (
             <div className="mb-10 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <div className="flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-[#C0392B]" />
-                  <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase font-sans">
-                    Matching Workout Routines ({filteredWorkouts.length})
+              {/* Unsplash Visual Showcase Banner for Matching Workout Routines */}
+              <div className="relative overflow-hidden rounded-2xl bg-slate-900 border border-slate-200/80 shadow-md">
+                <img
+                  src="https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1200&auto=format&fit=crop"
+                  alt="Matching Workout Routines Showcase"
+                  referrerPolicy="no-referrer"
+                  className="w-full h-36 sm:h-44 object-cover opacity-40 mix-blend-luminosity scale-105 transition-transform duration-700 hover:scale-100"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-transparent p-5 sm:p-7 flex flex-col justify-center">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-600 text-white shadow-xs">
+                      Curated Routines
+                    </span>
+                    <span className="text-xs text-slate-300 font-medium">
+                      {filteredWorkouts.length} Matching Routine{filteredWorkouts.length !== 1 ? "s" : ""} Found
+                    </span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+                    <Flame className="w-5 h-5 text-red-500 shrink-0" />
+                    Matching Workout Routines
                   </h3>
+                  <p className="text-xs text-slate-300 mt-1 max-w-xl hidden sm:block">
+                    Precision high-impact conditioning routines tailored to your selected muscle groups and training intensity.
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveSearchTab("workouts")}
-                  className="text-xs font-bold text-[#C0392B] hover:underline font-mono uppercase cursor-pointer"
-                >
-                  View All Workouts →
-                </button>
+                <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSearchTab("workouts")}
+                    className="px-3.5 py-2 rounded-xl bg-white/90 hover:bg-white text-slate-900 text-xs font-black uppercase tracking-wider shadow-sm transition cursor-pointer backdrop-blur-xs flex items-center gap-1.5"
+                  >
+                    <span>View All Workouts</span>
+                    <span>→</span>
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

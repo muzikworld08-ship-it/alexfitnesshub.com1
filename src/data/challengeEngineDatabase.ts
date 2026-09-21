@@ -51,11 +51,15 @@ export {
   POSTURE_VITALITY_POOL,
   IMMORTAL_CHEST_TRICEPS,
   IMMORTAL_BACK_BICEPS,
+  IMMORTAL_CARDIO_MOBILITY,
   IMMORTAL_LEGS_SHOULDERS,
+  IMMORTAL_CHEST_TRICEPS_FOREARMS,
+  IMMORTAL_BACK_BICEPS_CORE,
+  IMMORTAL_REST_RECOVERY,
+  IMMORTAL_PURE_LOWER_BODY,
   IMMORTAL_CARDIO_RECOVERY,
   IMMORTAL_BACK_BICEPS_FOREARMS,
-  IMMORTAL_LEGS_SHOULDERS_ABS,
-  IMMORTAL_PURE_LOWER_BODY
+  IMMORTAL_LEGS_SHOULDERS_ABS
 };
 
 // ============================================================================
@@ -71,16 +75,16 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
     accentColor: "from-amber-500 to-red-600",
     badge: "Flagship 90 Days",
     categories: [
-      "Chest + Triceps",
-      "Back + Biceps + Forearm",
-      "5 to 10 KM Cardio / Walking",
-      "Legs + Shoulders + Abs",
-      "Chest + Triceps",
-      "Back + Biceps",
-      "5 to 10 KM Running / Walking"
+      "Chest and Triceps",
+      "Back and Biceps",
+      "Cardio and Mobility",
+      "Legs and Shoulders",
+      "Chest, Triceps and Forearms",
+      "Back, Biceps and Core",
+      "Rest and Recovery"
     ],
     equipmentRequired: ["Barbell", "Dumbbells", "Cable Machine", "Bench", "Pull-up Bar"],
-    coverImage: "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif"
+    coverImage: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0025-EIeI8Vf.gif"
   },
   home_180: {
     id: "home_180",
@@ -103,7 +107,7 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
       "Mobility and recovery"
     ],
     equipmentRequired: ["Bodyweight", "Optional Resistance Bands", "Yoga Mat"],
-    coverImage: "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif"
+    coverImage: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif"
   },
   women_confidence: {
     id: "women_confidence",
@@ -128,7 +132,7 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
       "Confidence and wellness sessions"
     ],
     equipmentRequired: ["Dumbbells", "Booty Bands", "Yoga Mat", "Bench or Chair"],
-    coverImage: "https://media.giphy.com/media/v1F0A8f5Ff6hO/giphy.gif"
+    coverImage: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1409-qKBpF7I.gif"
   },
   belly_fat_shred: {
     id: "belly_fat_shred",
@@ -150,7 +154,7 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
       "Mobility and recovery"
     ],
     equipmentRequired: ["Bodyweight", "Jump Rope", "Treadmill or Outdoors", "Light Dumbbells"],
-    coverImage: "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif"
+    coverImage: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0464-CosupLu.gif"
   },
   posture_vitality: {
     id: "posture_vitality",
@@ -176,7 +180,67 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
       "Daily movement"
     ],
     equipmentRequired: ["Yoga Mat", "Resistance Band or Towel", "Foam Roller"],
-    coverImage: "https://media.giphy.com/media/26AHG5KGFxSkUWw1i/giphy.gif"
+    coverImage: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1407-PzNxakt.gif"
+  },
+  gym_hypertrophy: {
+    id: "gym_hypertrophy",
+    name: "Gym Muscle Builder & Strength",
+    tagline: "Heavy Mechanical Tension, Progressive Overload & Pure Hypertrophy",
+    totalDays: 90,
+    description: "The gold-standard gym bodybuilding split. Focuses on heavy multi-joint compound barbell and dumbbell lifts combined with high-tension isolation movements.",
+    accentColor: "from-violet-600 to-purple-800",
+    badge: "90 Days Gym Split",
+    categories: [
+      "Chest + Triceps",
+      "Back + Biceps",
+      "5 KM Active Flush",
+      "Legs + Calves",
+      "Shoulders + Arms + Abs",
+      "5 KM Conditioning",
+      "Anabolic Rest"
+    ],
+    equipmentRequired: ["Barbell", "Dumbbells", "Cables", "Leg Press", "Bench"],
+    coverImage: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0025-EIeI8Vf.gif"
+  },
+  cardio_calisthenics: {
+    id: "cardio_calisthenics",
+    name: "Cardio, Calisthenics & Military",
+    tagline: "Elite Bodyweight Relative Strength, Running Cadence & Combat Stamina",
+    totalDays: 90,
+    description: "Military-inspired athletic conditioning protocol combining high-volume push/pull calisthenics, core armor, jump rope agility, and 5-10 KM running stamina.",
+    accentColor: "from-amber-600 to-yellow-700",
+    badge: "90 Days Tactical",
+    categories: [
+      "Tactical Push",
+      "5-10 KM Tempo Run",
+      "Pull & Core Armor",
+      "Agility & HIIT",
+      "Endurance Calisthenics",
+      "5-10 KM Military Ruck",
+      "Joint Decompression"
+    ],
+    equipmentRequired: ["Pull-up Bar", "Dip Station", "Jump Rope", "Running Shoes"],
+    coverImage: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0652-lBDjFxJ.gif"
+  },
+  lifestyle_academy: {
+    id: "lifestyle_academy",
+    name: "Lifestyle Fitness Academy",
+    tagline: "Sedentary Reset, Posture Realignment & Functional Longevity",
+    totalDays: 90,
+    description: "Built for modern desk workers and active lifestyle seekers to reverse prolonged sitting, alleviate anterior rounded posture, activate glutes, and foster metabolic vitality.",
+    accentColor: "from-cyan-600 to-blue-700",
+    badge: "90 Days Academy",
+    categories: [
+      "Posture Alignment",
+      "Hip Flexor Reset",
+      "Aerobic Walking",
+      "Chest Opening",
+      "Spinal Core Stability",
+      "Glute Kinetic Chain",
+      "Restorative Recovery"
+    ],
+    equipmentRequired: ["Yoga Mat", "Light Resistance Band", "Walking Shoes"],
+    coverImage: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1407-PzNxakt.gif"
   }
 };
 
@@ -204,7 +268,7 @@ const IMMORTAL_CHEST_TRICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] 
     ],
     restTime: "90s",
     coachingCues: ["Keep elbows tucked at ~45 degrees", "Drive with your legs without arching excessively"],
-    gifUrl: "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif"
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0025-EIeI8Vf.gif"
   },
   {
     programId: "immortal_90",
@@ -630,23 +694,24 @@ const IMMORTAL_BACK_BICEPS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = 
   }
 ];
 
-const IMMORTAL_CARDIO_RECOVERY: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+const IMMORTAL_CARDIO_MOBILITY: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
   {
     programId: "immortal_90",
     programName: "Immortal 90 Day Challenge",
-    category: "5 to 10 KM Cardio / Walking",
-    muscleGroup: ["Cardio"],
-    exerciseName: "Running",
-    equipment: "Running Shoes & Outdoors or Treadmill",
+    category: "Cardio and Mobility",
+    muscleGroup: ["Cardio", "Cardiovascular System"],
+    exerciseName: "Dedicated Cardio Session: Running, Brisk Walking, Cycling, or Jogging",
+    equipment: "Running Shoes, Treadmill, Outdoor Route, or Stationary Bike",
     difficulty: "Beginner",
     sets: 1,
-    reps: "5-10 KM",
+    reps: "5 to 10 KM",
     duration: "45-75 mins",
     instructions: [
-      "Complete a 5 to 10 kilometer outdoor jog, brisk walk, or treadmill session.",
-      "Maintain a steady Zone 2 heart rate (conversational pace).",
-      "Hydrate continuously with water and electrolytes.",
-      "No resistance or weight training is permitted today — prioritize aerobic efficiency and joint decompression."
+      "Select your cardio modality: Outdoor running, brisk walking, cycling, or jogging.",
+      "Target 5 to 10 KM based on your current fitness level (Beginner: 5 km, Intermediate: 7.5 km, Advanced: 10 km).",
+      "Maintain a steady aerobic Zone 2 heart rate (conversational pace).",
+      "Strict rule: No weight training or resistance workouts are permitted today. Dedicated cardio only.",
+      "Hydrate continuously with water and electrolytes throughout the session."
     ],
     restTime: "Continuous pacing",
     coachingCues: ["Keep cadence light and smooth", "Breathe through nose and diaphragm"]
@@ -654,21 +719,108 @@ const IMMORTAL_CARDIO_RECOVERY: Omit<ChallengeExerciseItem, "id" | "dayNumber">[
   {
     programId: "immortal_90",
     programName: "Immortal 90 Day Challenge",
-    category: "5 to 10 KM Cardio / Walking",
-    muscleGroup: ["Recovery"],
-    exerciseName: "Walking",
+    category: "Cardio and Mobility",
+    muscleGroup: ["Mobility"],
+    exerciseName: "Thoracic Spine Foam Rolling & Extension",
+    equipment: "Foam Roller & Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "10 extensions",
+    duration: "3 mins",
+    instructions: [
+      "Position foam roller across mid-back with hands cradling neck.",
+      "Gently extend upper back over roller while keeping hips on floor.",
+      "Roll up and down mid-thoracic region to mobilize thoracic vertebrae."
+    ],
+    restTime: "30s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Cardio and Mobility",
+    muscleGroup: ["Mobility"],
+    exerciseName: "Dynamic Hip Flexor & Psoas Stretch",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "45s per side",
+    duration: "3 mins",
+    instructions: [
+      "Kneel in half-kneeling lunge position with upright torso.",
+      "Tuck pelvis under (posterior pelvic tilt) and gently shift forward.",
+      "Feel deep release through anterior hip flexor and psoas."
+    ],
+    restTime: "30s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Cardio and Mobility",
+    muscleGroup: ["Mobility"],
+    exerciseName: "90/90 Dynamic Hip Mobility Flow",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "8 transitions / side",
+    duration: "3 mins",
+    instructions: [
+      "Sit on floor with front and rear legs at 90-degree angles.",
+      "Smoothly rotate knees across without using hands if mobility permits.",
+      "Mobilizes internal and external hip rotation for squat depth."
+    ],
+    restTime: "30s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Cardio and Mobility",
+    muscleGroup: ["Mobility"],
+    exerciseName: "Standing Ankle Dorsiflexion & Calf Mobility Stretch",
+    equipment: "Wall or Step",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "40s per leg",
+    duration: "3 mins",
+    instructions: [
+      "Place toes against wall with heel down, drive knee over center of toes.",
+      "Improves closed-chain ankle dorsiflexion, Achilles elasticity, and running stride."
+    ],
+    restTime: "30s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Cardio and Mobility",
+    muscleGroup: ["Mobility"],
+    exerciseName: "Scapular Wall Slides & Shoulder Dislocates",
+    equipment: "Resistance Band or Broomstick & Wall",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12 repetitions",
+    duration: "3 mins",
+    instructions: [
+      "Stand with back, elbows, and wrists against wall, sliding arms upward without arching back.",
+      "Use band/stick to pass arms overhead in controlled arcs to open shoulder capsules."
+    ],
+    restTime: "30s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Cardio and Mobility",
+    muscleGroup: ["Mobility", "Recovery"],
+    exerciseName: "Supine Lumbar Decompression & Diaphragmatic Box Breathing",
     equipment: "Yoga Mat",
     difficulty: "Beginner",
     sets: 1,
-    reps: "15 mins",
-    duration: "15 mins",
+    reps: "5 minutes",
+    duration: "5 mins",
     instructions: [
-      "Lie supine with legs elevated against a wall for 5 minutes.",
-      "Practice 4-7-8 diaphragmatic breathing to stimulate parasympathetic recovery.",
-      "Drink 1 liter of mineral-rich water to restore cellular hydration."
+      "Lie supine with calves elevated on bench or couch in 90/90 position.",
+      "Inhale 4 seconds, hold 4 seconds, exhale 4 seconds, hold 4 seconds.",
+      "Activates parasympathetic vagus nerve and decompresses lumbar spine."
     ],
-    restTime: "Complete rest post-cardio",
-    coachingCues: ["Let all skeletal muscles completely disengage"]
+    restTime: "Full recovery"
   }
 ];
 
@@ -1164,8 +1316,534 @@ const IMMORTAL_DAY7_RUNNING_WALKING_CARDIO: Omit<ChallengeExerciseItem, "id" | "
   }
 ];
 
-const IMMORTAL_CHEST_TRICEPS_FOREARMS = IMMORTAL_CHEST_TRICEPS;
-const IMMORTAL_BACK_BICEPS_ABS = IMMORTAL_BACK_BICEPS_FOREARMS;
+const IMMORTAL_CHEST_TRICEPS_FOREARMS: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Chest, Triceps and Forearms",
+    muscleGroup: ["Chest"],
+    exerciseName: "Incline Barbell Bench Press",
+    equipment: "Barbell & Incline Bench",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "8-10",
+    duration: "45s set",
+    instructions: [
+      "Set bench at 30 degrees, grip barbell shoulder-width apart.",
+      "Lower bar with control to upper chest, then press explosively upward."
+    ],
+    restTime: "90s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Chest, Triceps and Forearms",
+    muscleGroup: ["Chest"],
+    exerciseName: "Flat Dumbbell Bench Press",
+    equipment: "Dumbbells & Flat Bench",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "10-12",
+    duration: "45s set",
+    instructions: [
+      "Lie on flat bench, press dumbbells up over chest with neutral or pronated grip.",
+      "Lower deep into chest stretch with elbows at 45 degrees."
+    ],
+    restTime: "75s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Chest, Triceps and Forearms",
+    muscleGroup: ["Chest"],
+    exerciseName: "Cable Crossover Pec Fly",
+    equipment: "Cable Machine",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12-15",
+    duration: "40s set",
+    instructions: [
+      "Step forward from high pulleys, pull handles in an arc until knuckles meet in front of chest.",
+      "Squeeze pectorals intensely for 1 second."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Chest, Triceps and Forearms",
+    muscleGroup: ["Chest", "Triceps"],
+    exerciseName: "Parallel Bar Dips",
+    equipment: "Dip Station",
+    difficulty: "Advanced",
+    sets: 3,
+    reps: "10-12",
+    duration: "45s set",
+    instructions: [
+      "Grip dip bars, lower body until elbows reach 90 degrees.",
+      "Press through palms to lockout, engaging triceps and lower chest."
+    ],
+    restTime: "75s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Chest, Triceps and Forearms",
+    muscleGroup: ["Triceps"],
+    exerciseName: "Close-Grip Barbell Bench Press",
+    equipment: "Barbell & Bench",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "8-10",
+    duration: "45s set",
+    instructions: [
+      "Grip bar shoulder-width, keep elbows tucked against torso.",
+      "Press to lockout focusing entirely on triceps extension."
+    ],
+    restTime: "75s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Chest, Triceps and Forearms",
+    muscleGroup: ["Triceps"],
+    exerciseName: "Cable Tricep Pushdown",
+    equipment: "Cable Machine & Rope",
+    difficulty: "Beginner",
+    sets: 4,
+    reps: "12-15",
+    duration: "40s set",
+    instructions: [
+      "Pin elbows against ribcage, push rope downward and flare handles apart at bottom.",
+      "Squeeze lateral triceps heads hard."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Chest, Triceps and Forearms",
+    muscleGroup: ["Triceps"],
+    exerciseName: "Overhead EZ-Bar French Press",
+    equipment: "EZ-Bar & Bench",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10-12",
+    duration: "40s set",
+    instructions: [
+      "Sit upright, press EZ-bar overhead, hinge at elbows lowering behind head.",
+      "Extend arms upward targeting the long head of the triceps."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Chest, Triceps and Forearms",
+    muscleGroup: ["Triceps"],
+    exerciseName: "Dumbbell Tricep Kickbacks",
+    equipment: "Dumbbells",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12-15",
+    duration: "35s set",
+    instructions: [
+      "Hinge at hips, keep upper arm parallel to floor, extend forearm backward.",
+      "Hold peak contraction for 1 second."
+    ],
+    restTime: "45s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Chest, Triceps and Forearms",
+    muscleGroup: ["Forearms"],
+    exerciseName: "Standing Barbell Wrist Curl",
+    equipment: "Barbell",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "15-20",
+    duration: "35s set",
+    instructions: [
+      "Hold barbell with underhand grip, curl wrists upward contracting forearm flexors.",
+      "Lower bar slowly to fingertips for deep stretch."
+    ],
+    restTime: "45s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Chest, Triceps and Forearms",
+    muscleGroup: ["Forearms"],
+    exerciseName: "Reverse Grip EZ-Bar Curl",
+    equipment: "EZ-Bar",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12-15",
+    duration: "40s set",
+    instructions: [
+      "Grip EZ-bar with overhand pronated grip, curl upward toward collarbones.",
+      "Isolates brachioradialis and wrist extensor muscles."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Chest, Triceps and Forearms",
+    muscleGroup: ["Forearms"],
+    exerciseName: "Behind-the-Back Barbell Wrist Curl",
+    equipment: "Barbell",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "15-20",
+    duration: "35s set",
+    instructions: [
+      "Stand holding barbell behind back with palms facing away.",
+      "Curl wrists upward toward ceiling, squeezing forearm flexors tightly."
+    ],
+    restTime: "45s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Chest, Triceps and Forearms",
+    muscleGroup: ["Forearms"],
+    exerciseName: "Farmer's Heavy Suitcase Walk",
+    equipment: "Heavy Dumbbells or Kettlebells",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "45s carry",
+    duration: "45s set",
+    instructions: [
+      "Pick up heavy weights with crushing grip, stand tall with shoulders pinned back.",
+      "Walk with steady controlled cadence building grip endurance and forearm density."
+    ],
+    restTime: "60s"
+  }
+];
+
+const IMMORTAL_BACK_BICEPS_CORE: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back, Biceps and Core",
+    muscleGroup: ["Back", "Biceps"],
+    exerciseName: "Neutral-Grip Pull-ups / Chin-ups",
+    equipment: "Pull-up Bar",
+    difficulty: "Advanced",
+    sets: 4,
+    reps: "8-10",
+    duration: "45s set",
+    instructions: [
+      "Grip parallel bars with palms facing each other.",
+      "Pull chest to bar level, driving elbows down and squeezing lats and biceps.",
+      "Lower under control with full eccentric extension."
+    ],
+    restTime: "90s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back, Biceps and Core",
+    muscleGroup: ["Back"],
+    exerciseName: "Chest-Supported Dumbbell Row",
+    equipment: "Dumbbells & Incline Bench",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "10-12",
+    duration: "45s set",
+    instructions: [
+      "Lie face down on 30-degree incline bench.",
+      "Row dumbbells up toward hips, retracting scapulae with zero lower back strain."
+    ],
+    restTime: "75s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back, Biceps and Core",
+    muscleGroup: ["Back"],
+    exerciseName: "Wide Grip Lat Pulldown",
+    equipment: "Lat Pulldown Machine",
+    difficulty: "Beginner",
+    sets: 4,
+    reps: "10-12",
+    duration: "40s set",
+    instructions: [
+      "Grip wide bar, pull downward to clavicle while keeping chest lifted.",
+      "Squeeze lats at bottom for 1 second."
+    ],
+    restTime: "75s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back, Biceps and Core",
+    muscleGroup: ["Back"],
+    exerciseName: "Straight-Arm Cable Lat Pushdown",
+    equipment: "Cable Machine & Wide Bar",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12-15",
+    duration: "40s set",
+    instructions: [
+      "Stand with arms extended, push bar in a wide arc down to thighs.",
+      "Isolates lats without bicep involvement."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back, Biceps and Core",
+    muscleGroup: ["Biceps"],
+    exerciseName: "Standing EZ-Bar Bicep Curl",
+    equipment: "EZ-Bar",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "8-10",
+    duration: "40s set",
+    instructions: [
+      "Hold EZ-bar with underhand grip, curl upward with stationary elbows.",
+      "Squeeze biceps hard at apex, lower slowly for 3 seconds."
+    ],
+    restTime: "75s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back, Biceps and Core",
+    muscleGroup: ["Biceps"],
+    exerciseName: "Incline Alternating Dumbbell Curl",
+    equipment: "Dumbbells & Incline Bench",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10-12 / arm",
+    duration: "45s set",
+    instructions: [
+      "Lie back on incline bench, curl dumbbell while supinating wrist.",
+      "Maximizes stretch on long head of bicep."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back, Biceps and Core",
+    muscleGroup: ["Biceps"],
+    exerciseName: "Cable Rope Hammer Curl",
+    equipment: "Cable Machine & Rope",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "12-15",
+    duration: "40s set",
+    instructions: [
+      "Grip rope handles with neutral palms, curl upward targeting brachialis and bicep width.",
+      "Spread rope apart at top of contraction."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back, Biceps and Core",
+    muscleGroup: ["Core"],
+    exerciseName: "Hanging Leg / Knee Raise",
+    equipment: "Pull-up Bar",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12-15",
+    duration: "45s set",
+    instructions: [
+      "Hang from pull-up bar, raise legs or knees to 90 degrees by tucking pelvis.",
+      "Lower under strict control without swinging."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back, Biceps and Core",
+    muscleGroup: ["Core"],
+    exerciseName: "Ab Wheel Rollout",
+    equipment: "Ab Wheel & Yoga Mat",
+    difficulty: "Advanced",
+    sets: 3,
+    reps: "10-12",
+    duration: "40s set",
+    instructions: [
+      "Kneel on mat, roll wheel forward maintaining hollow body pelvic tilt.",
+      "Pull back using abdominal wall contraction."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back, Biceps and Core",
+    muscleGroup: ["Core"],
+    exerciseName: "Cable Kneeling Crunch",
+    equipment: "Cable Machine & Rope",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "15",
+    duration: "40s set",
+    instructions: [
+      "Kneel beneath high cable pulley holding rope at temples.",
+      "Flex spine downward, curling ribs toward pelvis."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back, Biceps and Core",
+    muscleGroup: ["Core"],
+    exerciseName: "Decline Sit-up with Controlled Twist",
+    equipment: "Decline Bench",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12-15",
+    duration: "45s set",
+    instructions: [
+      "Hook legs on decline bench, curl torso upward and rotate elbow toward opposite knee.",
+      "Engages rectus abdominis and internal/external obliques."
+    ],
+    restTime: "60s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Back, Biceps and Core",
+    muscleGroup: ["Core"],
+    exerciseName: "Plank to Pike Hold",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "45s set",
+    duration: "45s set",
+    instructions: [
+      "Hold rigid plank, drive hips upward toward ceiling into pike position.",
+      "Lower back with tight core stabilization."
+    ],
+    restTime: "45s"
+  }
+];
+
+const IMMORTAL_REST_RECOVERY: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Rest and Recovery",
+    muscleGroup: ["Cardio", "Recovery"],
+    exerciseName: "Dedicated Cardio Session: Brisk Walking, Light Jogging, or Low-Impact Cycling",
+    equipment: "Running Shoes, Treadmill, Outdoor Route, or Stationary Bike",
+    difficulty: "Beginner",
+    sets: 1,
+    reps: "5 to 10 KM",
+    duration: "45-75 mins",
+    instructions: [
+      "Complete your second dedicated cardio session of the week: Brisk walking, light recovery jogging, or easy cycling.",
+      "Target 5 to 10 KM based on your fitness level (Beginner: 5 km, Intermediate: 7.5 km, Advanced: 10 km).",
+      "Maintain a gentle aerobic Zone 1-2 recovery cadence.",
+      "Strict rule: No heavy resistance or weight training is permitted today — prioritize active recovery.",
+      "Following this session, enjoy complete muscular rest before beginning the next 7-day cycle."
+    ],
+    restTime: "Continuous pacing",
+    coachingCues: ["Keep heart rate relaxed and conversational", "Breathe smoothly through nose"]
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Rest and Recovery",
+    muscleGroup: ["Recovery", "Mobility"],
+    exerciseName: "Active Lower Body Hamstring & Quad Flushes",
+    equipment: "Yoga Mat or Foam Roller",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "60s per leg",
+    duration: "4 mins",
+    instructions: [
+      "Perform gentle dynamic leg swings and light foam rolling on quads and hamstrings.",
+      "Flushes lactic acid and restores tissue pliability."
+    ],
+    restTime: "30s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Rest and Recovery",
+    muscleGroup: ["Recovery", "Mobility"],
+    exerciseName: "Pigeon Pose Glute & Piriformis Decompression",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "60s per side",
+    duration: "4 mins",
+    instructions: [
+      "Place shin across front of mat, extend rear leg straight back.",
+      "Sink chest toward floor releasing deep tension in gluteus medius and piriformis."
+    ],
+    restTime: "30s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Rest and Recovery",
+    muscleGroup: ["Recovery", "Mobility"],
+    exerciseName: "Spinal Erector & Thoracic Foam Rolling Release",
+    equipment: "Foam Roller & Yoga Mat",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "2 mins",
+    duration: "3 mins",
+    instructions: [
+      "Roll along thoracic spine and gluteal attachments.",
+      "Relieves spinal compression and muscle tightness."
+    ],
+    restTime: "30s"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Rest and Recovery",
+    muscleGroup: ["Recovery"],
+    exerciseName: "Deep Diaphragmatic Box Breathing & Cellular Hydration",
+    equipment: "Yoga Mat",
+    difficulty: "Beginner",
+    sets: 1,
+    reps: "10 mins",
+    duration: "10 mins",
+    instructions: [
+      "Lie flat with knees bent or legs elevated on a couch.",
+      "Practice 4-4-4-4 box breathing to activate deep parasympathetic nervous system recovery.",
+      "Drink 1 liter of mineral-rich water with electrolytes."
+    ],
+    restTime: "Full rest"
+  },
+  {
+    programId: "immortal_90",
+    programName: "Immortal 90 Day Challenge",
+    category: "Rest and Recovery",
+    muscleGroup: ["Recovery"],
+    exerciseName: "Full Muscular & Central Nervous System Rest Protocol",
+    equipment: "None / Bed or Recliner",
+    difficulty: "Beginner",
+    sets: 1,
+    reps: "Rest Day",
+    duration: "Rest Protocol",
+    instructions: [
+      "Zero resistance or weight training today. Full systemic rest.",
+      "Restores intramuscular glycogen reserves and prepares body for Day 1 of the repeating 7-day cycle."
+    ],
+    restTime: "Full rest"
+  }
+];
+
+const IMMORTAL_CHEST_TRICEPS_NECK = IMMORTAL_CHEST_TRICEPS_FOREARMS;
+const IMMORTAL_BACK_BICEPS_FOREARMS_ABS = IMMORTAL_BACK_BICEPS_CORE;
+const IMMORTAL_CARDIO_RECOVERY = IMMORTAL_CARDIO_MOBILITY;
 
 const IMMORTAL_REST_WALKING: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
   {
@@ -1521,7 +2199,7 @@ export const WOMEN_GLUTES_EXERCISES: Omit<ChallengeExerciseItem, "id" | "dayNumb
     instructions: ["Upper back pinned across bench, drive through heels, lift hips into full lockout with posterior pelvic tilt."],
     restTime: "75s",
     coachingCues: ["Keep chin tucked and ribs down", "Hold peak squeeze at the top for 2 full seconds"],
-    gifUrl: "https://media.giphy.com/media/v1F0A8f5Ff6hO/giphy.gif"
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1409-qKBpF7I.gif"
   },
   {
     programId: "women_confidence",
@@ -2946,16 +3624,839 @@ const _OLD_POSTURE_POOL: Omit<ChallengeExerciseItem, "id" | "dayNumber">[] = [
 ];
 
 // ============================================================================
+// GYM HYPERTROPHY EXERCISE POOLS (PURE GYM COMPOUND & ISOLATION)
+// ============================================================================
+export const GYM_HYPERTROPHY_CHEST_TRICEPS: Omit<ChallengeExerciseItem, "dayNumber">[] = [
+  {
+    id: "gym_chest_1",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Chest + Triceps",
+    muscleGroup: ["Chest", "Pectorals"],
+    exerciseName: "Barbell Bench Press",
+    equipment: "Barbell",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "8-10 reps",
+    duration: "60s set",
+    instructions: ["Retract scapulae against bench, plant feet, grip barbell slightly wider than shoulder-width, lower bar to mid-chest under 3s control, press upward."],
+    restTime: "90s"
+  },
+  {
+    id: "gym_chest_2",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Chest + Triceps",
+    muscleGroup: ["Chest", "Upper Pectorals"],
+    exerciseName: "Incline Dumbbell Press",
+    equipment: "Dumbbells",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "10-12 reps",
+    duration: "50s set",
+    instructions: ["Set bench to 30-45 degrees. Press dumbbells upward with elbows at 45 degrees, squeezing upper chest at peak."],
+    restTime: "75s"
+  },
+  {
+    id: "gym_chest_3",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Chest + Triceps",
+    muscleGroup: ["Chest"],
+    exerciseName: "Dumbbell Flyes",
+    equipment: "Dumbbells",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12-15 reps",
+    duration: "45s set",
+    instructions: ["Lie flat on bench, open arms wide with slight elbow bend, feel deep pec stretch, hug dumbbells together."],
+    restTime: "60s"
+  },
+  {
+    id: "gym_chest_4",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Chest + Triceps",
+    muscleGroup: ["Chest", "Triceps"],
+    exerciseName: "Chest Dips",
+    equipment: "Parallel Bars",
+    difficulty: "Advanced",
+    sets: 3,
+    reps: "10-12 reps",
+    duration: "45s set",
+    instructions: ["Lean torso forward 30 degrees, flare elbows slightly, descend until shoulders are below elbows, drive back up."],
+    restTime: "75s"
+  },
+  {
+    id: "gym_chest_5",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Chest + Triceps",
+    muscleGroup: ["Triceps"],
+    exerciseName: "Triceps Pushdown",
+    equipment: "Cable",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "12-15 reps",
+    duration: "45s set",
+    instructions: ["Pin elbows to ribs, press rope/bar downward until triceps fully contract, control negative return."],
+    restTime: "60s"
+  },
+  {
+    id: "gym_chest_6",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Chest + Triceps",
+    muscleGroup: ["Triceps", "Long Head"],
+    exerciseName: "Overhead Dumbbell Triceps Extension",
+    equipment: "Dumbbell",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12 reps",
+    duration: "45s set",
+    instructions: ["Hold dumbbell overhead with both hands, lower behind head keeping elbows pointed forward, press back up."],
+    restTime: "60s"
+  },
+  {
+    id: "gym_chest_7",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Chest + Triceps",
+    muscleGroup: ["Triceps", "Chest"],
+    exerciseName: "Close-Grip Barbell Bench Press",
+    equipment: "Barbell",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10 reps",
+    duration: "50s set",
+    instructions: ["Grip bar shoulder-width, keep elbows tucked to sides, lower to lower sternum, drive through triceps."],
+    restTime: "75s"
+  },
+  {
+    id: "gym_chest_8",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Chest + Triceps",
+    muscleGroup: ["Chest", "Triceps"],
+    exerciseName: "Push Ups",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "15-20 reps",
+    duration: "40s set",
+    instructions: ["Maintain rigid plank line, lower chest to floor with elbows 45 degrees, push up explosively."],
+    restTime: "60s"
+  }
+];
+
+export const GYM_HYPERTROPHY_BACK_BICEPS: Omit<ChallengeExerciseItem, "dayNumber">[] = [
+  {
+    id: "gym_back_1",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Back + Biceps",
+    muscleGroup: ["Back", "Posterior Chain"],
+    exerciseName: "Barbell Deadlift",
+    equipment: "Barbell",
+    difficulty: "Advanced",
+    sets: 4,
+    reps: "6-8 reps",
+    duration: "60s set",
+    instructions: ["Hinge at hips, grip bar outside shins, brace core, drive through floor keeping spine neutral throughout."],
+    restTime: "120s"
+  },
+  {
+    id: "gym_back_2",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Back + Biceps",
+    muscleGroup: ["Back", "Lats", "Rhomboids"],
+    exerciseName: "Barbell Bent-Over Row",
+    equipment: "Barbell",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "8-10 reps",
+    duration: "50s set",
+    instructions: ["Hinge torso to 45 degrees, pull bar to navel driving elbows backward, squeeze scapulae together."],
+    restTime: "90s"
+  },
+  {
+    id: "gym_back_3",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Back + Biceps",
+    muscleGroup: ["Back", "Lats"],
+    exerciseName: "Lat Pulldown",
+    equipment: "Cable",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "10-12 reps",
+    duration: "45s set",
+    instructions: ["Grip wide, depress shoulders, pull bar to upper chest arching thoracic spine slightly."],
+    restTime: "75s"
+  },
+  {
+    id: "gym_back_4",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Back + Biceps",
+    muscleGroup: ["Back", "Mid-Back"],
+    exerciseName: "Seated Cable Row",
+    equipment: "Cable",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12 reps",
+    duration: "45s set",
+    instructions: ["Sit tall, pull attachment into lower abdomen, keep chest tall and avoid torso swinging."],
+    restTime: "60s"
+  },
+  {
+    id: "gym_back_5",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Back + Biceps",
+    muscleGroup: ["Biceps"],
+    exerciseName: "Barbell Bicep Curl",
+    equipment: "Barbell",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "10-12 reps",
+    duration: "45s set",
+    instructions: ["Pin elbows to sides, curl barbell upward without rocking hips, lower under 3-second control."],
+    restTime: "60s"
+  },
+  {
+    id: "gym_back_6",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Back + Biceps",
+    muscleGroup: ["Biceps", "Brachialis"],
+    exerciseName: "Dumbbell Hammer Curls",
+    equipment: "Dumbbells",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12 reps",
+    duration: "45s set",
+    instructions: ["Palms facing inward throughout, curl dumbbells smoothly, targeting brachialis and forearm thickness."],
+    restTime: "60s"
+  },
+  {
+    id: "gym_back_7",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Back + Biceps",
+    muscleGroup: ["Rear Deltoids", "Upper Back"],
+    exerciseName: "Cable Face Pull",
+    equipment: "Cable",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "15 reps",
+    duration: "45s set",
+    instructions: ["Set pulley to eye level, pull rope toward nose while externally rotating hands backward."],
+    restTime: "60s"
+  },
+  {
+    id: "gym_back_8",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Back + Biceps",
+    muscleGroup: ["Biceps"],
+    exerciseName: "Preacher Curl",
+    equipment: "EZ Bar / Bench",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10-12 reps",
+    duration: "45s set",
+    instructions: ["Rest arms flat against preacher pad, eliminate momentum, curl bar until biceps peak."],
+    restTime: "60s"
+  }
+];
+
+export const GYM_HYPERTROPHY_LEGS_CALVES: Omit<ChallengeExerciseItem, "dayNumber">[] = [
+  {
+    id: "gym_leg_1",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Legs + Calves",
+    muscleGroup: ["Quads", "Glutes"],
+    exerciseName: "Barbell Back Squat",
+    equipment: "Barbell",
+    difficulty: "Advanced",
+    sets: 4,
+    reps: "8-10 reps",
+    duration: "60s set",
+    instructions: ["Bar across upper traps, brace core 360 degrees, sit deep below parallel with knees tracking over toes."],
+    restTime: "120s"
+  },
+  {
+    id: "gym_leg_2",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Legs + Calves",
+    muscleGroup: ["Hamstrings", "Glutes"],
+    exerciseName: "Romanian Deadlift",
+    equipment: "Barbell",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "10-12 reps",
+    duration: "50s set",
+    instructions: ["Slight knee bend, push hips far backward until deep hamstring stretch is felt, drive hips forward to lockout."],
+    restTime: "90s"
+  },
+  {
+    id: "gym_leg_3",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Legs + Calves",
+    muscleGroup: ["Quads", "Glutes"],
+    exerciseName: "Leg Press",
+    equipment: "Machine",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "12-15 reps",
+    duration: "50s set",
+    instructions: ["Feet shoulder-width on sled, lower platform until knees are 90 degrees without rounding lower back, press up."],
+    restTime: "90s"
+  },
+  {
+    id: "gym_leg_4",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Legs + Calves",
+    muscleGroup: ["Hamstrings"],
+    exerciseName: "Lying Leg Curls",
+    equipment: "Machine",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12 reps",
+    duration: "45s set",
+    instructions: ["Lie prone, curl pad toward glutes holding peak contraction for 1 second, control the 3s negative."],
+    restTime: "60s"
+  },
+  {
+    id: "gym_leg_5",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Legs + Calves",
+    muscleGroup: ["Quads"],
+    exerciseName: "Leg Extensions",
+    equipment: "Machine",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "15 reps",
+    duration: "45s set",
+    instructions: ["Extend knees fully, lock out quads briefly at top, control eccentric return without letting weight stack slam."],
+    restTime: "60s"
+  },
+  {
+    id: "gym_leg_6",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Legs + Calves",
+    muscleGroup: ["Calves"],
+    exerciseName: "Standing Calf Raises",
+    equipment: "Machine",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "15-20 reps",
+    duration: "45s set",
+    instructions: ["Full stretch at bottom of step for 1s, rise high on balls of feet, squeeze calves at peak."],
+    restTime: "45s"
+  },
+  {
+    id: "gym_leg_7",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Legs + Calves",
+    muscleGroup: ["Glutes", "Quads"],
+    exerciseName: "Walking Dumbbell Lunges",
+    equipment: "Dumbbells",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12 steps per leg",
+    duration: "50s set",
+    instructions: ["Hold dumbbells at sides, step forward into 90-degree lunge, drive through front heel to step next leg."],
+    restTime: "75s"
+  }
+];
+
+export const GYM_HYPERTROPHY_SHOULDERS_ARMS_ABS: Omit<ChallengeExerciseItem, "dayNumber">[] = [
+  {
+    id: "gym_shld_1",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Shoulders + Arms + Abs",
+    muscleGroup: ["Shoulders", "Deltoids"],
+    exerciseName: "Overhead Barbell Shoulder Press",
+    equipment: "Barbell",
+    difficulty: "Advanced",
+    sets: 4,
+    reps: "8-10 reps",
+    duration: "55s set",
+    instructions: ["Bar across clavicles, lock glutes and abs, press straight overhead clearing chin, lock out elbows."],
+    restTime: "90s"
+  },
+  {
+    id: "gym_shld_2",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Shoulders + Arms + Abs",
+    muscleGroup: ["Shoulders", "Lateral Delts"],
+    exerciseName: "Dumbbell Lateral Raise",
+    equipment: "Dumbbells",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "12-15 reps",
+    duration: "45s set",
+    instructions: ["Lead with elbows, raise dumbbells to shoulder height, slight forward lean, pause briefly at top."],
+    restTime: "60s"
+  },
+  {
+    id: "gym_shld_3",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Shoulders + Arms + Abs",
+    muscleGroup: ["Rear Deltoids"],
+    exerciseName: "Bent-Over Dumbbell Reverse Fly",
+    equipment: "Dumbbells",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "15 reps",
+    duration: "45s set",
+    instructions: ["Hinge at waist, raise dumbbells outward with arms rounded, squeeze rear delts at peak."],
+    restTime: "60s"
+  },
+  {
+    id: "gym_shld_4",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Shoulders + Arms + Abs",
+    muscleGroup: ["Triceps"],
+    exerciseName: "Lying Triceps Extension (Skull Crushers)",
+    equipment: "EZ Bar / Bench",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10-12 reps",
+    duration: "45s set",
+    instructions: ["Lie on flat bench, lower bar toward forehead by bending elbows only, extend triceps back to vertical."],
+    restTime: "60s"
+  },
+  {
+    id: "gym_shld_5",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Shoulders + Arms + Abs",
+    muscleGroup: ["Biceps"],
+    exerciseName: "Incline Dumbbell Curl",
+    equipment: "Dumbbells",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10-12 reps",
+    duration: "45s set",
+    instructions: ["Set bench to 45 degrees, allow arms to hang fully extended for deep bicep stretch, curl upward."],
+    restTime: "60s"
+  },
+  {
+    id: "gym_shld_6",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Shoulders + Arms + Abs",
+    muscleGroup: ["Abs", "Core"],
+    exerciseName: "Hanging Leg Raises",
+    equipment: "Pull-Up Bar",
+    difficulty: "Advanced",
+    sets: 3,
+    reps: "12-15 reps",
+    duration: "45s set",
+    instructions: ["Hang from bar, curl pelvis upward, raise knees or toes to bar height without swinging."],
+    restTime: "60s"
+  },
+  {
+    id: "gym_shld_7",
+    programId: "gym_hypertrophy",
+    programName: "Gym Muscle Builder & Strength",
+    category: "Shoulders + Arms + Abs",
+    muscleGroup: ["Abs"],
+    exerciseName: "Cable Crunch",
+    equipment: "Cable",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "15 reps",
+    duration: "45s set",
+    instructions: ["Kneel with rope behind head, flex spine to bring elbows toward knees, squeeze abdominals tightly."],
+    restTime: "60s"
+  }
+];
+
+// ============================================================================
+// TACTICAL CALISTHENICS & MILITARY EXERCISE POOLS
+// ============================================================================
+export const TACTICAL_PUSH_EXERCISES: Omit<ChallengeExerciseItem, "dayNumber">[] = [
+  {
+    id: "tact_push_1",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Tactical Calisthenics & Push",
+    muscleGroup: ["Chest", "Triceps", "Core"],
+    exerciseName: "Standard Push Ups",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    sets: 4,
+    reps: "20-25 reps",
+    duration: "45s set",
+    instructions: ["Rigid body plank, lower chest until touching floor, push back up with full protraction."],
+    restTime: "60s"
+  },
+  {
+    id: "tact_push_2",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Tactical Calisthenics & Push",
+    muscleGroup: ["Triceps", "Chest"],
+    exerciseName: "Diamond Push Ups",
+    equipment: "Bodyweight",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12-15 reps",
+    duration: "40s set",
+    instructions: ["Thumbs and index fingers touching under chest, lower under control, drive through triceps."],
+    restTime: "60s"
+  },
+  {
+    id: "tact_push_3",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Tactical Calisthenics & Push",
+    muscleGroup: ["Chest", "Triceps", "Shoulders"],
+    exerciseName: "Parallel Bar Dips",
+    equipment: "Dip Bars",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "12-15 reps",
+    duration: "45s set",
+    instructions: ["Lower under control until elbows reach 90 degrees, press upward explosively."],
+    restTime: "75s"
+  },
+  {
+    id: "tact_push_4",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Tactical Calisthenics & Push",
+    muscleGroup: ["Shoulders", "Triceps"],
+    exerciseName: "Pike Push Ups",
+    equipment: "Bodyweight",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "10-12 reps",
+    duration: "40s set",
+    instructions: ["Hips piked high in inverted V, lower head forward between hands, press backward to starting pike."],
+    restTime: "60s"
+  },
+  {
+    id: "tact_push_5",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Tactical Calisthenics & Push",
+    muscleGroup: ["Full Body", "Conditioning"],
+    exerciseName: "Burpees",
+    equipment: "Bodyweight",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "15 reps",
+    duration: "45s set",
+    instructions: ["Drop into squat, kick feet back to push up, lower chest to floor, jump feet in, leap vertically."],
+    restTime: "60s"
+  },
+  {
+    id: "tact_push_6",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Tactical Calisthenics & Push",
+    muscleGroup: ["Core", "Shoulders"],
+    exerciseName: "Plank to Push-Up",
+    equipment: "Bodyweight",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12 reps",
+    duration: "45s set",
+    instructions: ["Forearm plank position, press hand into ground to push up to top pushup position, return down."],
+    restTime: "45s"
+  }
+];
+
+export const TACTICAL_PULL_CORE_EXERCISES: Omit<ChallengeExerciseItem, "dayNumber">[] = [
+  {
+    id: "tact_pull_1",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Military Pull & Core Armor",
+    muscleGroup: ["Back", "Biceps", "Core"],
+    exerciseName: "Pull Ups",
+    equipment: "Pull-Up Bar",
+    difficulty: "Advanced",
+    sets: 4,
+    reps: "8-12 reps",
+    duration: "45s set",
+    instructions: ["Overhand grip wider than shoulders, pull chest to bar without kipping, lower to full dead-hang."],
+    restTime: "90s"
+  },
+  {
+    id: "tact_pull_2",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Military Pull & Core Armor",
+    muscleGroup: ["Biceps", "Lats"],
+    exerciseName: "Chin Ups",
+    equipment: "Pull-Up Bar",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "8-10 reps",
+    duration: "40s set",
+    instructions: ["Underhand grip shoulder-width, drive elbows down, pull chin clearing bar, lower with control."],
+    restTime: "75s"
+  },
+  {
+    id: "tact_pull_3",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Military Pull & Core Armor",
+    muscleGroup: ["Upper Back", "Biceps"],
+    exerciseName: "Inverted Rows",
+    equipment: "Low Bar / Rings",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12 reps",
+    duration: "45s set",
+    instructions: ["Hang under bar with heels planted, pull sternum to bar squeezing scapulae, lower smooth."],
+    restTime: "60s"
+  },
+  {
+    id: "tact_pull_4",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Military Pull & Core Armor",
+    muscleGroup: ["Abs", "Hip Flexors"],
+    exerciseName: "Hanging Leg Raises",
+    equipment: "Pull-Up Bar",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "12-15 reps",
+    duration: "45s set",
+    instructions: ["Hang stationary from bar, curl pelvis up and lift straight legs to horizontal or higher."],
+    restTime: "60s"
+  },
+  {
+    id: "tact_pull_5",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Military Pull & Core Armor",
+    muscleGroup: ["Core", "Abs"],
+    exerciseName: "Plank Hold",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "60s hold",
+    duration: "60s set",
+    instructions: ["Forearms on ground, glutes squeezed, abs hollowed, breathe rhythmically without hips sagging."],
+    restTime: "45s"
+  },
+  {
+    id: "tact_pull_6",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Military Pull & Core Armor",
+    muscleGroup: ["Obliques", "Rotational Core"],
+    exerciseName: "Russian Twists",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "20 reps per side",
+    duration: "45s set",
+    instructions: ["Balance on sit bones with feet elevated, rotate torso touching hands to floor on each side."],
+    restTime: "45s"
+  }
+];
+
+export const TACTICAL_AGILITY_HIIT_EXERCISES: Omit<ChallengeExerciseItem, "dayNumber">[] = [
+  {
+    id: "tact_agi_1",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Functional Agility & Jump Rope HIIT",
+    muscleGroup: ["Cardio", "Calves", "Coordination"],
+    exerciseName: "Jump Rope",
+    equipment: "Jump Rope",
+    difficulty: "Intermediate",
+    sets: 4,
+    reps: "2 mins continuous",
+    duration: "2 mins",
+    instructions: ["Light on balls of feet, turn rope with wrists, stay bouncy with minimal knee flexion."],
+    restTime: "45s"
+  },
+  {
+    id: "tact_agi_2",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Functional Agility & Jump Rope HIIT",
+    muscleGroup: ["Cardio", "Hip Flexors"],
+    exerciseName: "High Knees",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    sets: 4,
+    reps: "45s sprint",
+    duration: "45s set",
+    instructions: ["Drive knees to hip height at maximum sprint cadence, pumping arms in rhythm."],
+    restTime: "30s"
+  },
+  {
+    id: "tact_agi_3",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Functional Agility & Jump Rope HIIT",
+    muscleGroup: ["Core", "Cardio"],
+    exerciseName: "Mountain Climbers",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    sets: 4,
+    reps: "45s sprint",
+    duration: "45s set",
+    instructions: ["Top of push-up position, alternate driving knees to chest without bouncing hips."],
+    restTime: "30s"
+  },
+  {
+    id: "tact_agi_4",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Functional Agility & Jump Rope HIIT",
+    muscleGroup: ["Legs", "Explosive Power"],
+    exerciseName: "Jump Squats",
+    equipment: "Bodyweight",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "15 reps",
+    duration: "40s set",
+    instructions: ["Descend into full squat, explode vertically off floor reaching high, absorb landing softly into next squat."],
+    restTime: "60s"
+  },
+  {
+    id: "tact_agi_5",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "Functional Agility & Jump Rope HIIT",
+    muscleGroup: ["Cardio", "Full Body"],
+    exerciseName: "Jumping Jacks",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "60s continuous",
+    duration: "60s set",
+    instructions: ["Rhythmic arm and leg abduction, light landing on toes, maintain elevated breathing rate."],
+    restTime: "30s"
+  }
+];
+
+export const TACTICAL_ENDURANCE_EXERCISES: Omit<ChallengeExerciseItem, "dayNumber">[] = [
+  {
+    id: "tact_end_1",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "High-Volume Calisthenics Endurance",
+    muscleGroup: ["Chest", "Triceps", "Shoulders"],
+    exerciseName: "Push-Up Pyramid",
+    equipment: "Bodyweight",
+    difficulty: "Advanced",
+    sets: 5,
+    reps: "15-20 reps",
+    duration: "45s set",
+    instructions: ["Perform sets of 20, 18, 16, 14, 12 reps with strict tempo and minimal rest."],
+    restTime: "45s"
+  },
+  {
+    id: "tact_end_2",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "High-Volume Calisthenics Endurance",
+    muscleGroup: ["Quads", "Glutes"],
+    exerciseName: "Bodyweight Air Squats",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    sets: 4,
+    reps: "30 reps",
+    duration: "60s set",
+    instructions: ["Full depth squats, hips below knees, continuous cadence without pausing at top."],
+    restTime: "45s"
+  },
+  {
+    id: "tact_end_3",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "High-Volume Calisthenics Endurance",
+    muscleGroup: ["Legs", "Glutes"],
+    exerciseName: "Walking Lunges",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "20 steps per leg",
+    duration: "60s set",
+    instructions: ["Continuous walking lunges, trailing knee grazing floor, upright torso."],
+    restTime: "60s"
+  },
+  {
+    id: "tact_end_4",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "High-Volume Calisthenics Endurance",
+    muscleGroup: ["Abs", "Hip Flexors"],
+    exerciseName: "Flutter Kicks",
+    equipment: "Bodyweight",
+    difficulty: "Beginner",
+    sets: 3,
+    reps: "50 kicks",
+    duration: "45s set",
+    instructions: ["Lie flat, lower back pinned to mat, scissor legs 6 inches off ground continuously."],
+    restTime: "30s"
+  },
+  {
+    id: "tact_end_5",
+    programId: "cardio_calisthenics",
+    programName: "Cardio, Calisthenics & Military",
+    category: "High-Volume Calisthenics Endurance",
+    muscleGroup: ["Core"],
+    exerciseName: "Hollow Body Hold",
+    equipment: "Bodyweight",
+    difficulty: "Intermediate",
+    sets: 3,
+    reps: "45s hold",
+    duration: "45s set",
+    instructions: ["Press lower spine into floor, raise arms and legs into banana shape, hold isometric contraction."],
+    restTime: "45s"
+  }
+];
+
+// ============================================================================
 // 3. DETERMINISTIC WORKOUT GENERATOR WITH STRICT HIERARCHY
 // PROGRAM -> DAY -> CATEGORY -> MUSCLE GROUP -> EXERCISE
 // ============================================================================
+
+export function normalizeProgramId(raw: string | undefined | null): ProgramId {
+  const p = (raw || "").toString().toLowerCase().trim();
+  if (p.includes("immortal") || p === "90-days-immortal" || p === "90_day_immortal") return "immortal_90";
+  if (p.includes("women") || p.includes("confidence")) return "women_confidence";
+  if (p.includes("home") || p.includes("180")) return "home_180";
+  if (p.includes("belly") || p.includes("shred")) return "belly_fat_shred";
+  if (p.includes("posture") || p.includes("vitality")) return "posture_vitality";
+  if (p.includes("gym") || p.includes("hypertrophy")) return "gym_hypertrophy";
+  if (p.includes("calisthenics") || p.includes("military") || p.includes("tactical") || p.includes("cardio_calisthenics")) return "cardio_calisthenics";
+  if (p.includes("academy") || p.includes("lifestyle")) return "lifestyle_academy";
+  return "immortal_90";
+}
 
 function finalizePlan(meta: DayWorkoutMeta, exercises: ChallengeExerciseItem[]): DayExecutionPlan {
   return {
     meta,
     exercises: exercises.map(ex => {
       const exerciseName = ex.exerciseName || (ex as any).name || "";
-      const gif = getExerciseGifUrl(exerciseName, ex.category);
+      const gif = ex.gifUrl || getExerciseGifUrl(exerciseName, ex.category);
       return {
         ...ex,
         name: exerciseName,
@@ -2968,115 +4469,209 @@ function finalizePlan(meta: DayWorkoutMeta, exercises: ChallengeExerciseItem[]):
 }
 
 export function getWorkoutForProgramAndDay(
-  programId: ProgramId, 
+  programId: ProgramId | string, 
   dayNumber: number, 
-  targetMuscleHint?: string
+  _targetMuscleHint?: string
 ): DayExecutionPlan {
-  const safeDay = Math.max(1, dayNumber);
+  const safeDay = Math.max(1, Number(dayNumber) || 1);
+  const pid = normalizeProgramId(programId);
+
+  // --------------------------------------------------------------------------
+  // ADMIN PROGRAM SCHEDULE OVERRIDES (Cardio Days, Custom Workouts, Edited Sets)
+  // --------------------------------------------------------------------------
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      const cached = window.localStorage.getItem("fit_program_schedule_overrides");
+      if (cached) {
+        const allOverrides = JSON.parse(cached);
+        const programOverrides = allOverrides[programId as string] || allOverrides[pid] || allOverrides[normalizeProgramId(programId)];
+        const cycleKey = `cycle_${((safeDay - 1) % 7) + 1}`;
+        const dayOverride = programOverrides ? (programOverrides[String(safeDay)] || programOverrides[cycleKey]) : null;
+        if (dayOverride) {
+          if (dayOverride.isCardioOnly) {
+            const cardioKm = dayOverride.cardioDistance || dayOverride.targetCardioKm || "5.0 - 10.0 KM";
+            const meta: DayWorkoutMeta = {
+              dayNumber: safeDay,
+              programId: pid,
+              title: dayOverride.title || `Day ${safeDay}: ${cardioKm} Cardio Endurance Protocol`,
+              category: dayOverride.focus || "Cardiovascular & Aerobic Capacity",
+              targetMuscles: ["Cardiovascular System", "Legs", "Full Body Stamina"],
+              estimatedDuration: dayOverride.duration || "45-60 mins",
+              estimatedCalories: 480,
+              isRestDay: false,
+              isCardioOnly: true,
+              cardioDistance: cardioKm,
+              guidelines: [
+                `Target ${cardioKm} continuous distance.`,
+                "Maintain steady Zone 2 or rhythmic cadence.",
+                "Zero heavy resistance weight training on pure cardio days."
+              ],
+              coachingNotes: dayOverride.coachingNotes || `Admin Assigned Cardio Protocol: Target ${cardioKm} at steady Zone 2 or interval tempo.`
+            };
+            const exercises: ChallengeExerciseItem[] = (dayOverride.exercises && dayOverride.exercises.length > 0)
+              ? dayOverride.exercises.map((ex: any, idx: number) => ({
+                  id: ex.id || `cardio_${pid}_d${safeDay}_${idx + 1}`,
+                  programId: pid,
+                  programName: String(programId),
+                  dayNumber: safeDay,
+                  category: ex.category || "Cardio",
+                  muscleGroup: Array.isArray(ex.muscleGroup) ? ex.muscleGroup : [ex.muscleGroup || "Cardio"],
+                  exerciseName: ex.exerciseName || ex.name || "5 to 10 KM Cardio / Running",
+                  equipment: ex.equipment || "Running Shoes / Treadmill",
+                  difficulty: ex.difficulty || "Intermediate",
+                  sets: typeof ex.sets === "number" ? ex.sets : 1,
+                  reps: ex.reps || cardioKm,
+                  duration: ex.duration || "45-60 mins",
+                  instructions: Array.isArray(ex.instructions) ? ex.instructions : [ex.instructions || "Maintain steady aerobic rhythm."],
+                  gifUrl: ex.gifUrl || getExerciseGifUrl(ex.exerciseName || "Treadmill Running", "Cardio")
+                }))
+              : [
+                {
+                  id: `cardio_${pid}_d${safeDay}_1`,
+                  programId: pid,
+                  programName: String(programId),
+                  dayNumber: safeDay,
+                  category: "Cardio",
+                  muscleGroup: ["Cardio", "Legs"],
+                  exerciseName: `Zone 2 Steady-State ${cardioKm} Jog / Walk`,
+                  equipment: "Running Shoes / Treadmill",
+                  difficulty: "Intermediate",
+                  sets: 1,
+                  reps: cardioKm,
+                  duration: "45-60 mins",
+                  instructions: [
+                    "Warm up with 5 minutes of brisk walking.",
+                    `Establish steady aerobic rhythm for ${cardioKm}.`,
+                    "Cool down with light walking and lower body stretches."
+                  ],
+                  gifUrl: getExerciseGifUrl("Treadmill Running", "Cardio")
+                }
+              ];
+            return finalizePlan(meta, exercises);
+          } else if (dayOverride.exercises && Array.isArray(dayOverride.exercises) && dayOverride.exercises.length > 0) {
+            const meta: DayWorkoutMeta = {
+              dayNumber: safeDay,
+              programId: pid,
+              title: dayOverride.title || `Day ${safeDay}: ${dayOverride.focus || "Custom Admin Training Protocol"}`,
+              category: dayOverride.focus || "Custom Targeted Split",
+              targetMuscles: dayOverride.targetMuscles || ["Target Muscles"],
+              estimatedDuration: dayOverride.duration || "45-55 mins",
+              estimatedCalories: 500,
+              isRestDay: false,
+              isCardioOnly: false,
+              guidelines: [
+                "Admin-curated workout protocol for this scheduled day.",
+                "Execute each prescribed set and rep with strict form.",
+                "Adhere to rest intervals between work sets."
+              ],
+              coachingNotes: dayOverride.coachingNotes || "Execute with maximum mind-muscle connection and controlled tempo."
+            };
+            const exercises: ChallengeExerciseItem[] = dayOverride.exercises.map((ex: any, idx: number) => ({
+              id: ex.id || `override_${pid}_d${safeDay}_${idx + 1}`,
+              programId: pid,
+              programName: String(programId),
+              dayNumber: safeDay,
+              category: ex.category || meta.category,
+              muscleGroup: Array.isArray(ex.muscleGroup) ? ex.muscleGroup : [ex.muscleGroup || "Full Body"],
+              exerciseName: ex.exerciseName || ex.name,
+              equipment: ex.equipment || "Standard",
+              difficulty: ex.difficulty || "Intermediate",
+              sets: typeof ex.sets === "number" ? ex.sets : parseInt(String(ex.sets)) || 3,
+              reps: String(ex.reps || "10-12 reps"),
+              duration: ex.duration || "45s set",
+              instructions: Array.isArray(ex.instructions) ? ex.instructions : [ex.instructions || ex.notes || "Execute with controlled form."],
+              gifUrl: ex.gifUrl || getExerciseGifUrl(ex.exerciseName || ex.name, ex.category)
+            }));
+            return finalizePlan(meta, exercises);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Error reading schedule overrides in getWorkoutForProgramAndDay:", e);
+  }
 
   // --------------------------------------------------------------------------
   // PROGRAM 1: IMMORTAL 90 DAY CHALLENGE (STRICT 7-DAY REPEATING CADENCE)
-  // Day 1: Chest + Triceps
-  // Day 2: Back + Biceps
-  // Day 3: Cardio + Recovery (5 to 10 km, no weight training)
-  // Day 4: Legs + Shoulders
-  // Day 5: Chest + Triceps + Forearms
-  // Day 6: Back + Biceps + Abs
-  // Day 7: Rest + Walking (recovery instructions and optional walking, no resistance training)
+  // DAY 1: Chest and Triceps
+  // DAY 2: Back and Biceps
+  // DAY 3: Cardio and Mobility (First cardio day - 5 to 10 km)
+  // DAY 4: Legs and Shoulders
+  // DAY 5: Chest, Triceps and Forearms
+  // DAY 6: Back, Biceps and Core
+  // DAY 7: Rest and Recovery (Second cardio session + recovery)
+  // Every day includes 30-min evening walk before bed reminder
   // --------------------------------------------------------------------------
-  if (programId === "immortal_90") {
-    let cycleDay = ((safeDay - 1) % 7) + 1; // 1 to 7
+  if (pid === "immortal_90") {
+    const cycleDay = ((safeDay - 1) % 7) + 1; // 1 to 7
 
-    // If targetMuscleHint is explicitly provided, intelligently route or isolate
-    if (targetMuscleHint) {
-      const hint = targetMuscleHint.toLowerCase();
-      if (
-        hint.includes("leg") || 
-        hint.includes("lower") || 
-        hint.includes("glute") || 
-        hint.includes("quad") || 
-        hint.includes("hamstring") || 
-        hint.includes("squat")
-      ) {
-        // Return 100% pure lower body & leg routine with 12 verified leg exercises (zero chest/triceps!)
-        const meta: DayWorkoutMeta = {
-          dayNumber: safeDay,
-          programId: "immortal_90",
-          title: `Day ${safeDay}: Lower Body & Glutes Power`,
-          category: "Legs & Lower Body",
-          targetMuscles: ["Legs", "Glutes", "Hamstrings", "Quads", "Calves"],
-          estimatedDuration: "55-65 mins",
-          estimatedCalories: 560,
-          isRestDay: false,
-          isCardioOnly: false,
-          guidelines: [
-            "Display 12 leg and lower body exercises ONLY.",
-            "Prioritize deep squat biomechanics, hinge depth, and knee stabilization.",
-            "Complete all quad, hamstring, glute, and calf drills with zero chest or upper body overlap."
-          ],
-          coachingNotes: "Immortal Lower Body Focus: Pure quad, hamstring, glute, and calf hypertrophy."
-        };
-        const exercises: ChallengeExerciseItem[] = IMMORTAL_PURE_LOWER_BODY.slice(0, 12).map((ex, idx) => ({
-          ...ex,
-          id: `immortal_d${safeDay}_ex_${idx + 1}`,
-          dayNumber: safeDay
-        }));
-        return finalizePlan(meta, exercises);
-      } else if (
-        hint.includes("back") || 
-        hint.includes("bicep") || 
-        hint.includes("pull") || 
-        hint.includes("lat") || 
-        hint.includes("row")
-      ) {
-        cycleDay = 2;
-      } else if (
-        hint.includes("chest") || 
-        hint.includes("tricep") || 
-        hint.includes("push") || 
-        hint.includes("bench") || 
-        hint.includes("pec")
-      ) {
-        cycleDay = 1;
-      } else if (
-        hint.includes("cardio") || 
-        hint.includes("walk") || 
-        hint.includes("run") || 
-        hint.includes("stamina")
-      ) {
-        cycleDay = 3;
-      } else if (
-        hint.includes("shoulder") || 
-        hint.includes("delt") ||
-        hint.includes("abs") ||
-        hint.includes("core")
-      ) {
-        cycleDay = 4;
-      }
+    // 90-Day Progression Phase Calculation
+    let phaseNumber: 1 | 2 | 3 | 4 = 1;
+    let phaseName = "Foundation & Hypertrophy Base";
+    let phaseWeeks = "Weeks 1-4 (Days 1-30)";
+    let targetCardioKm = "5.0 - 7.5 KM";
+    let progressionNotes = "Phase 1: Establishing movement execution, muscular endurance, and aerobic conditioning baseline.";
+    let setProgressionMultiplier = 0; // standard sets
+
+    if (safeDay > 75) {
+      phaseNumber = 4;
+      phaseName = "Championship Mastery & Maximum Density";
+      phaseWeeks = "Weeks 11-13 (Days 76-90)";
+      targetCardioKm = "8.0 - 10.0 KM";
+      progressionNotes = "Phase 4: Championship peak intensity, high mechanical tension, and maximal aerobic capacity.";
+      setProgressionMultiplier = 1;
+    } else if (safeDay > 60) {
+      phaseNumber = 3;
+      phaseName = "Peak Performance & High Intensity";
+      phaseWeeks = "Weeks 9-10 (Days 61-75)";
+      targetCardioKm = "7.5 - 10.0 KM";
+      progressionNotes = "Phase 3: High threshold motor unit recruitment, load escalation, and expanded cardiovascular endurance.";
+      setProgressionMultiplier = 1;
+    } else if (safeDay > 30) {
+      phaseNumber = 2;
+      phaseName = "Progressive Overload & Density";
+      phaseWeeks = "Weeks 5-8 (Days 31-60)";
+      targetCardioKm = "6.0 - 8.0 KM";
+      progressionNotes = "Phase 2: Progressive overload with increased training volume, density, and sustained cardio distance.";
+      setProgressionMultiplier = 0;
     }
+
+    const eveningWalkReminder = {
+      title: "EVENING WALK",
+      timing: "30 minutes before bed",
+      pace: "Easy to moderate walking pace",
+      durationMinutes: 30,
+      instructions: "Every single day of the 90 day challenge must include a 30 minute evening walk before bed. This evening walk will send you an email reminder (not a workout in the website). The evening walk must not replace your dedicated cardio sessions on Day 3 and Day 7."
+    };
 
     if (cycleDay === 1) {
       const meta: DayWorkoutMeta = {
         dayNumber: safeDay,
         programId: "immortal_90",
-        title: `Day ${safeDay}: Chest + Triceps Overload`,
-        category: "Chest + Triceps",
+        title: `Day ${safeDay}: Chest and Triceps`,
+        category: "Chest and Triceps",
         targetMuscles: ["Chest", "Triceps"],
         estimatedDuration: "50-60 mins",
-        estimatedCalories: 450,
+        estimatedCalories: 460,
         isRestDay: false,
         isCardioOnly: false,
+        phase: phaseNumber,
+        phaseName: phaseName,
+        eveningWalk: eveningWalkReminder,
         guidelines: [
-          "Display ONLY chest and triceps exercises.",
-          "Warm up rotator cuffs before loading the flat barbell press.",
-          "Focus on peak contraction at the top of every tricep lockout."
+          "DAY 1 SPLIT: Focus strictly on Chest and Triceps.",
+          "Perform primary compound chest presses followed by targeted triceps extensions.",
+          "Maintain strict tempo: 2-3 second eccentrics and explosive concentric drives.",
+          "Every single day includes a 30-minute evening walk before bed (sent via email reminder)."
         ],
-        coachingNotes: "Immortal Day 1 strictly targets the anterior pushing chain: pectorals (upper, mid, lower) and all three triceps heads."
+        coachingNotes: `Immortal Day 1: ${progressionNotes} Pure anterior push focus.`
       };
       const exercises: ChallengeExerciseItem[] = IMMORTAL_CHEST_TRICEPS.slice(0, 12).map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
-        dayNumber: safeDay
+        dayNumber: safeDay,
+        category: "Chest and Triceps",
+        sets: typeof ex.sets === "number" ? ex.sets + setProgressionMultiplier : ex.sets
       }));
       return finalizePlan(meta, exercises);
     }
@@ -3085,24 +4680,30 @@ export function getWorkoutForProgramAndDay(
       const meta: DayWorkoutMeta = {
         dayNumber: safeDay,
         programId: "immortal_90",
-        title: `Day ${safeDay}: Back + Biceps + Forearm`,
-        category: "Back + Biceps + Forearm",
-        targetMuscles: ["Back", "Biceps", "Forearms"],
-        estimatedDuration: "55-65 mins",
-        estimatedCalories: 490,
+        title: `Day ${safeDay}: Back and Biceps`,
+        category: "Back and Biceps",
+        targetMuscles: ["Back", "Biceps"],
+        estimatedDuration: "50-60 mins",
+        estimatedCalories: 480,
         isRestDay: false,
         isCardioOnly: false,
+        phase: phaseNumber,
+        phaseName: phaseName,
+        eveningWalk: eveningWalkReminder,
         guidelines: [
-          "Display back, biceps, and forearm exercises ONLY.",
-          "Initiate pulling movements with the lats, keeping core locked.",
-          "Isolate biceps with strict curls and finish with heavy forearm wrist curls and grip carries."
+          "DAY 2 SPLIT: Focus strictly on Back and Biceps.",
+          "Initiate vertical and horizontal pulls through scapular retraction and lat drive.",
+          "Isolate the biceps with strict curl variations with zero momentum.",
+          "Every single day includes a 30-minute evening walk before bed (sent via email reminder)."
         ],
-        coachingNotes: "Immortal Day 2 exclusively engages vertical and horizontal pulling: latissimus dorsi, rhomboids, trapezius, biceps, and forearm wrist flexors/extensors."
+        coachingNotes: `Immortal Day 2: ${progressionNotes} Total posterior pulling development.`
       };
-      const exercises: ChallengeExerciseItem[] = IMMORTAL_BACK_BICEPS_FOREARMS.slice(0, 12).map((ex, idx) => ({
+      const exercises: ChallengeExerciseItem[] = IMMORTAL_BACK_BICEPS.slice(0, 12).map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
-        dayNumber: safeDay
+        dayNumber: safeDay,
+        category: "Back and Biceps",
+        sets: typeof ex.sets === "number" ? ex.sets + setProgressionMultiplier : ex.sets
       }));
       return finalizePlan(meta, exercises);
     }
@@ -3111,25 +4712,31 @@ export function getWorkoutForProgramAndDay(
       const meta: DayWorkoutMeta = {
         dayNumber: safeDay,
         programId: "immortal_90",
-        title: `Day ${safeDay}: 5 to 10 KM Cardio / Walking (Rest After)`,
-        category: "5 to 10 KM Cardio / Walking",
-        targetMuscles: ["Cardio", "Recovery"],
+        title: `Day ${safeDay}: Cardio and Mobility`,
+        category: "Cardio and Mobility",
+        targetMuscles: ["Cardio", "Mobility"],
         estimatedDuration: "50-75 mins",
         estimatedCalories: 550,
         isRestDay: false,
         isCardioOnly: true,
-        cardioDistance: "5 to 10 KM",
+        cardioDistance: targetCardioKm,
+        phase: phaseNumber,
+        phaseName: phaseName,
+        eveningWalk: eveningWalkReminder,
         guidelines: [
-          "Display walking or running for 5 to 10 km.",
-          "No exercise or weight training is permitted on cardio days.",
-          "After cardio, rest completely so your body recovers deep energy reserves."
+          "CARDIO RULE: Day 3 is the FIRST dedicated cardio day of the week.",
+          "Cardio target: 5 to 10 km (Running, brisk walking, cycling, or jogging based on fitness level).",
+          "Dedicated mobility exercises are included to decompress joints and restore tissue pliability.",
+          "STRICT RULE: Do NOT perform random resistance or weight training on dedicated cardio days.",
+          "Every single day includes a 30-minute evening walk before bed (sent via email reminder)."
         ],
-        coachingNotes: "Immortal Day 3: Resistance exercises are completely removed. Complete your 5 to 10 KM cardio or walk, and rest."
+        coachingNotes: `Immortal Day 3: Dedicated Cardio Day 1. Complete your 5 to 10 km cardio target (${targetCardioKm}) and mobility flow.`
       };
-      const exercises: ChallengeExerciseItem[] = IMMORTAL_CARDIO_RECOVERY.map((ex, idx) => ({
+      const exercises: ChallengeExerciseItem[] = IMMORTAL_CARDIO_MOBILITY.map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
-        dayNumber: safeDay
+        dayNumber: safeDay,
+        category: "Cardio and Mobility"
       }));
       return finalizePlan(meta, exercises);
     }
@@ -3138,24 +4745,30 @@ export function getWorkoutForProgramAndDay(
       const meta: DayWorkoutMeta = {
         dayNumber: safeDay,
         programId: "immortal_90",
-        title: `Day ${safeDay}: Legs + Shoulders + Abs`,
-        category: "Legs + Shoulders + Abs",
-        targetMuscles: ["Legs", "Shoulders", "Abs"],
+        title: `Day ${safeDay}: Legs and Shoulders`,
+        category: "Legs and Shoulders",
+        targetMuscles: ["Legs", "Shoulders"],
         estimatedDuration: "60-70 mins",
-        estimatedCalories: 560,
+        estimatedCalories: 550,
         isRestDay: false,
         isCardioOnly: false,
+        phase: phaseNumber,
+        phaseName: phaseName,
+        eveningWalk: eveningWalkReminder,
         guidelines: [
-          "Display leg, shoulder, and abdominal exercises ONLY.",
-          "Prioritize knee tracking and deep hip hinges on squats and RDLs.",
-          "Hit all three deltoid heads (anterior, lateral, posterior) and finish with ab rollouts and leg raises."
+          "DAY 4 SPLIT: Focus strictly on Legs and Shoulders.",
+          "Prioritize lower body quad/hamstring power followed by 3D shoulder deltoid development.",
+          "Lock in strict knee alignment and deep hip hinge mechanics.",
+          "Every single day includes a 30-minute evening walk before bed (sent via email reminder)."
         ],
-        coachingNotes: "Immortal Day 4: High metabolic demand combining lower body quad/hamstring power, 3D shoulder sculpting, and core armor."
+        coachingNotes: `Immortal Day 4: ${progressionNotes} High-output lower body and shoulder overhead strength.`
       };
-      const exercises: ChallengeExerciseItem[] = IMMORTAL_LEGS_SHOULDERS_ABS.slice(0, 12).map((ex, idx) => ({
+      const exercises: ChallengeExerciseItem[] = IMMORTAL_LEGS_SHOULDERS.slice(0, 12).map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
-        dayNumber: safeDay
+        dayNumber: safeDay,
+        category: "Legs and Shoulders",
+        sets: typeof ex.sets === "number" ? ex.sets + setProgressionMultiplier : ex.sets
       }));
       return finalizePlan(meta, exercises);
     }
@@ -3164,23 +4777,30 @@ export function getWorkoutForProgramAndDay(
       const meta: DayWorkoutMeta = {
         dayNumber: safeDay,
         programId: "immortal_90",
-        title: `Day ${safeDay}: Chest + Triceps`,
-        category: "Chest + Triceps",
-        targetMuscles: ["Chest", "Triceps"],
-        estimatedDuration: "50-60 mins",
-        estimatedCalories: 450,
+        title: `Day ${safeDay}: Chest, Triceps and Forearms`,
+        category: "Chest, Triceps and Forearms",
+        targetMuscles: ["Chest", "Triceps", "Forearms"],
+        estimatedDuration: "55-65 mins",
+        estimatedCalories: 490,
         isRestDay: false,
         isCardioOnly: false,
+        phase: phaseNumber,
+        phaseName: phaseName,
+        eveningWalk: eveningWalkReminder,
         guidelines: [
-          "Display chest and triceps exercises ONLY.",
-          "Progressive load on flat/incline presses followed by tricep dips and cable pushdowns."
+          "DAY 5 SPLIT: Focus strictly on Chest, Triceps and Forearms.",
+          "Re-stimulate anterior pushing chain with heavy volume on pectorals and triceps lockout.",
+          "Complete dedicated wrist flexor, extensor, and grip carry finishers for forearm density.",
+          "Every single day includes a 30-minute evening walk before bed (sent via email reminder)."
         ],
-        coachingNotes: "Immortal Day 5: Re-stimulates the anterior pushing chain with heavy volume on pectorals and triceps."
+        coachingNotes: `Immortal Day 5: ${progressionNotes} Targeted chest density, tricep definition, and forearm grip power.`
       };
-      const exercises: ChallengeExerciseItem[] = IMMORTAL_CHEST_TRICEPS.slice(0, 12).map((ex, idx) => ({
+      const exercises: ChallengeExerciseItem[] = IMMORTAL_CHEST_TRICEPS_FOREARMS.slice(0, 12).map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
-        dayNumber: safeDay
+        dayNumber: safeDay,
+        category: "Chest, Triceps and Forearms",
+        sets: typeof ex.sets === "number" ? ex.sets + setProgressionMultiplier : ex.sets
       }));
       return finalizePlan(meta, exercises);
     }
@@ -3189,120 +4809,138 @@ export function getWorkoutForProgramAndDay(
       const meta: DayWorkoutMeta = {
         dayNumber: safeDay,
         programId: "immortal_90",
-        title: `Day ${safeDay}: Back + Biceps`,
-        category: "Back + Biceps",
-        targetMuscles: ["Back", "Biceps"],
-        estimatedDuration: "50-60 mins",
-        estimatedCalories: 470,
+        title: `Day ${safeDay}: Back, Biceps and Core`,
+        category: "Back, Biceps and Core",
+        targetMuscles: ["Back", "Biceps", "Core"],
+        estimatedDuration: "55-65 mins",
+        estimatedCalories: 510,
         isRestDay: false,
         isCardioOnly: false,
+        phase: phaseNumber,
+        phaseName: phaseName,
+        eveningWalk: eveningWalkReminder,
         guidelines: [
-          "Display back and biceps exercises ONLY.",
-          "Heavy deadlifts, wide pull-ups, barbell rows, and peak bicep curls."
+          "DAY 6 SPLIT: Focus strictly on Back, Biceps and Core.",
+          "High density pulling: lat pulldowns, rows, and bicep peaks paired with core stabilization.",
+          "Perform hanging leg raises, ab wheel rollouts, and cable crunches for core bracing.",
+          "Every single day includes a 30-minute evening walk before bed (sent via email reminder)."
         ],
-        coachingNotes: "Immortal Day 6: Total pulling density targeting lat width, mid-back thickness, and bicep peaks."
+        coachingNotes: `Immortal Day 6: ${progressionNotes} Lat width, mid-back thickness, bicep development, and core armor.`
       };
-      const exercises: ChallengeExerciseItem[] = IMMORTAL_BACK_BICEPS.slice(0, 12).map((ex, idx) => ({
+      const exercises: ChallengeExerciseItem[] = IMMORTAL_BACK_BICEPS_CORE.slice(0, 12).map((ex, idx) => ({
         ...ex,
         id: `immortal_d${safeDay}_ex_${idx + 1}`,
-        dayNumber: safeDay
+        dayNumber: safeDay,
+        category: "Back, Biceps and Core",
+        sets: typeof ex.sets === "number" ? ex.sets + setProgressionMultiplier : ex.sets
       }));
       return finalizePlan(meta, exercises);
     }
 
-    // Day 7: Running or Walking 5 to 10 KM + Rest
+    // DAY 7: Rest and Recovery (Second dedicated cardio session while recovery focused)
     const meta: DayWorkoutMeta = {
       dayNumber: safeDay,
       programId: "immortal_90",
-      title: `Day ${safeDay}: 5 to 10 KM Running or Walking (Rest After)`,
-      category: "5 to 10 KM Running / Walking",
-      targetMuscles: ["Cardio", "Recovery"],
+      title: `Day ${safeDay}: Rest and Recovery`,
+      category: "Rest and Recovery",
+      targetMuscles: ["Recovery", "Cardio", "Mobility"],
       estimatedDuration: "50-75 mins",
-      estimatedCalories: 550,
-      isRestDay: false,
+      estimatedCalories: 520,
+      isRestDay: true,
       isCardioOnly: true,
-      cardioDistance: "5 to 10 KM",
+      cardioDistance: targetCardioKm,
+      phase: phaseNumber,
+      phaseName: phaseName,
+      eveningWalk: eveningWalkReminder,
       guidelines: [
-        "Display running or walking for 5 to 10 km.",
-        "No exercise on cardio days. Strict cardio and walking only.",
-        "After cardio, rest completely. No weight training or resistance workouts.",
-        "Prepares your body for Day 1 of the repeating 7-day cycle."
+        "CARDIO RULE: Day 7 includes your SECOND dedicated cardio session while still being a recovery focused day.",
+        "Cardio target: 5 to 10 km (Running, brisk walking, cycling, or jogging at a recovery Zone 1-2 pace).",
+        "Perform active lower body flushes, glute decompression, and diaphragmatic breathing.",
+        "STRICT RULE: Zero heavy weight training on recovery days.",
+        "Every single day includes a 30-minute evening walk before bed (sent via email reminder)."
       ],
-      coachingNotes: "Immortal Day 7: Complete your 5 to 10 km running or walking. After cardio, rest completely to finish the 7-day cycle."
+      coachingNotes: `Immortal Day 7: Dedicated Cardio Day 2 & Recovery. Complete your 5 to 10 km cardio session (${targetCardioKm}) followed by full recovery to reset for Day 1.`
     };
-    const exercises: ChallengeExerciseItem[] = IMMORTAL_DAY7_RUNNING_WALKING_CARDIO.map((ex, idx) => ({
+    const exercises: ChallengeExerciseItem[] = IMMORTAL_REST_RECOVERY.map((ex, idx) => ({
       ...ex,
       id: `immortal_d${safeDay}_ex_${idx + 1}`,
-      dayNumber: safeDay
+      dayNumber: safeDay,
+      category: "Rest and Recovery"
     }));
     return finalizePlan(meta, exercises);
   }
 
   // --------------------------------------------------------------------------
   // PROGRAM 2: 180 DAY HOME WORKOUT CHALLENGE (CALISTHENICS & BODYWEIGHT ONLY)
+  // Day 1: Upper body Conditioning
+  // Day 2: Legs and glutes Power
+  // Day 3: 5 KM Cardio / Walking Endurance (isCardioOnly: true)
+  // Day 4: Back Calisthenics
+  // Day 5: Core and abs Density
+  // Day 6: Full Body Calisthenics
+  // Day 7: Mobility, Joint Decompression & Recovery (isRestDay: true)
   // --------------------------------------------------------------------------
-  if (programId === "home_180") {
-    let dayMod = ((safeDay - 1) % 6);
-    if (targetMuscleHint) {
-      const hint = targetMuscleHint.toLowerCase();
-      if (hint.includes("leg") || hint.includes("lower") || hint.includes("glute")) dayMod = 1;
-      else if (hint.includes("upper") || hint.includes("chest") || hint.includes("push") || hint.includes("arm")) dayMod = 0;
-      else if (hint.includes("cardio") || hint.includes("hiit")) dayMod = 2;
-      else if (hint.includes("back") || hint.includes("pull")) dayMod = 3;
-      else if (hint.includes("core") || hint.includes("abs")) dayMod = 4;
-      else if (hint.includes("mobility") || hint.includes("recovery") || hint.includes("stretch")) dayMod = 5;
-    }
+  if (pid === "home_180") {
+    const cycleDay = ((safeDay - 1) % 7) + 1;
 
     let category = "Upper body";
     let targetMuscles = ["Chest", "Shoulders", "Arms"];
     let pool = HOME_UPPER_BODY_EXERCISES;
+    let isRestDay = false;
+    let isCardioOnly = false;
+    let cardioDistance: string | undefined = undefined;
 
-    if (dayMod === 0) {
+    if (cycleDay === 1) {
       category = "Upper body";
       targetMuscles = ["Chest", "Shoulders", "Arms"];
       pool = HOME_UPPER_BODY_EXERCISES;
-    } else if (dayMod === 1) {
+    } else if (cycleDay === 2) {
       category = "Legs and glutes";
       targetMuscles = ["Legs", "Glutes"];
       pool = HOME_LEGS_GLUTES_EXERCISES;
-    } else if (dayMod === 2) {
-      category = "Cardio";
-      targetMuscles = ["Cardio"];
+    } else if (cycleDay === 3) {
+      category = "5 KM Cardio / Walking Endurance";
+      targetMuscles = ["Cardio", "Vascular Health"];
       pool = HOME_CARDIO_EXERCISES;
-    } else if (dayMod === 3) {
-      category = "Back";
+      isCardioOnly = true;
+      cardioDistance = "5 KM";
+    } else if (cycleDay === 4) {
+      category = "Back Calisthenics";
       targetMuscles = ["Back", "Arms"];
       pool = HOME_BACK_EXERCISES;
-    } else if (dayMod === 4) {
-      category = "Core and abs";
-      targetMuscles = ["Abs"];
+    } else if (cycleDay === 5) {
+      category = "Core and abs Density";
+      targetMuscles = ["Abs", "Core"];
       pool = HOME_CORE_ABS_EXERCISES;
+    } else if (cycleDay === 6) {
+      category = "Full Body Calisthenics";
+      targetMuscles = ["Full Body"];
+      pool = [...HOME_UPPER_BODY_EXERCISES.slice(0, 6), ...HOME_LEGS_GLUTES_EXERCISES.slice(0, 6)];
     } else {
-      category = "Mobility and recovery";
+      category = "Mobility, Joint Decompression & Recovery";
       targetMuscles = ["Mobility and recovery"];
       pool = HOME_MOBILITY_EXERCISES;
+      isRestDay = true;
     }
 
-    // Dynamic rotation for fresh variety across 180 days while guaranteeing exactly 12 exercises
-    const cycleIndex = Math.floor((safeDay - 1) / 6);
-    const rotationOffset = cycleIndex % 12;
-    const rotated = [...pool.slice(rotationOffset), ...pool.slice(0, rotationOffset)];
-    const exercisesToUse = rotated.slice(0, 12);
+    const count = isCardioOnly ? 1 : isRestDay ? 6 : 12;
+    const exercisesToUse = pool.slice(0, count);
 
     const meta: DayWorkoutMeta = {
       dayNumber: safeDay,
       programId: "home_180",
-      title: `Day ${safeDay}: ${category} Conditioning`,
+      title: `Day ${safeDay}: ${category}`,
       category,
       targetMuscles,
-      estimatedDuration: "35-45 mins",
-      estimatedCalories: 380,
-      isRestDay: category === "Mobility and recovery",
-      isCardioOnly: category === "Cardio",
+      estimatedDuration: isCardioOnly ? "45-60 mins" : isRestDay ? "20-30 mins" : "35-45 mins",
+      estimatedCalories: isCardioOnly ? 400 : isRestDay ? 150 : 380,
+      isRestDay,
+      isCardioOnly,
+      cardioDistance,
       guidelines: [
         "Home equipment & bodyweight priority.",
         "Zero gym machine dependencies.",
-        "12 targeted exercises daily calibrated for progressive calisthenics mastery."
+        "Calibrated strictly for progressive calisthenics mastery."
       ],
       coachingNotes: "180 Day Home Challenge maintains strict bodyweight and home-compatible biomechanics."
     };
@@ -3317,54 +4955,59 @@ export function getWorkoutForProgramAndDay(
 
   // --------------------------------------------------------------------------
   // PROGRAM 3: WOMEN CONFIDENCE PROGRAM (180 DAYS)
+  // Day 1: Glutes & Hamstrings Hypertrophy
+  // Day 2: Core and abs Waist Sculpting
+  // Day 3: 5 KM Cardio Walking / Running (isCardioOnly: true)
+  // Day 4: Legs & Lower Body Sculpt
+  // Day 5: Upper Body Sculpt & Posture
+  // Day 6: Full Body Metabolic Sculpt
+  // Day 7: Confidence and wellness sessions (isRestDay: true)
   // --------------------------------------------------------------------------
-  if (programId === "women_confidence") {
-    let dayMod = ((safeDay - 1) % 6);
-    if (targetMuscleHint) {
-      const hint = targetMuscleHint.toLowerCase();
-      if (hint.includes("glute") || hint.includes("booty") || hint.includes("hip")) dayMod = 0;
-      else if (hint.includes("core") || hint.includes("abs") || hint.includes("waist")) dayMod = 1;
-      else if (hint.includes("cardio") || hint.includes("burn") || hint.includes("fat")) dayMod = 2;
-      else if (hint.includes("leg") || hint.includes("lower") || hint.includes("thigh")) dayMod = 3;
-      else if (hint.includes("upper") || hint.includes("arm") || hint.includes("back") || hint.includes("shoulder")) dayMod = 4;
-      else if (hint.includes("wellness") || hint.includes("mobility") || hint.includes("recovery")) dayMod = 5;
-    }
+  if (pid === "women_confidence") {
+    const cycleDay = ((safeDay - 1) % 7) + 1;
 
     let category = "Glutes";
     let targetMuscles = ["Glutes", "Lower body"];
     let pool = WOMEN_GLUTES_EXERCISES;
+    let isRestDay = false;
+    let isCardioOnly = false;
+    let cardioDistance: string | undefined = undefined;
 
-    if (dayMod === 0) {
+    if (cycleDay === 1) {
       category = "Glutes";
       targetMuscles = ["Glutes", "Lower body"];
       pool = WOMEN_GLUTES_EXERCISES;
-    } else if (dayMod === 1) {
+    } else if (cycleDay === 2) {
       category = "Core and abs";
       targetMuscles = ["Abs", "Core"];
       pool = WOMEN_CORE_EXERCISES;
-    } else if (dayMod === 2) {
-      category = "Cardio";
+    } else if (cycleDay === 3) {
+      category = "5 KM Cardio Walking / Running";
       targetMuscles = ["Cardio"];
       pool = WOMEN_CARDIO_EXERCISES;
-    } else if (dayMod === 3) {
+      isCardioOnly = true;
+      cardioDistance = "5 KM";
+    } else if (cycleDay === 4) {
       category = "Legs";
       targetMuscles = ["Legs", "Glutes"];
       pool = WOMEN_LEGS_EXERCISES;
-    } else if (dayMod === 4) {
+    } else if (cycleDay === 5) {
       category = "Upper body";
       targetMuscles = ["Upper body", "Back", "Shoulders"];
       pool = WOMEN_UPPER_BODY_EXERCISES;
+    } else if (cycleDay === 6) {
+      category = "Full Body Metabolic Sculpt";
+      targetMuscles = ["Full Body", "Toning"];
+      pool = [...WOMEN_GLUTES_EXERCISES.slice(0, 6), ...WOMEN_CORE_EXERCISES.slice(0, 6)];
     } else {
       category = "Confidence and wellness sessions";
       targetMuscles = ["Mobility and recovery"];
       pool = WOMEN_WELLNESS_EXERCISES;
+      isRestDay = true;
     }
 
-    // Dynamic rotation for fresh variety across 180 days while guaranteeing exactly 12 exercises
-    const cycleIndex = Math.floor((safeDay - 1) / 6);
-    const rotationOffset = cycleIndex % 12;
-    const rotated = [...pool.slice(rotationOffset), ...pool.slice(0, rotationOffset)];
-    const exercisesToUse = rotated.slice(0, 12);
+    const count = isCardioOnly ? 1 : isRestDay ? 6 : 12;
+    const exercisesToUse = pool.slice(0, count);
 
     const meta: DayWorkoutMeta = {
       dayNumber: safeDay,
@@ -3372,13 +5015,14 @@ export function getWorkoutForProgramAndDay(
       title: `Day ${safeDay}: ${category} Focus`,
       category,
       targetMuscles,
-      estimatedDuration: "35-45 mins",
-      estimatedCalories: 350,
-      isRestDay: category === "Confidence and wellness sessions",
-      isCardioOnly: category === "Cardio",
+      estimatedDuration: isCardioOnly ? "45-60 mins" : isRestDay ? "20-30 mins" : "35-45 mins",
+      estimatedCalories: isCardioOnly ? 380 : isRestDay ? 150 : 350,
+      isRestDay,
+      isCardioOnly,
+      cardioDistance,
       guidelines: [
         "Specifically engineered around women's aesthetic, posture, and wellness goals.",
-        "12 targeted exercises daily calibrated for continuous tone and empowerment.",
+        "Calibrated for continuous tone, empowerment, and kinetic health.",
         "Zero cross-contamination with unrelated workouts."
       ],
       coachingNotes: "Women Confidence Program: Focus on glute drive, transverse abdominis vacuuming, and empowered consistency."
@@ -3394,49 +5038,59 @@ export function getWorkoutForProgramAndDay(
 
   // --------------------------------------------------------------------------
   // PROGRAM 4: BELLY FAT SHRED SYSTEM (150 DAYS)
+  // Day 1: Core & Transverse Stability
+  // Day 2: Metabolic HIIT & Core Burn
+  // Day 3: 5 to 10 KM Walking or Running (isCardioOnly: true)
+  // Day 4: Obliques & Waist Tapering
+  // Day 5: Full Body Conditioning & Jump Rope
+  // Day 6: Core Meltdown & Metabolic HIIT
+  // Day 7: Active Rest & Cellular Recovery (isRestDay: true)
   // --------------------------------------------------------------------------
-  if (programId === "belly_fat_shred") {
-    let dayMod = ((safeDay - 1) % 5);
-    if (targetMuscleHint) {
-      const hint = targetMuscleHint.toLowerCase();
-      if (hint.includes("core") || hint.includes("abs") || hint.includes("transverse")) dayMod = 0;
-      else if (hint.includes("hiit") || hint.includes("tabata") || hint.includes("interval")) dayMod = 1;
-      else if (hint.includes("walk") || hint.includes("running") || hint.includes("cardio")) dayMod = 2;
-      else if (hint.includes("oblique") || hint.includes("side") || hint.includes("waist")) dayMod = 3;
-      else if (hint.includes("condition") || hint.includes("full body") || hint.includes("metabolic")) dayMod = 4;
-    }
+  if (pid === "belly_fat_shred") {
+    const cycleDay = ((safeDay - 1) % 7) + 1;
 
     let category = "Core";
     let targetMuscles = ["Abs"];
     let pool = BELLY_CORE_EXERCISES;
+    let isRestDay = false;
+    let isCardioOnly = false;
+    let cardioDistance: string | undefined = undefined;
 
-    if (dayMod === 0) {
+    if (cycleDay === 1) {
       category = "Core";
       targetMuscles = ["Abs"];
       pool = BELLY_CORE_EXERCISES;
-    } else if (dayMod === 1) {
+    } else if (cycleDay === 2) {
       category = "HIIT";
       targetMuscles = ["Full body"];
       pool = BELLY_HIIT_EXERCISES;
-    } else if (dayMod === 2) {
-      category = "Walking or running";
+    } else if (cycleDay === 3) {
+      category = "5 to 10 KM Walking or Running";
       targetMuscles = ["Cardio"];
       pool = BELLY_CARDIO_EXERCISES;
-    } else if (dayMod === 3) {
+      isCardioOnly = true;
+      cardioDistance = "5 to 10 KM";
+    } else if (cycleDay === 4) {
       category = "Obliques";
       targetMuscles = ["Abs"];
       pool = BELLY_OBLIQUES_EXERCISES;
-    } else {
+    } else if (cycleDay === 5) {
       category = "Full body conditioning";
       targetMuscles = ["Full body"];
       pool = BELLY_CONDITIONING_EXERCISES;
+    } else if (cycleDay === 6) {
+      category = "Core Meltdown & HIIT";
+      targetMuscles = ["Core", "Full Body"];
+      pool = [...BELLY_CORE_EXERCISES.slice(0, 6), ...BELLY_HIIT_EXERCISES.slice(0, 6)];
+    } else {
+      category = "Active Rest & Cellular Recovery";
+      targetMuscles = ["Rest", "Recovery"];
+      pool = POSTURE_DAILY_MOVEMENT_EXERCISES;
+      isRestDay = true;
     }
 
-    // Dynamic rotation for fresh variety across 150 days while guaranteeing exactly 12 exercises
-    const cycleIndex = Math.floor((safeDay - 1) / 5);
-    const rotationOffset = cycleIndex % 12;
-    const rotated = [...pool.slice(rotationOffset), ...pool.slice(0, rotationOffset)];
-    const exercisesToUse = rotated.slice(0, 12);
+    const count = isCardioOnly ? 1 : isRestDay ? 4 : 12;
+    const exercisesToUse = pool.slice(0, count);
 
     const meta: DayWorkoutMeta = {
       dayNumber: safeDay,
@@ -3444,15 +5098,15 @@ export function getWorkoutForProgramAndDay(
       title: `Day ${safeDay}: ${category} Protocol`,
       category,
       targetMuscles,
-      estimatedDuration: "40-50 mins",
-      estimatedCalories: 460,
-      isRestDay: false,
-      isCardioOnly: category === "Walking or running",
-      cardioDistance: category === "Walking or running" ? "5 to 10 KM" : undefined,
+      estimatedDuration: isCardioOnly ? "45-60 mins" : isRestDay ? "20 mins" : "40-50 mins",
+      estimatedCalories: isCardioOnly ? 480 : isRestDay ? 120 : 460,
+      isRestDay,
+      isCardioOnly,
+      cardioDistance,
       guidelines: [
         "Core stabilization and systemic lipid oxidation.",
-        "12 targeted exercises daily designed for core density and metabolic burn.",
-        "Remember: Abdominal movements strengthen core muscles; overall fat loss comes from sustained energy balance and activity."
+        "Targeted exercises daily designed for core density and metabolic burn.",
+        "Zero weight training on cardio days."
       ],
       coachingNotes: "Belly Fat Shred System builds deep core density while elevating caloric expenditure safely."
     };
@@ -3466,46 +5120,218 @@ export function getWorkoutForProgramAndDay(
   }
 
   // --------------------------------------------------------------------------
-  // PROGRAM 5: LIFESTYLE FITNESS ACADEMY (POSTURE, SEDENTARY REVERSAL & LONGEVITY)
+  // PROGRAM 5: GYM HYPERTROPHY & MUSCLE BUILDER
+  // Day 1: Chest & Triceps Hypertrophy
+  // Day 2: Back & Biceps Hypertrophy
+  // Day 3: 5 KM Active Flush & Aerobic Recovery (isCardioOnly: true)
+  // Day 4: Legs & Calves Hypertrophy
+  // Day 5: Shoulders, Arms & Abs Hypertrophy
+  // Day 6: 5 KM Conditioning Run / Walk (isCardioOnly: true)
+  // Day 7: Complete Anabolic Rest & Recovery (isRestDay: true)
   // --------------------------------------------------------------------------
-  if (programId === "lifestyle_academy" as any) {
-    let dayMod = ((safeDay - 1) % 7);
-    if (targetMuscleHint) {
-      const hint = targetMuscleHint.toLowerCase();
-      if (hint.includes("posture") || hint.includes("neck") || hint.includes("slouch")) dayMod = 0;
-      else if (hint.includes("hip") || hint.includes("psoas") || hint.includes("pelvis")) dayMod = 1;
-      else if (hint.includes("walk") || hint.includes("cardio") || hint.includes("circulation")) dayMod = 2;
-      else if (hint.includes("chest") || hint.includes("shoulder") || hint.includes("doorway")) dayMod = 3;
-      else if (hint.includes("spine") || hint.includes("core") || hint.includes("back")) dayMod = 4;
-      else if (hint.includes("glute") || hint.includes("lower") || hint.includes("leg")) dayMod = 5;
-      else if (hint.includes("rest") || hint.includes("recovery") || hint.includes("mobility")) dayMod = 6;
+  if (pid === "gym_hypertrophy") {
+    const cycleDay = ((safeDay - 1) % 7) + 1;
+
+    let category = "Chest + Triceps";
+    let targetMuscles = ["Chest", "Triceps"];
+    let pool: any[] = GYM_HYPERTROPHY_CHEST_TRICEPS;
+    let isRestDay = false;
+    let isCardioOnly = false;
+    let cardioDistance: string | undefined = undefined;
+
+    if (cycleDay === 1) {
+      category = "Chest + Triceps";
+      targetMuscles = ["Chest", "Triceps"];
+      pool = GYM_HYPERTROPHY_CHEST_TRICEPS;
+    } else if (cycleDay === 2) {
+      category = "Back + Biceps";
+      targetMuscles = ["Back", "Biceps"];
+      pool = GYM_HYPERTROPHY_BACK_BICEPS;
+    } else if (cycleDay === 3) {
+      category = "5 KM Active Flush & Aerobic Recovery";
+      targetMuscles = ["Cardio", "Active Recovery"];
+      pool = IMMORTAL_CARDIO_RECOVERY;
+      isCardioOnly = true;
+      cardioDistance = "5 KM";
+    } else if (cycleDay === 4) {
+      category = "Legs + Calves";
+      targetMuscles = ["Quads", "Hamstrings", "Calves"];
+      pool = GYM_HYPERTROPHY_LEGS_CALVES;
+    } else if (cycleDay === 5) {
+      category = "Shoulders + Arms + Abs";
+      targetMuscles = ["Shoulders", "Biceps", "Triceps", "Abs"];
+      pool = GYM_HYPERTROPHY_SHOULDERS_ARMS_ABS;
+    } else if (cycleDay === 6) {
+      category = "5 KM Conditioning Run / Walk";
+      targetMuscles = ["Cardio", "Stamina"];
+      pool = IMMORTAL_DAY7_RUNNING_WALKING_CARDIO;
+      isCardioOnly = true;
+      cardioDistance = "5 KM";
+    } else {
+      category = "Complete Anabolic Rest & CNS Recovery";
+      targetMuscles = ["Full Body Recovery"];
+      pool = POSTURE_DAILY_MOVEMENT_EXERCISES;
+      isRestDay = true;
     }
+
+    const count = isCardioOnly ? 1 : isRestDay ? 4 : pool.length;
+    const exercisesToUse = pool.slice(0, count);
+
+    const meta: DayWorkoutMeta = {
+      dayNumber: safeDay,
+      programId: "gym_hypertrophy",
+      title: `Day ${safeDay}: ${category}`,
+      category,
+      targetMuscles,
+      estimatedDuration: isCardioOnly ? "45-60 mins" : isRestDay ? "20 mins" : "55-65 mins",
+      estimatedCalories: isCardioOnly ? 450 : isRestDay ? 100 : 520,
+      isRestDay,
+      isCardioOnly,
+      cardioDistance,
+      guidelines: [
+        "Pure gym compound and isolation progressive overload.",
+        "Execute every set with 2-3 second eccentric tempo and explosive concentric.",
+        "Zero cross-contamination with bodyweight or home protocols."
+      ],
+      coachingNotes: "Gym Hypertrophy: Heavy mechanical tension, progressive overload, and full muscular recruitment."
+    };
+
+    const exercises = exercisesToUse.map((ex, idx) => ({
+      ...ex,
+      id: `gym_d${safeDay}_ex_${idx + 1}`,
+      dayNumber: safeDay
+    }));
+    return finalizePlan(meta, exercises);
+  }
+
+  // --------------------------------------------------------------------------
+  // PROGRAM 6: CARDIO, CALISTHENICS & MILITARY FITNESS
+  // Day 1: Tactical Calisthenics & Push
+  // Day 2: 5 to 10 KM Tempo Run & Aerobic Threshold (isCardioOnly: true)
+  // Day 3: Military Pull & Core Armor
+  // Day 4: Functional Agility & Jump Rope HIIT
+  // Day 5: High-Volume Calisthenics Endurance
+  // Day 6: 5 to 10 KM Military Ruck / Run & Stamina (isCardioOnly: true)
+  // Day 7: Tactical CNS Rest & Joint Decompression (isRestDay: true)
+  // --------------------------------------------------------------------------
+  if (pid === "cardio_calisthenics") {
+    const cycleDay = ((safeDay - 1) % 7) + 1;
+
+    let category = "Tactical Calisthenics & Push";
+    let targetMuscles = ["Chest", "Triceps", "Shoulders"];
+    let pool: any[] = TACTICAL_PUSH_EXERCISES;
+    let isRestDay = false;
+    let isCardioOnly = false;
+    let cardioDistance: string | undefined = undefined;
+
+    if (cycleDay === 1) {
+      category = "Tactical Calisthenics & Push";
+      targetMuscles = ["Chest", "Triceps", "Shoulders"];
+      pool = TACTICAL_PUSH_EXERCISES;
+    } else if (cycleDay === 2) {
+      category = "5 to 10 KM Tempo Run & Aerobic Threshold";
+      targetMuscles = ["Cardio", "Aerobic Threshold"];
+      pool = IMMORTAL_CARDIO_RECOVERY;
+      isCardioOnly = true;
+      cardioDistance = "5 to 10 KM";
+    } else if (cycleDay === 3) {
+      category = "Military Pull & Core Armor";
+      targetMuscles = ["Back", "Biceps", "Core"];
+      pool = TACTICAL_PULL_CORE_EXERCISES;
+    } else if (cycleDay === 4) {
+      category = "Functional Agility & Jump Rope HIIT";
+      targetMuscles = ["Cardio", "Calves", "Coordination"];
+      pool = TACTICAL_AGILITY_HIIT_EXERCISES;
+    } else if (cycleDay === 5) {
+      category = "High-Volume Calisthenics Endurance";
+      targetMuscles = ["Full Body", "Muscular Endurance"];
+      pool = TACTICAL_ENDURANCE_EXERCISES;
+    } else if (cycleDay === 6) {
+      category = "5 to 10 KM Military Ruck / Run & Stamina";
+      targetMuscles = ["Cardio", "Stamina"];
+      pool = IMMORTAL_DAY7_RUNNING_WALKING_CARDIO;
+      isCardioOnly = true;
+      cardioDistance = "5 to 10 KM";
+    } else {
+      category = "Tactical CNS Rest & Joint Decompression";
+      targetMuscles = ["Rest", "Recovery"];
+      pool = POSTURE_DAILY_MOVEMENT_EXERCISES;
+      isRestDay = true;
+    }
+
+    const count = isCardioOnly ? 1 : isRestDay ? 4 : pool.length;
+    const exercisesToUse = pool.slice(0, count);
+
+    const meta: DayWorkoutMeta = {
+      dayNumber: safeDay,
+      programId: "cardio_calisthenics",
+      title: `Day ${safeDay}: ${category}`,
+      category,
+      targetMuscles,
+      estimatedDuration: isCardioOnly ? "50-70 mins" : isRestDay ? "20 mins" : "45-55 mins",
+      estimatedCalories: isCardioOnly ? 550 : isRestDay ? 120 : 490,
+      isRestDay,
+      isCardioOnly,
+      cardioDistance,
+      guidelines: [
+        "Military-grade bodyweight mastery and aerobic endurance.",
+        "Zero rest between agility circuits; strict cadence on pull-ups and push-ups.",
+        "Complete running distances with relentless discipline."
+      ],
+      coachingNotes: "Tactical Calisthenics: Functional strength-to-weight ratio, combat stamina, and unwavering mental toughness."
+    };
+
+    const exercises = exercisesToUse.map((ex, idx) => ({
+      ...ex,
+      id: `tactical_d${safeDay}_ex_${idx + 1}`,
+      dayNumber: safeDay
+    }));
+    return finalizePlan(meta, exercises);
+  }
+
+  // --------------------------------------------------------------------------
+  // PROGRAM 7: LIFESTYLE FITNESS ACADEMY (POSTURE, SEDENTARY REVERSAL & LONGEVITY)
+  // Day 1: Posture Alignment & Posterior Chain
+  // Day 2: Hip Flexor Decompression & Sedentary Reset
+  // Day 3: Aerobic Circulation & 5-10 KM Brisk Walking (isCardioOnly: true)
+  // Day 4: Chest Opening & Anterior Shoulder Mobility
+  // Day 5: Spinal Decompression & Core Pillar Stability
+  // Day 6: Glute Activation & Lower Body Kinetic Chain
+  // Day 7: Restorative Mobility & Parasympathetic Recovery (isRestDay: true)
+  // --------------------------------------------------------------------------
+  if (pid === "lifestyle_academy") {
+    const cycleDay = ((safeDay - 1) % 7) + 1;
 
     let category = "Posture Alignment & Posterior Chain";
     let targetMuscles = ["Upper Back", "Scapular Stabilizers"];
     let pool = POSTURE_CORRECTION_EXERCISES;
+    let isRestDay = false;
+    let isCardioOnly = false;
+    let cardioDistance: string | undefined = undefined;
 
-    if (dayMod === 0) {
+    if (cycleDay === 1) {
       category = "Posture Alignment & Posterior Chain";
       targetMuscles = ["Upper Back", "Scapular Stabilizers"];
       pool = POSTURE_CORRECTION_EXERCISES;
-    } else if (dayMod === 1) {
+    } else if (cycleDay === 2) {
       category = "Hip Flexor Decompression & Sedentary Reset";
       targetMuscles = ["Hip Flexors", "Pelvis", "Glutes"];
       pool = POSTURE_HIP_MOBILITY_EXERCISES;
-    } else if (dayMod === 2) {
+    } else if (cycleDay === 3) {
       category = "Aerobic Circulation & 5-10 KM Brisk Walking";
       targetMuscles = ["Cardio", "Vascular Health"];
       pool = POSTURE_DAILY_MOVEMENT_EXERCISES;
-    } else if (dayMod === 3) {
+      isCardioOnly = true;
+      cardioDistance = "5 to 10 KM";
+    } else if (cycleDay === 4) {
       category = "Chest Opening & Anterior Shoulder Mobility";
       targetMuscles = ["Pectorals", "Anterior Deltoids"];
       pool = POSTURE_CHEST_OPENING_EXERCISES;
-    } else if (dayMod === 4) {
+    } else if (cycleDay === 5) {
       category = "Spinal Decompression & Core Pillar Stability";
       targetMuscles = ["Spine", "Transverse Abdominis"];
       pool = POSTURE_SPINAL_MOBILITY_EXERCISES;
-    } else if (dayMod === 5) {
+    } else if (cycleDay === 6) {
       category = "Glute Activation & Lower Body Kinetic Chain";
       targetMuscles = ["Glutes", "Hamstrings", "Quads"];
       pool = POSTURE_GLUTE_ACTIVATION_EXERCISES;
@@ -3513,26 +5339,26 @@ export function getWorkoutForProgramAndDay(
       category = "Restorative Mobility & Parasympathetic Recovery";
       targetMuscles = ["Total Body Recovery"];
       pool = POSTURE_DAILY_MOVEMENT_EXERCISES;
+      isRestDay = true;
     }
 
-    const cycleIndex = Math.floor((safeDay - 1) / 7);
-    const rotationOffset = cycleIndex % 12;
-    const rotated = [...pool.slice(rotationOffset), ...pool.slice(0, rotationOffset)];
-    const exercisesToUse = rotated.slice(0, 12);
+    const count = isCardioOnly ? 1 : isRestDay ? 6 : 10;
+    const exercisesToUse = pool.slice(0, count);
 
     const meta: DayWorkoutMeta = {
       dayNumber: safeDay,
-      programId: "lifestyle_academy" as any,
+      programId: "lifestyle_academy",
       title: `Day ${safeDay}: ${category}`,
       category,
       targetMuscles,
-      estimatedDuration: "30-40 mins",
-      estimatedCalories: 240,
-      isRestDay: dayMod === 6,
-      isCardioOnly: dayMod === 2,
+      estimatedDuration: isCardioOnly ? "45-60 mins" : isRestDay ? "20-30 mins" : "30-40 mins",
+      estimatedCalories: isCardioOnly ? 350 : isRestDay ? 120 : 240,
+      isRestDay,
+      isCardioOnly,
+      cardioDistance,
       guidelines: [
         "Specifically engineered to counteract prolonged sitting, tech neck, and sedentary stiffness.",
-        "12 targeted exercises daily designed for posture alignment, joint longevity, and metabolic renewal."
+        "Targeted exercises daily designed for posture alignment, joint longevity, and metabolic renewal."
       ],
       coachingNotes: "Lifestyle Academy: Reverse the sedentary curve with clinical movement patterns and active breathing."
     };
@@ -3546,54 +5372,59 @@ export function getWorkoutForProgramAndDay(
   }
 
   // --------------------------------------------------------------------------
-  // PROGRAM 6: RECLAIM YOUR POSTURE & VITALITY (60 DAYS)
+  // PROGRAM 8: RECLAIM YOUR POSTURE & VITALITY (60 DAYS)
+  // Day 1: Posture correction
+  // Day 2: Chest opening
+  // Day 3: 3 to 5 KM Mindful Posture Walk (isCardioOnly: true)
+  // Day 4: Spinal mobility
+  // Day 5: Glute activation
+  // Day 6: Daily movement flow
+  // Day 7: Complete Spinal Rest & Nervous System Reset (isRestDay: true)
   // --------------------------------------------------------------------------
-  let dayMod = ((safeDay - 1) % 6);
-  if (targetMuscleHint) {
-    const hint = targetMuscleHint.toLowerCase();
-    if (hint.includes("posture") || hint.includes("neck") || hint.includes("slouch")) dayMod = 0;
-    else if (hint.includes("chest") || hint.includes("shoulder") || hint.includes("anterior")) dayMod = 1;
-    else if (hint.includes("hip") || hint.includes("psoas") || hint.includes("pelvis")) dayMod = 2;
-    else if (hint.includes("spine") || hint.includes("back") || hint.includes("thoracic")) dayMod = 3;
-    else if (hint.includes("glute") || hint.includes("butt") || hint.includes("bridge")) dayMod = 4;
-    else if (hint.includes("daily") || hint.includes("walk") || hint.includes("step")) dayMod = 5;
-  }
+  const cycleDay = ((safeDay - 1) % 7) + 1;
 
   let category = "Posture correction";
   let targetMuscles = ["Upper back", "Neck mobility"];
   let pool = POSTURE_CORRECTION_EXERCISES;
+  let isRestDay = false;
+  let isCardioOnly = false;
+  let cardioDistance: string | undefined = undefined;
 
-  if (dayMod === 0) {
+  if (cycleDay === 1) {
     category = "Posture correction";
     targetMuscles = ["Upper back", "Neck mobility"];
     pool = POSTURE_CORRECTION_EXERCISES;
-  } else if (dayMod === 1) {
+  } else if (cycleDay === 2) {
     category = "Chest opening";
     targetMuscles = ["Chest", "Shoulders"];
     pool = POSTURE_CHEST_OPENING_EXERCISES;
-  } else if (dayMod === 2) {
-    category = "Hip mobility";
-    targetMuscles = ["Hip mobility", "Glutes"];
-    pool = POSTURE_HIP_MOBILITY_EXERCISES;
-  } else if (dayMod === 3) {
+  } else if (cycleDay === 3) {
+    category = "3 to 5 KM Mindful Posture Walk";
+    targetMuscles = ["Cardio", "Spinal Decompression"];
+    pool = POSTURE_DAILY_MOVEMENT_EXERCISES;
+    isCardioOnly = true;
+    cardioDistance = "3 to 5 KM";
+  } else if (cycleDay === 4) {
     category = "Spinal mobility";
     targetMuscles = ["Spinal mobility"];
     pool = POSTURE_SPINAL_MOBILITY_EXERCISES;
-  } else if (dayMod === 4) {
+  } else if (cycleDay === 5) {
     category = "Glute activation";
     targetMuscles = ["Glutes", "Core stability"];
     pool = POSTURE_GLUTE_ACTIVATION_EXERCISES;
-  } else {
+  } else if (cycleDay === 6) {
     category = "Daily movement";
     targetMuscles = ["Daily movement", "Mobility and recovery"];
     pool = POSTURE_DAILY_MOVEMENT_EXERCISES;
+  } else {
+    category = "Complete Spinal Rest & Reset";
+    targetMuscles = ["Total Body Relaxation"];
+    pool = POSTURE_DAILY_MOVEMENT_EXERCISES;
+    isRestDay = true;
   }
 
-  // Dynamic rotation for fresh variety across 60 days while guaranteeing exactly 12 exercises
-  const cycleIndex = Math.floor((safeDay - 1) / 6);
-  const rotationOffset = cycleIndex % 12;
-  const rotated = [...pool.slice(rotationOffset), ...pool.slice(0, rotationOffset)];
-  const exercisesToUse = rotated.slice(0, 12);
+  const count = isCardioOnly ? 1 : isRestDay ? 5 : 10;
+  const exercisesToUse = pool.slice(0, count);
 
   const meta: DayWorkoutMeta = {
     dayNumber: safeDay,
@@ -3601,13 +5432,14 @@ export function getWorkoutForProgramAndDay(
     title: `Day ${safeDay}: ${category}`,
     category,
     targetMuscles,
-    estimatedDuration: "25-35 mins",
-    estimatedCalories: 180,
-    isRestDay: false,
-    isCardioOnly: false,
+    estimatedDuration: isCardioOnly ? "40-50 mins" : isRestDay ? "15-20 mins" : "25-35 mins",
+    estimatedCalories: isCardioOnly ? 300 : isRestDay ? 100 : 180,
+    isRestDay,
+    isCardioOnly,
+    cardioDistance,
     guidelines: [
       "Corrective biomechanics, spinal elongation, and postural alignment.",
-      "12 targeted therapeutic exercises daily with mindful breathing and zero joint compression."
+      "Targeted therapeutic exercises daily with mindful breathing and zero joint compression."
     ],
     coachingNotes: "Reclaim Your Posture & Vitality repairs anterior shoulder rounding, neck tension, and hip tightness."
   };

@@ -6,6 +6,7 @@ import {
   Award, ArrowUpRight, Bell, Sparkles, AlertCircle, ChevronRight
 } from "lucide-react";
 import { checkAndTriggerSevenDayProgressReminder } from "../utils/pushNotificationService";
+import ProgressTrendGraph from "./ProgressTrendGraph";
 
 interface CardioLog {
   id: string;
@@ -359,6 +360,15 @@ export default function ProgressTrackerView({ setView }: { setView?: (view: stri
       {/* TAB CONTENT: Overview */}
       {activeTab === "overview" && (
         <div className="space-y-6">
+          {/* Visual Trend Graph using Recharts: Water, Workouts, Body Stats */}
+          <ProgressTrendGraph
+            activityLogs={activityLogs || []}
+            vitalsLogs={vitalsLogs || []}
+            cardioLogs={cardioLogs || []}
+            userWeight={user?.weight || 75}
+            todayWaterGlasses={liveWaterGlasses}
+          />
+
           {/* Quick Water Intake Logger */}
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">

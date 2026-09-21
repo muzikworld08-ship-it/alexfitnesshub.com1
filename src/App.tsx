@@ -336,25 +336,86 @@ function FitnessAppContent() {
     }
   }, [user, currentView, loading, setView]);
 
-  // Keep window.location.pathname in sync with currentView
+  // View history stack to ensure browser back navigation returns to the true previous page
+  const viewHistoryRef = React.useRef<string[]>([]);
+  const isNavigatingHistoryRef = React.useRef<boolean>(false);
+
+  // Initialize history state on mount
   React.useEffect(() => {
+    if (typeof window !== "undefined" && window.history) {
+      if (!window.history.state || !window.history.state.view) {
+        window.history.replaceState({ view: currentView }, "", window.location.pathname);
+      }
+      viewHistoryRef.current = [currentView];
+    }
+  }, []);
+
+  // Keep window.location.pathname & state in sync with currentView
+  React.useEffect(() => {
+    if (isNavigatingHistoryRef.current) {
+      isNavigatingHistoryRef.current = false;
+      return;
+    }
+
+    const historyStack = viewHistoryRef.current;
+    if (historyStack[historyStack.length - 1] !== currentView) {
+      historyStack.push(currentView);
+      if (historyStack.length > 50) historyStack.shift();
+    }
+
     const targetPath = VIEW_TO_PATH_MAP[currentView] || "/";
-    if (window.location.pathname !== targetPath) {
-      window.history.pushState(null, "", targetPath);
+    if (window.location.pathname !== targetPath || window.history.state?.view !== currentView) {
+      window.history.pushState({ view: currentView }, "", targetPath);
     }
   }, [currentView]);
 
-  // Listen to popstate event for browser back/forward buttons
+  // Listen to popstate event for browser back/forward buttons: returns to previous page rather than landing on homepage
   React.useEffect(() => {
-    const handlePopState = () => {
-      const targetView = PATH_TO_VIEW_MAP[window.location.pathname] || "home";
-      setView(targetView);
+    const handlePopState = (event: PopStateEvent) => {
+      isNavigatingHistoryRef.current = true;
+
+      // 1. First priority: event state view
+      if (event.state && typeof event.state.view === "string" && event.state.view) {
+        const targetView = event.state.view;
+        if (viewHistoryRef.current.length > 1) {
+          viewHistoryRef.current.pop();
+        }
+        setView(targetView);
+        return;
+      }
+
+      // 2. Second priority: match current normalized pathname
+      const rawPath = window.location.pathname;
+      const normalizedPath = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
+      if (PATH_TO_VIEW_MAP[normalizedPath]) {
+        const targetView = PATH_TO_VIEW_MAP[normalizedPath];
+        if (viewHistoryRef.current.length > 1) {
+          viewHistoryRef.current.pop();
+        }
+        setView(targetView);
+        return;
+      }
+
+      // 3. Third priority: return to previous page in history stack rather than landing on homepage!
+      const historyStack = viewHistoryRef.current;
+      if (historyStack.length > 1) {
+        historyStack.pop(); // remove current
+        const previousView = historyStack[historyStack.length - 1];
+        if (previousView) {
+          setView(previousView);
+          return;
+        }
+      }
+
+      // 4. Fallback only if no previous history exists
+      setView("home");
     };
+
     window.addEventListener("popstate", handlePopState);
     return () => {
       window.removeEventListener("popstate", handlePopState);
     };
-  }, []);
+  }, [setView]);
 
   // Global Scroll Restoration Solution
   // 1. Force the browser to manual scroll restoration on mount to prevent native jumpy behavior on back/forward

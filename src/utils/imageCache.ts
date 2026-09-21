@@ -109,15 +109,16 @@ export function preloadCriticalFitnessAssets(): void {
   if (typeof window === "undefined") return;
 
   const CRITICAL_URLS = [
-    "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
-    "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
-    "https://media.giphy.com/media/xT8qB7Sbwskk27Rdy8/giphy.gif",
-    "https://media.giphy.com/media/v1F0A8f5Ff6hO/giphy.gif",
-    "https://media.giphy.com/media/duuVpx00In40Syc7m6/giphy.gif",
-    "https://media.giphy.com/media/13sc1CHidbO6S4/giphy.gif",
-    "https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif",
-    "https://media.giphy.com/media/3o84U39K5Cj6D0v2w0/giphy.gif",
-    "https://media.giphy.com/media/3o7qE6b39zV1LALZRe/giphy.gif",
+    "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0025-EIeI8Vf.gif",
+    "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0314-ns0SIbU.gif",
+    "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif",
+    "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0043-qXTaZnJ.gif",
+    "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0032-ila4NZS.gif",
+    "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2330-LEprlgG.gif",
+    "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0405-znQUdHY.gif",
+    "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0285-BU15nH4.gif",
+    "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0201-3ZflifB.gif",
+    "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0464-CosupLu.gif",
     "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&auto=format&fit=crop&q=80",
     "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80"
   ];

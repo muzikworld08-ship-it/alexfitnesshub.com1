@@ -23,7 +23,7 @@ export const FLAGSHIP_CHALLENGES: PremiumChallenge[] = [
   {
     id: "immortal_90",
     title: "Immortal 90 Day Challenge",
-    description: "The premier 90-day physical mastery challenge. Strict 7-day rolling cadence cycling Chest+Triceps, Back+Biceps+Forearm, 5-10KM Cardio/Walk, Legs+Shoulders+Abs, Chest+Triceps, Back+Biceps, and 5-10KM Run/Walk with complete rest on cardio days.",
+    description: "The premier 90-day physical mastery challenge. Strict 7-day rolling cadence cycling Day 1: Chest and Triceps, Day 2: Back and Biceps, Day 3: Cardio and Mobility, Day 4: Legs and Shoulders, Day 5: Chest, Triceps and Forearms, Day 6: Back, Biceps and Core, and Day 7: Rest and Recovery (with dedicated 5-10 KM cardio). Includes daily 30-minute evening walk.",
     category: "Hypertrophy & Conditioning",
     goal: "Transform full-body power, muscular density, aerobic endurance, and unbreakable physical discipline.",
     image: getExerciseGifUrl("Barbell Bench Press", "Gym Workouts"),
@@ -130,22 +130,22 @@ export const PREMIUM_CHALLENGES = FLAGSHIP_CHALLENGES;
 
 export const CHALLENGE_SPLITS: Record<string, string[]> = {
   immortal_90: [
-    "Chest + Triceps",
-    "Back + Biceps + Forearm",
-    "5 to 10 KM Cardio or Walking",
-    "Legs + Shoulders + Abs",
-    "Chest + Triceps",
-    "Back + Biceps",
-    "5 to 10 KM Running or Walking"
+    "Chest and Triceps",
+    "Back and Biceps",
+    "Cardio and Mobility",
+    "Legs and Shoulders",
+    "Chest, Triceps and Forearms",
+    "Back, Biceps and Core",
+    "Rest and Recovery"
   ],
   lean_muscle: [
-    "Chest + Triceps",
-    "Back + Biceps + Forearm",
-    "5 to 10 KM Cardio or Walking",
-    "Legs + Shoulders + Abs",
-    "Chest + Triceps",
-    "Back + Biceps",
-    "5 to 10 KM Running or Walking"
+    "Chest and Triceps",
+    "Back and Biceps",
+    "Cardio and Mobility",
+    "Legs and Shoulders",
+    "Chest, Triceps and Forearms",
+    "Back, Biceps and Core",
+    "Rest and Recovery"
   ],
   fat_burning: ["HIIT Cardio", "Lower Body Conditioning", "Aerobic Cardio", "Upper Body Circuit", "Full Body Shred", "HIIT Endurance", "Recovery"],
   body_transformation: ["Upper Body Strength", "Lower Body Strength", "Core + Mobility", "Full Body Hypertrophy", "HIIT Cardio", "Core + Conditioning", "Recovery"],

@@ -574,20 +574,22 @@ export default function WorkoutGeneratorView({ setView }: WorkoutGeneratorViewPr
 
                     <button
                       onClick={handleCopyWorkout}
-                      className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white text-xs font-bold transition flex items-center gap-1.5"
+                      className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                       title="Copy Routine"
                     >
                       {copiedRoutine ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                       <span className="hidden sm:inline">{copiedRoutine ? "Copied!" : "Copy"}</span>
                     </button>
 
-                    <button
-                      onClick={() => setIsLivePlayerOpen(true)}
-                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-2 shadow-lg shadow-blue-500/30 active:scale-95"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      <span>Start Workout</span>
-                    </button>
+                    {!dailyWorkout.missingExercises && !dailyWorkout.isRestDay && dailyWorkout.exercises.length > 0 && (
+                      <button
+                        onClick={() => setIsLivePlayerOpen(true)}
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition flex items-center gap-2 shadow-lg shadow-blue-500/30 active:scale-95 cursor-pointer"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>Start Workout</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -654,32 +656,110 @@ export default function WorkoutGeneratorView({ setView }: WorkoutGeneratorViewPr
 
               {/* Main Content Body */}
               <div className="p-6 sm:p-8 space-y-8 bg-white">
-                {/* 1. Dynamic Warm-Up Protocol */}
-                {dailyWorkout.warmup && dailyWorkout.warmup.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-mono font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-amber-500" />
-                        Phase 1: Dynamic Warm-Up & Neural Priming
-                      </h3>
-                      <span className="text-[10px] font-mono text-slate-400">3-5 Minutes</span>
+                {dailyWorkout.missingExercises ? (
+                  <div className="p-8 sm:p-12 text-center bg-amber-50/60 border border-amber-200 rounded-3xl space-y-4">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-600 flex items-center justify-center mx-auto">
+                      <ShieldAlert className="w-8 h-8" />
                     </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {dailyWorkout.warmup.map((warm, idx) => (
-                        <div key={idx} className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono font-bold text-amber-700 uppercase">
-                              {warm.durationOrReps}
-                            </span>
-                          </div>
-                          <h4 className="text-xs font-black text-slate-900">{warm.name}</h4>
-                          <p className="text-[11px] text-slate-600 leading-relaxed">{warm.instructions}</p>
-                        </div>
-                      ))}
+                    <div className="max-w-xl mx-auto space-y-2">
+                      <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-800 bg-amber-100/80 px-3 py-1 rounded-full border border-amber-200">
+                        Strict Schedule Enforcement
+                      </span>
+                      <h3 className="text-2xl font-black text-slate-900">
+                        No Workout Scheduled for Day {dailyWorkout.dayNumber}
+                      </h3>
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                        {dailyWorkout.message || `No approved exercises found for ${dailyWorkout.programName} Day ${dailyWorkout.dayNumber} (${dailyWorkout.targetMuscles.join(", ")}).`}
+                      </p>
+                    </div>
+                    <div className="p-4 bg-white rounded-2xl border border-amber-200/60 max-w-lg mx-auto text-left text-xs text-slate-600 space-y-1.5 shadow-xs">
+                      <span className="font-bold text-slate-900 block uppercase font-mono text-[10px]">Strict Safety Rule:</span>
+                      <p>• The program schedule strictly decides what workout appears first.</p>
+                      <p>• Random exercises are strictly forbidden from appearing as replacements when exercises are missing.</p>
+                      <p>• Please add approved exercises for this program and muscle category in the Exercise Library.</p>
+                    </div>
+                    <div className="pt-2 flex justify-center gap-3">
+                      <button
+                        onClick={() => setIsMasterLibraryOpen(true)}
+                        className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer transition shadow-sm"
+                      >
+                        <Layers className="w-4 h-4" />
+                        <span>Browse Exercise Library</span>
+                      </button>
                     </div>
                   </div>
-                )}
+                ) : dailyWorkout.isRestDay ? (
+                  <div className="p-8 sm:p-12 text-center bg-teal-50/50 border border-teal-200 rounded-3xl space-y-4">
+                    <div className="w-14 h-14 rounded-2xl bg-teal-500/20 text-teal-600 flex items-center justify-center mx-auto">
+                      <Heart className="w-8 h-8" />
+                    </div>
+                    <div className="max-w-xl mx-auto space-y-2">
+                      <span className="text-xs font-mono font-bold uppercase tracking-wider text-teal-800 bg-teal-100/80 px-3 py-1 rounded-full border border-teal-200">
+                        Rest & Active Recovery Protocol
+                      </span>
+                      <h3 className="text-2xl font-black text-slate-900">
+                        Day {dailyWorkout.dayNumber}: Full Muscular & CNS Recovery
+                      </h3>
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                        Zero resistance weight training is permitted today. Muscle fibers rebuild, glycogen stores replenish, and tendons adapt during scheduled rest.
+                      </p>
+                    </div>
+                    {dailyWorkout.guidelines && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto text-left pt-2">
+                        {dailyWorkout.guidelines.map((g, i) => (
+                          <div key={i} className="p-3 bg-white border border-teal-100 rounded-xl text-xs text-slate-700 flex items-start gap-2 shadow-xs">
+                            <Check className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                            <span>{g}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {/* If Cardio Only, show Cardio Banner */}
+                    {dailyWorkout.isCardioOnly && (
+                      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-transparent border border-blue-200 flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
+                          <Flame className="w-5 h-5" />
+                        </div>
+                        <div className="space-y-1 text-xs">
+                          <span className="font-mono font-bold uppercase text-blue-700 tracking-wider block text-[10px]">
+                            Aerobic Endurance Protocol &bull; {dailyWorkout.cardioDistance || "5-10 KM"}
+                          </span>
+                          <p className="text-slate-700 leading-relaxed font-sans font-medium">
+                            Strict Cardio and Recovery Day. Zero weightlifting or resistance training permitted. Execute continuous running or brisk walking at steady Zone 2 heart rate (130-145 BPM).
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 1. Dynamic Warm-Up Protocol */}
+                    {dailyWorkout.warmup && dailyWorkout.warmup.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs font-mono font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-500" />
+                            Phase 1: Dynamic Warm-Up & Neural Priming
+                          </h3>
+                          <span className="text-[10px] font-mono text-slate-400">3-5 Minutes</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          {dailyWorkout.warmup.map((warm, idx) => (
+                            <div key={idx} className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-100 space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-mono font-bold text-amber-700 uppercase">
+                                  {warm.durationOrReps}
+                                </span>
+                              </div>
+                              <h4 className="text-xs font-black text-slate-900">{warm.name}</h4>
+                              <p className="text-[11px] text-slate-600 leading-relaxed">{warm.instructions}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                 {/* 2. Main Resistance & Conditioning Circuit (Grounded in 237 GIF Library) */}
                 <div className="space-y-4">
@@ -929,6 +1009,8 @@ export default function WorkoutGeneratorView({ setView }: WorkoutGeneratorViewPr
                     </button>
                   </form>
                 </div>
+                </>
+                )}
               </div>
 
               {/* Bottom Sticky Action Bar */}

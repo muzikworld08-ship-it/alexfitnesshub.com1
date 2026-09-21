@@ -39,7 +39,10 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
     home_180: DEFAULT_PROGRAM_STATE("home_180"),
     women_confidence: DEFAULT_PROGRAM_STATE("women_confidence"),
     belly_fat_shred: DEFAULT_PROGRAM_STATE("belly_fat_shred"),
-    posture_vitality: DEFAULT_PROGRAM_STATE("posture_vitality")
+    posture_vitality: DEFAULT_PROGRAM_STATE("posture_vitality"),
+    gym_hypertrophy: DEFAULT_PROGRAM_STATE("gym_hypertrophy"),
+    cardio_calisthenics: DEFAULT_PROGRAM_STATE("cardio_calisthenics"),
+    lifestyle_academy: DEFAULT_PROGRAM_STATE("lifestyle_academy")
   });
   
   const [isLoaded, setIsLoaded] = useState(false);
@@ -72,7 +75,10 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
       home_180: cleanLoadedState(loadedStates.home_180, "home_180"),
       women_confidence: cleanLoadedState(loadedStates.women_confidence, "women_confidence"),
       belly_fat_shred: cleanLoadedState(loadedStates.belly_fat_shred, "belly_fat_shred"),
-      posture_vitality: cleanLoadedState(loadedStates.posture_vitality, "posture_vitality")
+      posture_vitality: cleanLoadedState(loadedStates.posture_vitality, "posture_vitality"),
+      gym_hypertrophy: cleanLoadedState(loadedStates.gym_hypertrophy, "gym_hypertrophy"),
+      cardio_calisthenics: cleanLoadedState(loadedStates.cardio_calisthenics, "cardio_calisthenics"),
+      lifestyle_academy: cleanLoadedState(loadedStates.lifestyle_academy, "lifestyle_academy")
     };
 
     setAllProgramStates(merged);
@@ -90,7 +96,10 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
               home_180: cleanLoadedState({ ...prev.home_180, ...(remoteData.home_180 || {}) }, "home_180"),
               women_confidence: cleanLoadedState({ ...prev.women_confidence, ...(remoteData.women_confidence || {}) }, "women_confidence"),
               belly_fat_shred: cleanLoadedState({ ...prev.belly_fat_shred, ...(remoteData.belly_fat_shred || {}) }, "belly_fat_shred"),
-              posture_vitality: cleanLoadedState({ ...prev.posture_vitality, ...(remoteData.posture_vitality || {}) }, "posture_vitality")
+              posture_vitality: cleanLoadedState({ ...prev.posture_vitality, ...(remoteData.posture_vitality || {}) }, "posture_vitality"),
+              gym_hypertrophy: cleanLoadedState({ ...prev.gym_hypertrophy, ...(remoteData.gym_hypertrophy || {}) }, "gym_hypertrophy"),
+              cardio_calisthenics: cleanLoadedState({ ...prev.cardio_calisthenics, ...(remoteData.cardio_calisthenics || {}) }, "cardio_calisthenics"),
+              lifestyle_academy: cleanLoadedState({ ...prev.lifestyle_academy, ...(remoteData.lifestyle_academy || {}) }, "lifestyle_academy")
             };
             try {
               localStorage.setItem(storageKey, JSON.stringify(remoteMerged));
@@ -105,6 +114,26 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
       });
     }
   }, [userId, user?.uid]);
+
+  // Sync admin program schedule overrides (cardio days, deleted & replaced exercises, custom sets)
+  const [overridesVersion, setOverridesVersion] = useState(0);
+  useEffect(() => {
+    fetch("/api/admin/programs/overrides")
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success && data.overrides) {
+          localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(data.overrides));
+          setOverridesVersion(v => v + 1);
+        }
+      })
+      .catch(() => {});
+
+    const handleOverridesChanged = () => {
+      setOverridesVersion(v => v + 1);
+    };
+    window.addEventListener("fit_schedule_overrides_updated", handleOverridesChanged);
+    return () => window.removeEventListener("fit_schedule_overrides_updated", handleOverridesChanged);
+  }, []);
 
   // Save changes to localStorage and Firestore
   const persistState = useCallback((updatedStates: Record<ProgramId, ProgramProgressState>) => {
@@ -127,10 +156,39 @@ export function useChallengeEngine(initialProgramId: ProgramId = "immortal_90") 
   const currentProgress = allProgramStates[activeProgramId] || DEFAULT_PROGRAM_STATE(activeProgramId);
   const metadata = CHALLENGE_PROGRAMS_METADATA[activeProgramId];
 
-  // Resolve today's workout plan
+  // Resolve today's workout plan - calibrated to user onboarding answers & admin schedule overrides
   const workoutPlan: DayExecutionPlan = useMemo(() => {
-    return getWorkoutForProgramAndDay(activeProgramId, currentProgress.currentDay);
-  }, [activeProgramId, currentProgress.currentDay]);
+    const basePlan = getWorkoutForProgramAndDay(activeProgramId, currentProgress.currentDay);
+    if (!basePlan) return basePlan;
+
+    // Apply onboarding personalizations if user has completed onboarding
+    if (user) {
+      const userGoal = (user.fitnessGoals || (user as any).goal || "").toLowerCase();
+      const userLevel = (user.workoutExperience || (user as any).fitnessLevel || "").toLowerCase();
+      const restrictions = (user.healthRestrictions || "").toLowerCase();
+
+      let personalizedNotes = basePlan.meta.coachingNotes;
+      if (userGoal.includes("shred") || userGoal.includes("fat") || userGoal.includes("loss")) {
+        personalizedNotes += ` • Onboarding Focus: High-density aerobic intervals & fast rest recovery.`;
+      } else if (userGoal.includes("muscle") || userGoal.includes("gain") || userGoal.includes("strength")) {
+        personalizedNotes += ` • Onboarding Focus: Progressive overload with slow 3-second eccentric contraction.`;
+      }
+
+      if (restrictions && restrictions !== "none") {
+        personalizedNotes += ` • Health Guard: Maintain core stabilization to protect ${restrictions}.`;
+      }
+
+      return {
+        ...basePlan,
+        meta: {
+          ...basePlan.meta,
+          coachingNotes: personalizedNotes
+        }
+      };
+    }
+
+    return basePlan;
+  }, [activeProgramId, currentProgress.currentDay, overridesVersion, user]);
 
   // Strict Exercise Validation: Filter exercises before displaying
   const validatedExercises = useMemo(() => {

@@ -10,7 +10,7 @@ import {
   Info, Medal, RefreshCw, Crown, Shield, Eye, Heart, Camera, 
   Download, Share2, Clipboard, ChevronDown, Check, AlertTriangle, 
   MessageSquare, UserCheck, ChevronLeft, Target, ArrowRight, ExternalLink,
-  Layers
+  Layers, X
 } from "lucide-react";
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -20,6 +20,7 @@ import PersistentDashboardTabs from "./PersistentDashboardTabs";
 import { getChallengeWorkouts } from "../data/challenges";
 import { 
   getWorkoutForProgramAndDay,
+  normalizeProgramId,
   IMMORTAL_CHEST_TRICEPS,
   IMMORTAL_BACK_BICEPS,
   IMMORTAL_LEGS_SHOULDERS,
@@ -47,6 +48,17 @@ export interface PremiumChallenge {
 }
 
 export const PREMIUM_CHALLENGES: PremiumChallenge[] = [
+  {
+    id: "immortal_90",
+    title: "Immortal 90 Day Challenge",
+    description: "The Flagship Hypertrophy & Longevity Protocol. Progressive overload targeting Chest, Triceps, Back, Biceps, Legs, Shoulders, Abs, Forearm, and Neck with scheduled 5-10 KM cardio active recovery.",
+    category: "Hypertrophy & Longevity",
+    goal: "Command chest, triceps, back, biceps, legs, shoulders, abs, forearms, and neck with progressive overload and active cardio recovery.",
+    image: "https://awtsuprints.com/cdn/shop/articles/90-day-challenge-how-can-i-transform-my-body-in-90-days_cf19eda2-ffc8-4ba0-9f5b-55139f77908a.jpg?v=1746016037",
+    badgeId: "badge_immortal_conqueror",
+    badgeName: "Immortal Titan",
+    badgeColor: "from-red-600 to-amber-600"
+  },
   {
     id: "lean_muscle",
     title: "90 Day Lean Muscle Challenge",
@@ -133,8 +145,8 @@ const CHALLENGE_SPLITS: Record<string, string[]> = {
     "Back + Biceps + Forearm",
     "5 to 10 KM Cardio or Walking",
     "Legs + Shoulders + Abs",
-    "Chest + Triceps",
-    "Back + Biceps",
+    "Chest + Triceps + Neck",
+    "Back + Biceps + Forearm & Abs",
     "5 to 10 KM Running or Walking"
   ],
   "90_day_immortal": [
@@ -142,8 +154,8 @@ const CHALLENGE_SPLITS: Record<string, string[]> = {
     "Back + Biceps + Forearm",
     "5 to 10 KM Cardio or Walking",
     "Legs + Shoulders + Abs",
-    "Chest + Triceps",
-    "Back + Biceps",
+    "Chest + Triceps + Neck",
+    "Back + Biceps + Forearm & Abs",
     "5 to 10 KM Running or Walking"
   ],
   "90-days-immortal": [
@@ -151,8 +163,8 @@ const CHALLENGE_SPLITS: Record<string, string[]> = {
     "Back + Biceps + Forearm",
     "5 to 10 KM Cardio or Walking",
     "Legs + Shoulders + Abs",
-    "Chest + Triceps",
-    "Back + Biceps",
+    "Chest + Triceps + Neck",
+    "Back + Biceps + Forearm & Abs",
     "5 to 10 KM Running or Walking"
   ],
   lean_muscle: [
@@ -160,8 +172,8 @@ const CHALLENGE_SPLITS: Record<string, string[]> = {
     "Back + Biceps + Forearm",
     "5 to 10 KM Cardio or Walking",
     "Legs + Shoulders + Abs",
-    "Chest + Triceps",
-    "Back + Biceps",
+    "Chest + Triceps + Neck",
+    "Back + Biceps + Forearm & Abs",
     "5 to 10 KM Running or Walking"
   ],
   fat_burning: ["HIIT Cardio", "Lower Body Conditioning", "5-10 KM Cardio & Complete Rest", "Upper Body Circuit", "Full Body Shred", "HIIT Endurance", "5-10 KM Running or Walking"],
@@ -258,6 +270,15 @@ export default function Premium90DayChallenge() {
   const effectiveChallenges = allChallenges && allChallenges.length > 0 ? allChallenges : PREMIUM_CHALLENGES;
 
   const [activeSubTab, setActiveSubTab] = useState<"workout" | "analytics" | "badges" | "measurements" | "certificate">("workout");
+  const [scheduleOverridesVersion, setScheduleOverridesVersion] = useState(0);
+
+  useEffect(() => {
+    const handleOverridesChanged = () => {
+      setScheduleOverridesVersion(v => v + 1);
+    };
+    window.addEventListener("fit_schedule_overrides_updated", handleOverridesChanged);
+    return () => window.removeEventListener("fit_schedule_overrides_updated", handleOverridesChanged);
+  }, []);
 
 
   // Keep scroll position on activeSubTab change
@@ -279,9 +300,22 @@ export default function Premium90DayChallenge() {
   const [adminCustomCoachName, setAdminCustomCoachName] = useState<string>("");
   const [adminStatusMessage, setAdminStatusMessage] = useState<string>("");
   const [adminLoading, setAdminLoading] = useState<boolean>(false);
+  const [showSwitchChallengeModal, setShowSwitchChallengeModal] = useState<boolean>(false);
 
   // Local storage fallback helper functions for robust offline / quota-limited access
   const getLocalChallengeKey = (uid: string) => `premium_90_day_challenge_${uid}`;
+
+  const handleSwitchChallenge = async (newChallengeId: string) => {
+    if (!user || !dbState) return;
+    const updated: Premium90DayState = {
+      ...dbState,
+      challengeId: newChallengeId,
+      updatedAt: new Date().toISOString()
+    };
+    setDbState(updated);
+    await saveChallengeData(user.uid, updated);
+    setShowSwitchChallengeModal(false);
+  };
 
   const loadChallengeData = async (uid: string): Promise<Premium90DayState | null> => {
     try {
@@ -289,6 +323,9 @@ export default function Premium90DayChallenge() {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data() as Premium90DayState;
+        if (!data.challengeId) {
+          data.challengeId = "immortal_90";
+        }
         localStorage.setItem(getLocalChallengeKey(uid), JSON.stringify(data));
         return data;
       }
@@ -298,7 +335,11 @@ export default function Premium90DayChallenge() {
     const cached = localStorage.getItem(getLocalChallengeKey(uid));
     if (cached) {
       try {
-        return JSON.parse(cached);
+        const data = JSON.parse(cached);
+        if (!data.challengeId) {
+          data.challengeId = "immortal_90";
+        }
+        return data;
       } catch (e) {
         console.error("Local storage parse error:", e);
       }
@@ -521,7 +562,20 @@ export default function Premium90DayChallenge() {
       intensityLabel = "Absolute Maximum Effort (90-95%)";
     }
 
-    // Delegate directly to the strictly organized 7-day repeating Challenge Engine for Immortal 90 / Lean Muscle
+    // Check if an admin override exists for this challenge
+    const rawOverrides = typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem("fit_program_schedule_overrides") : null;
+    let hasProgramOverride = false;
+    if (rawOverrides) {
+      try {
+        const parsed = JSON.parse(rawOverrides);
+        const pOverrides = parsed[challengeId] || parsed[normalizeProgramId(challengeId)];
+        if (pOverrides && (pOverrides[String(dayNum)] || pOverrides[`cycle_${((dayNum - 1) % 7) + 1}`])) {
+          hasProgramOverride = true;
+        }
+      } catch (e) {}
+    }
+
+    // Delegate directly to the strictly organized 7-day repeating Challenge Engine for Immortal 90 / Lean Muscle or any overridden challenge
     const isImmortalVariant = 
       !challengeId ||
       challengeId === "immortal_90" || 
@@ -530,8 +584,9 @@ export default function Premium90DayChallenge() {
       challengeId.includes("immortal") ||
       challengeId === "lean_muscle";
 
-    if (isImmortalVariant) {
-      const enginePlan = getWorkoutForProgramAndDay("immortal_90", dayNum);
+    if (isImmortalVariant || hasProgramOverride) {
+      const progToQuery = hasProgramOverride ? challengeId : "immortal_90";
+      const enginePlan = getWorkoutForProgramAndDay(progToQuery, dayNum);
       const isCardioDay = enginePlan.meta.isCardioOnly;
 
       const exercisesWithDetails = enginePlan.exercises.map((ex, idx) => {
@@ -1447,7 +1502,16 @@ export default function Premium90DayChallenge() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
                 <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
                   <div className="absolute top-4 right-4 text-slate-300"><Target className="w-8 h-8" /></div>
-                  <span className="text-[10px] text-slate-400 font-mono uppercase font-bold">Enrolled Challenge</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400 font-mono uppercase font-bold">Enrolled Challenge</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowSwitchChallengeModal(true)}
+                      className="text-[10px] font-bold text-red-600 hover:text-red-700 underline cursor-pointer"
+                    >
+                      Change
+                    </button>
+                  </div>
                   <p className="text-sm font-black text-slate-900 mt-2 uppercase truncate leading-tight">{activeChallengeName}</p>
                   <p className="text-xs text-red-500 font-bold mt-1">Day {dbState.currentDay} of 90</p>
                 </div>
@@ -1497,6 +1561,28 @@ export default function Premium90DayChallenge() {
                   </span>
                 </div>
               </div>
+
+              {/* Optional Flagship Switch Banner */}
+              {dbState.challengeId !== "immortal_90" && (
+                <div className="bg-gradient-to-r from-red-600/10 via-amber-500/10 to-red-600/5 border border-red-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left">
+                  <div>
+                    <div className="text-xs font-black uppercase text-red-600 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4" />
+                      Immortal 90 Day Flagship Challenge
+                    </div>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      You are currently on <span className="font-bold">{activeChallengeName}</span>. Switch to the Flagship Immortal 90 Day protocol targeting Chest, Triceps, Back, Biceps, Legs, Shoulders, Abs, Forearms, Neck & 5-10 KM Cardio.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchChallenge("immortal_90")}
+                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase px-4 py-2 rounded-xl transition-all shadow-sm shrink-0 cursor-pointer"
+                  >
+                    Switch to Immortal 90
+                  </button>
+                </div>
+              )}
 
               {/* Sub tabs Bar */}
               <div className="bg-white border border-slate-200 rounded-xl p-1.5 flex flex-wrap gap-2 shadow-xs">
@@ -1635,8 +1721,8 @@ export default function Premium90DayChallenge() {
                           { offset: 1, dayName: "Day 2", focus: "Back + Biceps + Forearm", badge: "Pull" },
                           { offset: 2, dayName: "Day 3", focus: "5-10 KM Cardio / Walk", badge: "Cardio" },
                           { offset: 3, dayName: "Day 4", focus: "Legs + Shoulders + Abs", badge: "Legs/Core" },
-                          { offset: 4, dayName: "Day 5", focus: "Chest + Triceps", badge: "Push" },
-                          { offset: 5, dayName: "Day 6", focus: "Back + Biceps", badge: "Pull" },
+                          { offset: 4, dayName: "Day 5", focus: "Chest + Triceps + Neck", badge: "Push" },
+                          { offset: 5, dayName: "Day 6", focus: "Back + Biceps + Forearm & Abs", badge: "Pull" },
                           { offset: 6, dayName: "Day 7", focus: "5-10 KM Run / Walk", badge: "Cardio" },
                         ].map((cadenceItem) => {
                           const currentWeekStart = Math.floor((activeDisplayDay - 1) / 7) * 7 + 1;
@@ -1646,6 +1732,18 @@ export default function Premium90DayChallenge() {
                           const isViewingThis = activeDisplayDay === calculatedDay;
                           const isTrackedToday = dbState.currentDay === calculatedDay;
                           const itemDetail = getDailyWorkoutDetail(calculatedDay, dbState.challengeId);
+
+                          const computedBadge = itemDetail.isRecoveryDay || itemDetail.focus?.toLowerCase().includes("cardio") || itemDetail.focus?.toLowerCase().includes("walk") || itemDetail.focus?.toLowerCase().includes("run")
+                            ? "Cardio"
+                            : itemDetail.focus?.toLowerCase().includes("chest")
+                            ? "Push"
+                            : itemDetail.focus?.toLowerCase().includes("back")
+                            ? "Pull"
+                            : itemDetail.focus?.toLowerCase().includes("leg") || itemDetail.focus?.toLowerCase().includes("lower")
+                            ? "Legs/Core"
+                            : itemDetail.focus?.toLowerCase().includes("core") || itemDetail.focus?.toLowerCase().includes("abs") || itemDetail.focus?.toLowerCase().includes("mobility")
+                            ? "Core"
+                            : cadenceItem.badge;
 
                           return (
                             <button
@@ -1678,7 +1776,7 @@ export default function Premium90DayChallenge() {
                               <div className={`text-[9px] font-mono mt-1 ${
                                 isViewingThis ? "text-red-200" : "text-slate-400"
                               }`}>
-                                {itemDetail.isRecoveryDay ? "Cardio" : cadenceItem.badge}
+                                {computedBadge}
                               </div>
                             </button>
                           );
@@ -2483,6 +2581,55 @@ export default function Premium90DayChallenge() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Switch Challenge Modal */}
+      {showSwitchChallengeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto text-left">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-lg font-black uppercase text-slate-900">Switch 90-Day Challenge</h3>
+                <p className="text-xs text-slate-500">Your current day progress, streak, and logged PRs will be preserved.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSwitchChallengeModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              {PREMIUM_CHALLENGES.map((ch) => {
+                const isCurrent = dbState?.challengeId === ch.id;
+                return (
+                  <button
+                    key={ch.id}
+                    type="button"
+                    onClick={() => handleSwitchChallenge(ch.id)}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                      isCurrent
+                        ? "bg-red-50 border-red-500 ring-2 ring-red-500/20"
+                        : "bg-slate-50 hover:bg-slate-100 border-slate-200"
+                    }`}
+                  >
+                    <div>
+                      <span className="text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded bg-red-100 text-red-700">
+                        {ch.category}
+                      </span>
+                      <h4 className="font-extrabold text-sm text-slate-900 mt-1">{ch.title}</h4>
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-1">{ch.description}</p>
+                    </div>
+                    <span className={`text-xs font-black uppercase ${isCurrent ? "text-red-600" : "text-slate-700"}`}>
+                      {isCurrent ? "✓ Active Challenge" : "Select Challenge →"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 

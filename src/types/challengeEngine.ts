@@ -3,7 +3,10 @@ export type ProgramId =
   | "home_180" 
   | "women_confidence" 
   | "belly_fat_shred" 
-  | "posture_vitality";
+  | "posture_vitality"
+  | "gym_hypertrophy"
+  | "cardio_calisthenics"
+  | "lifestyle_academy";
 
 export interface ProgramMetadata {
   id: ProgramId;
@@ -53,8 +56,21 @@ export interface DayWorkoutMeta {
   isRestDay: boolean;
   isCardioOnly: boolean;
   cardioDistance?: string;
+  cardioTargetKm?: number;
+  cardioModality?: string;
   guidelines: string[];
   coachingNotes: string;
+  phase?: string | number;
+  phaseName?: string;
+  phaseDesc?: string;
+  phaseNumber?: number;
+  eveningWalk?: {
+    title: string;
+    timing: string;
+    pace: string;
+    durationMinutes: number;
+    instructions: string;
+  };
 }
 
 export interface DayExecutionPlan {

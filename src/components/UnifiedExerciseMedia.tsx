@@ -4,7 +4,7 @@ import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { OptimizedImage } from "./OptimizedImage";
 import { findMatchingExercise } from "../utils/exerciseMatching";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
-import { getExerciseGifUrl } from "../data/exercises";
+import { getAccurateExerciseGif } from "../data/exerciseMediaCatalog";
 import { isImageCached } from "../utils/imageCache";
 
 interface UnifiedExerciseMediaProps {
@@ -29,13 +29,22 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
   // Search for the centralized exercise matching ID or Name cleanly
   const exercise = findMatchingExercise(exercises, exerciseId, exerciseName);
 
-  const canonicalName = exercise?.name || exerciseName;
+  const canonicalName = exercise?.name || exerciseName || exerciseId || "";
 
   const defaultFallbackUrl = useMemo(() => {
-    return getExerciseGifUrl(exercise?.name || exerciseName || exerciseId || "");
-  }, [exerciseName, exerciseId, exercise?.name]);
+    return getAccurateExerciseGif(canonicalName, exercise?.category);
+  }, [canonicalName, exercise?.category]);
 
-  const rawMediaUrl = exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl || defaultFallbackUrl;
+  const rawCandidate = exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl;
+  // If candidate is a legacy broken giphy URL or a legacy misassigned squat GIF on a non-squat movement, prioritize the accurate catalog URL
+  const isCandidateProblematic = useMemo(() => {
+    if (!rawCandidate) return true;
+    if (rawCandidate.includes("giphy.com")) return true;
+    if (rawCandidate.includes("u8946fAnhQ6cH9R16e") && !canonicalName.toLowerCase().includes("squat")) return true;
+    return false;
+  }, [rawCandidate, canonicalName]);
+
+  const rawMediaUrl = (!isCandidateProblematic && rawCandidate) ? rawCandidate : defaultFallbackUrl;
   const initialResolvedUrl = resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl;
 
   const [activeUrl, setActiveUrl] = useState<string>(initialResolvedUrl);
@@ -69,16 +78,8 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
   const resolvedMediaType = exercise?.customMediaType || (isVideoUrl ? "video" : "image");
 
   const handleMediaError = () => {
-    const stdGif = exercise?.gifUrl ? resolveAdminMediaUrl(exercise.gifUrl) : "";
-    const stdImg = exercise?.imageUrl ? resolveAdminMediaUrl(exercise.imageUrl) : "";
-    const catGif = defaultFallbackUrl;
-
-    if (activeUrl !== stdGif && stdGif && stdGif !== activeUrl) {
-      setActiveUrl(stdGif);
-    } else if (activeUrl !== stdImg && stdImg && stdImg !== activeUrl) {
-      setActiveUrl(stdImg);
-    } else if (activeUrl !== catGif && catGif && catGif !== activeUrl) {
-      setActiveUrl(catGif);
+    if (activeUrl !== defaultFallbackUrl) {
+      setActiveUrl(defaultFallbackUrl);
     } else {
       setHasError(true);
     }

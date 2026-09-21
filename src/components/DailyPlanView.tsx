@@ -11,6 +11,8 @@ import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
 import { 
   getProgramWaitState, 
   recordDailyWorkoutCompletion, 
+  recordDailyWorkoutCompletionAsync,
+  syncCooldownWithBackend,
   clearProgramWaitState,
   formatRemainingTime
 } from "../utils/programWaitManager";
@@ -96,6 +98,14 @@ export default function DailyPlanView() {
   });
 
   useEffect(() => {
+    syncCooldownWithBackend("daily_plan", user?.email || undefined)
+      .then((synced) => {
+        setCooldownState(synced);
+      })
+      .catch(() => {});
+  }, [user?.email]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
       const nextState = getProgramWaitState("daily_plan");
       setCooldownState((prev) => {
@@ -114,8 +124,18 @@ export default function DailyPlanView() {
   }, [currentPlanDay]);
 
   const handleFinishDailyWorkout = async () => {
-    recordDailyWorkoutCompletion("daily_plan", currentPlanDay);
-    setCooldownState(getProgramWaitState("daily_plan"));
+    try {
+      await recordDailyWorkoutCompletionAsync({
+        programId: "daily_plan",
+        completedDay: currentPlanDay,
+        caloriesBurned: 320,
+        userEmail: user?.email || undefined
+      });
+      setCooldownState(getProgramWaitState("daily_plan"));
+    } catch (e) {
+      recordDailyWorkoutCompletion("daily_plan", currentPlanDay);
+      setCooldownState(getProgramWaitState("daily_plan"));
+    }
 
     if (user?.email) {
       sendEmail({
@@ -730,8 +750,12 @@ export default function DailyPlanView() {
                       );
                     })
                   ) : (
-                    <div className="col-span-2 text-center py-8 text-xs text-slate-400 font-mono">
-                      No customized movements loaded. Initiate onboarding or click refresh.
+                    <div className="col-span-2 text-center py-10 px-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                      <ShieldAlert className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                      <h4 className="text-sm font-bold text-slate-800">No Approved Movements Scheduled</h4>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                        Movement drills must be approved in the program library before they can be displayed. Random exercises are strictly prohibited.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -758,7 +782,8 @@ export default function DailyPlanView() {
 
                   <button
                     onClick={handleFinishDailyWorkout}
-                    className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-red-600/20 transition flex items-center justify-center gap-2 cursor-pointer"
+                    disabled={!plan?.workoutExercises || plan.workoutExercises.length === 0}
+                    className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-xs uppercase tracking-wider shadow-md shadow-red-600/20 transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Complete Day {currentPlanDay} & Start 5-Hr Recovery</span>

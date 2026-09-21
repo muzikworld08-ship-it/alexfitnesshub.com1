@@ -39,6 +39,7 @@ export default function ProgramCooldownWaitingScreen({
   onUnlocked
 }: ProgramCooldownWaitingScreenProps) {
   const [remainingMs, setRemainingMs] = useState<number>(() => Math.max(0, nextUnlockAt - Date.now()));
+  const waitHours = programId === "immortal_90" ? 7 : 5;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -55,6 +56,11 @@ export default function ProgramCooldownWaitingScreen({
 
   const handleBypassForTesting = () => {
     clearProgramWaitState(programId);
+    fetch("/api/workout/reset-cooldown", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ programId })
+    }).catch(() => {});
     if (onUnlocked) onUnlocked();
   };
 
@@ -84,17 +90,17 @@ export default function ProgramCooldownWaitingScreen({
           
           <p className="text-sm sm:text-base text-neutral-300 max-w-2xl mx-auto leading-relaxed">
             You pushed through today's challenge in <strong className="text-white">{programName}</strong>. 
-            To trigger deep muscular adaptation and maximize metabolic fat burning, your next routine is locked for a <strong>5-hour recovery window</strong>.
+            To trigger deep muscular adaptation and maximize metabolic fat burning, your next routine is locked for a <strong>{waitHours}-hour recovery window</strong>.
           </p>
         </div>
 
-        {/* 5-Hour Countdown Card */}
+        {/* Countdown Card */}
         <div className="bg-gradient-to-b from-neutral-950 to-neutral-900/90 border border-amber-500/40 rounded-2xl p-6 sm:p-8 text-center mb-8 shadow-inner relative overflow-hidden">
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
           
           <div className="inline-flex items-center gap-2 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider mb-2">
             <Clock className="w-4 h-4" />
-            <span>5-Hour System Cooldown in Progress</span>
+            <span>{waitHours}-Hour System Cooldown in Progress</span>
           </div>
 
           <div className="text-4xl sm:text-6xl font-black font-mono tracking-tight text-white my-3 drop-shadow-md">
@@ -102,7 +108,7 @@ export default function ProgramCooldownWaitingScreen({
           </div>
 
           <p className="text-xs sm:text-sm text-amber-200/90 max-w-lg mx-auto font-medium">
-            🌅 Tomorrow morning (or once this 5-hour rest window concludes), <strong>Day {nextDay}</strong> will be unlocked and waiting for you to crush!
+            🌅 Tomorrow morning at 5:00 AM (or once this {waitHours}-hour rest window concludes), <strong>Day {nextDay}</strong> will be unlocked and waiting for you to crush!
           </p>
 
           <div className="mt-4 pt-4 border-t border-neutral-800/80 flex items-center justify-center gap-6 text-xs text-neutral-400 font-mono">
@@ -112,7 +118,7 @@ export default function ProgramCooldownWaitingScreen({
             </span>
             <span className="flex items-center gap-1.5">
               <Zap className="w-3.5 h-3.5 text-amber-400" />
-              Day {nextDay} Queued
+              Day {nextDay} Queued (5:00 AM Alert)
             </span>
           </div>
         </div>

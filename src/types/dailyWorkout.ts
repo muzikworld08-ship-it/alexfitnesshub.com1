@@ -67,6 +67,12 @@ export interface AIDailyWorkoutPlan {
   createdAt: string;
   isAiGenerated: boolean;
   isFallback?: boolean;
+  isRestDay?: boolean;
+  isCardioOnly?: boolean;
+  missingExercises?: boolean;
+  cardioDistance?: string;
+  guidelines?: string[];
+  message?: string;
 }
 
 export interface GenerateDailyWorkoutParams {
@@ -79,4 +85,5 @@ export interface GenerateDailyWorkoutParams {
   intensity?: "Moderate" | "High" | "Peak Immortal";
   customFocusPrompt?: string;
   workoutStyle?: string;
+  userOnboarding?: any;
 }

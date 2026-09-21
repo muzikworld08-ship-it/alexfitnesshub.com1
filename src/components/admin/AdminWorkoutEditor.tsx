@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../../utils/mediaStorageService";
 import { AssetManifestService } from "../../services/AssetManifestService";
+import DeleteWorkoutConfirmModal, { DeleteWorkoutTarget } from "./DeleteWorkoutConfirmModal";
 
 const CATEGORIES = [
   "All",
@@ -65,6 +66,24 @@ export default function AdminWorkoutEditor() {
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [sortBy, setSortBy] = useState<"name" | "category" | "difficulty" | "customMedia">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  // Custom Delete Modal Confirmation State
+  const [deleteModalTarget, setDeleteModalTarget] = useState<DeleteWorkoutTarget | null>(null);
+  const [isDeletingWorkout, setIsDeletingWorkout] = useState(false);
+
+  const handleConfirmDeleteWorkout = async () => {
+    if (!deleteModalTarget) return;
+    setIsDeletingWorkout(true);
+    try {
+      await deleteWorkout(deleteModalTarget.id);
+      setDeleteModalTarget(null);
+    } catch (e: any) {
+      console.error("Failed deleting workout:", e);
+      alert("Error deleting workout: " + (e?.message || "Internal server error"));
+    } finally {
+      setIsDeletingWorkout(false);
+    }
+  };
 
   // Add Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -643,9 +662,15 @@ export default function AdminWorkoutEditor() {
                               </button>
                               <button
                                 onClick={() => {
-                                  if (confirm(`Are you sure you want to delete "${exercise.name}"?`)) {
-                                    deleteWorkout(exercise.id);
-                                  }
+                                  setDeleteModalTarget({
+                                    id: exercise.id,
+                                    name: exercise.name,
+                                    category: exercise.category,
+                                    muscleGroup: exercise.muscleGroups,
+                                    equipment: exercise.equipment,
+                                    sets: exercise.recommendedSets,
+                                    reps: exercise.recommendedReps
+                                  });
                                 }}
                                 className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
                                 title="Delete Exercise"
@@ -805,9 +830,15 @@ export default function AdminWorkoutEditor() {
                     </button>
                     <button
                       onClick={() => {
-                        if (confirm(`Are you sure you want to delete "${exercise.name}"?`)) {
-                          deleteWorkout(exercise.id);
-                        }
+                        setDeleteModalTarget({
+                          id: exercise.id,
+                          name: exercise.name,
+                          category: exercise.category,
+                          muscleGroup: exercise.muscleGroups,
+                          equipment: exercise.equipment,
+                          sets: exercise.recommendedSets,
+                          reps: exercise.recommendedReps
+                        });
                       }}
                       className="text-slate-400 hover:text-red-600 p-1.5 rounded-xl hover:bg-red-50 transition cursor-pointer"
                     >
@@ -1164,10 +1195,16 @@ export default function AdminWorkoutEditor() {
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm(`Are you sure you want to permanently delete "${editingExercise.name}"? It will be replaced with another exercise from its category.`)) {
-                    deleteWorkout(editingExercise.id);
-                    setEditingExercise(null);
-                  }
+                  setDeleteModalTarget({
+                    id: editingExercise.id,
+                    name: editingExercise.name,
+                    category: editingExercise.category,
+                    muscleGroup: editingExercise.muscleGroups,
+                    equipment: editingExercise.equipment,
+                    sets: editingExercise.recommendedSets,
+                    reps: editingExercise.recommendedReps
+                  });
+                  setEditingExercise(null);
                 }}
                 className="px-4 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer border border-red-200"
               >
@@ -1560,6 +1597,15 @@ export default function AdminWorkoutEditor() {
           </div>
         </div>
       )}
+
+      {/* Custom Delete Confirmation Modal */}
+      <DeleteWorkoutConfirmModal
+        isOpen={!!deleteModalTarget}
+        target={deleteModalTarget}
+        isLoading={isDeletingWorkout}
+        onConfirm={handleConfirmDeleteWorkout}
+        onCancel={() => setDeleteModalTarget(null)}
+      />
 
     </div>
   );

@@ -4,7 +4,7 @@ import {
   Users, Sparkles, Dumbbell, ShieldCheck, UserCheck, Trash2, ArrowUpDown, Key, ToggleLeft, ToggleRight,
   Check, Copy, Link, Cpu, Globe, Activity, ChevronRight, AlertTriangle, Terminal, Settings, CreditCard, RefreshCw,
   Upload, Image as ImageIcon, Video, Search, Filter, Play, RotateCcw, CheckCircle2, Trophy, Layers, Edit3,
-  SlidersHorizontal, CheckSquare, Eye, ExternalLink, ShoppingBag
+  SlidersHorizontal, CheckSquare, Eye, ExternalLink, ShoppingBag, Calendar
 } from "lucide-react";
 import { TestimonialAdminManager } from "./TestimonialAdminManager";
 import AdminAssetManager from "./AdminAssetManager";
@@ -441,8 +441,8 @@ export default function AdminDashboard() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <ShieldCheck className="w-4 h-4 text-red-500 shrink-0" />
-            <span>Challenge Engine V2</span>
+            <Calendar className="w-4 h-4 text-red-500 shrink-0" />
+            <span>Workout & 7-Day Split Customizer</span>
           </button>
 
           <button

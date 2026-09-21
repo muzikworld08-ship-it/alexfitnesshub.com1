@@ -1,7 +1,7 @@
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { doc, setDoc, getDoc, collection, getDocs } from "firebase/firestore";
 import { storage, db, auth, isMockFirebase } from "../lib/firebase";
-import { supabase } from "./supabase/client";
+import { supabase, isSupabaseConfigured } from "./supabase/client";
 import { uploadAdminMedia } from "../lib/mediaStorage";
 
 export interface ExerciseMediaRecord {
@@ -169,17 +169,19 @@ export async function saveExerciseMediaToDatabase(
 ): Promise<{ success: boolean; finalUrl: string | null }> {
   const timestamp = new Date().toISOString();
 
-  // A. Save to Supabase 'exercise_media' table
-  try {
-    await supabase.from("exercise_media").upsert({
-      exercise_id: exerciseId,
-      media_url: mediaUrl,
-      media_type: mediaType,
-      updated_at: timestamp
-    });
-    console.log(`[Supabase Media DB OK] Saved media record for exercise ${exerciseId}`);
-  } catch (sErr) {
-    console.warn("[Supabase Media DB Error]:", sErr);
+  // A. Save to Supabase 'exercise_media' table if configured
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from("exercise_media").upsert({
+        exercise_id: exerciseId,
+        media_url: mediaUrl,
+        media_type: mediaType,
+        updated_at: timestamp
+      });
+      console.log(`[Supabase Media DB OK] Saved media record for exercise ${exerciseId}`);
+    } catch (sErr) {
+      console.warn("[Supabase Media DB Error]:", sErr);
+    }
   }
 
   // B. Save to Cloud Firestore 'exercise_media' and 'exercises' collections
@@ -256,21 +258,23 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
     result[`exercise-${cleanKey}`] = { customMediaUrl: url, customMediaType: type };
   };
 
-  // 1. Query Supabase 'exercise_media' table
-  try {
-    const { data: sbData, error: sbErr } = await supabase
-      .from("exercise_media")
-      .select("exercise_id, media_url, media_type");
+  // 1. Query Supabase 'exercise_media' table if configured
+  if (isSupabaseConfigured) {
+    try {
+      const { data: sbData, error: sbErr } = await supabase
+        .from("exercise_media")
+        .select("exercise_id, media_url, media_type");
 
-    if (!sbErr && Array.isArray(sbData)) {
-      for (const row of sbData) {
-        if (row.exercise_id && row.media_url) {
-          setEntry(row.exercise_id, row.media_url, row.media_type === "video" ? "video" : "image");
+      if (!sbErr && Array.isArray(sbData)) {
+        for (const row of sbData) {
+          if (row.exercise_id && row.media_url) {
+            setEntry(row.exercise_id, row.media_url, row.media_type === "video" ? "video" : "image");
+          }
         }
       }
+    } catch (e) {
+      console.warn("[MediaStorage] Supabase media fetch notice:", e);
     }
-  } catch (e) {
-    console.warn("[MediaStorage] Supabase media fetch notice:", e);
   }
 
   // 2. Query Cloud Firestore collections ('exercise_media', 'exercises', 'assets_manifest')

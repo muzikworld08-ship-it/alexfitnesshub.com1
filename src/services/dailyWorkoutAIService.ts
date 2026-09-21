@@ -1,5 +1,5 @@
 import { EXERCISES, Exercise, getExerciseGifUrl } from "../data/exercises";
-import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
+import { getWorkoutForProgramAndDay, normalizeProgramId } from "../data/challengeEngineDatabase";
 import {
   AIDailyWorkoutPlan,
   DailyWorkoutProgramType,
@@ -10,7 +10,7 @@ import {
 } from "../types/dailyWorkout";
 
 // ============================================================================
-// 1. EXACT & FUZZY RESOLVER OVER THE 237 MASTER EXERCISES
+// 1. EXACT & FUZZY RESOLVER OVER THE 237 MASTER EXERCISES (METADATA ENRICHMENT ONLY)
 // ============================================================================
 export function findMatchingMasterExercise(
   name: string,
@@ -29,15 +29,15 @@ export function findMatchingMasterExercise(
   found = EXERCISES.find(e => e.name.toLowerCase().replace(/[^a-z0-9]/g, "") === nameNorm);
   if (found) return found;
 
-  // 3. Substring inclusion
+  // 3. Substring inclusion (high confidence only)
   found = EXERCISES.find(e => {
     const eNorm = e.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-    return eNorm.includes(nameNorm) || (nameNorm.length > 5 && nameNorm.includes(eNorm));
+    return (nameNorm.length >= 7 && eNorm.includes(nameNorm)) || (eNorm.length >= 7 && nameNorm.includes(eNorm));
   });
   if (found) return found;
 
-  // 4. Token overlap
-  const words = nameLower.split(/\s+/).filter(w => w.length > 2 && !["and", "with", "the", "for"].includes(w));
+  // 4. Token overlap (strict: high overlap only)
+  const words = nameLower.split(/\s+/).filter(w => w.length > 2 && !["and", "with", "the", "for", "set", "reps"].includes(w));
   let bestMatch: Exercise | null = null;
   let bestScore = 0;
 
@@ -46,7 +46,6 @@ export function findMatchingMasterExercise(
     let score = 0;
     for (const w of words) {
       if (exWords.includes(w)) score += 2;
-      else if (exWords.some(ew => ew.includes(w) || w.includes(ew))) score += 1;
     }
     if (score > bestScore) {
       bestScore = score;
@@ -54,21 +53,11 @@ export function findMatchingMasterExercise(
     }
   }
 
-  if (bestScore >= 2 && bestMatch) return bestMatch;
+  if (bestScore >= 4 && bestMatch) return bestMatch;
 
-  // 5. Category hint fallback
-  if (categoryHint) {
-    const catLower = categoryHint.toLowerCase();
-    const catMatch = EXERCISES.find(e =>
-      e.category.toLowerCase().includes(catLower) ||
-      e.categories?.some(c => c.toLowerCase().includes(catLower)) ||
-      e.muscleGroups?.some(m => m.toLowerCase().includes(catLower))
-    );
-    if (catMatch) return catMatch;
-  }
-
-  // 6. Return first exercise in library rather than broken entry
-  return EXERCISES[0] || null;
+  // NEVER return EXERCISES[0] or an unrelated category match!
+  // Preserving null ensures the program schedule's prescribed exercise remains untouched.
+  return null;
 }
 
 // ============================================================================
@@ -211,7 +200,7 @@ export const PROGRAM_METADATA_CONFIG: Record<
 };
 
 // ============================================================================
-// 3. SCIENTIFIC CLINICAL LOCAL FALLBACK ENGINE
+// 3. SCIENTIFIC CLINICAL LOCAL FALLBACK ENGINE (SCHEDULE-FIRST, NO RANDOM FALLBACK)
 // ============================================================================
 export function generateLocalFallbackDailyWorkout(
   params: GenerateDailyWorkoutParams
@@ -229,105 +218,216 @@ export function generateLocalFallbackDailyWorkout(
   const safeDay = Math.max(1, Number(dayNumber) || 1);
   const config = PROGRAM_METADATA_CONFIG[programType] || PROGRAM_METADATA_CONFIG.immortal_90;
 
-  let title = `${config.name} • Day ${safeDay}`;
-  let tagline = config.focusDescription;
-  let coachingBrief = `Welcome to Day ${safeDay}. Coach Alex focus: prioritize controlled 3-second eccentric tempo, strict breathing, and relentless mind-muscle connection.`;
-  let targetMusclesList = [targetMuscle || "Full Body"];
-  let rawExercises: { name: string; sets?: number; reps?: string | number; rest?: number; notes?: string; targetMuscle?: string }[] = [];
+  const engineProgramId = normalizeProgramId(programType);
 
-  // Check if program maps to challengeEngineDatabase
-  if (
-    programType === "immortal_90" ||
-    programType === "women_confidence" ||
-    programType === "belly_fat_shred" ||
-    programType === "home_workout" ||
-    programType === "posture_vitality"
-  ) {
-    const engineProgramId =
-      programType === "home_workout"
-        ? "home_180"
-        : (programType as any);
-
-    try {
-      const plan = getWorkoutForProgramAndDay(engineProgramId, safeDay);
-      if (plan && plan.exercises && plan.exercises.length > 0) {
-        title = plan.meta.title || title;
-        tagline = plan.meta.category || tagline;
-        coachingBrief = plan.meta.coachingNotes || coachingBrief;
-        targetMusclesList = [plan.meta.category || "Full Body"];
-
-        rawExercises = plan.exercises.map(ex => ({
-          name: ex.exerciseName || (ex as any).name,
-          sets: typeof ex.sets === "number" ? ex.sets : parseInt(String(ex.sets)) || 3,
-          reps: String(ex.reps || "10-12 reps"),
-          rest: ex.restTime ? parseInt(ex.restTime) : 60,
-          notes: (Array.isArray(ex.coachingCues) ? ex.coachingCues.join(" ") : (ex as any).coachingCues) || (ex as any).notes || "Maintain rigid core alignment and slow negative.",
-          targetMuscle: ex.category || plan.meta.category
-        }));
-      }
-    } catch (e) {
-      console.warn("Fallback to program exercise pool:", e);
-    }
+  let plan: any = null;
+  try {
+    plan = getWorkoutForProgramAndDay(engineProgramId as any, safeDay, targetMuscle);
+  } catch (e) {
+    console.warn("Could not query workout plan from database:", e);
   }
 
-  // If no rawExercises yet (e.g. custom or academy), pull from 237 master pool
-  if (rawExercises.length === 0) {
-    const pool = get237ExercisesForProgram(programType);
-    let filtered = pool;
+  const isRestDay = Boolean(plan?.meta?.isRestDay);
+  const isCardioOnly = Boolean(plan?.meta?.isCardioOnly);
 
-    if (targetMuscle) {
-      const tLower = targetMuscle.toLowerCase();
-      const matched = pool.filter(e =>
-        e.name.toLowerCase().includes(tLower) ||
-        e.category.toLowerCase().includes(tLower) ||
-        e.categories?.some(c => c.toLowerCase().includes(tLower)) ||
-        e.muscleGroups?.some(m => m.toLowerCase().includes(tLower))
-      );
-      if (matched.length >= 3) filtered = matched;
-    }
-
-    // Pick up to 12 exercises deterministically based on dayNumber
-    const count = Math.min(12, filtered.length);
-    for (let i = 0; i < count; i++) {
-      const index = (safeDay * 2 + i) % filtered.length;
-      const ex = filtered[index];
-      rawExercises.push({
-        name: ex.name,
-        sets: fitnessLevel === "Advanced" || fitnessLevel === "Immortal" ? 4 : 3,
-        reps: ex.category.includes("Cardio") || ex.categories?.includes("Abs") ? "15-20 reps" : "10-12 reps",
-        rest: 60,
-        notes: ex.movementExecution || "Focus on peak contraction at apex of movement.",
-        targetMuscle: ex.musclesWorked?.[0] || ex.muscleGroups?.[0] || "Target Muscle"
-      });
-    }
+  // A. REST DAY HANDLING (Zero resistance exercises permitted)
+  if (isRestDay) {
+    return {
+      id: `daily_workout_${programType}_d${safeDay}_rest`,
+      title: plan?.meta?.title || `Day ${safeDay}: Rest & Active Recovery Protocol`,
+      tagline: "Cellular Regeneration, CNS Decompression & Muscular Remodeling",
+      programType,
+      programName: config.name,
+      dayNumber: safeDay,
+      targetMuscles: ["Total Body Recovery", "Autonomic Nervous System"],
+      fitnessLevel,
+      equipmentRequired: ["None (Rest Day)"],
+      estimatedMinutes: 0,
+      estimatedCalories: "0 kcal",
+      coachingBrief: plan?.meta?.coachingNotes || `Rest and active recovery day for Day ${safeDay}. Heavy training is suspended to allow complete myofibrillar protein synthesis, glycogen replenishment, and joint recovery.`,
+      warmup: [],
+      exercises: [],
+      cooldown: [],
+      guidelines: plan?.meta?.guidelines || [
+        "Full rest day. Zero resistance weight training permitted.",
+        "Prioritize 8 to 9 hours of restorative sleep.",
+        "Hydrate with at least 3.5 Liters of water and electrolytes.",
+        "Perform light walking or gentle mobility only if feeling muscular stiffness."
+      ],
+      nutritionTip: "Recovery Fuel: Maintain high protein intake (1.6-2.2g/kg) and anti-inflammatory whole foods to rebuild damaged muscle fibers.",
+      hydrationTip: "Hydration Target: Drink at least 3.5 Liters of pure water today. Cellular hydration is required for muscle protein synthesis.",
+      createdAt: new Date().toISOString(),
+      isAiGenerated: false,
+      isRestDay: true,
+      isCardioOnly: false,
+      missingExercises: false
+    };
   }
 
-  // Format into DailyWorkoutExerciseItem with 100% genuine GIFs and coaching fields
-  const exercises: DailyWorkoutExerciseItem[] = rawExercises.map((raw, idx) => {
-    const matched = findMatchingMasterExercise(raw.name, raw.targetMuscle || targetMuscle);
-    const exName = matched ? matched.name : raw.name;
-    const sets = raw.sets || (fitnessLevel === "Advanced" ? 4 : 3);
-    const reps = raw.reps || "10-12 reps";
-    const rest = raw.rest || 60;
-    const gif = matched ? matched.gifUrl : getExerciseGifUrl(exName, raw.targetMuscle);
+  // B. CARDIO DAY HANDLING (Specific 5-10 KM distance, running & walking only, zero weight lifting)
+  if (isCardioOnly) {
+    const cardioDist = plan?.meta?.cardioDistance || "5 to 10 KM";
+    const cardioExercises: DailyWorkoutExerciseItem[] = (plan?.exercises && plan.exercises.length > 0)
+      ? plan.exercises.map((ex: any, idx: number) => {
+          const matched = findMatchingMasterExercise(ex.exerciseName || ex.name, "Cardio");
+          return {
+            id: ex.id || `cardio_ex_${safeDay}_${idx + 1}`,
+            name: ex.exerciseName || ex.name,
+            sets: ex.sets || 1,
+            reps: ex.reps || cardioDist,
+            restSeconds: 0,
+            tempo: "Continuous Zone 2 Cadence",
+            coachingCues: (Array.isArray(ex.coachingCues) ? ex.coachingCues.join(". ") : ex.coachingCues) || "Maintain steady conversational rhythm (130-145 BPM). Smooth midfoot cadence.",
+            targetMuscle: "Cardiovascular System",
+            equipment: ["Running Shoes / Outdoors or Treadmill"],
+            difficulty: "Intermediate",
+            gifUrl: ex.gifUrl || getExerciseGifUrl("Treadmill Running", "Cardio"),
+            instructions: ex.instructions || ["Warm up with 5 minutes of brisk walking.", `Execute ${cardioDist} at continuous aerobic pace.`, "Cool down with light walking and hip stretches."],
+            matchedMasterExercise: matched || undefined
+          };
+        })
+      : [
+          {
+            id: `cardio_d${safeDay}_run`,
+            name: "Zone 2 Outdoor Running or Treadmill Jog",
+            sets: 1,
+            reps: cardioDist,
+            restSeconds: 0,
+            tempo: "Continuous Aerobic Cadence",
+            coachingCues: "Keep heart rate steady at 130-145 BPM. Conversational pace without gasping.",
+            targetMuscle: "Cardiovascular System",
+            equipment: ["Running Shoes / Treadmill"],
+            difficulty: "Intermediate",
+            gifUrl: getExerciseGifUrl("Treadmill Running", "Cardio"),
+            instructions: ["Warm up with 5 minutes of brisk walking.", `Run or jog continuously for ${cardioDist}.`, "Cool down with light walking."]
+          }
+        ];
 
     return {
-      id: matched ? matched.id : `gen_ex_${safeDay}_${idx + 1}`,
+      id: `daily_workout_${programType}_d${safeDay}_cardio`,
+      title: plan?.meta?.title || `Day ${safeDay}: ${cardioDist} Cardio & Recovery Protocol`,
+      tagline: "Aerobic Capacity, Mitochondrial Density & Accelerated Lipolysis",
+      programType,
+      programName: config.name,
+      dayNumber: safeDay,
+      targetMuscles: ["Cardiovascular System", "Aerobic Base", "Legs"],
+      fitnessLevel,
+      equipmentRequired: ["Running Shoes / Outdoors or Treadmill"],
+      estimatedMinutes: 50,
+      estimatedCalories: "450 - 650 kcal",
+      coachingBrief: plan?.meta?.coachingNotes || `Target ${cardioDist} of continuous running or brisk walking at steady Zone 2 tempo. No weight lifting is permitted on pure cardio days.`,
+      warmup: [
+        {
+          name: "Dynamic Ankle & Calves Circles",
+          durationOrReps: "45 Seconds",
+          instructions: "Prepare Achilles tendon and calves for running impact."
+        },
+        {
+          name: "Walking Knee-to-Chest Hugs",
+          durationOrReps: "60 Seconds",
+          instructions: "Open gluteal chain and hip capsules prior to cardio cadence."
+        }
+      ],
+      exercises: cardioExercises,
+      cooldown: [
+        {
+          name: "Standing Quad & Hip Flexor Stretch",
+          duration: "90 Seconds per side",
+          instructions: "Release hip tension following continuous running."
+        },
+        {
+          name: "Downward Dog Calf & Achilles Decompression",
+          duration: "60 Seconds",
+          instructions: "Decompress calves and hamstrings."
+        }
+      ],
+      guidelines: plan?.meta?.guidelines || [
+        `Target: ${cardioDist} continuous distance.`,
+        "Strictly Cardio & Recovery. Zero resistance weight training.",
+        "Hydrate before, during, and after the session."
+      ],
+      cardioDistance: cardioDist,
+      nutritionTip: `Cardio Fuel: Sip 500ml electrolyte water during your ${cardioDist} and consume light carbohydrates post-run.`,
+      hydrationTip: "Hydration Target: Drink at least 3.5 Liters of water today. Replace every liter of sweat with water and electrolytes.",
+      createdAt: new Date().toISOString(),
+      isAiGenerated: false,
+      isRestDay: false,
+      isCardioOnly: true,
+      missingExercises: false
+    };
+  }
+
+  // C. REGULAR TRAINING SPLIT
+  const title = plan?.meta?.title || `${config.name} • Day ${safeDay}`;
+  const tagline = plan?.meta?.category || config.focusDescription;
+  const coachingBrief = plan?.meta?.coachingNotes || `Welcome to Day ${safeDay}. Coach Alex focus: prioritize controlled 3-second eccentric tempo, strict abdominal bracing, and relentless mind-muscle connection.`;
+  const targetMusclesList = plan?.meta?.targetMuscles || (plan?.meta?.category ? [plan.meta.category] : [targetMuscle || "Prescribed Muscle Group"]);
+
+  const rawExercises = plan?.exercises || [];
+
+  // Strict check: if no approved exercises exist for this program day, DO NOT use random exercises!
+  if (rawExercises.length === 0) {
+    return {
+      id: `daily_workout_${programType}_d${safeDay}_missing`,
+      title,
+      tagline,
+      programType,
+      programName: config.name,
+      dayNumber: safeDay,
+      targetMuscles: targetMusclesList,
+      fitnessLevel,
+      equipmentRequired: [equipment || "Gym Equipment"],
+      estimatedMinutes: duration || config.defaultDuration,
+      estimatedCalories: "380 - 480 kcal",
+      coachingBrief,
+      warmup: [],
+      exercises: [],
+      cooldown: [],
+      missingExercises: true,
+      message: `No approved exercises found for ${config.name} Day ${safeDay} (${plan?.meta?.category || targetMuscle || 'Prescribed'}). Admin must add approved exercises to the Workout Library.`,
+      guidelines: [
+        "The daily workout generator is configured to only display approved exercises for this exact program and category.",
+        "Random exercises are strictly prevented from replacing missing exercises.",
+        "Please notify the administrator to curate exercises for this scheduled slot in the Workout Library."
+      ],
+      nutritionTip: "Post-workout: Fuel with 30-40g high quality protein within 45 minutes.",
+      hydrationTip: "Maintain 3.0+ Liters of daily hydration.",
+      createdAt: new Date().toISOString(),
+      isAiGenerated: false,
+      isRestDay: false,
+      isCardioOnly: false
+    };
+  }
+
+  // Map only approved exercises for this exact program and category
+  const exercises: DailyWorkoutExerciseItem[] = rawExercises.map((raw: any, idx: number) => {
+    const rawName = raw.exerciseName || raw.name;
+    const rawCat = raw.category || plan?.meta?.category || targetMuscle;
+    const matched = findMatchingMasterExercise(rawName, rawCat);
+    // Absolute source of truth: The program schedule's prescribed exercise name is strictly preserved
+    const exName = rawName;
+    const sets = typeof raw.sets === "number" ? raw.sets : (parseInt(String(raw.sets)) || 3);
+    const reps = String(raw.reps || "10-12 reps");
+    const rest = raw.restTime ? parseInt(String(raw.restTime)) : (raw.rest || 60);
+    const gif = raw.gifUrl || (matched ? matched.gifUrl : getExerciseGifUrl(exName, rawCat));
+
+    return {
+      id: raw.id || `prog_${engineProgramId}_d${safeDay}_${idx + 1}`,
       name: exName,
       sets,
       reps,
       restSeconds: rest,
-      tempo: "3-0-1-0",
-      coachingCues: raw.notes || matched?.movementExecution || "Brace your core, breathe rhythmically, control the eccentric return.",
-      targetMuscle: raw.targetMuscle || matched?.musclesWorked?.[0] || matched?.muscleGroups?.[0] || "Target Muscle",
-      equipment: matched?.equipment || [equipment || "Bodyweight"],
-      difficulty: matched?.difficulty || (fitnessLevel as any) || "Intermediate",
+      tempo: raw.tempo || "3-0-1-0",
+      coachingCues: raw.notes || (Array.isArray(raw.coachingCues) ? raw.coachingCues.join(". ") : raw.coachingCues) || matched?.movementExecution || "Brace your core, breathe rhythmically, control the eccentric return.",
+      targetMuscle: raw.category || rawCat || matched?.musclesWorked?.[0] || "Target Muscle",
+      equipment: raw.equipment ? [raw.equipment] : (matched?.equipment || [equipment || "Standard Equipment"]),
+      difficulty: raw.difficulty || matched?.difficulty || (fitnessLevel as any) || "Intermediate",
       gifUrl: gif,
-      instructions: matched?.instructions || [
+      instructions: Array.isArray(raw.instructions) ? raw.instructions : (matched?.instructions || [
         "Position yourself with balanced spinal alignment.",
         "Engage the target muscle group through full active range.",
         "Return smoothly under controlled eccentric tension."
-      ],
+      ]),
       startingPosition: matched?.startingPosition || "Position with feet shoulder-width apart, spine neutral and core braced.",
       movementExecution: matched?.movementExecution || "Initiate movement with primary muscle group, maintaining smooth continuous tempo.",
       finishingPosition: matched?.finishingPosition || "Complete full repetition without losing postural tension.",
@@ -337,47 +437,29 @@ export function generateLocalFallbackDailyWorkout(
     };
   });
 
-  // Dynamic Warmup
   const warmup: DailyWorkoutWarmupItem[] = [
     {
-      name: "Arm Circles & Thoracic Rotations",
+      name: "Dynamic Arm Swings & Rotational Openers",
       durationOrReps: "60 Seconds",
-      instructions: "Rotate arms forward and backward in wide arcs; twist torso gently side to side to unlock spine.",
-      gifUrl: "https://media.giphy.com/media/l41lO3n0m50K1oQ52/giphy.gif"
+      instructions: "Rotate arms forward and backward in wide arcs; twist torso gently side to side to unlock spine."
     },
     {
       name: "World's Greatest Stretch & Hip Opener",
       durationOrReps: "45 Seconds per side",
-      instructions: "Deep lunge with elbow to instep, then rotate arm skyward to decompress hip flexors and mid-back.",
-      gifUrl: "https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif"
-    },
-    {
-      name: "Jumping Jacks & Glute Bridges",
-      durationOrReps: "60 Seconds",
-      instructions: "Elevate systemic heart rate and activate glute firing prior to loaded resistance sets.",
-      gifUrl: "https://media.giphy.com/media/26AHONQ79FdWZhAI0/giphy.gif"
+      instructions: "Deep lunge with elbow to instep, then rotate arm skyward to decompress hip flexors and mid-back."
     }
   ];
 
-  // Dynamic Cooldown
   const cooldown: DailyWorkoutCooldownItem[] = [
     {
       name: "Deep Diaphragmatic Box Breathing",
       duration: "2 Minutes",
-      instructions: "Inhale for 4 seconds, hold for 4 seconds, exhale for 4 seconds, hold for 4 seconds to trigger parasympathetic recovery.",
-      gifUrl: "https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif"
+      instructions: "Inhale for 4 seconds, hold for 4 seconds, exhale for 4 seconds, hold for 4 seconds to trigger parasympathetic recovery."
     },
     {
-      name: "Couch Stretch & Hamstring Release",
+      name: "Target Muscle Static Lengthening",
       duration: "90 Seconds per side",
-      instructions: "Knee against wall or bench, drive hips forward to lengthen tight hip flexors and quadriceps.",
-      gifUrl: "https://media.giphy.com/media/l41lO3n0m50K1oQ52/giphy.gif"
-    },
-    {
-      name: "Child's Pose Lat Reach",
-      duration: "60 Seconds",
-      instructions: "Sit hips onto heels, extend arms forward and walk hands slightly to each side to stretch latissimus dorsi.",
-      gifUrl: "https://media.giphy.com/media/26AHONQ79FdWZhAI0/giphy.gif"
+      instructions: "Gently stretch worked muscle groups under slow, deep diaphragmatic respiration."
     }
   ];
 
@@ -406,6 +488,11 @@ export function generateLocalFallbackDailyWorkout(
     warmup,
     exercises,
     cooldown,
+    guidelines: plan?.meta?.guidelines || [
+      "Follow prescribed exercise order for optimal fatigue management.",
+      "Execute each working set to 1-2 reps shy of muscular failure.",
+      "Track loads to ensure progressive overload across weekly blocks."
+    ],
     nutritionTip:
       programType === "belly_fat_shred"
         ? "Post-workout: Prioritize 30g lean protein with leafy greens. Drink 500ml water to flush lactic acid."
@@ -417,7 +504,9 @@ export function generateLocalFallbackDailyWorkout(
     hydrationTip: "Target 3.0 to 3.5 Liters of pure water today. Sip 250ml every 15 minutes during this session.",
     createdAt: new Date().toISOString(),
     isAiGenerated: false,
-    isFallback: true
+    missingExercises: false,
+    isRestDay: false,
+    isCardioOnly: false
   };
 }
 

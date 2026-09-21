@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../utils/supabase/client";
+import { supabase, isSupabaseConfigured } from "../utils/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { useApp } from "../context/AppContext";
 
@@ -14,15 +14,22 @@ export interface SupabaseAuthHookResult {
 export function useSupabaseAuth(): SupabaseAuthHookResult {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isSupabaseConfigured);
 
   const appContext = useApp();
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+
     // 1. Retrieve existing session on mount
     supabase.auth.getSession().then(({ data: { session: initSession } }) => {
       setSession(initSession);
       setUser(initSession?.user ?? null);
+      setLoading(false);
+    }).catch(() => {
       setLoading(false);
     });
 

@@ -1,3 +1,4 @@
+import { getAccurateExerciseGif } from "./exerciseMediaCatalog";
 // 180 Day Home Workout Challenge Data Model & Progressive Workout Schedules
 // Zero equipment bodyweight workouts for Men and Women
 
@@ -132,7 +133,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Incline Push-Ups (hands on a sturdy wall, counter, or sofa) or Knee Push-Ups.",
     advancedProgression: "Diamond Push-Ups, Tempo (3-sec eccentric) Push-Ups, or Archer Push-Ups.",
     coachingCues: ["Do not let hips sag", "Keep neck neutral", "Squeeze glutes throughout"],
-    gifUrl: "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0464-CosupLu.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   diamond_pushups: {
@@ -153,7 +154,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Knee Diamond Push-Ups or Hands-Elevated Diamond Push-Ups.",
     advancedProgression: "Decline Feet-Elevated Diamond Push-Ups.",
     coachingCues: ["Keep elbows tight to ribs", "Exhale on upward press", "Full tricep extension"],
-    gifUrl: "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   incline_pushups: {
@@ -174,7 +175,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Wall Push-Ups standing closer to the wall.",
     advancedProgression: "Standard Floor Push-Ups.",
     coachingCues: ["Chest stays open", "No hip piking", "Smooth rhythmic push"],
-    gifUrl: "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   pike_pushups: {
@@ -195,7 +196,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Elevated Hands Pike Push-Up (hands on sofa or bench).",
     advancedProgression: "Feet-Elevated Pike Push-Ups or Wall Handstand Push-Ups.",
     coachingCues: ["Gaze toward feet", "Hips stay high in A-frame", "Control the descent"],
-    gifUrl: "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   tricep_dips: {
@@ -216,7 +217,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Feet closer to chair with knees bent at 90 degrees.",
     advancedProgression: "Straight legs with heels elevated on another stool.",
     coachingCues: ["Keep back close to the seat", "Elbows point straight back", "Do not shrug shoulders"],
-    gifUrl: "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0251-8J7VzF4.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   tempo_pushups: {
@@ -237,7 +238,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Tempo Incline Push-Ups with hands on sofa.",
     advancedProgression: "4-Second Eccentric Push-Ups.",
     coachingCues: ["Count 3 full seconds down", "Core stays rigid", "Explosive lockout"],
-    gifUrl: "https://media.giphy.com/media/3o84U6421O1IIXbowg/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
 
@@ -260,7 +261,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Assisted Chair Squats (tap a chair behind you) or Box Squats.",
     advancedProgression: "Jump Squats, 1.5 Rep Squats, or Pistol Squats.",
     coachingCues: ["Keep heels glued to the floor", "Chest tall", "Knees track in line with toes"],
-    gifUrl: "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1512-Y3g7gWb.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   walking_lunges: {
@@ -281,7 +282,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Reverse Static Lunges holding a wall for balance.",
     advancedProgression: "Jumping Switch Lunges or Deficit Lunges.",
     coachingCues: ["Torso stays upright", "Front knee stays behind or over front toes", "Smooth deceleration"],
-    gifUrl: "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0336-RRWFUcw.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   reverse_lunges: {
@@ -302,7 +303,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Hold onto a wall for fingertip balance.",
     advancedProgression: "Deficit Reverse Lunges off a 2-inch book or block.",
     coachingCues: ["Shin vertical on front leg", "Chest proud", "Drive through front heel"],
-    gifUrl: "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0336-RRWFUcw.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   squat_jumps: {
@@ -323,7 +324,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Speed Squats with rapid calf raise at top without jumping.",
     advancedProgression: "Tuck Jump Squats.",
     coachingCues: ["Land softly like a cat", "Absorb through knees and hips", "Full hip extension in air"],
-    gifUrl: "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0043-qXTaZnJ.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   jump_lunges: {
@@ -344,7 +345,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Fast alternating reverse lunges without jumping.",
     advancedProgression: "Continuous 15-rep plyo lunges.",
     coachingCues: ["Stay light on feet", "Switch legs smoothly in air", "Keep torso perpendicular"],
-    gifUrl: "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0336-RRWFUcw.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   glute_bridges: {
@@ -365,7 +366,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Standard 2-Leg Glute Bridge with reduced range of motion.",
     advancedProgression: "Single-Leg Glute Bridges or 5-second peak isometric holds.",
     coachingCues: ["Do not hyperextend lower back", "Drive through heels", "Breathe out as you lift"],
-    gifUrl: "https://media.giphy.com/media/v1F0A8f5Ff6hO/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1409-qKBpF7I.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   single_leg_glute_bridge: {
@@ -386,7 +387,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Standard 2-leg glute bridge with 2-second hold.",
     advancedProgression: "Elevated-Foot Single Leg Bridge on sofa edge.",
     coachingCues: ["Keep pelvis level", "Drive heel into the floor", "Do not arch lower back"],
-    gifUrl: "https://media.giphy.com/media/v1F0A8f5Ff6hO/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1409-qKBpF7I.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   calf_raises: {
@@ -407,7 +408,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Seated Calf Raises with hands pushing on knees.",
     advancedProgression: "Single-Leg Elevated Deficit Calf Raises.",
     coachingCues: ["Full range of motion", "Do not bounce", "Squeeze calves at apex"],
-    gifUrl: "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0999-9JprnPh.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   wall_sits: {
@@ -428,7 +429,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "High Wall Sit (45-degree knee angle rather than 90).",
     advancedProgression: "Single-Leg Wall Sit or Wall Sit with Heel Raises.",
     coachingCues: ["Weight through heels", "Keep knees tracking straight", "Stay calm and breathe"],
-    gifUrl: "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0827-0gq0k91.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
 
@@ -451,7 +452,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Knee Plank or Incline Plank against a sturdy sofa.",
     advancedProgression: "Plank with Shoulder Taps or Body Saw Planks.",
     coachingCues: ["Do not hold breath", "Squeeze quads and glutes", "Gaze down at hands"],
-    gifUrl: "https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0464-CosupLu.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   side_plank: {
@@ -472,7 +473,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Side Plank with bottom knee bent on the floor.",
     advancedProgression: "Side Plank with Top Leg Lift.",
     coachingCues: ["Push floor away through forearm", "Hips high and aligned", "Breathe smoothly"],
-    gifUrl: "https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0464-CosupLu.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   shoulder_taps: {
@@ -493,7 +494,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Kneeling Shoulder Taps.",
     advancedProgression: "Feet-together Shoulder Taps.",
     coachingCues: ["Glue hips parallel to ground", "Slow controlled cadence", "Breathe evenly"],
-    gifUrl: "https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0464-CosupLu.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   crunches: {
@@ -514,7 +515,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Reach-Through Crunches (sliding hands on thighs).",
     advancedProgression: "Bicycle Crunches or V-Ups.",
     coachingCues: ["Do not pull on head", "Gaze up at ceiling", "Breathe out on way up"],
-    gifUrl: "https://media.giphy.com/media/3o7TKtnuHOHHUjR38Y/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0972-tZkGYZ9.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   bicycle_crunches: {
@@ -535,7 +536,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Static Deadbug or Floor Alternating Knee-to-Elbow.",
     advancedProgression: "Slow 3-Second Isometric Hold Bicycles.",
     coachingCues: ["Rotate from ribcage not neck", "Keep extended leg hovering", "Smooth pedal rhythm"],
-    gifUrl: "https://media.giphy.com/media/3o7TKtnuHOHHUjR38Y/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0972-tZkGYZ9.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   leg_raises: {
@@ -556,7 +557,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Bent-Knee Reverse Crunches or Alternating Heel Taps.",
     advancedProgression: "Dragon Flags or Hanging Leg Raises.",
     coachingCues: ["Lower back stays pinned down", "Control the downward speed", "Inhale as legs lower"],
-    gifUrl: "https://media.giphy.com/media/3o7TKUM3IgJBX2WGY8/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0472-I3tsCnC.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   flutter_kicks: {
@@ -577,7 +578,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Hover legs higher at 45 degrees to reduce lumbar load.",
     advancedProgression: "Hands behind head with shoulder blades lifted.",
     coachingCues: ["Point toes forward", "Lower back glued to floor", "Quick rhythmic flutter"],
-    gifUrl: "https://media.giphy.com/media/3o7TKUM3IgJBX2WGY8/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0459-UVo2Qs2.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   russian_twists: {
@@ -598,7 +599,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Keep heels firmly planted on the floor.",
     advancedProgression: "Feet hovering in full V-sit position.",
     coachingCues: ["Rotate shoulders and chest", "Keep chest proud", "Controlled tempo"],
-    gifUrl: "https://media.giphy.com/media/3o7TKtnuHOHHUjR38Y/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0687-XVDdcoj.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   dead_bug: {
@@ -619,7 +620,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Heel taps with bent knees instead of straight leg extension.",
     advancedProgression: "Add 2-second hold at extension point.",
     coachingCues: ["Do not let lower back arch", "Move slowly like molasses", "Breathe out as limbs extend"],
-    gifUrl: "https://media.giphy.com/media/3o7TKUM3IgJBX2WGY8/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0276-iny3m5y.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   hollow_body_hold: {
@@ -640,7 +641,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Tuck knees toward chest (Hollow Tuck).",
     advancedProgression: "Rocking Hollow Body.",
     coachingCues: ["Zero lower back arch", "Lock knees and point toes", "Tuck chin slightly"],
-    gifUrl: "https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   superman_holds: {
@@ -661,7 +662,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Alternating Prone Swimmers (opposite arm and leg lift).",
     advancedProgression: "Superman with Lat Pulldown Arm Squeeze.",
     coachingCues: ["Squeeze glutes tightly", "Do not jerk neck up", "Breathe smoothly at peak"],
-    gifUrl: "https://media.giphy.com/media/26AHG5KGFxSkUWw1i/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   bird_dog: {
@@ -682,7 +683,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Move only the legs, keeping both hands on floor.",
     advancedProgression: "Add elbow-to-knee crunch between reps.",
     coachingCues: ["Do not let hips tilt", "Reach fingers and heel far", "Spine stays flat"],
-    gifUrl: "https://media.giphy.com/media/26AHG5KGFxSkUWw1i/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0043-qXTaZnJ.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
 
@@ -705,7 +706,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Elevated Hands Slow Climbers (hands on sofa, stepping one foot at a time).",
     advancedProgression: "Cross-Body Mountain Climbers or Double-Foot Hops.",
     coachingCues: ["Keep hips level with shoulders", "Quiet feet on landing", "Pump with controlled rhythm"],
-    gifUrl: "https://media.giphy.com/media/26vUAAkP2u7BvI4uY/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2466-9c6T1YX.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   cross_body_climbers: {
@@ -726,7 +727,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Hands on sofa cross-body step.",
     advancedProgression: "Fast sprint cross-body climbers.",
     coachingCues: ["Drive knee diagonally", "Keep hips flat", "Strong push into floor"],
-    gifUrl: "https://media.giphy.com/media/26vUAAkP2u7BvI4uY/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2466-9c6T1YX.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   high_knees: {
@@ -747,7 +748,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "High Knee March (low impact march in place without jumping).",
     advancedProgression: "High Knee Sprints with Resistance Band.",
     coachingCues: ["Knees up to hip level", "Stay light on balls of feet", "Keep chest proud"],
-    gifUrl: "https://media.giphy.com/media/26vUAAkP2u7BvI4uY/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3220-f9lVSSI.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   jumping_jacks: {
@@ -768,7 +769,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Step Jacks (step one foot out at a time without jumping).",
     advancedProgression: "Star Jumps or Plank Jacks.",
     coachingCues: ["Soft knees on landings", "Rhythmic breathing", "Full arm extension"],
-    gifUrl: "https://media.giphy.com/media/l41lI4bYmcsPJX9Go/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3220-f9lVSSI.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   step_jacks: {
@@ -789,7 +790,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Arm raises without step.",
     advancedProgression: "Fast tempo jumping jacks.",
     coachingCues: ["Keep arms snappy", "Land softly on balls of feet", "Steady breathing"],
-    gifUrl: "https://media.giphy.com/media/l41lI4bYmcsPJX9Go/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3220-f9lVSSI.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   butt_kicks: {
@@ -810,7 +811,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Low-impact standing hamstring curls in place.",
     advancedProgression: "High-cadence sprint butt kicks.",
     coachingCues: ["Stay light on midfoot", "Knees point down", "Smooth arm drive"],
-    gifUrl: "https://media.giphy.com/media/26vUAAkP2u7BvI4uY/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3220-f9lVSSI.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   skater_hops: {
@@ -831,7 +832,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Lateral step and tap without flight phase.",
     advancedProgression: "Deep deficit skater hops with floor tap.",
     coachingCues: ["Stay low in athletic stance", "Absorb landing softly", "Use arms for counter-balance"],
-    gifUrl: "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3361-zfNHMN9.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   burpees: {
@@ -853,7 +854,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Step-Back Burpee without push-up and without final jump.",
     advancedProgression: "Burpee with Tuck Jump or Single-Leg Burpees.",
     coachingCues: ["Land softly on toes/midfoot", "Keep core braced in plank", "Continuous smooth cadence"],
-    gifUrl: "https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1160-dK9394r.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   bear_crawls: {
@@ -874,7 +875,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Bear Plank Isometric Hold (hold static hover for 20-30 seconds).",
     advancedProgression: "Lateral Bear Crawls or Forward/Backward Continuous Crawls.",
     coachingCues: ["Knees stay 1 inch off floor", "Tabletop back", "Opposite hand and foot sync"],
-    gifUrl: "https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3360-0Yz8WdV.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   inchworms: {
@@ -895,7 +896,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Bend knees slightly as you reach for the floor.",
     advancedProgression: "Add a push-up at the bottom of the inchworm.",
     coachingCues: ["Keep core braced", "Feel gentle hamstring stretch", "Walk hands with control"],
-    gifUrl: "https://media.giphy.com/media/3o7TKUM3IgJBX2WGY8/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
 
@@ -918,7 +919,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Smaller diameter circles.",
     advancedProgression: "Forward and backward arm circles holding water bottles.",
     coachingCues: ["Chest proud", "Shoulders relaxed down", "Fluid rotation"],
-    gifUrl: "https://media.giphy.com/media/l41lI4bYmcsPJX9Go/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1407-PzNxakt.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   cat_cow_stretch: {
@@ -939,7 +940,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Gentle reduced range of spinal movement.",
     advancedProgression: "Add gentle lateral side bend into each spinal flex.",
     coachingCues: ["Sync motion with breath", "Articulate each vertebra", "Relax shoulders"],
-    gifUrl: "https://media.giphy.com/media/26AHG5KGFxSkUWw1i/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1407-PzNxakt.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   childs_pose: {
@@ -960,7 +961,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Place a pillow between calves and thighs if hips feel tight.",
     advancedProgression: "Walk hands diagonally to the right and left to stretch lats.",
     coachingCues: ["Breathe deep into belly", "Let hips sink into heels", "Relax neck and jaw"],
-    gifUrl: "https://media.giphy.com/media/26AHG5KGFxSkUWw1i/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   cobra_stretch: {
@@ -981,7 +982,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Sphinx pose with forearms on floor.",
     advancedProgression: "Full extended arm upward facing dog.",
     coachingCues: ["Do not pinch lower back", "Open chest wide", "Gaze softly ahead"],
-    gifUrl: "https://media.giphy.com/media/26AHG5KGFxSkUWw1i/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1713-YUYAMEj.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   standing_quad_stretch: {
@@ -1002,7 +1003,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Use a towel wrapped around ankle if reaching foot is difficult.",
     advancedProgression: "No wall assist for balance challenge.",
     coachingCues: ["Keep knees side-by-side", "Tuck pelvis under", "Chest upright"],
-    gifUrl: "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1407-PzNxakt.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   standing_oblique_crunches: {
@@ -1023,7 +1024,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Lower knee lift height.",
     advancedProgression: "Fast tempo standing oblique march.",
     coachingCues: ["Crunch from ribcage", "Keep standing leg strong", "Exhale on crunch"],
-    gifUrl: "https://media.giphy.com/media/3o7TKtnuHOHHUjR38Y/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0972-tZkGYZ9.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   worlds_greatest_stretch: {
@@ -1044,7 +1045,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Back knee resting on the floor.",
     advancedProgression: "3-second rotation hold at top.",
     coachingCues: ["Drive back heel back", "Rotate through thoracic spine", "Breathe smoothly"],
-    gifUrl: "https://media.giphy.com/media/u8946fAnhQ6cH9R16e/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2143-RSOsp5d.gif",
     equipment: "Zero Equipment (Bodyweight)"
   },
   t_spine_rotations: {
@@ -1065,7 +1066,7 @@ export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {
     beginnerModification: "Sit hips back on heels to isolate thoracic spine.",
     advancedProgression: "Full extended arm windmill rotation.",
     coachingCues: ["Keep lower back still", "Rotate through upper ribcage", "Exhale as you open"],
-    gifUrl: "https://media.giphy.com/media/26AHG5KGFxSkUWw1i/giphy.gif",
+    gifUrl: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1407-PzNxakt.gif",
     equipment: "Zero Equipment (Bodyweight)"
   }
 };

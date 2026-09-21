@@ -17,7 +17,9 @@ const rawKey =
 export const isSupabaseConfigured = Boolean(
   rawUrl &&
   rawKey &&
-  (rawUrl.startsWith("http://") || rawUrl.startsWith("https://"))
+  (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) &&
+  !rawUrl.includes("placeholder-project") &&
+  !rawKey.includes("placeholder")
 );
 
 // Fallback placeholder endpoints to prevent Supabase constructor throw when env vars are unpopulated
