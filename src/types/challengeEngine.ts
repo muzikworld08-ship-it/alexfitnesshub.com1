@@ -1,110 +1,71 @@
 export type ProgramId = 
   | "immortal_90" 
   | "home_180" 
-  | "women_confidence" 
   | "belly_fat_shred" 
-  | "posture_vitality"
-  | "gym_hypertrophy"
-  | "cardio_calisthenics"
-  | "lifestyle_academy";
+  | "posture_vitality" 
+  | "women_confidence"
+  | string;
 
 export interface ProgramMetadata {
   id: ProgramId;
   name: string;
   tagline: string;
   totalDays: number;
-  description: string;
-  accentColor: string;
-  badge: string;
-  categories: string[];
-  equipmentRequired: string[];
-  scientificDisclaimer?: string;
-  coverImage: string;
+  bannerImage?: string;
+  category?: string;
+  difficulty?: string;
+  description?: string;
+  themeColor?: string;
+  features?: string[];
+  [key: string]: any;
 }
 
 export interface ChallengeExerciseItem {
-  id: string;
-  programId: ProgramId;
-  programName: string;
-  dayNumber: number; // 1 to totalDays
-  category: string;
-  muscleGroup: string[];
-  exerciseName: string;
-  equipment: string;
-  difficulty: "Beginner" | "Intermediate" | "Advanced";
-  sets: number | string;
-  reps: number | string;
-  duration: string;
-  instructions: string[];
-  videoUrl?: string;
-  animationUrl?: string;
+  id?: string;
+  programId?: ProgramId;
+  programName?: string;
+  category?: string;
+  name?: string;
+  muscleGroup?: string[];
+  targetMuscles?: string[];
+  equipment?: string[];
+  difficulty?: string;
+  reps?: string;
+  sets?: any;
+  restSeconds?: number;
+  restTime?: string;
+  instructions?: string[];
+  safetyTips?: string[];
+  mediaUrl?: string;
+  mediaType?: "image" | "video";
   gifUrl?: string;
   imageUrl?: string;
-  restTime?: string;
-  coachingCues?: string[];
-  benefits?: string[];
+  dayNumber?: number;
+  [key: string]: any;
 }
 
 export interface DayWorkoutMeta {
-  dayNumber: number;
-  programId: ProgramId;
-  title: string;
-  category: string;
-  targetMuscles: string[];
-  estimatedDuration: string;
-  estimatedCalories: number;
-  isRestDay: boolean;
-  isCardioOnly: boolean;
-  cardioDistance?: string;
-  cardioTargetKm?: number;
-  cardioModality?: string;
-  guidelines: string[];
-  coachingNotes: string;
-  phase?: string | number;
-  phaseName?: string;
-  phaseDesc?: string;
-  phaseNumber?: number;
-  eveningWalk?: {
-    title: string;
-    timing: string;
-    pace: string;
-    durationMinutes: number;
-    instructions: string;
-  };
+  dayNumber?: number;
+  dayTitle?: string;
+  title?: string;
+  focus?: string;
+  estimatedMinutes?: number;
+  caloriesBurnEstimate?: number;
+  totalExercises?: number;
+  isRestDay?: boolean;
+  [key: string]: any;
 }
 
 export interface DayExecutionPlan {
-  meta: DayWorkoutMeta;
-  exercises: ChallengeExerciseItem[];
-}
-
-export interface ProgramProgressState {
-  programId: ProgramId;
-  programName: string;
-  currentDay: number; // Active day 1-based
-  workoutStarted: boolean;
-  workoutCompleted: boolean;
-  startedAt: string | null; // ISO string
-  completedAt: string | null; // ISO string
-  exercisesCompleted: string[]; // List of completed exercise IDs for currentDay
-  completionPercentage: number;
-  nextWorkoutUnlockTime: number | null; // epoch ms (completedAt + 7h)
-  totalCompletedWorkouts: number;
-  currentStreak: number;
-  history: Record<number, {
-    dayNumber: number;
-    category: string;
-    completedAt: string;
-    exercisesCount: number;
-  }>;
-}
-
-export interface ValidationError {
-  type: "category_mismatch" | "program_mismatch" | "missing_workout" | "duplicate_exercise" | "missing_musclegroup" | "missing_program_assignment";
-  message: string;
-  severity: "error" | "warning";
-  exerciseId?: string;
-  exerciseName?: string;
-  programId?: string;
+  programId?: ProgramId;
   dayNumber?: number;
+  title?: string;
+  focus?: string;
+  exercises?: ChallengeExerciseItem[];
+  meta?: DayWorkoutMeta;
+  warmup?: string[];
+  cooldown?: string[];
+  isRestDay?: boolean;
+  notes?: string;
+  [key: string]: any;
 }

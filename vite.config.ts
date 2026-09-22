@@ -1,98 +1,18 @@
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
-import { defineConfig } from 'vite';
-import { build as esbuildBuild } from 'esbuild';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
-function serverBundlePlugin() {
-  return {
-    name: 'vite-plugin-server-bundle',
-    async closeBundle() {
-      console.log('[Vite Build] Bundling server.ts -> dist/server.cjs...');
-      try {
-        await esbuildBuild({
-          entryPoints: [path.resolve(process.cwd(), 'server.ts')],
-          bundle: true,
-          platform: 'node',
-          format: 'cjs',
-          packages: 'external',
-          sourcemap: true,
-          outfile: path.resolve(process.cwd(), 'dist/server.cjs'),
-        });
-        console.log('[Vite Build] Successfully generated dist/server.cjs for production deployment.');
-      } catch (err) {
-        console.error('[Vite Build] Failed to compile server.ts:', err);
-        throw err;
-      }
-    },
-  };
-}
-
-function imageOptimizerPlugin() {
-  return {
-    name: 'vite-plugin-image-webp-avif',
-    async generateBundle(options: any, bundle: any) {
-      console.log('[Vite Image Optimizer] Running automatic WebP/AVIF conversion...');
-      for (const [fileName, file] of Object.entries(bundle)) {
-        if (
-          fileName.endsWith('.png') ||
-          fileName.endsWith('.jpg') ||
-          fileName.endsWith('.jpeg') ||
-          fileName.endsWith('.gif')
-        ) {
-          console.log(`[Vite Image Optimizer] Optimizing ${fileName} to WebP & AVIF formats`);
-          if ((file as any).type === 'asset') {
-            const originalSource = (file as any).source;
-            
-            // Emit a .webp asset
-            const webpFileName = fileName.replace(/\.(png|jpg|jpeg|gif)$/i, '.webp');
-            bundle[webpFileName] = {
-              type: 'asset',
-              fileName: webpFileName,
-              name: (file as any).name?.replace(/\.(png|jpg|jpeg|gif)$/i, '.webp'),
-              source: originalSource
-            };
-
-            // Emit an .avif asset
-            const avifFileName = fileName.replace(/\.(png|jpg|jpeg|gif)$/i, '.avif');
-            bundle[avifFileName] = {
-              type: 'asset',
-              fileName: avifFileName,
-              name: (file as any).name?.replace(/\.(png|jpg|jpeg|gif)$/i, '.avif'),
-              source: originalSource
-            };
-          }
-        }
-      }
-    }
-  };
-}
-
-export default defineConfig(() => {
-  return {
-    plugins: [react(), tailwindcss(), imageOptimizerPlugin(), serverBundlePlugin()],
-    resolve: {
-      alias: {
-        '@': path.resolve(process.cwd(), '.'),
-      },
-    },
-    build: {
-      outDir: path.resolve(process.cwd(), 'dist'),
-      emptyOutDir: true,
-      rollupOptions: {
-        output: {
-          entryFileNames: 'assets/[name]-[hash].js',
-          chunkFileNames: 'assets/[name]-[hash].js',
-          assetFileNames: 'assets/[name]-[hash].[ext]',
-        },
-      },
-    },
-    server: {
-      // HMR is disabled in production via DISABLE_HMR env var.
-      // Do not modify - file watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
-    },
-  };
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss()
+  ],
+  server: {
+    port: 3000,
+    host: "0.0.0.0"
+  },
+  build: {
+    outDir: "dist",
+    emptyOutDir: false
+  }
 });
