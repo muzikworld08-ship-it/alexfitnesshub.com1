@@ -59,7 +59,7 @@ export default function PricingView({ setView, onOpenAuth }: PricingViewProps) {
       // 1. Fetch active Paystack Public Key configuration
       const configRes = await fetch("/api/payments/config");
       const configData = await configRes.json();
-      const publicKey = configData.publicKey || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "";
+      const publicKey = configData.publicKey || (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || "";
       
       if (!publicKey) {
         throw new Error("Paystack Public Key is not configured in backend or environment.");

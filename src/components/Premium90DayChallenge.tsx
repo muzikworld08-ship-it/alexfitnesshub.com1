@@ -593,14 +593,15 @@ export default function Premium90DayChallenge() {
         const isCardio = isCardioDay || ex.muscleGroup?.includes("Cardio") || ex.category.includes("Cardio") || ex.category.includes("Running") || ex.category.includes("Walking");
         const calBurn = isCardio ? 460 : Math.round(setsMultiplier * 75);
 
+        const eqStr = Array.isArray(ex.equipment) ? ex.equipment.join(" ").toLowerCase() : String(ex.equipment || "").toLowerCase();
         let weightRec = "Moderate Load";
-        if (ex.equipment?.toLowerCase().includes("bodyweight") || ex.equipment?.toLowerCase().includes("shoes")) {
+        if (eqStr.includes("bodyweight") || eqStr.includes("shoes")) {
           weightRec = "Bodyweight load";
-        } else if (ex.equipment?.toLowerCase().includes("barbell")) {
+        } else if (eqStr.includes("barbell")) {
           weightRec = "65%-80% of 1RM";
-        } else if (ex.equipment?.toLowerCase().includes("machine") || ex.equipment?.toLowerCase().includes("cable")) {
+        } else if (eqStr.includes("machine") || eqStr.includes("cable")) {
           weightRec = "Standard machine stack";
-        } else if (ex.equipment?.toLowerCase().includes("dumbbell")) {
+        } else if (eqStr.includes("dumbbell")) {
           weightRec = "Moderate Dumbbells";
         }
 
@@ -609,7 +610,7 @@ export default function Premium90DayChallenge() {
           name: ex.exerciseName,
           category: ex.category,
           muscleGroups: ex.muscleGroup,
-          equipment: [ex.equipment],
+          equipment: Array.isArray(ex.equipment) ? ex.equipment : (ex.equipment ? [ex.equipment] : ["Bodyweight"]),
           sets: isCardio ? 1 : (ex.sets || setsMultiplier),
           reps: ex.reps || repScheme,
           weight: weightRec,

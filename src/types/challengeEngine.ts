@@ -69,3 +69,14 @@ export interface DayExecutionPlan {
   notes?: string;
   [key: string]: any;
 }
+
+export interface ValidationError {
+  type: string;
+  message: string;
+  severity: "error" | "warning" | "info";
+  programId?: ProgramId;
+  dayNumber?: number;
+  exerciseId?: string;
+  exerciseName?: string;
+  [key: string]: any;
+}

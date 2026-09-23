@@ -4061,7 +4061,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
           ...user,
           ...onboardingData,
           onboarded: true,
-          subscriptionStatus: user.subscriptionStatus || "active"
+          subscriptionStatus: (user.subscriptionStatus === "premium" ? "premium" : "free")
         };
         setUser(softUpdated);
         localStorage.setItem(`fit_user_${softUpdated.uid}`, JSON.stringify(softUpdated));

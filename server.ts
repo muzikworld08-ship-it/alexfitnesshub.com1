@@ -6625,7 +6625,39 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
+    const possiblePaths = [
+      path.join(process.cwd(), "dist"),
+      path.resolve(__dirname),
+      path.resolve(__dirname, "dist"),
+      path.resolve(__dirname, "..", "dist"),
+      path.resolve(process.cwd())
+    ];
+    let distPath = path.join(process.cwd(), "dist");
+    for (const p of possiblePaths) {
+      if (fs.existsSync(path.join(p, "index.html"))) {
+        distPath = p;
+        break;
+      }
+    }
+
+    // Self-healing: If dist/index.html is missing on startup in production (e.g. Render build only ran server build),
+    // trigger an automated client build so the app functions immediately instead of being stuck.
+    if (!fs.existsSync(path.join(distPath, "index.html"))) {
+      console.warn("[Production Server] dist/index.html not found! Triggering self-healing client build...");
+      try {
+        const { execSync } = require("child_process");
+        execSync("npx vite build", { stdio: "inherit" });
+        for (const p of possiblePaths) {
+          if (fs.existsSync(path.join(p, "index.html"))) {
+            distPath = p;
+            break;
+          }
+        }
+        console.log(`[Production Server] Self-healing client build complete. Serving from: ${distPath}`);
+      } catch (buildErr: any) {
+        console.error("[Production Server] Automated client build attempt encountered error:", buildErr?.message || buildErr);
+      }
+    }
     
     // Serve static files with custom headers to prevent browser/CDN caching issues
     app.use(express.static(distPath, {
