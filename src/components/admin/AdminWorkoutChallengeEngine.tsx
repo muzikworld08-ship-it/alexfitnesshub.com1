@@ -166,10 +166,38 @@ export default function AdminWorkoutChallengeEngine() {
 
   // Active exercises list
   const activeExercises = useMemo(() => {
-    if (currentDayOverride && Array.isArray(currentDayOverride.exercises)) {
-      return currentDayOverride.exercises;
+    const rawList = (currentDayOverride && Array.isArray(currentDayOverride.exercises))
+      ? currentDayOverride.exercises
+      : (baseDayPlan.exercises || []);
+
+    const seenNames = new Set<string>();
+    const seenGifs = new Set<string>();
+    const deduplicated: ChallengeExerciseItem[] = [];
+
+    for (const ex of rawList) {
+      const name = (ex.exerciseName || (ex as any).name || "").trim();
+      if (!name) continue;
+      const lower = name.toLowerCase();
+      if (seenNames.has(lower)) continue;
+      seenNames.add(lower);
+
+      let gif = ex.gifUrl;
+      if (!gif || seenGifs.has(gif)) {
+        gif = getExerciseGifUrl(name, ex.category, seenGifs);
+      } else {
+        seenGifs.add(gif);
+      }
+
+      deduplicated.push({
+        ...ex,
+        name,
+        exerciseName: name,
+        gifUrl: gif,
+        imageUrl: gif
+      });
     }
-    return baseDayPlan.exercises || [];
+
+    return deduplicated;
   }, [currentDayOverride, baseDayPlan]);
 
   // Sync state whenever selected day, cycle, or override changes
@@ -202,6 +230,34 @@ export default function AdminWorkoutChallengeEngine() {
 
   // Reorder Exercises Handler
   const handleReorderExercises = async (newExercises: ChallengeExerciseItem[]) => {
+    // Deduplicate exercises and GIFs to strictly enforce zero duplication
+    const seenNames = new Set<string>();
+    const seenGifs = new Set<string>();
+    const sanitizedExercises: ChallengeExerciseItem[] = [];
+
+    for (const ex of newExercises) {
+      const name = (ex.exerciseName || (ex as any).name || "").trim();
+      if (!name) continue;
+      const lower = name.toLowerCase();
+      if (seenNames.has(lower)) continue;
+      seenNames.add(lower);
+
+      let gif = ex.gifUrl;
+      if (!gif || seenGifs.has(gif)) {
+        gif = getExerciseGifUrl(name, ex.category, seenGifs);
+      } else {
+        seenGifs.add(gif);
+      }
+
+      sanitizedExercises.push({
+        ...ex,
+        name,
+        exerciseName: name,
+        gifUrl: gif,
+        imageUrl: gif
+      });
+    }
+
     // Optimistic UI update
     setServerOverrides(prev => {
       const next = { ...prev };
@@ -217,7 +273,7 @@ export default function AdminWorkoutChallengeEngine() {
         focus: splitCategory,
         isCardioOnly: cardioState.isCardio,
         cardioDistance: cardioState.distance,
-        exercises: newExercises
+        exercises: sanitizedExercises
       };
 
       next[pid][dayKey] = updatedDayData;
@@ -341,9 +397,28 @@ export default function AdminWorkoutChallengeEngine() {
 
   // Add Exercise Handler
   const handleAddExercise = (newEx: ChallengeExerciseItem) => {
-    const updated = [...activeExercises, newEx];
+    const name = (newEx.exerciseName || (newEx as any).name || "").trim();
+    if (!name) return;
+    if (activeExercises.some(e => (e.exerciseName || "").toLowerCase().trim() === name.toLowerCase())) {
+      setSaveSuccessMsg(`"${name}" is already in this workout! Duplicate prevented.`);
+      setTimeout(() => setSaveSuccessMsg(null), 3500);
+      return;
+    }
+    const usedGifsInRoutine = new Set(activeExercises.map(e => e.gifUrl).filter((u): u is string => !!u));
+    let assignedGif = newEx.gifUrl;
+    if (!assignedGif || usedGifsInRoutine.has(assignedGif)) {
+      assignedGif = getExerciseGifUrl(name, newEx.category, usedGifsInRoutine);
+    }
+    const finalEx: ChallengeExerciseItem = {
+      ...newEx,
+      name,
+      exerciseName: name,
+      gifUrl: assignedGif,
+      imageUrl: assignedGif
+    };
+    const updated = [...activeExercises, finalEx];
     handleReorderExercises(updated);
-    setSaveSuccessMsg(`Added "${newEx.exerciseName}" to the routine!`);
+    setSaveSuccessMsg(`Added "${name}" to the routine!`);
     setTimeout(() => setSaveSuccessMsg(null), 3000);
   };
 
@@ -353,6 +428,19 @@ export default function AdminWorkoutChallengeEngine() {
     setIsReplacing(true);
 
     try {
+      const chosenName = chosenEx.name || chosenEx.exerciseName;
+      const usedGifsInRoutine = new Set(
+        activeExercises
+          .filter(e => e.id !== targetToReplace.id)
+          .map(e => e.gifUrl)
+          .filter((u): u is string => !!u)
+      );
+
+      let finalGif = chosenEx.gifUrl || chosenEx.customMediaUrl;
+      if (!finalGif || usedGifsInRoutine.has(finalGif)) {
+        finalGif = getExerciseGifUrl(chosenName, chosenEx.category || targetToReplace.category, usedGifsInRoutine);
+      }
+
       const replacementItem: ChallengeExerciseItem = {
         id: `rep_${selectedProgramId}_d${effectiveDayNumber}_${Date.now()}`,
         programId: selectedProgramId as any,
@@ -360,7 +448,8 @@ export default function AdminWorkoutChallengeEngine() {
         dayNumber: effectiveDayNumber,
         category: chosenEx.category || targetToReplace.category,
         muscleGroup: chosenEx.muscleGroups || targetToReplace.muscleGroup,
-        exerciseName: chosenEx.name || chosenEx.exerciseName,
+        exerciseName: chosenName,
+        name: chosenName,
         equipment: Array.isArray(chosenEx.equipment) ? chosenEx.equipment.join(", ") : String(chosenEx.equipment || targetToReplace.equipment),
         difficulty: chosenEx.difficulty || targetToReplace.difficulty || "Intermediate",
         sets: keepSetsReps ? targetToReplace.sets : 3,
@@ -370,7 +459,8 @@ export default function AdminWorkoutChallengeEngine() {
           ? chosenEx.instructions 
           : targetToReplace.instructions,
         restTime: targetToReplace.restTime || "45s",
-        gifUrl: chosenEx.gifUrl || getExerciseGifUrl(chosenEx.name || chosenEx.exerciseName, chosenEx.category),
+        gifUrl: finalGif,
+        imageUrl: finalGif,
         coachingCues: chosenEx.movementExecution ? [chosenEx.movementExecution] : targetToReplace.coachingCues
       };
 
@@ -1052,7 +1142,9 @@ export default function AdminWorkoutChallengeEngine() {
                       {/* GIF / Video Media Thumbnail */}
                       <div className="w-12 h-12 rounded-xl bg-neutral-900 border border-neutral-800 overflow-hidden shrink-0 hidden sm:block">
                         <UnifiedExerciseMedia
+                          exerciseId={exercise.id}
                           exerciseName={exercise.exerciseName}
+                          mediaUrl={exercise.gifUrl}
                           className="w-full h-full object-cover"
                         />
                       </div>

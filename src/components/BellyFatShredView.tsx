@@ -2946,7 +2946,7 @@ export default function BellyFatShredView() {
                             {w.exercises?.map((ex: any, idx: number) => (
                               <div key={idx} className={`rounded-2xl overflow-hidden border flex flex-col justify-between transition-all hover:shadow-md ${isDark ? "bg-slate-900/90 border-slate-800" : "bg-white border-slate-200"}`}>
                                 <div className="w-full aspect-video workout-media-frameless flex items-center justify-center relative overflow-hidden">
-                                  <UnifiedExerciseMedia exerciseName={ex.name} className="w-full h-full object-contain workout-gif-display" />
+                                  <UnifiedExerciseMedia exerciseName={ex.name} mediaUrl={ex.gifUrl} className="w-full h-full object-contain workout-gif-display" />
                                   <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/80 backdrop-blur-md rounded-md text-[9px] font-mono font-bold text-white z-10 border border-white/10">
                                     {ex.sets} sets × {ex.reps}
                                   </div>
@@ -3156,7 +3156,7 @@ export default function BellyFatShredView() {
                         {/* Interactive Visual Media */}
                         <div className="rounded-2xl overflow-hidden workout-media-frameless w-full aspect-video flex items-center justify-center relative shadow-md">
                           <UnifiedExerciseMedia 
-                            exerciseName={exercise.name} 
+                            exerciseName={exercise.mediaName || exercise.name} 
                             className="w-full h-full object-contain workout-gif-display"
                           />
                           <div className="absolute top-2.5 left-2.5 px-2.5 py-1 bg-black/80 backdrop-blur-md rounded-lg text-[9px] font-mono font-bold text-white z-10 flex items-center gap-1 shadow-sm border border-white/10">

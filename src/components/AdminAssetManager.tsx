@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useApp, isEmailAdmin } from "../context/AppContext";
 import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { db, storage, handleFirestoreError, OperationType } from "../lib/firebase";
@@ -238,22 +238,30 @@ export const AdminAssetManager: React.FC = () => {
 
   const categories = ["all", ...allCategoryTags];
 
-  const filteredExercises = exercises.filter((ex) => {
-    const matchesSearch =
-      ex.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ex.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ex.muscleGroups.some((m) => m.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (ex.categories && ex.categories.some((c) => c.toLowerCase().includes(searchQuery.toLowerCase())));
-    const matchesCategory = 
-      selectedCategory === "all" || 
-      ex.category === selectedCategory || 
-      (ex.categories && ex.categories.includes(selectedCategory));
-    const matchesStatus =
-      statusFilter === "all" ? true :
-      statusFilter === "uploaded" ? !!ex.customMediaUrl :
-      !ex.customMediaUrl;
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  const filteredExercises = useMemo(() => {
+    const seen = new Set<string>();
+    return exercises.filter((ex) => {
+      const cleanName = ex.name.toLowerCase().trim();
+      if (seen.has(cleanName) || seen.has(ex.id)) return false;
+      seen.add(cleanName);
+      seen.add(ex.id);
+
+      const matchesSearch =
+        ex.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ex.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ex.muscleGroups.some((m) => m.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (ex.categories && ex.categories.some((c) => c.toLowerCase().includes(searchQuery.toLowerCase())));
+      const matchesCategory = 
+        selectedCategory === "all" || 
+        ex.category === selectedCategory || 
+        (ex.categories && ex.categories.includes(selectedCategory));
+      const matchesStatus =
+        statusFilter === "all" ? true :
+        statusFilter === "uploaded" ? !!ex.customMediaUrl :
+        !ex.customMediaUrl;
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  }, [exercises, searchQuery, selectedCategory, statusFilter]);
 
   if (!isAdminAuthorized) {
     return (

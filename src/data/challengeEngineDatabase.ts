@@ -4452,19 +4452,41 @@ export function normalizeProgramId(raw: string | undefined | null): ProgramId {
 }
 
 function finalizePlan(meta: DayWorkoutMeta, exercises: ChallengeExerciseItem[]): DayExecutionPlan {
+  const seenGifs = new Set<string>();
+  const seenNames = new Set<string>();
+  const deduplicatedExercises: ChallengeExerciseItem[] = [];
+
+  for (const ex of exercises) {
+    const exerciseName = (ex.exerciseName || (ex as any).name || "").trim();
+    if (!exerciseName) continue;
+    const cleanLowerName = exerciseName.toLowerCase();
+
+    // Eliminate duplicate exercises in the same workout routine
+    if (seenNames.has(cleanLowerName)) {
+      continue;
+    }
+    seenNames.add(cleanLowerName);
+
+    // Guarantee 100% unique, non-duplicated GIF for this exercise
+    let gif = ex.gifUrl;
+    if (!gif || seenGifs.has(gif)) {
+      gif = getExerciseGifUrl(exerciseName, ex.category, seenGifs);
+    } else {
+      seenGifs.add(gif);
+    }
+
+    deduplicatedExercises.push({
+      ...ex,
+      name: exerciseName,
+      exerciseName: exerciseName,
+      gifUrl: gif,
+      imageUrl: gif
+    });
+  }
+
   return {
     meta,
-    exercises: exercises.map(ex => {
-      const exerciseName = ex.exerciseName || (ex as any).name || "";
-      const gif = ex.gifUrl || getExerciseGifUrl(exerciseName, ex.category);
-      return {
-        ...ex,
-        name: exerciseName,
-        exerciseName: exerciseName,
-        gifUrl: gif,
-        imageUrl: gif
-      };
-    })
+    exercises: deduplicatedExercises
   };
 }
 

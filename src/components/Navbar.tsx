@@ -98,7 +98,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     
     if (targetView === "pricing") {
       setView("pricing");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
       return;
     }
 
@@ -123,7 +123,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
         setUpgradeToast(null);
       }, 4500);
       setView("pricing");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
       return;
     }
 
@@ -135,9 +135,9 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
         if (el) {
           el.scrollIntoView({ behavior: "smooth", block: "start" });
         }
-      }, 200);
+      }, 50);
     } else {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
     }
   };
 
@@ -308,8 +308,8 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 220 }}
-              className="fixed inset-y-0 right-0 z-50 w-full max-w-sm sm:max-w-md lg:max-w-lg bg-white shadow-2xl border-l border-slate-200 flex flex-col justify-between overflow-hidden"
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed inset-y-0 right-0 z-50 w-full max-w-sm sm:max-w-md lg:max-w-lg bg-white shadow-2xl border-l border-slate-200 flex flex-col justify-between overflow-hidden will-change-transform"
             >
               {/* Drawer Top Header */}
               <div className="p-4 sm:p-5 border-b border-slate-150 flex items-center justify-between bg-slate-50/80">

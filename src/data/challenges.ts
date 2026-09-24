@@ -1,4 +1,4 @@
-import { Exercise, getExerciseGifUrl } from "./exercises";
+import { Exercise, EXERCISES, getExerciseGifUrl } from "./exercises";
 import { ChallengeItem, ChallengeWorkout } from "../types";
 
 export interface PremiumChallenge {
@@ -159,10 +159,14 @@ export const CHALLENGE_SPLITS: Record<string, string[]> = {
  * Resolves full list of workout items for any challenge (flagship or admin custom).
  * Ensures workout media images, names, sets, and reps are always present.
  */
-export function getChallengeWorkouts(challenge: PremiumChallenge, exercises: Exercise[]): ChallengeWorkout[] {
+export function getChallengeWorkouts(challenge: PremiumChallenge, exercisesList?: Exercise[]): ChallengeWorkout[] {
+  const exercises = exercisesList && exercisesList.length > 0 ? exercisesList : EXERCISES;
+
+  let rawWorkouts: ChallengeWorkout[] = [];
+
   // If challenge has explicit custom workouts, enrich them with real media from current exercises
   if (challenge.workouts && Array.isArray(challenge.workouts) && challenge.workouts.length > 0) {
-    return challenge.workouts.map(cw => {
+    rawWorkouts = challenge.workouts.map(cw => {
       const match = exercises.find(e => e.id === cw.id || e.name.toLowerCase() === cw.name?.toLowerCase());
       return {
         id: cw.id || match?.id || `cw_${Math.random()}`,
@@ -178,73 +182,103 @@ export function getChallengeWorkouts(challenge: PremiumChallenge, exercises: Exe
         restTime: cw.restTime || match?.restTime || "60s"
       };
     });
+  } else {
+    // Otherwise, intelligently derive workouts based on challenge category and splits
+    const challengeId = challenge.id;
+    const splitCategories = CHALLENGE_SPLITS[challengeId] || [challenge.category || "Full Body"];
+
+    const matched: Exercise[] = [];
+    const seenIds = new Set<string>();
+
+    for (const split of splitCategories) {
+      if (split.toLowerCase().includes("recovery")) continue;
+      const splitWords = split.toLowerCase().split(/[ +&/]+/);
+
+      const pool = exercises.filter(ex => {
+        if (seenIds.has(ex.id)) return false;
+        const mMatches = ex.muscleGroups?.some(m => splitWords.some(w => m.toLowerCase().includes(w)));
+        const cMatches = ex.category.toLowerCase().includes(challenge.category.toLowerCase()) || 
+                         ex.categories?.some(c => c.toLowerCase().includes(challenge.category.toLowerCase()));
+        const nMatches = splitWords.some(w => ex.name.toLowerCase().includes(w));
+        return mMatches || cMatches || nMatches;
+      });
+
+      for (const ex of pool.slice(0, 4)) {
+        if (!seenIds.has(ex.id) && matched.length < 12) {
+          seenIds.add(ex.id);
+          matched.push(ex);
+        }
+      }
+    }
+
+    // Ensure every program has exactly 12 workouts according to its categories
+    if (matched.length < 12) {
+      const categoryMatches = exercises.filter(ex => 
+        !seenIds.has(ex.id) && (
+          ex.category.toLowerCase().includes(challenge.category.toLowerCase()) ||
+          ex.categories?.some(c => c.toLowerCase().includes(challenge.category.toLowerCase()))
+        )
+      );
+      for (const ex of categoryMatches) {
+        if (!seenIds.has(ex.id) && matched.length < 12) {
+          seenIds.add(ex.id);
+          matched.push(ex);
+        }
+      }
+    }
+
+    // Fallback to general exercises to guarantee 12 workouts
+    if (matched.length < 12) {
+      for (const ex of exercises) {
+        if (!seenIds.has(ex.id) && matched.length < 12) {
+          seenIds.add(ex.id);
+          matched.push(ex);
+        }
+      }
+    }
+
+    rawWorkouts = matched.map((ex) => ({
+      id: ex.id,
+      name: ex.name,
+      sets: ex.recommendedSets || "3-4",
+      reps: ex.recommendedReps || "10-12",
+      customMediaUrl: ex.customMediaUrl || ex.gifUrl || ex.imageUrl,
+      customMediaType: ex.customMediaType || "image",
+      gifUrl: ex.gifUrl || ex.imageUrl,
+      imageUrl: ex.imageUrl || ex.gifUrl,
+      category: ex.category,
+      muscleGroups: ex.muscleGroups,
+      restTime: ex.restTime || "60s"
+    }));
   }
 
-  // Otherwise, intelligently derive workouts based on challenge category and splits
-  const challengeId = challenge.id;
-  const splitCategories = CHALLENGE_SPLITS[challengeId] || [challenge.category || "Full Body"];
+  // Strictly enforce deduplication of both exercise names and GIFs
+  const seenNames = new Set<string>();
+  const seenGifs = new Set<string>();
+  const finalWorkouts: ChallengeWorkout[] = [];
 
-  const matched: Exercise[] = [];
-  const seenIds = new Set<string>();
+  for (const w of rawWorkouts) {
+    const cleanName = (w.name || "").trim();
+    if (!cleanName) continue;
+    const lower = cleanName.toLowerCase();
+    if (seenNames.has(lower)) continue;
+    seenNames.add(lower);
 
-  for (const split of splitCategories) {
-    if (split.toLowerCase().includes("recovery")) continue;
-    const splitWords = split.toLowerCase().split(/[ +&/]+/);
+    let gif = w.gifUrl || w.customMediaUrl;
+    if (!gif || seenGifs.has(gif)) {
+      gif = getExerciseGifUrl(cleanName, w.category, seenGifs);
+    } else {
+      seenGifs.add(gif);
+    }
 
-    const pool = exercises.filter(ex => {
-      if (seenIds.has(ex.id)) return false;
-      const mMatches = ex.muscleGroups?.some(m => splitWords.some(w => m.toLowerCase().includes(w)));
-      const cMatches = ex.category.toLowerCase().includes(challenge.category.toLowerCase()) || 
-                       ex.categories?.some(c => c.toLowerCase().includes(challenge.category.toLowerCase()));
-      const nMatches = splitWords.some(w => ex.name.toLowerCase().includes(w));
-      return mMatches || cMatches || nMatches;
+    finalWorkouts.push({
+      ...w,
+      name: cleanName,
+      gifUrl: gif,
+      imageUrl: gif,
+      customMediaUrl: gif
     });
-
-    for (const ex of pool.slice(0, 4)) {
-      if (!seenIds.has(ex.id) && matched.length < 12) {
-        seenIds.add(ex.id);
-        matched.push(ex);
-      }
-    }
   }
 
-  // Ensure every program has exactly 12 workouts according to its categories
-  if (matched.length < 12) {
-    const categoryMatches = exercises.filter(ex => 
-      !seenIds.has(ex.id) && (
-        ex.category.toLowerCase().includes(challenge.category.toLowerCase()) ||
-        ex.categories?.some(c => c.toLowerCase().includes(challenge.category.toLowerCase()))
-      )
-    );
-    for (const ex of categoryMatches) {
-      if (!seenIds.has(ex.id) && matched.length < 12) {
-        seenIds.add(ex.id);
-        matched.push(ex);
-      }
-    }
-  }
-
-  // Fallback to general exercises to guarantee 12 workouts
-  if (matched.length < 12) {
-    for (const ex of exercises) {
-      if (!seenIds.has(ex.id) && matched.length < 12) {
-        seenIds.add(ex.id);
-        matched.push(ex);
-      }
-    }
-  }
-
-  return matched.map((ex, idx) => ({
-    id: ex.id,
-    name: ex.name,
-    sets: ex.recommendedSets || "3-4",
-    reps: ex.recommendedReps || "10-12",
-    customMediaUrl: ex.customMediaUrl || ex.gifUrl || ex.imageUrl,
-    customMediaType: ex.customMediaType || "image",
-    gifUrl: ex.gifUrl || ex.imageUrl,
-    imageUrl: ex.imageUrl || ex.gifUrl,
-    category: ex.category,
-    muscleGroups: ex.muscleGroups,
-    restTime: ex.restTime || "60s"
-  }));
+  return finalWorkouts;
 }

@@ -135,9 +135,10 @@ body, input, select, textarea, button, p, span, div, h1, h2, h3, h4, h5, h6, li,
   padding: 14px 28px;
   font-weight: 700;
   text-transform: uppercase;
-  transition: all 0.25s ease-in-out;
+  transition: transform 0.12s ease-out, background-color 0.12s ease-out, border-color 0.12s ease-out, box-shadow 0.12s ease-out;
   border: 1px solid #E53935;
   cursor: pointer;
+  transform: translateZ(0);
 }
 .btn-primary:hover {
   background-color: #C62828;
@@ -152,8 +153,9 @@ body, input, select, textarea, button, p, span, div, h1, h2, h3, h4, h5, h6, li,
   font-weight: 700;
   text-transform: uppercase;
   border: 1px solid #E8E8E8;
-  transition: all 0.25s ease-in-out;
+  transition: transform 0.12s ease-out, color 0.12s ease-out, border-color 0.12s ease-out, box-shadow 0.12s ease-out;
   cursor: pointer;
+  transform: translateZ(0);
 }
 .btn-secondary:hover {
   border-color: #E53935;
@@ -166,11 +168,12 @@ body, input, select, textarea, button, p, span, div, h1, h2, h3, h4, h5, h6, li,
   border: 1px solid #ECECEC;
   border-radius: 18px;
   padding: 32px;
-  transition: all 0.25s ease-in-out;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s ease-out;
+  transform: translateZ(0);
 }
 .premium-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+  transform: translateY(-2px) translateZ(0);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.06);
 }
 
 /* Universal Border-Box Reset to Prevent Padding/Border Overflow */
@@ -209,9 +212,10 @@ body, input, select, textarea, button, p, span, div, h1, h2, h3, h4, h5, h6, li,
   object-fit: contain !important;
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   display: block;
-  filter: contrast(1.06) saturate(1.08);
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* Mobile responsive safeguard for complete GIF rendering */
@@ -238,10 +242,9 @@ body, input, select, textarea, button, p, span, div, h1, h2, h3, h4, h5, h6, li,
 
 /* Bold GIF presentation in any frame or container */
 .workout-gif-bold {
-  filter: contrast(1.15) saturate(1.15) brightness(1.02);
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
-  transform: scale(1.01);
+  transform: scale(1.01) translateZ(0);
 }
 
 .workout-frame-bold {
@@ -254,15 +257,16 @@ body, input, select, textarea, button, p, span, div, h1, h2, h3, h4, h5, h6, li,
   overflow: hidden;
   background-color: #FFFFFF;
   border: 1px solid #E8E8E8;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s ease-out;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  transform: translateZ(0);
 }
 
 .workout-card-bold:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.08), 0 10px 15px -5px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px) translateZ(0);
+  box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.06), 0 6px 10px -4px rgba(0, 0, 0, 0.03);
   border-color: rgba(229, 57, 53, 0.35);
 }
 
@@ -312,7 +316,7 @@ body, input, select, textarea, button, p, span, div, h1, h2, h3, h4, h5, h6, li,
 
 /* Global Overflow-X Safeguard for Responsive Scaling & Smooth Scrolling */
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -328,9 +332,53 @@ html, body, #root {
   background-color: #FAFAFA;
 }
 
-/* Smooth Touch & Tap Interactions */
-button, a {
+/* Optimize Scrolling & Paint Performance */
+img, video {
+  content-visibility: auto;
+}
+
+.will-change-transform {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Instant Tap & Click Responsiveness (Eliminate 300ms mobile touch delay) */
+button, a, input, select, textarea, [role="button"] {
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* 5x Perceived Responsiveness: Accelerate Tailwind Duration Utility Classes */
+.duration-200 {
+  transition-duration: 80ms !important;
+}
+.duration-250 {
+  transition-duration: 100ms !important;
+}
+.duration-300 {
+  transition-duration: 120ms !important;
+}
+.duration-500 {
+  transition-duration: 150ms !important;
+}
+.duration-700 {
+  transition-duration: 180ms !important;
+}
+.duration-1000 {
+  transition-duration: 220ms !important;
+}
+
+/* Fast GPU Card & Layout Rendering */
+.premium-card,
+.workout-card-bold,
+.optimized-image-container {
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* Custom Sleek Scrollbar */
@@ -349,15 +397,15 @@ button, a {
   background: #94a3b8;
 }
 
-/* Smooth Element Transitions */
+/* Fast & Responsive Element Transitions */
 .smooth-transition {
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes smoothFadeInUp {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -366,6 +414,6 @@ button, a {
 }
 
 .animate-smooth-in {
-  animation: smoothFadeInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: smoothFadeInUp 0.12s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 

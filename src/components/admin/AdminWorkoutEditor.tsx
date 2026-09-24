@@ -128,7 +128,13 @@ export default function AdminWorkoutEditor() {
 
   // Filtered and Sorted Exercises
   const filteredExercises = useMemo(() => {
+    const seen = new Set<string>();
     const list = exercises.filter((ex) => {
+      const cleanName = ex.name.toLowerCase().trim();
+      if (seen.has(cleanName) || seen.has(ex.id)) return false;
+      seen.add(cleanName);
+      seen.add(ex.id);
+
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch = !q || 
         ex.name.toLowerCase().includes(q) ||

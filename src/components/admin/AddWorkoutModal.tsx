@@ -52,7 +52,13 @@ export default function AddWorkoutModal({
   const [customGifUrl, setCustomGifUrl] = useState("");
 
   const filteredExercises = useMemo(() => {
+    const seen = new Set<string>();
     return libraryExercises.filter(ex => {
+      const cleanName = ex.name.toLowerCase().trim();
+      if (seen.has(cleanName) || seen.has(ex.id)) return false;
+      seen.add(cleanName);
+      seen.add(ex.id);
+
       if (selectedCategory !== "All") {
         const cat = (ex.category || "").toLowerCase();
         const cats = (ex.categories || []).map(c => c.toLowerCase());

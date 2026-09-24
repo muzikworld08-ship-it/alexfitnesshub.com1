@@ -394,6 +394,7 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
                   <UnifiedExerciseMedia 
                     exerciseId={currentExercise.id} 
                     exerciseName={currentExercise.name} 
+                    mediaUrl={currentExercise.gifUrl || (currentExercise as any).customMediaUrl}
                   />
                 </div>
                 <div className="truncate">
@@ -507,6 +508,7 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
                   <UnifiedExerciseMedia 
                     exerciseId={currentExercise.id} 
                     exerciseName={currentExercise.name}
+                    mediaUrl={currentExercise.gifUrl || (currentExercise as any).customMediaUrl}
                     className="w-full h-full object-contain"
                   />
                 ) : (

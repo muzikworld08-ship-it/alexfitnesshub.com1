@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useApp, isEmailAdmin } from "../context/AppContext";
 import { 
   Users, Sparkles, Dumbbell, ShieldCheck, UserCheck, Trash2, ArrowUpDown, Key, ToggleLeft, ToggleRight,
@@ -309,10 +309,19 @@ export default function AdminDashboard() {
     u.email?.toLowerCase().includes(userQuery.toLowerCase())
   );
 
-  const filteredExercises = exercises.filter(e => 
-    e.name.toLowerCase().includes(exerciseQuery.toLowerCase()) ||
-    e.category.toLowerCase().includes(exerciseQuery.toLowerCase())
-  );
+  const filteredExercises = useMemo(() => {
+    const seen = new Set<string>();
+    return exercises.filter(e => {
+      const cleanName = e.name.toLowerCase().trim();
+      if (seen.has(cleanName) || seen.has(e.id)) return false;
+      seen.add(cleanName);
+      seen.add(e.id);
+      return (
+        e.name.toLowerCase().includes(exerciseQuery.toLowerCase()) ||
+        e.category.toLowerCase().includes(exerciseQuery.toLowerCase())
+      );
+    });
+  }, [exercises, exerciseQuery]);
 
   return (
     <div id="admin_dashboard_root" className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50 min-h-screen text-slate-900 overflow-x-hidden">

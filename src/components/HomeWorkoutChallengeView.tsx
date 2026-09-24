@@ -1523,6 +1523,7 @@ export default function HomeWorkoutChallengeView() {
                             key={`${ex.id}-${ex.name}-${exIdx}`}
                             exerciseId={ex.id}
                             exerciseName={ex.name}
+                            mediaUrl={ex.gifUrl}
                             className="w-full h-full object-contain workout-gif-display workout-gif-frameless"
                             priority={exIdx < 2}
                           />

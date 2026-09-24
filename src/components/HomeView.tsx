@@ -1008,8 +1008,9 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                     <img
                       src={displayImage}
                       alt={product.name}
-                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-150 ease-out will-change-transform"
                       loading="lazy"
+                      decoding="async"
                     />
 
                     {/* Quick View Bar */}
@@ -1260,10 +1261,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       {/* 1.1 ELITE PERFORMANCE GALLERY & DEMONSTRATION */}
       <section id="elite-gallery-segment" className="py-16 bg-background border-b border-border">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0.85, y: 0 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
         >
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -1287,7 +1288,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                     src="https://builtwithscience.com/wp-content/uploads/2026/01/F3-8.webp"
                     alt="Alex Fitness Hub Live Session"
                     aspectRatio="16/9"
-                    className="w-full h-full object-cover opacity-100 scale-100 transition-transform duration-700 group-hover:scale-105"
+                    className="w-full h-full object-cover opacity-100 scale-100 transition-transform duration-150 ease-out group-hover:scale-105 will-change-transform"
                   />
                   
                   {/* Glowing Premium Highlight Badges */}
@@ -1320,10 +1321,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {heroSlides.map((slide, idx) => (
                   <motion.div 
-                    whileHover={{ y: -4, scale: 1.03, boxShadow: "0 12px 24px -10px rgba(0,0,0,0.15)" }}
+                    whileHover={{ y: -2, scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     key={idx} 
-                    className={`rounded-2xl overflow-hidden border transition-all duration-300 relative group bg-slate-100 h-40 cursor-pointer shadow-sm ${
+                    className={`rounded-2xl overflow-hidden border transition-all duration-150 relative group bg-slate-100 h-40 cursor-pointer shadow-sm ${
                       idx === currentSlide 
                         ? "border-[#D4AF37] ring-2 ring-[#D4AF37]/50 shadow-md" 
                         : "border-slate-200 opacity-85"
@@ -1334,7 +1335,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                       src={slide.imageUrl} 
                       alt={slide.eyebrow}
                       aspectRatio="16/9"
-                      className="w-full h-full object-cover transition-transform duration-[700ms] filter brightness-110"
+                      className="w-full h-full object-cover transition-transform duration-150 filter brightness-110 will-change-transform"
                     />
                     
                     <div className="absolute inset-x-0 bottom-0 p-2 bg-white/95 backdrop-blur-xs border-t border-slate-100 text-left">
@@ -1384,10 +1385,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       {/* 1.2 THE SPECTACULAR CORE HD WORKOUT COACHING STREAM */}
       <section id="hd-video-stream" className="py-20 bg-secondary border-b border-border">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0.85, y: 0 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
         >
           
@@ -1529,10 +1530,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       {/* 1.3 INTERACTIVE LIFESTYLE & EXERCISE DIRECTORY */}
       <section id="lifestyle-exercise-directory" className="py-24 bg-background border-b border-border">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0.85, y: 0 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
         >
           
@@ -1683,10 +1684,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       {/* 1.5 INTERACTIVE PLATFORM TECHNIQUE GUIDE */}
       <section id="technique-walkthrough" className="py-24 bg-secondary border-b border-border">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0.85, y: 0 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
         >
           <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
@@ -1771,10 +1772,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       {/* 2. ALTERNATING ROW SECTIONS: CLINICAL METHODOLOGY */}
       <section id="why-choose-us" className="py-24 bg-background border-b border-border">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0.85, y: 0 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"
         >
           
@@ -1841,10 +1842,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       {/* 3. SHOWCASE OF CATEGORIES SECTION */}
       <section id="categories-segment" className="py-24 bg-secondary border-b border-border">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0.85, y: 0 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
         >
           
@@ -1907,10 +1908,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       {/* 3.5 CLINICALLY STRUCTURED TRAINING PROGRAMS & WHAT THEY DO */}
       <section id="programs-curriculum" className="py-24 bg-[#FAFAFA] border-b border-border">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0.85, y: 0 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
         >
           {/* Header */}
@@ -2182,10 +2183,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       {/* 4. PREMIUM INSTRUMENTS SECTION */}
       <section className="py-24 bg-background border-b border-border">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0.85, y: 0 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
         >
           
@@ -2247,10 +2248,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       {/* 4.6 THE SCIENCE OF BELLY FAT OXIDATION & WEIGHT REDUCTION */}
       <section id="fat-loss-blueprint" className="py-24 bg-secondary border-b border-border">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0.85, y: 0 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
         >
           
@@ -2387,10 +2388,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       {/* 4.5 SOCIAL PROOF TESTIMONIALS */}
       <section id="social-proof" className="py-24 bg-background border-b border-border">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0.85, y: 0 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
         >
           
@@ -2501,10 +2502,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
         </div>
 
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0.85, y: 0 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10"
         >
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
@@ -3214,10 +3215,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       {/* 6. DYNAMIC ACCORDION FAQS SYSTEM */}
       <section id="faqs-segment" className="py-24 bg-background border-b border-border">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0.85, y: 0 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8"
         >
           
@@ -3268,10 +3269,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       {/* 7. CONTACT / PREMIUM CONSULTATION FORM */}
       <section id="contact" className="py-24 bg-secondary border-b border-border">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0.85, y: 0 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8"
         >
           

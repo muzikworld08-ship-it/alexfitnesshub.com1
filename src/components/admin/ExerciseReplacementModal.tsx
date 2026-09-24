@@ -54,19 +54,33 @@ export default function ExerciseReplacementModal({
   // Smart suggestions: exercises matching same muscles/category
   const smartMatches = useMemo(() => {
     if (!targetExercise) return [];
+    const seen = new Set<string>();
     return libraryExercises.filter(ex => {
+      const cleanName = ex.name.toLowerCase().trim();
+      if (seen.has(cleanName) || seen.has(ex.id)) return false;
       if (ex.id === targetExercise.id || ex.name === targetExercise.exerciseName) return false;
       const exMuscles = (ex.muscleGroups || []).map(m => m.toLowerCase());
       const exCat = (ex.category || "").toLowerCase();
       const sharesMuscle = targetMuscles.some(tm => exMuscles.some(em => em.includes(tm) || tm.includes(em)));
       const sharesCat = targetCategory && (exCat.includes(targetCategory) || targetCategory.includes(exCat));
-      return sharesMuscle || sharesCat;
+      if (sharesMuscle || sharesCat) {
+        seen.add(cleanName);
+        seen.add(ex.id);
+        return true;
+      }
+      return false;
     }).slice(0, 4);
   }, [targetExercise, libraryExercises, targetMuscles, targetCategory]);
 
   // Filtered pool
   const filteredExercises = useMemo(() => {
+    const seen = new Set<string>();
     return libraryExercises.filter(ex => {
+      const cleanName = ex.name.toLowerCase().trim();
+      if (seen.has(cleanName) || seen.has(ex.id)) return false;
+      seen.add(cleanName);
+      seen.add(ex.id);
+
       if (targetExercise && (ex.id === targetExercise.id || ex.name === targetExercise.exerciseName)) {
         return false;
       }

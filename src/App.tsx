@@ -6,39 +6,13 @@ import { AppProvider, useApp, checkIsUserPremium } from "./context/AppContext";
 import { motion, AnimatePresence, type Variants } from "motion/react";
 import Navbar from "./components/Navbar";
 import HomeView from "./components/HomeView";
-import WorkoutLibrary from "./components/WorkoutLibrary";
-import WorkoutGeneratorView from "./components/WorkoutGeneratorView";
-import CoachView from "./components/CoachView";
-import AdminDashboard from "./components/AdminDashboard";
-import OnboardingWizard from "./components/OnboardingWizard";
-import AuthModal from "./components/AuthModal";
-import AuthView from "./components/AuthView";
-import NutritionView from "./components/NutritionView";
-import CommunityView from "./components/CommunityView";
-import SuccessView from "./components/SuccessView";
-import SavedExercisesView from "./components/SavedExercisesView";
-import WorkoutVideos from "./components/WorkoutVideos";
-import DailyPlanView from "./components/DailyPlanView";
-import DashboardView from "./components/DashboardView";
-import ProgressTrackerView from "./components/ProgressTrackerView";
-import PaymentSuccessView from "./components/PaymentSuccessView";
-import FitnessChallenges from "./components/FitnessChallenges";
-import BellyFatShredView from "./components/BellyFatShredView";
-import LifestyleFitnessAcademy from "./components/LifestyleFitnessAcademy";
-import WomenConfidenceProgram from "./components/WomenConfidenceProgram";
-import HomeWorkoutChallengeView from "./components/HomeWorkoutChallengeView";
-import BodyStatsCalculatorView from "./components/BodyStatsCalculatorView";
-import PricingView from "./components/PricingView";
 import { TestimonialPopup } from "./components/TestimonialPopup";
 import DailyNotificationController from "./components/DailyNotificationController";
 import GlobalSkeletonLoader, { DashboardSkeleton, CardGridSkeleton, ListSkeleton } from "./components/SkeletonLoader";
 import GlobalTransitionOverlay from "./components/GlobalTransitionOverlay";
-import PremiumUpgradeModal from "./components/PremiumUpgradeModal";
 import { preloadCriticalFitnessAssets } from "./utils/imageCache";
 import { WorkoutTimerProvider } from "./context/WorkoutTimerContext";
 import { StoreProvider, useStore } from "./context/StoreContext";
-import StoreView from "./components/StoreView";
-import { ProductDetailView } from "./components/ProductDetailView";
 import { ProductDetailModal } from "./components/store/ProductDetailModal";
 import { CartDrawer } from "./components/store/CartDrawer";
 import { CartAddedToast } from "./components/store/CartAddedToast";
@@ -47,26 +21,50 @@ import { PATH_TO_VIEW_MAP, VIEW_TO_PATH_MAP, resolveViewFromPath } from "./const
 import FloatingWorkoutTimerOverlay from "./components/FloatingWorkoutTimerOverlay";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 
+// Lazy-load heavy views to drastically reduce initial bundle size and boost page interaction speed
+const WorkoutLibrary = React.lazy(() => import("./components/WorkoutLibrary"));
+const WorkoutGeneratorView = React.lazy(() => import("./components/WorkoutGeneratorView"));
+const CoachView = React.lazy(() => import("./components/CoachView"));
+const AdminDashboard = React.lazy(() => import("./components/AdminDashboard"));
+const OnboardingWizard = React.lazy(() => import("./components/OnboardingWizard"));
+const AuthModal = React.lazy(() => import("./components/AuthModal"));
+const AuthView = React.lazy(() => import("./components/AuthView"));
+const NutritionView = React.lazy(() => import("./components/NutritionView"));
+const CommunityView = React.lazy(() => import("./components/CommunityView"));
+const SuccessView = React.lazy(() => import("./components/SuccessView"));
+const SavedExercisesView = React.lazy(() => import("./components/SavedExercisesView"));
+const WorkoutVideos = React.lazy(() => import("./components/WorkoutVideos"));
+const DailyPlanView = React.lazy(() => import("./components/DailyPlanView"));
+const DashboardView = React.lazy(() => import("./components/DashboardView"));
+const ProgressTrackerView = React.lazy(() => import("./components/ProgressTrackerView"));
+const PaymentSuccessView = React.lazy(() => import("./components/PaymentSuccessView"));
+const FitnessChallenges = React.lazy(() => import("./components/FitnessChallenges"));
+const BellyFatShredView = React.lazy(() => import("./components/BellyFatShredView"));
+const LifestyleFitnessAcademy = React.lazy(() => import("./components/LifestyleFitnessAcademy"));
+const WomenConfidenceProgram = React.lazy(() => import("./components/WomenConfidenceProgram"));
+const HomeWorkoutChallengeView = React.lazy(() => import("./components/HomeWorkoutChallengeView"));
+const BodyStatsCalculatorView = React.lazy(() => import("./components/BodyStatsCalculatorView"));
+const PricingView = React.lazy(() => import("./components/PricingView"));
+const StoreView = React.lazy(() => import("./components/StoreView"));
+const ProductDetailView = React.lazy(() => import("./components/ProductDetailView").then(m => ({ default: m.ProductDetailView })));
+const PremiumUpgradeModal = React.lazy(() => import("./components/PremiumUpgradeModal"));
+
 const pageTransitionVariants: Variants = {
   initial: {
     opacity: 0,
-    y: 8,
   },
   animate: {
     opacity: 1,
-    y: 0,
     transition: {
-      duration: 0.22,
+      duration: 0.08,
       ease: [0.16, 1, 0.3, 1],
-      when: "beforeChildren",
     },
   },
   exit: {
     opacity: 0,
-    y: -6,
     transition: {
-      duration: 0.15,
-      ease: [0.22, 1, 0.36, 1],
+      duration: 0.04,
+      ease: "easeOut",
     },
   },
 };
@@ -363,55 +361,10 @@ function FitnessAppContent() {
     }
   }, []);
 
-  // 2. Perform robust scroll to top whenever the current view/route changes
+  // 2. Perform instant scroll to top whenever the current view/route changes
   React.useLayoutEffect(() => {
-    const handleScrollToTop = () => {
-      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-    };
-
-    // Execute scroll immediately to prevent flashing content scrolled down
-    handleScrollToTop();
-
-    // Staggered timeouts to ensure the viewport is pinned to the top as elements and lazy-loaded views mount
-    const timer1 = setTimeout(handleScrollToTop, 10);
-    const timer2 = setTimeout(handleScrollToTop, 50);
-    const timer3 = setTimeout(handleScrollToTop, 150);
-
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-    };
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
   }, [currentView]);
-
-  // 3. Smart scroll handler: ensure clicked elements or state transitions scroll into view in front of the user when needed without jumping to top
-  React.useEffect(() => {
-    const handleGlobalNavigationClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target) return;
-
-      // Find closest interactive element if clicked on inner icon or text
-      const clickable = target.closest("button, [role='tab'], .cursor-pointer, a, input, select");
-      if (clickable) {
-        // Allow brief frame for UI expansion or accordion toggle then ensure element is smoothly in view if off-screen
-        setTimeout(() => {
-          if (clickable && document.body.contains(clickable)) {
-            const rect = clickable.getBoundingClientRect();
-            // If the element was pushed out of the viewport after expansion, scroll it gently into view
-            if (rect.top < 0 || rect.bottom > window.innerHeight) {
-              clickable.scrollIntoView({ behavior: "smooth", block: "nearest" });
-            }
-          }
-        }, 120);
-      }
-    };
-
-    window.addEventListener("click", handleGlobalNavigationClick, { passive: true });
-
-    return () => {
-      window.removeEventListener("click", handleGlobalNavigationClick);
-    };
-  }, []);
 
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
   const [premiumModalFeatureName, setPremiumModalFeatureName] = useState("Premium Feature");
@@ -423,7 +376,7 @@ function FitnessAppContent() {
   };
 
   // Protected navigation handler
-  const handleSetView = (targetView: string) => {
+  const handleSetView = React.useCallback((targetView: string) => {
     if (targetView === "pricing") {
       setIsPremiumModalOpen(false);
       setView("pricing");
@@ -479,8 +432,8 @@ function FitnessAppContent() {
     }
 
     setView(resolvedView);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  }, [user, setView]);
 
 
 
@@ -637,7 +590,7 @@ function FitnessAppContent() {
 
       {/* Main Switchboard Route Mounting with Staggered Transitions */}
       <main className="pt-20 lg:pt-24 pb-16 min-h-screen w-full max-w-full flex flex-col justify-start overflow-x-hidden">
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           <motion.div
             key={currentView}
             variants={pageTransitionVariants}

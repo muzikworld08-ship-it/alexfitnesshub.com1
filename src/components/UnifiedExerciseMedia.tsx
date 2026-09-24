@@ -10,15 +10,17 @@ import { isImageCached } from "../utils/imageCache";
 interface UnifiedExerciseMediaProps {
   exerciseId?: string;
   exerciseName?: string;
+  mediaUrl?: string;
   className?: string;
   fallbackType?: "pulsing" | "dumbbell" | "none";
   aspectRatio?: "16/9" | "4/3" | "1/1" | "auto" | string;
   priority?: boolean;
 }
 
-export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
+export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = React.memo(({
   exerciseId,
   exerciseName = "",
+  mediaUrl,
   className = "w-full h-full",
   fallbackType = "pulsing",
   aspectRatio = "auto",
@@ -35,7 +37,7 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
     return getAccurateExerciseGif(canonicalName, exercise?.category);
   }, [canonicalName, exercise?.category]);
 
-  const rawCandidate = exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl;
+  const rawCandidate = mediaUrl || exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl;
   // If candidate is a legacy broken giphy URL or a legacy misassigned squat GIF on a non-squat movement, prioritize the accurate catalog URL
   const isCandidateProblematic = useMemo(() => {
     if (!rawCandidate) return true;
@@ -63,9 +65,7 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
 
   useEffect(() => {
     const nextUrl = resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl;
-    setActiveUrl(nextUrl);
-    setHasError(false);
-    setIsLoaded(isImageCached(nextUrl));
+    setActiveUrl(prev => (prev === nextUrl ? prev : nextUrl));
   }, [rawMediaUrl, defaultFallbackUrl]);
 
   const resolvedMediaUrl = activeUrl || initialResolvedUrl;
@@ -148,6 +148,6 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = ({
       />
     </div>
   );
-};
+});
 
 export default UnifiedExerciseMedia;

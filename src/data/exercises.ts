@@ -59,8 +59,10 @@ export interface Exercise {
 
 import { getAccurateExerciseGif } from "./exerciseMediaCatalog";
 
-export function getExerciseGifUrl(name: string, category: string = ""): string {
-  return getAccurateExerciseGif(name, category);
+import customExerciseOverrides from "./custom_exercise_overrides.json";
+
+export function getExerciseGifUrl(name: string, category: string = "", usedGifs?: Set<string>): string {
+  return getAccurateExerciseGif(name, category, usedGifs);
 }
 
 export interface Program {
@@ -949,6 +951,11 @@ const generateExercises = (): Exercise[] => {
 
   const deduplicatedRawList = Array.from(uniqueRawMap.values());
   const seenIds = new Set<string>();
+  const usedGifsAcrossExercises = new Set<string>(
+    Object.values(customExerciseOverrides as Record<string, any>)
+      .map(o => o.customMediaUrl)
+      .filter((u): u is string => typeof u === "string" && u.length > 0)
+  );
 
   return deduplicatedRawList.map((raw, idx) => {
     const displayName = raw.displayName || raw.name;
@@ -1131,8 +1138,8 @@ const generateExercises = (): Exercise[] => {
       finishingPosition: `Squeeze the active target area tightly at lock-out before releasing under total control.`,
       regressionVariations: ["Reduce sets or perform with partial range of motion initially"],
       musclesWorked: [raw.primary],
-      gifUrl: getExerciseGifUrl(displayName, raw.category),
-      imageUrl: getExerciseGifUrl(displayName, raw.category),
+      gifUrl: getExerciseGifUrl(displayName, raw.category, usedGifsAcrossExercises),
+      imageUrl: getExerciseGifUrl(displayName, raw.category, usedGifsAcrossExercises),
       description: `${displayName} targets the ${raw.primary} group to maximize hypertrophy and mechanical tension.`,
       duration: "45s",
       tags: [raw.primary, ...raw.secondary, raw.diff, raw.category],

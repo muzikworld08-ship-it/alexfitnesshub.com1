@@ -19,7 +19,7 @@ export interface OptimizedImageProps extends React.ImgHTMLAttributes<HTMLImageEl
   fetchPriority?: "high" | "low" | "auto";
 }
 
-export const OptimizedImage: React.FC<OptimizedImageProps> = ({
+export const OptimizedImage: React.FC<OptimizedImageProps> = React.memo(({
   src,
   alt,
   width,
@@ -63,9 +63,15 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const [hasError, setHasError] = useState(false);
   const [currentSrc, setCurrentSrc] = useState<string | undefined>(initialComputedSrc);
   const imgRef = useRef<HTMLImageElement | null>(null);
+  const isInitialMount = useRef(true);
 
   // Sync source updates
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
     if (!src || src.trim() === "") {
       setHasError(true);
       setCurrentSrc(fallbackSrc && fallbackSrc.trim() !== "" ? fallbackSrc : undefined);
@@ -160,7 +166,6 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       {/* Rendered Image */}
       {currentSrc && currentSrc.trim() !== "" ? (
         <img
-          key={currentSrc}
           ref={handleRef}
           src={currentSrc}
           srcSet={computedSrcSet}
@@ -173,7 +178,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           referrerPolicy={referrerPolicy}
           onError={handleImageError}
           onLoad={handleImageLoad}
-          className={`w-full h-full ${isGifMedia || className?.includes('object-contain') ? 'object-contain' : 'object-cover'} transition-opacity duration-200 ${
+          className={`w-full h-full ${isGifMedia || className?.includes('object-contain') ? 'object-contain' : 'object-cover'} transition-opacity duration-150 ${
             isGifMedia || isLoaded ? "opacity-100" : "opacity-0"
           }`}
           {...restProps}
@@ -181,7 +186,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       ) : null}
     </div>
   );
-};
+});
 
 // Aliases for developer convenience & explicit naming requirements
 export const CdnImage = OptimizedImage;

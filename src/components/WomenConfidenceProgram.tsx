@@ -1637,6 +1637,7 @@ export default function WomenConfidenceProgram() {
                       <UnifiedExerciseMedia 
                         exerciseName={ex.name}
                         exerciseId={ex.id}
+                        mediaUrl={ex.gifUrl}
                         className="w-full h-full object-contain workout-gif-display"
                         fallbackType="dumbbell"
                       />

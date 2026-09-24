@@ -95,6 +95,8 @@ export function isExerciseMatch(
   return false;
 }
 
+const matchingExerciseCache = new Map<string, any>();
+
 /**
  * Finds the exact or best matching exercise from an array of exercises.
  */
@@ -105,18 +107,29 @@ export function findMatchingExercise<T extends { id: string; name: string }>(
 ): T | undefined {
   if (!exercises || exercises.length === 0) return undefined;
 
+  const cacheKey = `${exerciseId || ""}:::${exerciseName || ""}:::${exercises.length}`;
+  if (matchingExerciseCache.has(cacheKey)) {
+    return matchingExerciseCache.get(cacheKey);
+  }
+
   // 1. Direct ID exact match
   if (exerciseId) {
     const trimmedId = exerciseId.toLowerCase().trim();
     const directId = exercises.find(ex => ex.id.toLowerCase() === trimmedId);
-    if (directId) return directId;
+    if (directId) {
+      matchingExerciseCache.set(cacheKey, directId);
+      return directId;
+    }
   }
 
   // 2. Direct Name exact match
   if (exerciseName) {
     const trimmedName = exerciseName.toLowerCase().trim();
     const directName = exercises.find(ex => ex.name.toLowerCase() === trimmedName);
-    if (directName) return directName;
+    if (directName) {
+      matchingExerciseCache.set(cacheKey, directName);
+      return directName;
+    }
   }
 
   // 3. Check alias resolution first
@@ -128,15 +141,20 @@ export function findMatchingExercise<T extends { id: string; name: string }>(
       ex.id.toLowerCase().includes(aliasResolved) ||
       isExerciseMatch(aliasResolved, ex.name)
     );
-    if (aliasMatch) return aliasMatch;
+    if (aliasMatch) {
+      matchingExerciseCache.set(cacheKey, aliasMatch);
+      return aliasMatch;
+    }
   }
 
   // 4. Normalized ID / Name match using isExerciseMatch
   for (const ex of exercises) {
     if (exerciseId && (isExerciseMatch(exerciseId, ex.id) || isExerciseMatch(exerciseId, ex.name))) {
+      matchingExerciseCache.set(cacheKey, ex);
       return ex;
     }
     if (exerciseName && (isExerciseMatch(exerciseName, ex.name) || isExerciseMatch(exerciseName, ex.id))) {
+      matchingExerciseCache.set(cacheKey, ex);
       return ex;
     }
   }
@@ -166,9 +184,13 @@ export function findMatchingExercise<T extends { id: string; name: string }>(
         }
       }
 
-      if (bestMatch) return bestMatch;
+      if (bestMatch) {
+        matchingExerciseCache.set(cacheKey, bestMatch);
+        return bestMatch;
+      }
     }
   }
 
+  matchingExerciseCache.set(cacheKey, undefined);
   return undefined;
 }

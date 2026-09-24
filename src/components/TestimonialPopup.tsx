@@ -168,7 +168,7 @@ export const TestimonialPopup: React.FC = () => {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
-          transition={{ duration: 0.35, ease: "easeOut" }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           // high z-index fixed to random positions on screen, with a compact glass-like small background
           className={`fixed z-[9999] w-[210px] bg-white/95 backdrop-blur-md rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.1)] border border-slate-200/85 p-2 select-none pointer-events-auto overflow-hidden ${getPositionClasses(currentPosition)}`}
         >
