@@ -12,10 +12,16 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const { loginEmail, signUpEmail, loginWithGoogle, loginWithApple, sendPasswordReset, setView, authError, clearAuthError } = useApp();
+  const { user, loginEmail, signUpEmail, loginWithGoogle, loginWithApple, sendPasswordReset, setView, authError, clearAuthError } = useApp();
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgot, setIsForgot] = useState(false);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    try {
+      return localStorage.getItem("fit_saved_email") || "";
+    } catch (e) {
+      return "";
+    }
+  });
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
@@ -144,13 +150,22 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   React.useEffect(() => {
     if (isOpen) {
+      if (user) {
+        handleSuccessfulAuth(user.onboarded === false);
+        onClose();
+        return;
+      }
+      const savedEmail = localStorage.getItem("fit_saved_email");
+      if (savedEmail && !email) {
+        setEmail(savedEmail);
+      }
       const originalStyle = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       return () => {
         document.body.style.overflow = originalStyle;
       };
     }
-  }, [isOpen]);
+  }, [isOpen, user]);
 
   // Surface any OAuth failure that happened during a redirect (e.g. Google/Apple
   // sign-in blocked by Safari) once the modal is open, instead of failing silently.

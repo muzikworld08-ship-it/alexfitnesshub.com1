@@ -12,6 +12,7 @@ export interface Exercise {
   alternativeExercises: string[];
   progressionVariations: string[];
   isPremium: boolean;
+  isCustom?: boolean;
   youtubeVideoId?: string;
   
   // Real Biomechanical coaching fields

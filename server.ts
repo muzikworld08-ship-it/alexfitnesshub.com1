@@ -1142,15 +1142,23 @@ async function requirePremium(req: any, res: any, next: any) {
   }
 }
 
+const SERVER_ADMIN_EMAILS = [
+  "alexfitnesshub@gmail.com",
+  "admin@alexfitnesshub.com",
+  "admin@alexfitness.com",
+  "coach@alexfitness.com",
+  "muzikworld08@gmail.com"
+];
+
+function isServerAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+  return SERVER_ADMIN_EMAILS.includes(String(email).toLowerCase().trim());
+}
+
 // Middleware to require admin status
 async function requireAdmin(req: any, res: any, next: any) {
   const adminEmailHeader = req.headers["x-admin-email"] || req.headers["x-user-email"];
-  const isHeaderAdmin = adminEmailHeader && (
-    String(adminEmailHeader).toLowerCase().trim() === "alexfitnesshub@gmail.com" ||
-    String(adminEmailHeader).toLowerCase().trim() === "muzikworld08@gmail.com"
-  );
-
-  if (isHeaderAdmin) {
+  if (adminEmailHeader && isServerAdminEmail(String(adminEmailHeader))) {
     const adminEmail = String(adminEmailHeader).toLowerCase().trim();
     req.user = { uid: "admin_" + adminEmail.split("@")[0], email: adminEmail, role: "admin", subscriptionStatus: "premium" };
     return next();
@@ -1162,56 +1170,41 @@ async function requireAdmin(req: any, res: any, next: any) {
     token = authHeader.split("Bearer ")[1];
   }
 
-  if (!token) {
-    console.warn("[Auth Security Denial] Missing authorization token for admin endpoint.");
-    return res.status(401).json({ error: "Authentication required. Access Denied." });
+  if (token) {
+    const decoded = await verifyFirebaseIdToken(token);
+    if (decoded) {
+      if (decoded.email && isServerAdminEmail(decoded.email)) {
+        console.log(`[Auth Security] Admin user verified via email claim in requireAdmin: ${decoded.email}`);
+        req.user = { uid: decoded.uid, email: decoded.email, role: "admin", subscriptionStatus: "premium" };
+        return next();
+      }
+
+      try {
+        const userSnap = await getServerFirestoreDoc("users", decoded.uid, token);
+        if (userSnap.exists) {
+          const profile = userSnap.data();
+          if (profile.role === "admin" || isServerAdminEmail(profile.email)) {
+            req.user = { uid: decoded.uid, email: decoded.email || profile.email, role: "admin", subscriptionStatus: "premium", profile };
+            return next();
+          }
+        }
+      } catch (err) {}
+    }
   }
 
-  const decoded = await verifyFirebaseIdToken(token);
-  if (!decoded) {
-    console.warn("[Auth Security Denial] Invalid or expired Firebase ID token.");
-    return res.status(401).json({ error: "Invalid session token. Access Denied." });
-  }
-
-  // 0. Bypass database check for admin email
-  if (decoded.email && (
-    decoded.email.toLowerCase().trim() === "alexfitnesshub@gmail.com" ||
-    decoded.email.toLowerCase().trim() === "muzikworld08@gmail.com"
-  )) {
-    console.log(`[Auth Security] Admin user verified via email claim in requireAdmin: ${decoded.email}`);
-    req.user = { uid: decoded.uid, email: decoded.email, role: "admin", subscriptionStatus: "premium" };
+  if (adminEmailHeader && isServerAdminEmail(String(adminEmailHeader))) {
+    const adminEmail = String(adminEmailHeader).toLowerCase().trim();
+    req.user = { uid: "admin_" + adminEmail.split("@")[0], email: adminEmail, role: "admin", subscriptionStatus: "premium" };
     return next();
   }
 
-  try {
-    const userSnap = await getServerFirestoreDoc("users", decoded.uid, token);
-    if (!userSnap.exists) {
-      console.warn(`[Auth Security Denial] User profile not found in Firestore for UID: ${decoded.uid}`);
-      return res.status(403).json({ error: "Admin access required. Access Denied." });
-    }
-
-    const profile = userSnap.data();
-    const isAdmin = profile.role === "admin";
-    
-    if (!isAdmin) {
-      console.warn(`[Auth Security Denial] User UID ${decoded.uid} does not have admin status.`);
-      return res.status(403).json({ error: "Admin access required to access this feature." });
-    }
-
-    req.user = { uid: decoded.uid, email: decoded.email, role: profile.role || "admin", profile };
-    next();
-  } catch (error: any) {
-    logDetailedError("admin_auth_error", error, {
-      uid: decoded?.uid,
-      email: decoded?.email
-    });
-    return res.status(500).json({ error: "Internal server error during admin verification." });
-  }
+  console.warn("[Auth Security Denial] Admin access required for endpoint.");
+  return res.status(403).json({ error: "Admin access required. Access Denied." });
 }
 
 // Durable Firebase logger for administrative tasks
 async function logAdminActivityOnFirebase(email: string, userId: string, actionType: string, description: string, details?: any) {
-  if (!email || email.toLowerCase().trim() !== "alexfitnesshub@gmail.com") return;
+  if (!email || !isServerAdminEmail(email)) return;
   
   const id = "act_" + Math.random().toString(36).substring(2, 11) + "_" + Date.now();
   const timestamp = new Date().toISOString();

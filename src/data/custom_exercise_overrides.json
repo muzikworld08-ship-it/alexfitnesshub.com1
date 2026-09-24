@@ -5,7 +5,9 @@
   },
   "exercise-barbell-bench-press": {
     "customMediaUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0025-EIeI8Vf.gif",
-    "customMediaType": "image"
+    "customMediaType": "image",
+    "updatedAt": "2026-09-24T13:09:56.946Z",
+    "lastModifiedBy": "muzikworld08@gmail.com"
   },
   "exercise-incline-dumbbell-press": {
     "customMediaUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0314-ns0SIbU.gif",
@@ -350,5 +352,12 @@
   "exercise-step-ups-with-knee-drive": {
     "customMediaUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0785-g67a2L1.gif",
     "customMediaType": "image"
+  },
+  "exercise-test-probe": {
+    "name": "Test Probe Workout",
+    "recommendedSets": "4",
+    "recommendedReps": "12",
+    "updatedAt": "2026-09-24T13:06:18.681Z",
+    "lastModifiedBy": "muzikworld08@gmail.com"
   }
 }

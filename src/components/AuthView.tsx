@@ -30,7 +30,13 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
   );
   const [isForgot, setIsForgot] = useState<boolean>(initialMode === "forgot");
   
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState<string>(() => {
+    try {
+      return localStorage.getItem("fit_saved_email") || "";
+    } catch (e) {
+      return "";
+    }
+  });
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");

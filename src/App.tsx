@@ -146,13 +146,20 @@ function FitnessAppContent() {
     if (isInitialMount.current) {
       isInitialMount.current = false;
       prevUserUid.current = currentUid;
-      if (currentUid && (currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register")) {
-        const attempted = localStorage.getItem("fit_attempted_view");
-        if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
-          localStorage.removeItem("fit_attempted_view");
-          setView(attempted);
-        } else {
-          setView("dashboard");
+      if (currentUid) {
+        setIsAuthOpen(false);
+        if (currentView === "home" || currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register" || !currentView) {
+          if (user?.onboarded === false) {
+            setView("onboarding");
+          } else {
+            const attempted = localStorage.getItem("fit_attempted_view");
+            if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
+              localStorage.removeItem("fit_attempted_view");
+              setView(attempted);
+            } else {
+              setView("dashboard");
+            }
+          }
         }
       }
       return;
@@ -167,14 +174,16 @@ function FitnessAppContent() {
       if (user && user.onboarded === false) {
         setView("onboarding");
       } else {
-        const attempted = localStorage.getItem("fit_attempted_view");
-        if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
-          localStorage.removeItem("fit_attempted_view");
-          console.log(`[DevOps Auth Sync] Redirecting to attempted view: ${attempted}`);
-          setView(attempted);
-        } else {
-          console.log("[DevOps Auth Sync] Successfully authenticated. Redirecting user to dashboard.");
-          setView("dashboard");
+        if (currentView === "home" || currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register" || !currentView) {
+          const attempted = localStorage.getItem("fit_attempted_view");
+          if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
+            localStorage.removeItem("fit_attempted_view");
+            console.log(`[DevOps Auth Sync] Redirecting to attempted view: ${attempted}`);
+            setView(attempted);
+          } else {
+            console.log("[DevOps Auth Sync] Successfully authenticated. Redirecting user to dashboard.");
+            setView("dashboard");
+          }
         }
       }
     } else if (!currentUid && previousUid) {

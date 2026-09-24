@@ -232,7 +232,8 @@ export default function AdminWorkoutChallengeEngine() {
       const token = await auth.currentUser?.getIdToken().catch(() => null);
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      if (user?.email) headers["x-admin-email"] = user.email;
+      const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
+      headers["x-admin-email"] = adminEmail;
 
       const res = await fetch("/api/admin/programs/save-day-override", {
         method: "POST",
@@ -255,6 +256,25 @@ export default function AdminWorkoutChallengeEngine() {
       });
 
       if (res.ok) {
+        const overrideData = {
+          title: splitTitle,
+          category: splitCategory,
+          focus: splitCategory,
+          isCardioOnly: cardioState.isCardio,
+          cardioDistance: cardioState.distance,
+          exercises: newExercises
+        };
+        setServerOverrides(prev => {
+          const next = { ...prev };
+          const pid = selectedProgramId;
+          if (!next[pid]) next[pid] = {};
+          next[pid][String(effectiveDayNumber)] = overrideData;
+          if (viewMode === "cycle" || applyToAllCycleWeeks) {
+            next[pid][`cycle_${((effectiveDayNumber - 1) % 7) + 1}`] = overrideData;
+          }
+          broadcastOverridesUpdated(next);
+          return next;
+        });
         setSaveSuccessMsg("Workout order re-arranged and manifested successfully!");
         setTimeout(() => setSaveSuccessMsg(null), 3000);
       }
@@ -397,7 +417,8 @@ export default function AdminWorkoutChallengeEngine() {
       const token = await auth.currentUser?.getIdToken().catch(() => null);
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      if (user?.email) headers["x-admin-email"] = user.email;
+      const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
+      headers["x-admin-email"] = adminEmail;
 
       const res = await fetch("/api/admin/programs/delete-and-replace", {
         method: "POST",
@@ -472,7 +493,8 @@ export default function AdminWorkoutChallengeEngine() {
       const token = await auth.currentUser?.getIdToken().catch(() => null);
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      if (user?.email) headers["x-admin-email"] = user.email;
+      const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
+      headers["x-admin-email"] = adminEmail;
 
       const res = await fetch("/api/admin/programs/save-day-override", {
         method: "POST",

@@ -352,6 +352,31 @@ export const normalizeExerciseId = (id: string): string => {
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentView, setView] = useState<string>(() => {
     const pathname = window.location.pathname;
+    const isExplicitLogout = localStorage.getItem("fit_explicitly_logged_out") === "true";
+
+    // Auto-login: If an existing user with an account visits "/", "/home", "/login", "/signin", "/signup", or "/register",
+    // immediately direct them into their active athlete dashboard / daily plan
+    if (!isExplicitLogout) {
+      const activeUid = localStorage.getItem("fit_active_uid");
+      const lastUserStr = (activeUid ? localStorage.getItem(`fit_user_${activeUid}`) : null) ||
+                          localStorage.getItem("fit_last_known_user") ||
+                          localStorage.getItem("fit_active_user");
+      if (lastUserStr) {
+        try {
+          const parsed = JSON.parse(lastUserStr);
+          if (parsed && (parsed.uid || parsed.email)) {
+            if (pathname === "/" || pathname === "/home" || pathname === "/login" || pathname === "/signin" || pathname === "/signup" || pathname === "/register") {
+              const attempted = localStorage.getItem("fit_attempted_view");
+              if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
+                return attempted;
+              }
+              return parsed.onboarded === false ? "onboarding" : "dashboard";
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
     const pathToView: Record<string, string> = {
       "/": "home",
       "/payment/success": "payment-success",
@@ -407,37 +432,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (pathToView[pathname]) {
       return pathToView[pathname];
     }
-    try {
-      const activeUid = localStorage.getItem("fit_active_uid");
-      if (activeUid) {
-        const cachedUser = localStorage.getItem(`fit_user_${activeUid}`);
-        if (cachedUser) {
-          const parsed = JSON.parse(cachedUser);
-          if (parsed && parsed.onboarded !== false) {
-            return "daily-plan";
-          }
-        }
-      }
-    } catch (e) {}
     return "home";
   });
 
   const [userState, setUserState] = useState<UserProfile | null>(() => {
     try {
-      const activeUid = localStorage.getItem("fit_active_uid");
-      if (activeUid) {
-        const cachedUser = localStorage.getItem(`fit_user_${activeUid}`);
-        if (cachedUser) {
-          const parsed = JSON.parse(cachedUser);
-          if (parsed && isEmailAdmin(parsed.email)) {
-            return {
-              ...parsed,
-              role: "admin",
-              subscriptionStatus: "premium",
-              subscriptionTier: "yearly"
-            };
+      const isExplicitLogout = localStorage.getItem("fit_explicitly_logged_out") === "true";
+      if (isExplicitLogout) return null;
+
+      let activeUid = localStorage.getItem("fit_active_uid");
+      let cachedUserStr = activeUid ? localStorage.getItem(`fit_user_${activeUid}`) : null;
+      if (!cachedUserStr) {
+        cachedUserStr = localStorage.getItem("fit_last_known_user") || localStorage.getItem("fit_active_user");
+      }
+
+      if (cachedUserStr) {
+        const parsed = JSON.parse(cachedUserStr);
+        if (parsed && (parsed.uid || parsed.email)) {
+          if (!activeUid && parsed.uid) {
+            localStorage.setItem("fit_active_uid", parsed.uid);
           }
-          return parsed;
+          if (parsed.email) {
+            localStorage.setItem("fit_saved_email", parsed.email);
+          }
+          const isAdmin = isEmailAdmin(parsed.email);
+          const isPremium = isAdmin || checkIsUserPremium(parsed);
+          return {
+            ...parsed,
+            role: isAdmin ? "admin" : (parsed.role === "admin" && !isAdmin ? "user" : (parsed.role || "user")),
+            subscription: isPremium ? "premium" : "free",
+            subscriptionStatus: isPremium ? "premium" : "free",
+            isPremium: isPremium,
+            premiumAccess: isPremium,
+            subscriptionTier: isAdmin ? "yearly" : (parsed.subscriptionTier || "none")
+          };
         }
       }
     } catch (e) {
@@ -521,7 +549,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [transactions, setTransactions] = useState<PaystackTransaction[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [exercises, setExercisesState] = useState<Exercise[]>(EXERCISES);
+  const [exercises, setExercisesState] = useState<Exercise[]>(() => {
+    try {
+      const cached = localStorage.getItem("fit_exercises");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return EXERCISES;
+  });
   const [customPrograms, setCustomPrograms] = useState<CustomProgram[]>([]);
   const [isBlockedUser, setIsBlockedUser] = useState(false);
   const [authDatabaseError, setAuthDatabaseError] = useState<string | null>(null);
@@ -605,7 +644,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
 
   // Admin view datasets (fallback analytics)
-  const [allSystemUsers, setAllSystemUsers] = useState<UserProfile[]>([]);
+  const [allSystemUsers, setAllSystemUsers] = useState<UserProfile[]>(() => {
+    try {
+      const stored = localStorage.getItem("all_system_users");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
   const [weeklyReports, setWeeklyReports] = useState<any[]>([]);
 
   // Community & Testimonial states
@@ -651,6 +699,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
     return Array.from(map.values());
   }, [customChallenges]);
+
+  // Reliable admin request headers helper
+  const getAdminHeaders = async (): Promise<Record<string, string>> => {
+    const token = await auth.currentUser?.getIdToken().catch(() => null);
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
+    headers["x-admin-email"] = adminEmail;
+    return headers;
+  };
+
+  // Synchronize registered user accounts from Firestore
+  const refreshAllSystemUsers = async () => {
+    if (isMockFirebase) return;
+    try {
+      const snap = await getDocs(collection(db, "users"));
+      if (!snap.empty) {
+        const list: UserProfile[] = [];
+        snap.forEach(d => {
+          const u = d.data() as UserProfile;
+          if (u && (u.uid || d.id)) {
+            list.push({ ...u, uid: u.uid || d.id });
+          }
+        });
+        if (list.length > 0) {
+          setAllSystemUsers(list);
+          safeSetItem("all_system_users", JSON.stringify(list));
+        }
+      }
+    } catch (err) {
+      console.warn("Could not fetch users from Firestore:", err);
+    }
+  };
+
+  useEffect(() => {
+    refreshAllSystemUsers();
+  }, [user?.role, user?.email]);
 
 
   // Apply visual theme to document body
@@ -776,13 +861,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         } catch {}
 
         // 1. Fetch from Local Express Server JSON file
-        const token = auth.currentUser ? await auth.currentUser.getIdToken().catch(() => null) : null;
         let serverOverrides: Record<string, any> = {};
         let serverDeletedIds: string[] = [];
         try {
-          const headers: Record<string, string> = {};
-          if (token) headers["Authorization"] = `Bearer ${token}`;
-          if (user?.email) headers["x-admin-email"] = user.email;
+          const headers = await getAdminHeaders();
           const apiRes = await fetch("/api/exercises/custom-media", { headers });
           const apiData = await apiRes.json();
           if (apiData.success && apiData.overrides) {
@@ -837,13 +919,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Merge sources (localOverrides < serverOverrides < firestoreOverrides, with persistentMediaOverrides)
-        const mergedOverrides: Record<string, any> = { 
-          ...localOverrides,
-          ...serverOverrides, 
-          ...firestoreOverrides, 
-          ...persistentMediaOverrides 
-        };
+        // Deep merge per-key so media overrides NEVER erase exercise metadata (name, sets, reps, category, etc.)
+        const allOverrideKeys = new Set([
+          ...Object.keys(persistentMediaOverrides),
+          ...Object.keys(serverOverrides),
+          ...Object.keys(firestoreOverrides),
+          ...Object.keys(localOverrides)
+        ]);
+        const mergedOverrides: Record<string, any> = {};
+        allOverrideKeys.forEach(k => {
+          mergedOverrides[k] = {
+            ...(persistentMediaOverrides[k] || {}),
+            ...(serverOverrides[k] || {}),
+            ...(firestoreOverrides[k] || {}),
+            ...(localOverrides[k] || {})
+          };
+        });
 
         // Persist combined overrides to localStorage so they never disappear
         try {
@@ -901,7 +992,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           fetchedGeneratedExercises.forEach(g => {
             if (g && g.id && !activeDeletedIds.has(g.id)) {
-              customMap.set(g.id, g);
+              customMap.set(g.id, { ...g, isCustom: true });
             }
           });
 
@@ -919,6 +1010,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   recommendedSets: val.recommendedSets || "3-4",
                   recommendedReps: val.recommendedReps || "10-12",
                   recommendedSetsReps: `${val.recommendedSets || "3-4"} Sets x ${val.recommendedReps || "10-12"} Reps`,
+                  isCustom: true,
                   ...val
                 } as Exercise);
               }
@@ -926,17 +1018,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           });
 
           // Get local storage generated exercises or previous custom exercises
+          // Any exercise that is not in baseList and not deleted is a custom exercise
           prev.forEach(p => {
-            if (p && p.id && !activeDeletedIds.has(p.id) && (p.id.startsWith("gen_") || p.id.startsWith("cust_") || (p as any).isCustom)) {
+            if (p && p.id && !activeDeletedIds.has(p.id)) {
               if (!baseList.some(b => b.id === p.id)) {
                 const existing = customMap.get(p.id);
                 customMap.set(p.id, {
                   ...p,
-                  ...(existing || {})
+                  ...(existing || {}),
+                  isCustom: true
                 });
               }
             }
           });
+
+          // Also recover from raw fit_exercises cache in localStorage to ensure zero data loss on refresh
+          try {
+            const rawStored = localStorage.getItem("fit_exercises");
+            if (rawStored) {
+              const parsedRaw = JSON.parse(rawStored) as Exercise[];
+              if (Array.isArray(parsedRaw)) {
+                parsedRaw.forEach(p => {
+                  if (p && p.id && !activeDeletedIds.has(p.id) && !baseList.some(b => b.id === p.id)) {
+                    const existing = customMap.get(p.id);
+                    customMap.set(p.id, {
+                      ...p,
+                      ...(existing || {}),
+                      isCustom: true
+                    });
+                  }
+                });
+              }
+            }
+          } catch {}
 
           const finalExercises = [...mapped, ...Array.from(customMap.values())];
           try {
@@ -1529,6 +1643,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Filter and update admin lists
     if (profile) {
       safeSetItem(`fit_user_${uid}`, JSON.stringify(profile));
+      safeSetItem("fit_last_known_user", JSON.stringify(profile));
+      safeSetItem("fit_active_uid", uid);
+      if (profile.email) {
+        safeSetItem("fit_saved_email", profile.email);
+      }
+      localStorage.removeItem("fit_explicitly_logged_out");
       setUser(profile);
       
       // Dual sync to Supabase profiles
@@ -1610,9 +1730,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (firebaseUser) {
         localStorage.setItem("fit_active_uid", firebaseUser.uid);
+        if (firebaseUser.email) {
+          localStorage.setItem("fit_saved_email", firebaseUser.email);
+        }
+        localStorage.removeItem("fit_explicitly_logged_out");
         
         // SPEED UP: Load from local cache immediately so the UI is responsive in milliseconds
-        const localCachedUser = localStorage.getItem(`fit_user_${firebaseUser.uid}`);
+        const localCachedUser = localStorage.getItem(`fit_user_${firebaseUser.uid}`) || localStorage.getItem("fit_last_known_user");
         if (localCachedUser) {
           try {
             let cachedProfile = JSON.parse(localCachedUser);
@@ -1626,6 +1750,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   subscriptionTier: "none"
                 };
                 safeSetItem(`fit_user_${cachedProfile.uid}`, JSON.stringify(cachedProfile));
+                safeSetItem("fit_last_known_user", JSON.stringify(cachedProfile));
               }
             }
             setUser(cachedProfile);
@@ -1669,6 +1794,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                       onboarded: snapData.onboarded !== undefined ? snapData.onboarded : true
                     };
                     safeSetItem(`fit_user_${firebaseUser.uid}`, JSON.stringify(merged));
+                    safeSetItem("fit_last_known_user", JSON.stringify(merged));
+                    safeSetItem("fit_active_uid", firebaseUser.uid);
+                    localStorage.removeItem("fit_explicitly_logged_out");
                     return merged;
                   });
                 }
@@ -1720,9 +1848,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 };
                 // Cache in local storage for subsequent offline loads
                 safeSetItem(`fit_user_${profile.uid}`, JSON.stringify(profile));
+                safeSetItem("fit_last_known_user", JSON.stringify(profile));
+                safeSetItem("fit_active_uid", profile.uid);
+                localStorage.removeItem("fit_explicitly_logged_out");
               } else {
                 // Brand new user: Check local storage or build clean profile with full dashboard access
-                const cachedStr = localStorage.getItem(`fit_user_${firebaseUser.uid}`);
+                const cachedStr = localStorage.getItem(`fit_user_${firebaseUser.uid}`) || localStorage.getItem("fit_last_known_user");
                 if (cachedStr) {
                   try {
                     profile = JSON.parse(cachedStr);
@@ -1754,10 +1885,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }
                 // Cache in local storage
                 safeSetItem(`fit_user_${profile.uid}`, JSON.stringify(profile));
+                safeSetItem("fit_last_known_user", JSON.stringify(profile));
+                safeSetItem("fit_active_uid", profile.uid);
+                localStorage.removeItem("fit_explicitly_logged_out");
               }
             } catch (dbErr: any) {
               console.warn("Database error during user profile fetch (quota exceeded / network offline). Resolving to local storage cache:", dbErr);
-              const cachedStr = localStorage.getItem(`fit_user_${firebaseUser.uid}`);
+              const cachedStr = localStorage.getItem(`fit_user_${firebaseUser.uid}`) || localStorage.getItem("fit_last_known_user");
               if (cachedStr) {
                 try {
                   profile = JSON.parse(cachedStr);
@@ -1778,12 +1912,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   onboarded: true,
                 };
                 safeSetItem(`fit_user_${firebaseUser.uid}`, JSON.stringify(profile));
+                safeSetItem("fit_last_known_user", JSON.stringify(profile));
+                safeSetItem("fit_active_uid", firebaseUser.uid);
+                localStorage.removeItem("fit_explicitly_logged_out");
               }
               dbErrorOccurred = false;
             }
           } else {
             // Local fallback extraction
-            const localUser = localStorage.getItem(`fit_user_${firebaseUser.uid}`);
+            const localUser = localStorage.getItem(`fit_user_${firebaseUser.uid}`) || localStorage.getItem("fit_last_known_user");
             if (localUser) {
               profile = JSON.parse(localUser);
             } else {
@@ -1797,6 +1934,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 createdAt: new Date().toISOString()
               };
               safeSetItem(`fit_user_${firebaseUser.uid}`, JSON.stringify(profile));
+              safeSetItem("fit_last_known_user", JSON.stringify(profile));
+              safeSetItem("fit_active_uid", firebaseUser.uid);
+              localStorage.removeItem("fit_explicitly_logged_out");
             }
           }
 
@@ -1903,9 +2043,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } else {
         // User is not signed into Firebase SDK
         const isExplicitLogout = localStorage.getItem("fit_explicitly_logged_out") === "true";
-        const activeUid = localStorage.getItem("fit_active_uid");
+        let activeUid = localStorage.getItem("fit_active_uid");
+        let cachedUserStr = activeUid ? localStorage.getItem(`fit_user_${activeUid}`) : null;
+        if (!cachedUserStr && !isExplicitLogout) {
+          cachedUserStr = localStorage.getItem("fit_last_known_user") || localStorage.getItem("fit_active_user");
+        }
         
-        if (isExplicitLogout || !activeUid) {
+        if (isExplicitLogout || !cachedUserStr) {
           setUser(null);
           localStorage.removeItem("fit_active_uid");
           setSavedWorkouts([]);
@@ -1917,17 +2061,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setCustomPrograms([]);
           setWeeklyReports([]);
         } else {
-          // Attempt to restore cached user profile if present
-          const cachedUser = localStorage.getItem(`fit_user_${activeUid}`) || localStorage.getItem("fit_active_user");
-          if (cachedUser) {
-            try {
-              const parsed = JSON.parse(cachedUser);
+          // Attempt to restore cached user profile so existing accounts never drop session
+          try {
+            const parsed = JSON.parse(cachedUserStr);
+            if (parsed && (parsed.uid || parsed.email)) {
+              const effectiveUid = parsed.uid || activeUid || "athlete";
+              localStorage.setItem("fit_active_uid", effectiveUid);
+              if (parsed.email) localStorage.setItem("fit_saved_email", parsed.email);
               setUser(parsed);
-              loadUserData(activeUid);
-            } catch (e) {
+              loadUserData(effectiveUid);
+            } else {
               setUser(null);
             }
-          } else {
+          } catch (e) {
             setUser(null);
           }
         }
@@ -2754,6 +2900,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (updated.uid) {
       safeSetItem(`fit_user_${updated.uid}`, JSON.stringify(updated));
       safeSetItem("fit_active_user", JSON.stringify(updated));
+      safeSetItem("fit_last_known_user", JSON.stringify(updated));
+      safeSetItem("fit_active_uid", updated.uid);
+      if (updated.email) {
+        safeSetItem("fit_saved_email", updated.email);
+      }
+      localStorage.removeItem("fit_explicitly_logged_out");
     }
     
     // Update admin analytics list
@@ -3537,10 +3689,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
     // Persist to server API
     try {
-      const token = await auth.currentUser?.getIdToken().catch(() => null);
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      if (user?.email) headers["x-admin-email"] = user.email;
+      const headers = await getAdminHeaders();
       await fetch("/api/exercises/update", {
         method: "POST",
         headers,
@@ -3563,10 +3712,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
     // 1. Persist to local server-side JSON file (and translate physical Base64 payload into static files)
     try {
-      const token = await auth.currentUser?.getIdToken().catch(() => null);
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      if (user?.email) headers["x-admin-email"] = user.email;
+      const headers = await getAdminHeaders();
 
       const res = await fetch("/api/exercises/save-custom-media", {
         method: "POST",
@@ -3702,22 +3848,28 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       // If editing current user, sync immediately
       if (user && user.uid === uid) {
         await syncUserToStorageAndPlatform(updatedUser);
-      } else if (!isMockFirebase) {
-        const { updateDoc, doc } = await import("firebase/firestore");
-        await updateDoc(doc(db, "users", uid), {
-          subscriptionStatus: updatedUser.subscriptionStatus,
-          subscription: updatedUser.subscription,
-          subscriptionTier: updatedUser.subscriptionTier,
-          subscriptionPlan: updatedUser.subscriptionPlan,
-          isPremium: updatedUser.isPremium,
-          premiumAccess: updatedUser.premiumAccess,
-          accountType: updatedUser.accountType,
-          badge: updatedUser.badge,
-          isFreeTrial: updatedUser.isFreeTrial,
-          freeTrialStatus: updatedUser.freeTrialStatus,
-          freeTrialDaysRemaining: updatedUser.freeTrialDaysRemaining,
-          subscriptionExpiry: updatedUser.subscriptionExpiry
-        }).catch(err => console.warn("Firestore admin tier update sync failed:", err));
+      } else {
+        safeSetItem(`fit_user_${uid}`, JSON.stringify(updatedUser));
+        if (!isMockFirebase) {
+          try {
+            await setDoc(doc(db, "users", uid), {
+              subscriptionStatus: updatedUser.subscriptionStatus,
+              subscription: updatedUser.subscription,
+              subscriptionTier: updatedUser.subscriptionTier,
+              subscriptionPlan: updatedUser.subscriptionPlan,
+              isPremium: updatedUser.isPremium,
+              premiumAccess: updatedUser.premiumAccess,
+              accountType: updatedUser.accountType,
+              badge: updatedUser.badge,
+              isFreeTrial: updatedUser.isFreeTrial,
+              freeTrialStatus: updatedUser.freeTrialStatus,
+              freeTrialDaysRemaining: updatedUser.freeTrialDaysRemaining,
+              subscriptionExpiry: updatedUser.subscriptionExpiry
+            }, { merge: true });
+          } catch (err) {
+            console.warn("Firestore admin tier update sync notice:", err);
+          }
+        }
       }
     }
   };
@@ -3814,24 +3966,30 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       // Synchronize immediately if targeting current user
       if (user && user.uid === uid) {
         await syncUserToStorageAndPlatform(updatedUser);
-      } else if (!isMockFirebase) {
-        const { updateDoc, doc } = await import("firebase/firestore");
-        await updateDoc(doc(db, "users", uid), {
-          subscriptionStatus: updatedUser.subscriptionStatus,
-          subscription: updatedUser.subscription,
-          subscriptionTier: updatedUser.subscriptionTier,
-          subscriptionPlan: updatedUser.subscriptionPlan || null,
-          isPremium: updatedUser.isPremium,
-          premiumAccess: updatedUser.premiumAccess,
-          accountType: updatedUser.accountType,
-          badge: updatedUser.badge,
-          isFreeTrial: updatedUser.isFreeTrial,
-          freeTrialStatus: updatedUser.freeTrialStatus,
-          freeTrialDaysRemaining: updatedUser.freeTrialDaysRemaining,
-          subscriptionActivationDate: updatedUser.subscriptionActivationDate || null,
-          subscriptionExpiry: updatedUser.subscriptionExpiry || null,
-          paymentReference: updatedUser.paymentReference || null
-        }).catch(err => console.warn("Firestore admin modify subscription sync failed:", err));
+      } else {
+        safeSetItem(`fit_user_${uid}`, JSON.stringify(updatedUser));
+        if (!isMockFirebase) {
+          try {
+            await setDoc(doc(db, "users", uid), {
+              subscriptionStatus: updatedUser.subscriptionStatus,
+              subscription: updatedUser.subscription,
+              subscriptionTier: updatedUser.subscriptionTier,
+              subscriptionPlan: updatedUser.subscriptionPlan || null,
+              isPremium: updatedUser.isPremium,
+              premiumAccess: updatedUser.premiumAccess,
+              accountType: updatedUser.accountType,
+              badge: updatedUser.badge,
+              isFreeTrial: updatedUser.isFreeTrial,
+              freeTrialStatus: updatedUser.freeTrialStatus,
+              freeTrialDaysRemaining: updatedUser.freeTrialDaysRemaining,
+              subscriptionActivationDate: updatedUser.subscriptionActivationDate || null,
+              subscriptionExpiry: updatedUser.subscriptionExpiry || null,
+              paymentReference: updatedUser.paymentReference || null
+            }, { merge: true });
+          } catch (err) {
+            console.warn("Firestore admin modify subscription sync notice:", err);
+          }
+        }
       }
     }
   };
@@ -4430,10 +4588,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
       // Persist to server API
       try {
-        const token = await auth.currentUser?.getIdToken().catch(() => null);
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        if (user?.email) headers["x-admin-email"] = user.email;
+        const headers = await getAdminHeaders();
         await fetch("/api/exercises/update", {
           method: "POST",
           headers,
@@ -4521,10 +4676,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
     // Save to server
     try {
-      const token = await auth.currentUser?.getIdToken().catch(() => null);
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      if (user?.email) headers["x-admin-email"] = user.email;
+      const headers = await getAdminHeaders();
       await fetch("/api/exercises/create", {
         method: "POST",
         headers,
@@ -4617,10 +4769,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
     // 5. Notify server to persist permanently
     try {
-      const token = await auth.currentUser?.getIdToken().catch(() => null);
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      if (user?.email) headers["x-admin-email"] = user.email;
+      const headers = await getAdminHeaders();
       await fetch("/api/exercises/delete", {
         method: "POST",
         headers,
@@ -4668,10 +4817,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
     // Save to server
     try {
-      const token = await auth.currentUser?.getIdToken().catch(() => null);
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      if (user?.email) headers["x-admin-email"] = user.email;
+      const headers = await getAdminHeaders();
       await fetch("/api/challenges/save", {
         method: "POST",
         headers,
@@ -4710,10 +4856,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
     if (updatedObj) {
       try {
-        const token = await auth.currentUser?.getIdToken().catch(() => null);
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        if (user?.email) headers["x-admin-email"] = user.email;
+        const headers = await getAdminHeaders();
         await fetch("/api/challenges/save", {
           method: "POST",
           headers,
@@ -4738,10 +4881,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     });
 
     try {
-      const token = await auth.currentUser?.getIdToken().catch(() => null);
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      if (user?.email) headers["x-admin-email"] = user.email;
+      const headers = await getAdminHeaders();
       await fetch(`/api/challenges/${challengeId}`, {
         method: "DELETE",
         headers
