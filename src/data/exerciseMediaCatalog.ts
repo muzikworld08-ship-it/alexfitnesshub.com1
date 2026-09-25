@@ -119,7 +119,7 @@ export const CATEGORY_FALLBACK_POOLS: Record<string, string[]> = {
     "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2363-O2K9Vb5.gif"
   ],
   "back": [
-    "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0063-elhhVgj.gif",
+    "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif",
     "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1717-f7fnAIB.gif",
     "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0224-VhX2JdE.gif",
     "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0245-xBYcQHj.gif",
@@ -985,7 +985,7 @@ export const ACCURATE_EXERCISE_MEDIA_MAP: Record<string, string> = {
   "200m interval running workout for speed": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0007-4IKbhHV.gif",
   "bulgarian split squats quad dominant": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1564-tFGKm99.gif",
   "butterfly hip opener with forward fold": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0474-pj0X0tF.gif",
-  "cable face pull with external rotation": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0235-FWdVhcW.gif",
+  "cable face pull with external rotation": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif",
   "cable pull through for posterior chain": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0196-OM46QHm.gif",
   "cobra to downward dog restorative flow": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0022-znLogoF.gif",
   "dynamic deltoid scapular arm circles": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0341-gSw59a4.gif",
@@ -1175,7 +1175,9 @@ export const ACCURATE_EXERCISE_MEDIA_MAP: Record<string, string> = {
   "controlled abdominal crunches": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0635-QUDd8WS.gif",
   "deficit push ups with handles": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1407-PzNxakt.gif",
   "dragon flag negative lowering": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3303-pQ0Mx1Z.gif",
-  "face pulls band pull aparts": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0991-VtTbiP3.gif",
+  "face pulls band pull aparts": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif",
+  "face pulls / band pull aparts": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif",
+  "resistance band pull aparts & posture opener": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif",
   "glute bridge isometric hold": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3193-Vvwjz6N.gif",
   "jump rope ghost rope drills": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3697-G61cXLk.gif",
   "kas glute bridge with barbell": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0054-t8iSghb.gif",
@@ -1424,7 +1426,7 @@ export const ACCURATE_EXERCISE_MEDIA_MAP: Record<string, string> = {
   "hanging leg raise": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0476-Q6bvyen.gif",
   "kettlebell swings": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0517-Kal9cQQ.gif",
   "mountain climbers": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0107-S8mo30S.gif",
-  "parallel bar dips": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0234-4f8RXP8.gif",
+  "parallel bar dips": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0251-9WTm7dq.gif",
   "romanian deadlift": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1023-lHeUULr.gif",
   "seated calf raise": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1379-r29jP7S.gif",
   "standard push ups": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0258-CMAxnsG.gif",
@@ -1444,7 +1446,10 @@ export const ACCURATE_EXERCISE_MEDIA_MAP: Record<string, string> = {
   "obliques workout": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3639-6sYyrRX.gif",
   "archer push ups": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3327-gw9PqGk.gif",
   "cable chest fly": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0185-lJJ7Yq8.gif",
-  "cable face pull": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0139-50BETrz.gif",
+  "cable face pull": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif",
+  "cable face pulls": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif",
+  "cable rear delt row with rope": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif",
+  "cable standing rear delt row with rope": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif",
   "lying leg curls": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0184-Q2Eu1Ax.gif",
   "one arm push up": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0540-osdXT3K.gif",
   "push up pyramid": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3785-F7vjXqT.gif",
@@ -1513,8 +1518,14 @@ export const ACCURATE_EXERCISE_MEDIA_MAP: Record<string, string> = {
   "back lever": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0571-w2oRpuH.gif",
   "bear crawl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1267-MKIelrR.gif",
   "cable curl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3235-zHEpuuc.gif",
-  "chest dips": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3289-05Cf2v8.gif",
-  "face pulls": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0337-L2V5Nan.gif",
+  "chest dips": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0251-9WTm7dq.gif",
+  "chest dip": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0251-9WTm7dq.gif",
+  "dips": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0251-9WTm7dq.gif",
+  "dip": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0251-9WTm7dq.gif",
+  "face pulls": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif",
+  "face pull": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif",
+  "facepull": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif",
+  "facepulls": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif",
   "high knees": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2300-VPPtusI.gif",
   "hip thrust": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3236-Pjbc0Kt.gif",
   "human flag": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1268-vAwm6rK.gif",
@@ -1536,7 +1547,15 @@ export const ACCURATE_EXERCISE_MEDIA_MAP: Record<string, string> = {
   "dead bug": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0214-vpp9Ku2.gif",
   "deadlift": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0116-hrVQWvE.gif",
   "leg curl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0496-ms7tjSG.gif",
-  "pull ups": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2808-BmrwWzo.gif",
+  "pull ups": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0652-lBDjFxJ.gif",
+  "pull up": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0652-lBDjFxJ.gif",
+  "pull-ups": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0652-lBDjFxJ.gif",
+  "pull-up": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0652-lBDjFxJ.gif",
+  "pullups": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0652-lBDjFxJ.gif",
+  "pullup": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0652-lBDjFxJ.gif",
+  "chin up": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1326-T2mxWqc.gif",
+  "chin-up": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1326-T2mxWqc.gif",
+  "chin-ups": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1326-T2mxWqc.gif",
   "push ups": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3011-GdMa1ET.gif",
   "swimming": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0861-fUBheHs.gif",
   "wall sit": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0457-KZn52RC.gif",
@@ -1560,7 +1579,6 @@ export const ACCURATE_EXERCISE_MEDIA_MAP: Record<string, string> = {
   "world": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2143-RSOsp5d.gif",
   "devil": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0243-aVs3BR3.gif",
   "chest": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2462-LQFOrMn.gif",
-  "dips": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3288-rWoBmi5.gif",
   "back": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2208-isofgzg.gif",
   "legs": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0543-kuXhl0o.gif",
   "arms": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0272-Sn8wxAI.gif",
@@ -1582,7 +1600,79 @@ export function getAccurateExerciseGif(
     return getCategoryAlternative(category, usedGifs);
   }
 
-  const clean = name.toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
+  // Strip file extensions (.gif, .mp4, etc.), 'exercise-' prefixes, and special characters
+  const clean = name
+    .toLowerCase()
+    .replace(/\.(gif|mp4|webm|png|jpe?g|webp|mov)$/i, "")
+    .replace(/^exercise[-_\s]/i, "")
+    .replace(/^exercise/i, "")
+    .replace(/[^a-z0-9]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const normNoSpaces = clean.replace(/\s+/g, "");
+
+  // Deterministic biological guarantee for Face Pulls and rear-delt pull aparts
+  if (
+    clean === "face pull" ||
+    clean === "face pulls" ||
+    clean === "facepull" ||
+    clean === "facepulls" ||
+    normNoSpaces === "facepull" ||
+    normNoSpaces === "facepulls" ||
+    clean.includes("face pull") ||
+    clean.includes("facepull") ||
+    clean.includes("rear delt row with rope") ||
+    clean.includes("band pull apart")
+  ) {
+    return "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif";
+  }
+
+  // Deterministic biological guarantee for Pull Ups
+  if (
+    clean === "pull up" ||
+    clean === "pull ups" ||
+    clean === "pullup" ||
+    clean === "pullups" ||
+    clean === "pull ups chin ups" ||
+    clean.startsWith("pull up") ||
+    clean.startsWith("pull-up") ||
+    clean.startsWith("pullup") ||
+    clean === "weighted pull up" ||
+    clean === "weighted pull-up" ||
+    clean === "wide grip pull up" ||
+    clean === "neutral grip pull ups"
+  ) {
+    return "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0652-lBDjFxJ.gif";
+  }
+
+  // Deterministic biological guarantee for Chin Ups
+  if (
+    clean === "chin up" ||
+    clean === "chin ups" ||
+    clean === "chinup" ||
+    clean === "chinups" ||
+    clean.startsWith("chin up") ||
+    clean.startsWith("chin-up")
+  ) {
+    return "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1326-T2mxWqc.gif";
+  }
+
+  // Deterministic biological guarantee for Chest Dips / Dips
+  if (
+    clean === "chest dip" ||
+    clean === "chest dips" ||
+    clean === "chestdip" ||
+    clean === "chestdips" ||
+    clean === "dips" ||
+    clean === "dip" ||
+    clean.startsWith("chest dip") ||
+    clean.startsWith("chest-dip") ||
+    clean === "parallel bar dips" ||
+    clean === "bar dips"
+  ) {
+    return "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0251-9WTm7dq.gif";
+  }
 
   // 1. Check exact key in the unique accurate map
   if (clean && ACCURATE_EXERCISE_MEDIA_MAP[clean]) {
@@ -1593,12 +1683,28 @@ export function getAccurateExerciseGif(
     }
   }
 
+  if (normNoSpaces && ACCURATE_EXERCISE_MEDIA_MAP[normNoSpaces]) {
+    const candidate = ACCURATE_EXERCISE_MEDIA_MAP[normNoSpaces];
+    if (!usedGifs || !usedGifs.has(candidate)) {
+      usedGifs?.add(candidate);
+      return candidate;
+    }
+  }
+
   // 2. Check if a partial or substring key exists in the unique map
   for (const [mapKey, gifUrl] of Object.entries(ACCURATE_EXERCISE_MEDIA_MAP)) {
-    if ((clean.includes(mapKey) || mapKey.includes(clean)) && mapKey.length > 4) {
-      if (!usedGifs || !usedGifs.has(gifUrl)) {
-        usedGifs?.add(gifUrl);
-        return gifUrl;
+    if (mapKey.length > 4) {
+      const mapKeyNorm = mapKey.replace(/\s+/g, "");
+      if (
+        clean === mapKey ||
+        normNoSpaces === mapKeyNorm ||
+        clean.startsWith(mapKey + " ") ||
+        mapKey.startsWith(clean + " ")
+      ) {
+        if (!usedGifs || !usedGifs.has(gifUrl)) {
+          usedGifs?.add(gifUrl);
+          return gifUrl;
+        }
       }
     }
   }

@@ -714,6 +714,7 @@ export default function AdminDashboard() {
                         <UnifiedExerciseMedia 
                           exerciseId={exercise.id} 
                           exerciseName={exercise.name}
+                          mediaUrl={exercise.customMediaUrl}
                           className="w-full h-full object-cover" 
                         />
 

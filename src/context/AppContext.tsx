@@ -555,7 +555,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          // Sanitize any broken/misassigned URLs from previous sessions
+          return parsed.map((ex: Exercise) => {
+            const nameLower = (ex.name || "").toLowerCase();
+            const idLower = (ex.id || "").toLowerCase();
+            const isFacePull = nameLower.includes("face pull") || nameLower.includes("facepull") || idLower.includes("face-pull");
+            const mediaLower = (ex.customMediaUrl || ex.gifUrl || "").toLowerCase();
+            if (
+              mediaLower.includes("0174-8b6lc55") ||
+              (isFacePull && (mediaLower.includes("0337-l2v5nan") || mediaLower.includes("0139-50betrz") || mediaLower.includes("0991-vttbip3")))
+            ) {
+              return {
+                ...ex,
+                customMediaUrl: isFacePull ? "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif" : undefined,
+                gifUrl: isFacePull ? "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif" : ex.gifUrl
+              };
+            }
+            return ex;
+          });
         }
       }
     } catch (e) {}
@@ -927,13 +944,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ...Object.keys(localOverrides)
         ]);
         const mergedOverrides: Record<string, any> = {};
+        const isProblematicLegacyUrl = (url: string | undefined, key: string) => {
+          if (!url) return false;
+          const u = url.toLowerCase();
+          const k = key.toLowerCase();
+          const isFacePullKey = k.includes("face-pull") || k.includes("facepull") || k.includes("face_pull");
+          if (u.includes("0174-8b6lc55")) return true; // known 404 URL
+          if (u.includes("0337-l2v5nan") && isFacePullKey) return true; // chest press lying across face
+          if (u.includes("0139-50betrz") && isFacePullKey) return true;
+          if (u.includes("0991-vttbip3") && isFacePullKey) return true;
+          if (u.includes("giphy.com")) return true;
+          return false;
+        };
+
         allOverrideKeys.forEach(k => {
+          const localEntry = { ...(localOverrides[k] || {}) };
+          if (isProblematicLegacyUrl(localEntry.customMediaUrl, k)) {
+            delete localEntry.customMediaUrl;
+          }
+          const firestoreEntry = { ...(firestoreOverrides[k] || {}) };
+          if (isProblematicLegacyUrl(firestoreEntry.customMediaUrl, k)) {
+            delete firestoreEntry.customMediaUrl;
+          }
+          const serverEntry = { ...(serverOverrides[k] || {}) };
+          if (isProblematicLegacyUrl(serverEntry.customMediaUrl, k)) {
+            delete serverEntry.customMediaUrl;
+          }
+
           mergedOverrides[k] = {
             ...(persistentMediaOverrides[k] || {}),
-            ...(serverOverrides[k] || {}),
-            ...(firestoreOverrides[k] || {}),
-            ...(localOverrides[k] || {})
+            ...serverEntry,
+            ...firestoreEntry,
+            ...localEntry
           };
+
+          if (isProblematicLegacyUrl(mergedOverrides[k]?.customMediaUrl, k)) {
+            if (persistentMediaOverrides[k]?.customMediaUrl) {
+              mergedOverrides[k].customMediaUrl = persistentMediaOverrides[k].customMediaUrl;
+            } else if (k.includes("face-pull") || k.includes("facepull")) {
+              mergedOverrides[k].customMediaUrl = "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif";
+            }
+          }
         });
 
         // Persist combined overrides to localStorage so they never disappear
@@ -977,6 +1028,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 customMediaUrl: override.customMediaUrl || finalEx.customMediaUrl,
                 customMediaType: override.customMediaType || finalEx.customMediaType
               };
+            }
+
+            const nameL = (finalEx.name || "").toLowerCase();
+            const idL = (finalEx.id || "").toLowerCase();
+            const isFacePullEx = nameL.includes("face pull") || nameL.includes("facepull") || idL.includes("face-pull");
+            const curMedia = (finalEx.customMediaUrl || finalEx.gifUrl || "").toLowerCase();
+            if (isFacePullEx && (curMedia.includes("0174-8b6lc55") || curMedia.includes("0337-l2v5nan") || curMedia.includes("0139-50betrz") || curMedia.includes("0991-vttbip3"))) {
+              finalEx.customMediaUrl = "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif";
+              finalEx.gifUrl = "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0233-ZfyAGhK.gif";
             }
 
             // Sync sets/reps string

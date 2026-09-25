@@ -491,7 +491,11 @@ export const AdminAssetManager: React.FC = () => {
 
               <div className="flex items-center gap-3">
                 <div className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-200 shrink-0 bg-slate-950">
-                  <UnifiedExerciseMedia exerciseId={selectedExercise.id} exerciseName={selectedExercise.name} />
+                  <UnifiedExerciseMedia 
+                    exerciseId={selectedExercise.id} 
+                    exerciseName={selectedExercise.name} 
+                    mediaUrl={selectedExercise.customMediaUrl}
+                  />
                 </div>
 
                 <div className="space-y-1 min-w-0">

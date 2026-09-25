@@ -38,15 +38,49 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = React.m
   }, [canonicalName, exercise?.category]);
 
   const rawCandidate = mediaUrl || exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl;
-  // If candidate is a legacy broken giphy URL or a legacy misassigned squat GIF on a non-squat movement, prioritize the accurate catalog URL
+  // If candidate is a legacy broken giphy URL, mismatched exercise GIF, or wrong movement pattern, prioritize the accurate catalog URL
   const isCandidateProblematic = useMemo(() => {
-    if (!rawCandidate) return true;
-    if (rawCandidate.includes("giphy.com")) return true;
-    if (rawCandidate.includes("u8946fAnhQ6cH9R16e") && !canonicalName.toLowerCase().includes("squat")) return true;
-    return false;
-  }, [rawCandidate, canonicalName]);
+    const candidateToCheck = mediaUrl || rawCandidate;
+    if (!candidateToCheck) return true;
+    const candLower = candidateToCheck.toLowerCase();
+    const nameLower = canonicalName.toLowerCase();
+    const isFacePull = nameLower.includes("face pull") || nameLower.includes("facepull");
+    const isChestDip = nameLower.includes("dip") || nameLower.includes("chest dip");
+    const isPullUp = nameLower.includes("pull-up") || nameLower.includes("pull up") || nameLower.includes("pullup") || nameLower.includes("chin up") || nameLower.includes("chin-up");
 
-  const rawMediaUrl = (!isCandidateProblematic && rawCandidate) ? rawCandidate : defaultFallbackUrl;
+    if (candLower.includes("giphy.com")) return true;
+    if (candLower.includes("0174-8b6lc55")) return true; // known 404 URL
+    if (candLower.includes("0337-l2v5nan") && isFacePull) return true; // lying across-face press wrongly on face pull
+    if (candLower.includes("0139-50betrz") && isFacePull) return true;
+    if (candLower.includes("0991-vttbip3") && isFacePull) return true;
+    if (candLower.includes("0063-elhhvgj") && !nameLower.includes("squat")) return true;
+    if (candLower.includes("u8946fanhq6ch9r16e") && !nameLower.includes("squat")) return true;
+
+    // Biomechanical validation: Detect Pull Ups vs Chest Dips mismatch
+    if (isChestDip && (candLower.includes("0652-lbdjfxj") || candLower.includes("2808-bmrwwzo") || candLower.includes("pullup") || candLower.includes("pull-up") || candLower.includes("pull_up"))) {
+      return true;
+    }
+    if (isPullUp && (candLower.includes("0251-9wtm7dq") || candLower.includes("3288-rwobmi5") || candLower.includes("3289-05cf2v8") || candLower.includes("dip"))) {
+      return true;
+    }
+
+    return false;
+  }, [mediaUrl, rawCandidate, canonicalName]);
+
+  // Derive mediaUrl safely: if candidate is problematic or mismatched, default to accurate canonical catalog
+  const rawMediaUrl = useMemo(() => {
+    if (isCandidateProblematic) {
+      return defaultFallbackUrl;
+    }
+    if (mediaUrl && !mediaUrl.includes("giphy.com") && !mediaUrl.includes("0174-8b6lC55")) {
+      return mediaUrl;
+    }
+    if (rawCandidate) {
+      return rawCandidate;
+    }
+    return defaultFallbackUrl;
+  }, [mediaUrl, isCandidateProblematic, rawCandidate, defaultFallbackUrl]);
+
   const initialResolvedUrl = resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl;
 
   const [activeUrl, setActiveUrl] = useState<string>(initialResolvedUrl);

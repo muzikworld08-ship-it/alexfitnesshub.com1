@@ -3767,8 +3767,17 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
         rawInputUrl.includes("supabase.in/storage")
       );
 
-      if (isCloudStorageUrl || (rawInputUrl && (rawInputUrl.startsWith("http://") || rawInputUrl.startsWith("https://")))) {
-        customMediaUrl = rawInputUrl;
+      if (
+        isCloudStorageUrl ||
+        (rawInputUrl && (
+          rawInputUrl.startsWith("http://") ||
+          rawInputUrl.startsWith("https://") ||
+          rawInputUrl.startsWith("/assets/") ||
+          rawInputUrl.startsWith("assets/") ||
+          rawInputUrl.startsWith("blob:")
+        ))
+      ) {
+        customMediaUrl = rawInputUrl.startsWith("assets/") ? `/${rawInputUrl}` : rawInputUrl;
       } else if (rawInputUrl && rawInputUrl.startsWith("data:")) {
         // Upload base64 payload to permanent cloud storage
         const match = rawInputUrl.match(/^data:([^;]+);base64,(.+)$/);

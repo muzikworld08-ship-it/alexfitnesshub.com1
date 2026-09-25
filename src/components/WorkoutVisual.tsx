@@ -55,7 +55,25 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
     return getExerciseGifUrl(exercise?.name || exerciseName || category || "");
   }, [exercise?.name, exerciseName, category]);
 
-  const primaryRawUrl = customMediaUrl || exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl || defaultGifUrl;
+  const isCandidateProblematic = React.useMemo(() => {
+    const raw = customMediaUrl || exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl;
+    if (!raw) return false;
+    const candLower = raw.toLowerCase();
+    const nameLower = (exercise?.name || exerciseName || "").toLowerCase();
+    const isFacePull = nameLower.includes("face pull") || nameLower.includes("facepull");
+
+    if (candLower.includes("giphy.com")) return true;
+    if (candLower.includes("0174-8b6lc55")) return true;
+    if (candLower.includes("0337-l2v5nan") && isFacePull) return true;
+    if (candLower.includes("0139-50betrz") && isFacePull) return true;
+    if (candLower.includes("0991-vttbip3") && isFacePull) return true;
+    if (candLower.includes("0063-elhhvgj") && !nameLower.includes("squat")) return true;
+    return false;
+  }, [customMediaUrl, exercise?.customMediaUrl, exercise?.gifUrl, exercise?.imageUrl, exercise?.name, exerciseName]);
+
+  const primaryRawUrl = isCandidateProblematic
+    ? defaultGifUrl
+    : (customMediaUrl || exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl || defaultGifUrl);
   const initialResolvedUrl = resolveAdminMediaUrl(primaryRawUrl) || defaultGifUrl;
   
   // Performance & Robustness states

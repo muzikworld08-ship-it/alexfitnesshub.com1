@@ -1693,7 +1693,7 @@ export default function BellyFatShredView() {
                         const isCurrent = activeGuideStep === index;
                         const isCompleted = activeGuideStep > index;
                         return (
-                          <div key={index} className="text-center space-y-1">
+                          <div key={name} className="text-center space-y-1">
                             <div className={`h-1.5 rounded-full transition-colors duration-300 ${
                               isCurrent ? "bg-[#D32F2F]" : isCompleted ? "bg-emerald-500" : "bg-slate-200"
                             }`} />
@@ -2629,7 +2629,7 @@ export default function BellyFatShredView() {
                   const drillId = `step_0_drill_${idx}`;
                   return (
                     <BoldDrillCard
-                      key={idx}
+                      key={drillId}
                       drill={drill}
                       sectionType="warmup"
                       sectionTitle="Warm-Up"
@@ -2665,7 +2665,7 @@ export default function BellyFatShredView() {
                   const drillId = `step_1_drill_${idx}`;
                   return (
                     <BoldDrillCard
-                      key={idx}
+                      key={drillId}
                       drill={drill}
                       sectionType="core"
                       sectionTitle="Midsection"
@@ -2701,7 +2701,7 @@ export default function BellyFatShredView() {
                   const drillId = `step_2_drill_${idx}`;
                   return (
                     <BoldDrillCard
-                      key={idx}
+                      key={drillId}
                       drill={drill}
                       sectionType="hiit"
                       sectionTitle="HIIT Burn"
@@ -2737,7 +2737,7 @@ export default function BellyFatShredView() {
                   const drillId = `step_3_drill_${idx}`;
                   return (
                     <BoldDrillCard
-                      key={idx}
+                      key={drillId}
                       drill={drill}
                       sectionType="strength"
                       sectionTitle="Compound Strength"
@@ -2773,7 +2773,7 @@ export default function BellyFatShredView() {
                   const drillId = `step_4_drill_${idx}`;
                   return (
                     <BoldDrillCard
-                      key={idx}
+                      key={drillId}
                       drill={drill}
                       sectionType="fullBodyCircuit"
                       sectionTitle="Metabolic Finisher"
@@ -2809,7 +2809,7 @@ export default function BellyFatShredView() {
                   const drillId = `step_5_drill_${idx}`;
                   return (
                     <BoldDrillCard
-                      key={idx}
+                      key={drillId}
                       drill={drill}
                       sectionType="cooldown"
                       sectionTitle="Cooldown"

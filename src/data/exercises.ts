@@ -541,7 +541,7 @@ export function determineCategories(
     nameL.includes("pec deck") ||
     nameL.includes("crossover") ||
     (nameL.includes("fly") && !nameL.includes("rear delt")) ||
-    (nameL.includes("dips") && nameL.includes("chest"));
+    (nameL.includes("dip") && (nameL.includes("chest") || nameL === "dips" || nameL === "dip" || nameL.includes("parallel bar")));
   if (isChest) {
     cats.push("Chest");
   }
@@ -552,7 +552,9 @@ export function determineCategories(
     (nameL.includes("row") && !nameL.includes("upright row") && !nameL.includes("rowing machine")) ||
     nameL.includes("pullup") ||
     nameL.includes("pull-up") ||
+    nameL.includes("pull up") ||
     nameL.includes("chin-up") ||
+    nameL.includes("chin up") ||
     nameL.includes("chinup") ||
     nameL.includes("pulldown") ||
     nameL.includes("deadlift") ||

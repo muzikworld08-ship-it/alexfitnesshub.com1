@@ -5,6 +5,7 @@ import { WORKOUTS_DATABASE, WORKOUT_CATEGORIES_INFO, Workout, WorkoutExercise, g
 import YouTubePlayer from "./video/YouTubePlayer";
 import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
+import { findMatchingExercise } from "../utils/exerciseMatching";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Search, SlidersHorizontal, Lock, CheckCircle, PlusCircle, Sparkles, X, 
@@ -1653,7 +1654,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                       <span className="font-extrabold text-slate-800 block uppercase text-[10px] font-mono tracking-wider">Step-by-Step Technique Instructions:</span>
                       <ol className="space-y-2">
                         {selectedExercise.instructions.map((inst, index) => (
-                          <li key={index} className="flex gap-2.5 text-xs text-slate-655 leading-relaxed">
+                          <li key={`step-${selectedExercise.id}-${index}`} className="flex gap-2.5 text-xs text-slate-655 leading-relaxed">
                             <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono font-bold text-emerald-500 shrink-0">
                               {index + 1}
                             </span>
@@ -1957,6 +1958,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 <UnifiedExerciseMedia
                   exerciseId={activeExercise.id}
                   exerciseName={activeExercise.name}
+                  mediaUrl={activeExercise.customMediaUrl}
                   className="w-full h-full object-cover workout-gif-display"
                 />
                 <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-xs px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-white flex items-center gap-2">
@@ -2223,9 +2225,10 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             <div className="space-y-4">
               {activeWorkout.exercises.map((workoutEx: any, index: number) => {
                 const exDetail = getOrCreateExercise(workoutEx.name, exercises);
+                const stableKey = exDetail?.id || workoutEx.id || `active-workout-${activeWorkout.id}-${workoutEx.name}-${index}`;
                 return (
                   <div
-                    key={index}
+                    key={stableKey}
                     className="bg-white border border-[#ECECEC] rounded-2xl p-6 transition-all duration-200 hover:shadow-sm flex flex-col md:flex-row justify-between items-stretch gap-6"
                   >
                     {/* Left Side: Info */}
@@ -2284,6 +2287,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                       <UnifiedExerciseMedia
                         exerciseId={exDetail.id}
                         exerciseName={exDetail.name}
+                        mediaUrl={exDetail.customMediaUrl}
                         className="w-full h-full object-contain workout-gif-display"
                       />
                     </div>
@@ -4250,7 +4254,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 
                 <div className="space-y-3">
                   {selectedProgram.schedule.map((sch, i) => (
-                    <div key={i} className="p-4 rounded-xl bg-slate-950 border border-slate-850 text-xs text-left">
+                    <div key={`sch-${selectedProgram.id}-${sch.day}`} className="p-4 rounded-xl bg-slate-950 border border-slate-850 text-xs text-left">
                       <div className="flex items-center justify-between border-b border-slate-900 pb-2 mb-2">
                         <span className="font-extrabold text-emerald-400 uppercase font-mono tracking-wider">{sch.day}</span>
                         <span className="text-[10px] font-semibold text-slate-200">{sch.focus}</span>
@@ -4260,11 +4264,11 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                         <p className="text-[10px] font-bold text-slate-400 uppercase font-mono">TARGET EXERCISES:</p>
                         <div className="flex flex-wrap gap-2">
                           {sch.exercises.map((exName, idx) => {
-                            // Find matching exercise in DB
-                            const match = exercises.find(ex => ex.name.toLowerCase() === exName.toLowerCase() || ex.id.toLowerCase().includes(exName.toLowerCase().replace(/\s+/g, "-")));
+                            // Find matching exercise in DB using centralized matching
+                            const match = findMatchingExercise(exercises, null, exName);
                             return (
                               <button
-                                key={idx}
+                                key={match?.id || `sch-ex-${selectedProgram.id}-${sch.day}-${exName}`}
                                 type="button"
                                 onClick={() => {
                                   if (match) {

@@ -1,5 +1,20 @@
 // Known exercise aliases and program mappings
 const EXERCISE_ALIASES: Record<string, string> = {
+  "facepull": "face pulls",
+  "facepulls": "face pulls",
+  "face pull": "face pulls",
+  "face-pull": "face pulls",
+  "face-pulls": "face pulls",
+  "cable face pull": "face pulls",
+  "cable face pulls": "face pulls",
+  "cable face pull with external rotation": "cable face pull with external rotation",
+  "face pulls band pull aparts": "face pulls",
+  "face pulls / band pull aparts": "face pulls",
+  "cable rear delt row with rope": "face pulls",
+  "cable standing rear delt row with rope": "face pulls",
+  "cable standing rear delt row (with rope)": "face pulls",
+  "cable rear delt row": "face pulls",
+  "band pull aparts": "face pulls",
   "frog pumps": "frog pump glute burner",
   "frog pump": "frog pump glute burner",
   "frog pumps feet soles together": "frog pump glute burner",
@@ -23,16 +38,23 @@ const EXERCISE_ALIASES: Record<string, string> = {
   "dumbbell step-ups": "step ups with knee drive",
   "bodyweight chair / sofa dips": "dips",
   "chair dips": "dips",
-  "sofa dips": "dips"
+  "sofa dips": "dips",
+  "pull up": "pull-ups",
+  "pull ups": "pull-ups",
+  "pullup": "pull-ups",
+  "pullups": "pull-ups",
+  "chest dip": "chest dips",
+  "chest dips": "chest dips"
 };
 
 /**
- * Normalizes an exercise name or ID by lowercasing, stripping prefixes, 
+ * Normalizes an exercise name or ID by lowercasing, stripping file extensions, prefixes, 
  * removing parentheticals, and reducing whitespace.
  */
 function cleanExerciseString(str: string): string {
   return str
     .toLowerCase()
+    .replace(/\.(gif|mp4|webm|png|jpe?g|webp|mov)$/i, "") // strip file extensions from uploaded media
     .replace(/^exercise[-_]/, "")
     .replace(/^exercise/, "")
     .replace(/\([^)]*\)/g, "") // remove parentheticals like (feet soles together)
@@ -78,18 +100,23 @@ export function isExerciseMatch(
 
   if (!normTarget || !normCandidate) return false;
 
-  // Exact normalized match (e.g. "push-ups" vs "pushups" or "push ups")
+  // Exact normalized match (e.g. "push-ups" vs "pushups" or "push ups" or "facepull" vs "face pull")
   if (normTarget === normCandidate) return true;
 
-  // Singular / Plural variation (e.g. "pushup" vs "pushups" or "squat" vs "squats")
+  // Singular / Plural variation (e.g. "pushup" vs "pushups" or "facepull" vs "facepulls")
   if (normTarget + "s" === normCandidate || normTarget === normCandidate + "s") return true;
 
-  // Substring inclusion when one is fully contained in the other (e.g. "frog pump" in "frog pump glute burner")
-  if (
-    (cleanTarget.length >= 6 && cleanCandidate.includes(cleanTarget)) ||
-    (cleanCandidate.length >= 6 && cleanTarget.includes(cleanCandidate))
-  ) {
-    return true;
+  // Substring inclusion with word boundaries, avoiding generic word over-matching (e.g. "press" matching all presses)
+  const genericShortWords = new Set(["press", "pull", "squat", "lunge", "curl", "row", "plank", "dip", "raise", "fly", "push"]);
+  if (!genericShortWords.has(normTarget) && !genericShortWords.has(normCandidate)) {
+    if (
+      (cleanTarget.length >= 8 && cleanCandidate.includes(cleanTarget)) ||
+      (cleanCandidate.length >= 8 && cleanTarget.includes(cleanCandidate)) ||
+      (normTarget.length >= 8 && normCandidate.includes(normTarget)) ||
+      (normCandidate.length >= 8 && normTarget.includes(normCandidate))
+    ) {
+      return true;
+    }
   }
 
   return false;
