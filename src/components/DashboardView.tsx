@@ -439,14 +439,14 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
 
           {/* Main workspace section renderer */}
           <div className="transition-all duration-300 bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/60 shadow-sm min-h-[75vh] w-full max-w-full min-w-0">
-            <AnimatePresence mode="wait">
+            <AnimatePresence>
               {!isPremium && ["plan", "coach", "nutrition", "videos", "handbook", "reports", "calibration", "trajectory", "habits", "community"].includes(activeTab) ? (
                 <motion.div
                   key="lock-card"
-                  initial={{ opacity: 0, y: 15 }}
+                  initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.1, ease: "easeOut" }}
                 >
                   <PremiumLockCard 
                     setView={setView}
@@ -467,10 +467,10 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
               ) : (
                 <motion.div
                   key={activeTab}
-                  initial={{ opacity: 0, y: 15 }}
+                  initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.1, ease: "easeOut" }}
                 >
                   {/* 1. Workouts Section */}
                   {activeTab === "workouts" && (

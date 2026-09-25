@@ -133,7 +133,7 @@ export const DailyLifestyleChecklist: React.FC<DailyLifestyleChecklistProps> = (
           className="bg-gradient-to-r from-amber-500 via-rose-500 to-emerald-500 h-full"
           initial={{ width: 0 }}
           animate={{ width: `${scorePercent}%` }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.15 }}
         />
       </div>
 
@@ -221,7 +221,7 @@ export const DailyLifestyleChecklist: React.FC<DailyLifestyleChecklistProps> = (
               className="bg-cyan-500 h-full rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${waterPercent}%` }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.15 }}
             />
           </div>
         </div>

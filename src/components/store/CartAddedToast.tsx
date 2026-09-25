@@ -36,7 +36,7 @@ export const CartAddedToast: React.FC = () => {
         initial={{ opacity: 0, y: 30, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.96 }}
-        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
         className="fixed bottom-5 right-4 left-4 sm:left-auto sm:right-6 sm:w-[400px] z-50 pointer-events-auto"
         role="status"
         aria-live="polite"

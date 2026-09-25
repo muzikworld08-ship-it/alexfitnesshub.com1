@@ -196,7 +196,7 @@ export default function WorkoutCelebrationModal({
                 className="bg-gradient-to-r from-red-600 via-amber-500 to-emerald-500 h-full rounded-full"
                 initial={{ width: `${Math.max(2, Math.round(((completedDay - 1) / totalDays) * 100))}%` }}
                 animate={{ width: `${Math.round((completedDay / totalDays) * 100)}%` }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
               />
             </div>
           </div>
