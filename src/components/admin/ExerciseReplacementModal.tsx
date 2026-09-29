@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Search, X, Dumbbell, Sparkles, Check, Filter, ArrowRightLeft, Flame } from "lucide-react";
 import { Exercise, getExerciseGifUrl } from "../../data/exercises";
 import { ChallengeExerciseItem } from "../../types/challengeEngine";
+import { isHomeEligibleExercise } from "../../utils/dynamicWorkoutEngine";
 import UnifiedExerciseMedia from "../UnifiedExerciseMedia";
 
 interface ExerciseReplacementModalProps {
@@ -51,6 +52,10 @@ export default function ExerciseReplacementModal({
 
   const targetCategory = targetExercise?.category?.toLowerCase() || "";
 
+  const isHomeProgram = useMemo(() => {
+    return Boolean((targetExercise?.programId || targetExercise?.programName || "").toLowerCase().includes("home"));
+  }, [targetExercise]);
+
   // Smart suggestions: exercises matching same muscles/category
   const smartMatches = useMemo(() => {
     if (!targetExercise) return [];
@@ -59,6 +64,10 @@ export default function ExerciseReplacementModal({
       const cleanName = ex.name.toLowerCase().trim();
       if (seen.has(cleanName) || seen.has(ex.id)) return false;
       if (ex.id === targetExercise.id || ex.name === targetExercise.exerciseName) return false;
+
+      // When replacing in home programs, strictly forbid gym/barbell/dumbbell gear
+      if (isHomeProgram && !isHomeEligibleExercise(ex)) return false;
+
       const exMuscles = (ex.muscleGroups || []).map(m => m.toLowerCase());
       const exCat = (ex.category || "").toLowerCase();
       const sharesMuscle = targetMuscles.some(tm => exMuscles.some(em => em.includes(tm) || tm.includes(em)));
@@ -70,7 +79,7 @@ export default function ExerciseReplacementModal({
       }
       return false;
     }).slice(0, 4);
-  }, [targetExercise, libraryExercises, targetMuscles, targetCategory]);
+  }, [targetExercise, libraryExercises, targetMuscles, targetCategory, isHomeProgram]);
 
   // Filtered pool
   const filteredExercises = useMemo(() => {
@@ -84,6 +93,9 @@ export default function ExerciseReplacementModal({
       if (targetExercise && (ex.id === targetExercise.id || ex.name === targetExercise.exerciseName)) {
         return false;
       }
+
+      // When replacing in home programs, strictly forbid gym/barbell/dumbbell gear
+      if (isHomeProgram && !isHomeEligibleExercise(ex)) return false;
 
       if (selectedCategory !== "All") {
         const cat = (ex.category || "").toLowerCase();

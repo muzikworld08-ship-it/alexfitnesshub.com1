@@ -1,5 +1,5 @@
 import { Exercise } from "./exercises";
-import { filterExercisesForSplit } from "../utils/dynamicWorkoutEngine";
+import { filterExercisesForSplit, isHomeEligibleExercise } from "../utils/dynamicWorkoutEngine";
 
 export interface HomeOnboardingProfile {
   gender: "Male" | "Female" | "Other";
@@ -249,7 +249,8 @@ export function getHomeWorkoutForDay(
     ? activeExercisesList
     : getActiveExercisesFromStorage();
 
-  const matched = filterExercisesForSplit(allActive, targets);
+  // Strictly filter for home-eligible exercises only: no barbell, dumbbell, or gym machines
+  const matched = filterExercisesForSplit(allActive, targets, { requireHomeOnly: true });
 
   const exercises: HomeExercise[] = matched.map((ex, idx) => {
     const mediaUrl = ex.customMediaUrl || ex.gifUrl || ex.imageUrl || "";

@@ -1,5 +1,6 @@
 import { Exercise, EXERCISES, getExerciseGifUrl } from "./exercises";
 import { ChallengeItem, ChallengeWorkout } from "../types";
+import { isHomeEligibleExercise } from "../utils/dynamicWorkoutEngine";
 
 export interface PremiumChallenge {
   id: string;
@@ -185,6 +186,11 @@ export function getChallengeWorkouts(challenge: PremiumChallenge, exercisesList?
   } else {
     // Otherwise, intelligently derive workouts based on challenge category and splits
     const challengeId = challenge.id;
+    const isHomeChallenge = challengeId.includes("home") || 
+      challenge.category.toLowerCase().includes("home") || 
+      challenge.category.toLowerCase().includes("calisthenics") ||
+      challenge.title.toLowerCase().includes("home");
+
     const splitCategories = CHALLENGE_SPLITS[challengeId] || [challenge.category || "Full Body"];
 
     const matched: Exercise[] = [];
@@ -196,6 +202,7 @@ export function getChallengeWorkouts(challenge: PremiumChallenge, exercisesList?
 
       const pool = exercises.filter(ex => {
         if (seenIds.has(ex.id)) return false;
+        if (isHomeChallenge && !isHomeEligibleExercise(ex)) return false;
         const mMatches = ex.muscleGroups?.some(m => splitWords.some(w => m.toLowerCase().includes(w)));
         const cMatches = ex.category.toLowerCase().includes(challenge.category.toLowerCase()) || 
                          ex.categories?.some(c => c.toLowerCase().includes(challenge.category.toLowerCase()));
@@ -214,7 +221,8 @@ export function getChallengeWorkouts(challenge: PremiumChallenge, exercisesList?
     // Ensure every program has exactly 12 workouts according to its categories
     if (matched.length < 12) {
       const categoryMatches = exercises.filter(ex => 
-        !seenIds.has(ex.id) && (
+        !seenIds.has(ex.id) && 
+        (!isHomeChallenge || isHomeEligibleExercise(ex)) && (
           ex.category.toLowerCase().includes(challenge.category.toLowerCase()) ||
           ex.categories?.some(c => c.toLowerCase().includes(challenge.category.toLowerCase()))
         )
@@ -230,7 +238,7 @@ export function getChallengeWorkouts(challenge: PremiumChallenge, exercisesList?
     // Fallback to general exercises to guarantee 12 workouts
     if (matched.length < 12) {
       for (const ex of exercises) {
-        if (!seenIds.has(ex.id) && matched.length < 12) {
+        if (!seenIds.has(ex.id) && (!isHomeChallenge || isHomeEligibleExercise(ex)) && matched.length < 12) {
           seenIds.add(ex.id);
           matched.push(ex);
         }

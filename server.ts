@@ -6,7 +6,7 @@ import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import crypto from "crypto";
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, addDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, addDoc, writeBatch, deleteDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import helmet from "helmet";
 import cors from "cors";
@@ -4316,9 +4316,21 @@ app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any
         } catch (e) {}
       }
 
+      const isHomeProg = (programId || "").toLowerCase().includes("home");
+      const isGymGear = (ex: any) => {
+        const name = (ex.name || ex.exerciseName || "").toLowerCase();
+        const desc = (ex.description || "").toLowerCase();
+        const loc = (ex.locationSuitability || "").toLowerCase();
+        const equip = (Array.isArray(ex.equipment) ? ex.equipment.join(" ") : String(ex.equipment || "")).toLowerCase();
+        if (loc === "gym") return true;
+        const kw = ["barbell", "dumbbell", "kettlebell", "cable", "machine", "smith machine", "leg press", "hack squat", "pec deck", "lat pulldown", "ez bar", "ez-bar", "t-bar", "landmine", "trap bar", "bench press", "plate", "rack"];
+        return kw.some(k => name.includes(k) || equip.includes(k) || (equip.length === 0 && desc.includes(k)));
+      };
+
       let candidates = masterPool.filter(ex => {
         const exName = (ex.name || (ex as any).exerciseName || "").toLowerCase().trim();
         if (!exName || assignedNames.has(exName) || ex.id === exerciseId) return false;
+        if (isHomeProg && isGymGear(ex)) return false;
 
         const cat = (ex.category || "").toLowerCase().trim();
         const cats = Array.isArray(ex.categories) ? ex.categories.map(c => c.toLowerCase().trim()) : [];
@@ -4335,7 +4347,9 @@ app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any
       if (candidates.length === 0) {
         candidates = masterPool.filter(ex => {
           const exName = (ex.name || (ex as any).exerciseName || "").toLowerCase().trim();
-          return exName && !assignedNames.has(exName) && ex.id !== exerciseId;
+          if (!exName || assignedNames.has(exName) || ex.id === exerciseId) return false;
+          if (isHomeProg && isGymGear(ex)) return false;
+          return true;
         });
       }
 
@@ -4456,6 +4470,196 @@ app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any
   } catch (error: any) {
     console.error("Failed to delete and replace workout:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
+// POST Admin Utility: Identify & permanently delete any workouts categorized as 'home' containing restricted equipment (barbell, dumbbell, machines)
+app.post("/api/admin/workouts/purge-restricted-home", requireAdmin, async (req: any, res) => {
+  try {
+    const deletedWorkouts: Array<{ id: string; name: string; category: string; equipment: string[]; reason: string }> = [];
+    const restrictedKeywords = [
+      "barbell", "dumbbell", "dumbbells", "dumbell", "db ", " bb", "(db)", "(bb)",
+      "kettlebell", "cable", "cables", "machine", "smith machine", "leg press",
+      "hack squat", "pec deck", "lat pulldown", "pulldown", "leg extension",
+      "ez bar", "ez-bar", "t-bar", "landmine", "trap bar", "bench press",
+      "preacher curl", "preacher bench", "plate", "weight plate", "plates"
+    ];
+
+    const isRestricted = (ex: any) => {
+      if (!ex) return { isViolating: false, reason: "" };
+      const name = String(ex.name || ex.exerciseName || "").toLowerCase().trim();
+      const cat = String(ex.category || "").toLowerCase().trim();
+      const cats = Array.isArray(ex.categories) ? ex.categories.map((c: any) => String(c).toLowerCase().trim()) : [];
+      const location = String(ex.locationSuitability || "").toLowerCase().trim();
+      const tags = Array.isArray(ex.tags) ? ex.tags.map((t: any) => String(t).toLowerCase().trim()) : [];
+      const prog = String(ex.programId || "").toLowerCase().trim();
+
+      const isHome = cat.includes("home") || cats.some(c => c.includes("home")) || location === "home" || tags.some(t => t.includes("home")) || prog.includes("home");
+      if (!isHome) return { isViolating: false, reason: "" };
+
+      const equip = (Array.isArray(ex.equipment) ? ex.equipment.join(" ") : String(ex.equipment || "")).toLowerCase().trim();
+      const desc = String(ex.description || "").toLowerCase().trim();
+
+      for (const kw of restrictedKeywords) {
+        if (name.includes(kw)) return { isViolating: true, reason: `Name contains restricted tag "${kw}"` };
+        if (equip.includes(kw)) return { isViolating: true, reason: `Equipment contains restricted tag "${kw}"` };
+        if ((!equip || equip.includes("none")) && desc.includes(kw)) return { isViolating: true, reason: `Description requires "${kw}"` };
+      }
+
+      if (equip.includes("gym")) return { isViolating: true, reason: "Requires gym equipment" };
+      return { isViolating: false, reason: "" };
+    };
+
+    // 1. Audit and clean custom_exercise_overrides.json
+    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
+      try {
+        const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
+        if (raw) {
+          const overrides = JSON.parse(raw);
+          let modified = false;
+          for (const key of Object.keys(overrides)) {
+            const item = overrides[key];
+            const check = isRestricted(item);
+            if (check.isViolating) {
+              deletedWorkouts.push({
+                id: item.id || key,
+                name: item.name || item.exerciseName || key,
+                category: item.category || "Home Workouts",
+                equipment: Array.isArray(item.equipment) ? item.equipment : [String(item.equipment || "")],
+                reason: check.reason
+              });
+              delete overrides[key];
+              modified = true;
+            }
+          }
+          if (modified) {
+            fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
+          }
+        }
+      } catch (err) {
+        console.error("Error purging from OVERRIDES_FILE_PATH:", err);
+      }
+    }
+
+    // 2. Audit and clean Firestore collections
+    if (db) {
+      try {
+        const withTimeout = <T>(p: Promise<T>, ms = 3000): Promise<T> =>
+          Promise.race([
+            p,
+            new Promise<T>((_, reject) => setTimeout(() => reject(new Error("Firestore timeout")), ms))
+          ]);
+
+        const exercisesSnap = await withTimeout(getDocs(collection(db, "exercises")));
+        const violatingIds: string[] = [];
+        exercisesSnap.docs.forEach((docSnap: any) => {
+          const data = docSnap.data();
+          const check = isRestricted(data);
+          if (check.isViolating) {
+            violatingIds.push(docSnap.id);
+            if (!deletedWorkouts.some(d => d.id === docSnap.id)) {
+              deletedWorkouts.push({
+                id: docSnap.id,
+                name: data.name || data.exerciseName || docSnap.id,
+                category: data.category || "Home Workouts",
+                equipment: Array.isArray(data.equipment) ? data.equipment : [String(data.equipment || "")],
+                reason: check.reason
+              });
+            }
+          }
+        });
+
+        if (violatingIds.length > 0) {
+          let batch = writeBatch(db);
+          let count = 0;
+          for (const id of violatingIds) {
+            batch.delete(doc(db, "exercises", id));
+            count++;
+            if (count % 400 === 0) {
+              await withTimeout(batch.commit());
+              batch = writeBatch(db);
+            }
+          }
+          if (count % 400 !== 0) {
+            await withTimeout(batch.commit());
+          }
+        }
+
+        const genSnap = await withTimeout(getDocs(collection(db, "generated_exercises")));
+        const violatingGenIds: string[] = [];
+        genSnap.docs.forEach((docSnap: any) => {
+          const data = docSnap.data();
+          const check = isRestricted(data);
+          if (check.isViolating) {
+            violatingGenIds.push(docSnap.id);
+            if (!deletedWorkouts.some(d => d.id === docSnap.id)) {
+              deletedWorkouts.push({
+                id: docSnap.id,
+                name: data.name || data.exerciseName || docSnap.id,
+                category: data.category || "Home Workouts",
+                equipment: Array.isArray(data.equipment) ? data.equipment : [String(data.equipment || "")],
+                reason: check.reason
+              });
+            }
+          }
+        });
+
+        if (violatingGenIds.length > 0) {
+          let genBatch = writeBatch(db);
+          let gCount = 0;
+          for (const id of violatingGenIds) {
+            genBatch.delete(doc(db, "generated_exercises", id));
+            gCount++;
+            if (gCount % 400 === 0) {
+              await withTimeout(genBatch.commit());
+              genBatch = writeBatch(db);
+            }
+          }
+          if (gCount % 400 !== 0) {
+            await withTimeout(genBatch.commit());
+          }
+        }
+      } catch (fErr) {
+        console.warn("Firestore collection audit notice (using server files):", fErr);
+      }
+    }
+
+    // 3. Update DELETED_EXERCISES_FILE_PATH
+    if (deletedWorkouts.length > 0) {
+      try {
+        let deletedList: string[] = [];
+        if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
+          const raw = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
+          if (raw) deletedList = JSON.parse(raw);
+        }
+        deletedWorkouts.forEach(dw => {
+          if (!deletedList.includes(dw.id)) deletedList.push(dw.id);
+        });
+        fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(deletedList, null, 2), "utf-8");
+      } catch (dErr) {
+        console.error("Error updating DELETED_EXERCISES_FILE_PATH:", dErr);
+      }
+    }
+
+    await logAdminActivityOnFirebase(
+      req.user?.email || "admin@alexfitnesshub.com",
+      req.user?.uid || "admin",
+      "PURGE_RESTRICTED_HOME_WORKOUTS",
+      `Admin initiated restricted equipment home workout audit. Cleaned ${deletedWorkouts.length} item(s).`,
+      { deletedCount: deletedWorkouts.length, deletedWorkouts }
+    );
+
+    res.json({
+      success: true,
+      count: deletedWorkouts.length,
+      deletedWorkouts,
+      message: deletedWorkouts.length > 0
+        ? `Successfully purged ${deletedWorkouts.length} workout(s) categorized as home that contained restricted equipment.`
+        : "Integrity audit passed: 0 restricted home workouts detected."
+    });
+  } catch (err: any) {
+    console.error("Error in purge-restricted-home endpoint:", err);
+    res.status(500).json({ success: false, error: err?.message || "Failed to purge restricted home workouts." });
   }
 });
 

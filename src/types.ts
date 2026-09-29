@@ -209,6 +209,7 @@ export interface WorkoutLibraryFilters {
   selectedExerciseType: string;
   selectedTrainingGoal: string;
   activeBrowseTab: "bodyparts" | "cardio" | "mobility" | "programs" | "all";
+  selectedEnvironment?: "all" | "home" | "gym";
 }
 
 export interface ChallengeWorkout {

@@ -11,8 +11,9 @@ import {
   Search, SlidersHorizontal, Lock, CheckCircle, PlusCircle, Sparkles, X, 
   ChevronRight, HelpCircle, AlertTriangle, Play, Shield, Calendar, Apple, Dumbbell, ArrowRight, Clipboard,
   Compass, CheckCircle2, UploadCloud, FileVideo, FileImage, Trash2, ArrowLeft, RotateCcw, Award, Activity,
-  Heart, Bookmark, Crown, Flame
+  Heart, Bookmark, Crown, Flame, Home, Layers
 } from "lucide-react";
+import { isHomeEligibleExercise } from "../utils/dynamicWorkoutEngine";
 import WorkoutVisual from "./WorkoutVisual";
 import MuscleAnatomyVisual from "./MuscleAnatomyVisual";
 import PageHero from "./PageHero";
@@ -332,8 +333,16 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
     selectedEquipment,
     selectedExerciseType,
     selectedTrainingGoal,
-    activeBrowseTab
+    activeBrowseTab,
+    selectedEnvironment = "all"
   } = workoutFilters;
+
+  const setSelectedEnvironment = (val: "all" | "home" | "gym" | ((p: "all" | "home" | "gym") => "all" | "home" | "gym")) => {
+    const nextVal = typeof val === "function" ? val(selectedEnvironment as any) : val;
+    setWorkoutFilters({ selectedEnvironment: nextVal });
+    setCurrentPage(1);
+    setCategoryExercisePage(1);
+  };
 
   const setSearchQuery = (val: string | ((p: string) => string)) => {
     const nextVal = typeof val === "function" ? val(searchQuery) : val;
@@ -773,8 +782,9 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
     if (selectedEquipment !== "All") count++;
     if (selectedExerciseType !== "All") count++;
     if (selectedTrainingGoal !== "All") count++;
+    if (selectedEnvironment !== "all") count++;
     return count;
-  }, [selectedCategory, selectedDifficulty, selectedMuscleGroup, selectedEquipment, selectedExerciseType, selectedTrainingGoal]);
+  }, [selectedCategory, selectedDifficulty, selectedMuscleGroup, selectedEquipment, selectedExerciseType, selectedTrainingGoal, selectedEnvironment]);
 
   // Unified Smart Search Engine and organizing matches
   const filteredExercises = useMemo(() => {
@@ -856,6 +866,15 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
         matchesEquipment = !exEquipment.includes("Bodyweight") && !exEquipment.includes("None") && !exEquipment.includes("No Equipment");
       } else if (selectedEquipment !== "All") {
         matchesEquipment = exEquipment.includes(selectedEquipment);
+      }
+
+      // Home vs Gym Categorization Filter:
+      // "home" (no equipment / bodyweight only; zero barbells or dumbbells)
+      // "gym" (barbell, dumbbell, cables, or machines required)
+      if (selectedEnvironment === "home") {
+        if (!isHomeEligibleExercise(ex)) return false;
+      } else if (selectedEnvironment === "gym") {
+        if (isHomeEligibleExercise(ex)) return false;
       }
 
       const matchesType = selectedExerciseType === "All" || getExerciseType(ex) === selectedExerciseType;
@@ -1023,7 +1042,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
     }
 
     return deduplicated;
-  }, [exercises, searchQuery, selectedCategory, selectedDifficulty, selectedMuscleGroup, selectedEquipment, selectedExerciseType, selectedTrainingGoal, isUserPremium]);
+  }, [exercises, searchQuery, selectedCategory, selectedDifficulty, selectedMuscleGroup, selectedEquipment, selectedExerciseType, selectedTrainingGoal, selectedEnvironment, isUserPremium]);
 
   // Real-time Curated Workouts filter
   const filteredWorkouts = useMemo(() => {
@@ -1042,6 +1061,24 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
       const nameLower = (workout.name || "").toLowerCase();
       const descLower = (workout.description || "").toLowerCase();
       const equipLower = (workout.equipmentNeeded || "").toLowerCase();
+
+      // Environment filter: "home" (no equipment) vs "gym" (barbell/dumbbell required)
+      if (selectedEnvironment === "home") {
+        const hasGymKeywords = equipLower.includes("barbell") || equipLower.includes("dumbbell") || equipLower.includes("cable") || equipLower.includes("machine") ||
+          workout.exercises.some(e => {
+            const el = e.name.toLowerCase();
+            return el.includes("barbell") || el.includes("dumbbell") || el.includes("cable") || el.includes("machine");
+          });
+        const isHomeExplicit = equipLower.includes("bodyweight") || equipLower.includes("no equipment") || equipLower.includes("none") || (workout.category as any) === "Category 1";
+        if (hasGymKeywords || !isHomeExplicit) return false;
+      } else if (selectedEnvironment === "gym") {
+        const hasGymKeywords = equipLower.includes("barbell") || equipLower.includes("dumbbell") || equipLower.includes("cable") || equipLower.includes("machine") ||
+          workout.exercises.some(e => {
+            const el = e.name.toLowerCase();
+            return el.includes("barbell") || el.includes("dumbbell") || el.includes("cable") || el.includes("machine");
+          });
+        if (!hasGymKeywords) return false;
+      }
 
       // Check muscle filter if selected
       if (muscleFilter) {
@@ -1093,7 +1130,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
         return false;
       });
     });
-  }, [searchQuery, selectedMuscleGroup, selectedDifficulty]);
+  }, [searchQuery, selectedMuscleGroup, selectedDifficulty, selectedEnvironment]);
 
   // Display all matching exercises
   const displayedExercises = useMemo(() => {
@@ -1284,6 +1321,20 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
           
+          <div className="absolute top-2.5 left-2.5 bg-black/80 backdrop-blur-xs border border-white/20 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase z-10 flex items-center gap-1">
+            {workout.equipmentNeeded?.toLowerCase().includes("barbell") || workout.equipmentNeeded?.toLowerCase().includes("dumbbell") ? (
+              <span className="text-red-400 flex items-center gap-1">
+                <Dumbbell className="w-3 h-3" />
+                <span>Gym Gear</span>
+              </span>
+            ) : (
+              <span className="text-emerald-400 flex items-center gap-1">
+                <Home className="w-3 h-3" />
+                <span>Home Zero Equip</span>
+              </span>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={(e) => {
@@ -2462,6 +2513,83 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
         </div>
       </div>
 
+      {/* 3. HOME (NO EQUIPMENT) vs. GYM (BARBELL/DUMBBELL REQUIRED) FILTERING UI COMPONENT */}
+      <div className="mb-4 bg-white border border-[#E8E8E8] rounded-2xl p-3 sm:p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-red-50 text-[#C0392B] flex items-center justify-center shrink-0 border border-red-100">
+            <Compass className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-900 font-sans">
+                Program Environment Filter
+              </span>
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase ${
+                selectedEnvironment === "home" 
+                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200" 
+                  : selectedEnvironment === "gym" 
+                  ? "bg-red-100 text-red-800 border border-red-200" 
+                  : "bg-slate-100 text-slate-700"
+              }`}>
+                {selectedEnvironment === "all" ? "All Formats" : selectedEnvironment === "home" ? "100% Zero Equipment" : "Barbell & Dumbbell Required"}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+              Select your training setup: bodyweight home workouts vs. barbell/dumbbell gym routines.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl self-start md:self-auto shrink-0 w-full sm:w-auto overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => {
+              triggerLiveLoad("Displaying all workouts...", 200, () => setSelectedEnvironment("all"));
+            }}
+            className={`flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              selectedEnvironment === "all"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-950"
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>All ({filteredExercises.length + filteredWorkouts.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              triggerLiveLoad("Filtering for Home (zero equipment)...", 200, () => setSelectedEnvironment("home"));
+            }}
+            className={`flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              selectedEnvironment === "home"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-emerald-700 hover:bg-emerald-50/80"
+            }`}
+            title="Home Workouts: Strictly zero equipment & bodyweight drills only. Barbells and dumbbells excluded."
+          >
+            <Home className="w-3.5 h-3.5" />
+            <span>Home (No Equipment)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              triggerLiveLoad("Filtering for Gym (barbell & dumbbell)...", 200, () => setSelectedEnvironment("gym"));
+            }}
+            className={`flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              selectedEnvironment === "gym"
+                ? "bg-[#C0392B] text-white shadow-xs"
+                : "text-[#C0392B] hover:bg-red-50/80"
+            }`}
+            title="Gym Workouts: Requires barbells, dumbbells, cables, or gym machinery."
+          >
+            <Dumbbell className="w-3.5 h-3.5" />
+            <span>Gym (Barbell/Dumbbell Required)</span>
+          </button>
+        </div>
+      </div>
+
       {/* Quick Muscle Group Real-Time Filter Pills */}
       <div className="mb-4 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono whitespace-nowrap flex items-center gap-1 mr-1">
@@ -2629,6 +2757,23 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             </select>
           </div>
 
+          {/* Environment (Home vs Gym) */}
+          <div className="space-y-1">
+            <label className="block text-[10px] font-black text-[#C0392B] uppercase font-mono tracking-wider">Environment (Home vs Gym)</label>
+            <select
+              value={selectedEnvironment}
+              onChange={(e) => {
+                const val = e.target.value as "all" | "home" | "gym";
+                triggerLiveLoad(`Switching environment filter...`, 200, () => setSelectedEnvironment(val));
+              }}
+              className="w-full p-2.5 bg-white border border-red-100 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#C0392B] transition-colors cursor-pointer"
+            >
+              <option value="all">All Formats (Home & Gym)</option>
+              <option value="home">Home (Zero Equipment Bodyweight Only)</option>
+              <option value="gym">Gym (Barbells & Dumbbells Required)</option>
+            </select>
+          </div>
+
           {/* Quick Clear Filter Button */}
           <div className="sm:col-span-2 lg:col-span-3 flex justify-end pt-2 border-t border-red-100/50">
             <button
@@ -2641,6 +2786,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                   setSelectedEquipment("All");
                   setSelectedExerciseType("All");
                   setSelectedTrainingGoal("All");
+                  setSelectedEnvironment("all");
                 });
               }}
               className="px-4 py-1.5 border border-[#C0392B] hover:bg-red-50 text-[#C0392B] font-mono text-[10px] font-bold uppercase rounded-lg transition-all cursor-pointer"
@@ -3163,10 +3309,35 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                   {(() => {
                     const currentCat = WORKOUT_CATEGORIES_INFO.find(c => c.id === selectedWorkoutCategory);
                     const allCatExercises = getExercisesForWorkoutCategory(selectedWorkoutCategory, exercises);
-                    const categoryWorkouts = WORKOUTS_DATABASE.filter(w => getWorkoutMappedCategory(w) === selectedWorkoutCategory);
+                    const categoryWorkouts = WORKOUTS_DATABASE.filter(w => {
+                      if (getWorkoutMappedCategory(w) !== selectedWorkoutCategory) return false;
+                      if (selectedWorkoutCategory === "Home-Workout-180" || selectedEnvironment === "home") {
+                        const eq = (w.equipmentNeeded || "").toLowerCase();
+                        const hasGym = eq.includes("barbell") || eq.includes("dumbbell") || eq.includes("cable") || eq.includes("machine") ||
+                          w.exercises.some(e => {
+                            const en = e.name.toLowerCase();
+                            return en.includes("barbell") || en.includes("dumbbell") || en.includes("cable") || en.includes("machine");
+                          });
+                        if (hasGym) return false;
+                      } else if (selectedEnvironment === "gym") {
+                        const eq = (w.equipmentNeeded || "").toLowerCase();
+                        const hasGym = eq.includes("barbell") || eq.includes("dumbbell") || eq.includes("cable") || eq.includes("machine") ||
+                          w.exercises.some(e => {
+                            const en = e.name.toLowerCase();
+                            return en.includes("barbell") || en.includes("dumbbell") || en.includes("cable") || en.includes("machine");
+                          });
+                        if (!hasGym) return false;
+                      }
+                      return true;
+                    });
                     
-                    // Filter exercises within this category by search & difficulty
+                    // Filter exercises within this category by search & difficulty & environment
                     const filteredCatExercises = allCatExercises.filter(ex => {
+                      if (selectedWorkoutCategory === "Home-Workout-180" || selectedEnvironment === "home") {
+                        if (!isHomeEligibleExercise(ex)) return false;
+                      } else if (selectedEnvironment === "gym") {
+                        if (isHomeEligibleExercise(ex)) return false;
+                      }
                       const matchesSearch = !categoryExerciseSearch.trim() || 
                         ex.name.toLowerCase().includes(categoryExerciseSearch.toLowerCase()) ||
                         (ex.muscleGroups || []).some(m => m.toLowerCase().includes(categoryExerciseSearch.toLowerCase())) ||

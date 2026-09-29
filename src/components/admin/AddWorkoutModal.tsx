@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from "react";
-import { Plus, Search, X, Dumbbell, Check, Filter, Sparkles, Layers } from "lucide-react";
+import { Plus, Search, X, Dumbbell, Check, Filter, Sparkles, Layers, AlertCircle } from "lucide-react";
 import { Exercise, getExerciseGifUrl } from "../../data/exercises";
 import { ChallengeExerciseItem } from "../../types/challengeEngine";
+import { isHomeEligibleExercise } from "../../utils/dynamicWorkoutEngine";
 import UnifiedExerciseMedia from "../UnifiedExerciseMedia";
 
 interface AddWorkoutModalProps {
@@ -51,6 +52,10 @@ export default function AddWorkoutModal({
   const [customInstructions, setCustomInstructions] = useState("");
   const [customGifUrl, setCustomGifUrl] = useState("");
 
+  const isHomeProgram = useMemo(() => {
+    return (programId || "").toLowerCase().includes("home");
+  }, [programId]);
+
   const filteredExercises = useMemo(() => {
     const seen = new Set<string>();
     return libraryExercises.filter(ex => {
@@ -58,6 +63,11 @@ export default function AddWorkoutModal({
       if (seen.has(cleanName) || seen.has(ex.id)) return false;
       seen.add(cleanName);
       seen.add(ex.id);
+
+      // When adding to a home program, strictly enforce home eligibility (no barbell, dumbbell, gym equipment)
+      if (isHomeProgram && !isHomeEligibleExercise(ex)) {
+        return false;
+      }
 
       if (selectedCategory !== "All") {
         const cat = (ex.category || "").toLowerCase();
@@ -116,6 +126,35 @@ export default function AddWorkoutModal({
       .split(",")
       .map(m => m.trim())
       .filter(Boolean);
+
+    // If adding to a Home Workout program, strictly forbid barbell, dumbbell, or gym equipment
+    if (isHomeProgram) {
+      const probeEx: Exercise = {
+        id: "temp",
+        name: customName.trim(),
+        muscleGroups: muscles,
+        difficulty: customDifficulty,
+        instructions: [customInstructions],
+        equipment: [customEquipment],
+        category: customCategory,
+        categories: [customCategory],
+        commonMistakes: [],
+        safetyTips: [],
+        alternativeExercises: [],
+        progressionVariations: [],
+        isPremium: false,
+        startingPosition: "",
+        movementExecution: "",
+        finishingPosition: "",
+        regressionVariations: [],
+        musclesWorked: muscles,
+        gifUrl: customGifUrl
+      };
+      if (!isHomeEligibleExercise(probeEx)) {
+        alert("Cannot add to 180 Home Workout Program: Exercises with barbells, dumbbells, or gym machines are not permitted. Please use Bodyweight, Mat, or Zero Equipment.");
+        return;
+      }
+    }
 
     const newEx: ChallengeExerciseItem = {
       id: `custom_${programId}_d${dayNumber}_${Date.now()}`,

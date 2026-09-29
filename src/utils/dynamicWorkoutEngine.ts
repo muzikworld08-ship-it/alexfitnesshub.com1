@@ -51,9 +51,121 @@ export function matchesTargetCategories(ex: Exercise, targets: string[]): boolea
 }
 
 /**
- * Filter exercises matching a list of target categories or muscle groups.
+ * Strict validator to determine whether an exercise is appropriate for home workouts.
+ * Enforces zero-equipment, bodyweight, or home-accessible items only.
+ * Strictly prevents barbell, dumbbell, cable, machine, and gym equipment exercises from entering home programs.
  */
-export function filterExercisesForSplit(exercises: Exercise[], targets: string[]): Exercise[] {
+export function isHomeEligibleExercise(ex: Exercise): boolean {
+  if (!ex) return false;
+
+  const name = (ex.name || "").toLowerCase().trim();
+  const desc = (ex.description || "").toLowerCase().trim();
+  const category = (ex.category || "").toLowerCase().trim();
+  const location = (ex.locationSuitability || "").toLowerCase().trim();
+  
+  // Array of equipment items
+  const equipment = (
+    Array.isArray(ex.equipment) ? ex.equipment : [String(ex.equipment || "")]
+  ).map(e => e.toLowerCase().trim());
+
+  // 1. Explicit gym location requirement
+  if (location === "gym") {
+    return false;
+  }
+
+  // 2. Prohibited equipment and keywords for home workouts (barbells, dumbbells, machines, etc.)
+  const prohibitedGymEquipment = [
+    "barbell",
+    "dumbbell",
+    "dumbbells",
+    "dumbell",
+    "db ",
+    " db",
+    "bb ",
+    " bb",
+    "(db)",
+    "(bb)",
+    "kettlebell",
+    "cable",
+    "cables",
+    "pulley",
+    "machine",
+    "smith machine",
+    "leg press",
+    "hack squat",
+    "pec deck",
+    "lat pulldown",
+    "pulldown",
+    "leg extension",
+    "leg curl machine",
+    "ez bar",
+    "ez-bar",
+    "t-bar",
+    "landmine",
+    "trap bar",
+    "bench press",
+    "preacher bench",
+    "preacher curl",
+    "plate",
+    "weight plate",
+    "plates",
+    "rack",
+    "squat rack",
+    "incline bench press",
+    "decline bench press"
+  ];
+
+  // Prohibited words in exercise name
+  for (const kw of prohibitedGymEquipment) {
+    if (name.includes(kw)) {
+      return false;
+    }
+  }
+
+  // Prohibited equipment listed in exercise
+  for (const eq of equipment) {
+    for (const kw of prohibitedGymEquipment) {
+      if (eq.includes(kw)) {
+        return false;
+      }
+    }
+  }
+
+  // If equipment explicitly says gym
+  if (equipment.some(e => e === "gym" || e.includes("gym equipment"))) {
+    return false;
+  }
+
+  // Check description if equipment is empty
+  if (equipment.length === 0 || equipment.includes("none")) {
+    for (const kw of prohibitedGymEquipment) {
+      if (desc.includes(kw)) {
+        return false;
+      }
+    }
+  }
+
+  // Category "Gym Workouts" cannot enter home workout program unless explicitly tagged Home/Both and Bodyweight
+  if (category === "gym workouts") {
+    const isExplicitlyHome = location === "home" || location === "both";
+    const hasZeroEquip = equipment.some(e => e.includes("bodyweight") || e.includes("zero") || e === "none");
+    if (!isExplicitlyHome || !hasZeroEquip) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Filter exercises matching a list of target categories or muscle groups.
+ * Optionally enforces home-only eligibility.
+ */
+export function filterExercisesForSplit(
+  exercises: Exercise[], 
+  targets: string[],
+  options?: { requireHomeOnly?: boolean }
+): Exercise[] {
   const seen = new Set<string>();
   const results: Exercise[] = [];
 
@@ -61,6 +173,11 @@ export function filterExercisesForSplit(exercises: Exercise[], targets: string[]
     if (!ex || !ex.id) continue;
     const cleanId = ex.id.toLowerCase().trim();
     if (seen.has(cleanId)) continue;
+
+    // Strict filter for home workouts if required
+    if (options?.requireHomeOnly && !isHomeEligibleExercise(ex)) {
+      continue;
+    }
 
     if (matchesTargetCategories(ex, targets)) {
       seen.add(cleanId);
@@ -239,7 +356,8 @@ export function buildDynamicDayPlan(
   const splitResolver = PROGRAM_SPLIT_DEFINITIONS[programKey] || PROGRAM_SPLIT_DEFINITIONS["immortal_90"];
   const splitDef = splitResolver(cycleDay);
 
-  const matchedExercises = filterExercisesForSplit(allExercises, splitDef.targetMuscles);
+  const isHomeProgram = programKey.includes("home") || programKey === "home_180";
+  const matchedExercises = filterExercisesForSplit(allExercises, splitDef.targetMuscles, { requireHomeOnly: isHomeProgram });
   const challengeItems = matchedExercises.map((ex, idx) =>
     exerciseToChallengeItem(ex, programId, safeDay, idx)
   );

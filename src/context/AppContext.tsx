@@ -43,6 +43,7 @@ import { fetchAllExerciseMediaFromDatabase } from "../utils/mediaStorageService"
 import { samplePopupTestimonials } from "../data/sampleTestimonials";
 import { queueWelcomeEmail, queueWorkoutSummaryEmail, queueBellyFatShredReminderEmail } from "../lib/mailTriggers";
 import { sendEmail } from "../services/emailNotificationService";
+import { isRestrictedHomeWorkout } from "../utils/adminWorkoutCleaner";
 
 export const DEFAULT_PROGRAM_PROGRESS: Record<string, ProgramProgressItem> = {
   "90_day_immortal": {
@@ -267,6 +268,9 @@ interface AppContextType {
   // Workout Library Filters & Centralized Search State
   workoutFilters: WorkoutLibraryFilters;
   setWorkoutFilters: (filters: Partial<WorkoutLibraryFilters>) => void;
+
+  // Admin Request Helper
+  getAdminHeaders: () => Promise<Record<string, string>>;
 
   // Settings Management
   resetAllSettings: () => Promise<boolean>;
@@ -578,13 +582,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [exercises, setExercisesState] = useState<Exercise[]>(() => {
     try {
-      const PURGE_KEY = "fit_purge_v4_all_legacy_workouts_2026_09_28";
+      const PURGE_KEY = "fit_purge_v7_permanent_purge_all_149_workouts_2026_09_29";
       if (typeof window !== "undefined" && window.localStorage) {
         if (!window.localStorage.getItem(PURGE_KEY)) {
           window.localStorage.removeItem("fit_exercises");
           window.localStorage.removeItem("fit_custom_exercise_overrides");
           window.localStorage.removeItem("fit_deleted_exercises");
           window.localStorage.removeItem("fit_custom_challenges");
+          window.localStorage.removeItem("fit_workouts");
+          window.localStorage.removeItem("fit_custom_workouts");
+          window.localStorage.removeItem("fit_saved_workouts");
+          window.localStorage.removeItem("fit_programs_cache");
           window.localStorage.setItem(PURGE_KEY, "true");
           return [];
         }
@@ -594,10 +602,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Strictly keep ONLY explicitly admin-added custom exercises
+          // Strictly keep ONLY explicitly admin-added custom exercises that do NOT violate home equipment constraints
           const cleanList = parsed.filter((ex: any) => {
             if (!ex || !ex.name) return false;
             if (ex.isCustom !== true) return false;
+            if (isRestrictedHomeWorkout(ex).isViolating) return false;
             const media = (ex.customMediaUrl || ex.gifUrl || ex.imageUrl || "").toLowerCase();
             if (media.includes("hasaneyldrm/exercises-dataset")) return false;
             return true;
@@ -665,7 +674,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       selectedEquipment: "All",
       selectedExerciseType: "All",
       selectedTrainingGoal: "All",
-      activeBrowseTab: "bodyparts" as const
+      activeBrowseTab: "bodyparts" as const,
+      selectedEnvironment: "all" as const
     };
     try {
       const activeUid = localStorage.getItem("fit_active_uid");
@@ -682,7 +692,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             selectedEquipment: typeof parsed.selectedEquipment === "string" ? parsed.selectedEquipment : defaults.selectedEquipment,
             selectedExerciseType: typeof parsed.selectedExerciseType === "string" ? parsed.selectedExerciseType : defaults.selectedExerciseType,
             selectedTrainingGoal: typeof parsed.selectedTrainingGoal === "string" ? parsed.selectedTrainingGoal : defaults.selectedTrainingGoal,
-            activeBrowseTab: (parsed.activeBrowseTab === "bodyparts" || parsed.activeBrowseTab === "cardio" || parsed.activeBrowseTab === "mobility" || parsed.activeBrowseTab === "programs" || parsed.activeBrowseTab === "all") ? parsed.activeBrowseTab : defaults.activeBrowseTab
+            activeBrowseTab: (parsed.activeBrowseTab === "bodyparts" || parsed.activeBrowseTab === "cardio" || parsed.activeBrowseTab === "mobility" || parsed.activeBrowseTab === "programs" || parsed.activeBrowseTab === "all") ? parsed.activeBrowseTab : defaults.activeBrowseTab,
+            selectedEnvironment: (parsed.selectedEnvironment === "home" || parsed.selectedEnvironment === "gym") ? parsed.selectedEnvironment : defaults.selectedEnvironment
           };
         }
       }
@@ -834,7 +845,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           
           // Apply stored modifications and custom user-added exercises
           parsed.forEach(p => {
-            if (!p || !p.id || deletedIdsSet.has(p.id) || p.isCustom !== true) return;
+            if (!p || !p.id || deletedIdsSet.has(p.id) || p.isCustom !== true || isRestrictedHomeWorkout(p).isViolating) return;
             if (map.has(p.id)) {
               const existing = map.get(p.id)!;
               map.set(p.id, {
@@ -876,7 +887,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Also include any custom added workouts in cachedOverrides
     Object.keys(cachedOverrides).forEach(key => {
       const val = cachedOverrides[key];
-      if (val && typeof val === "object" && val.name && val.isCustom === true && !deletedIdsSet.has(key)) {
+      if (val && typeof val === "object" && val.name && val.isCustom === true && !deletedIdsSet.has(key) && !isRestrictedHomeWorkout(val).isViolating) {
         if (!initialList.some(i => i.id === key)) {
           initialList.push({
             id: key,
@@ -1043,7 +1054,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const customMap = new Map<string, Exercise>();
 
           fetchedGeneratedExercises.forEach(g => {
-            if (g && g.id && !activeDeletedIds.has(g.id)) {
+            if (g && g.id && !activeDeletedIds.has(g.id) && !isRestrictedHomeWorkout(g).isViolating) {
               customMap.set(g.id, { ...g, isCustom: true });
             }
           });
@@ -1051,7 +1062,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // Also any custom exercises saved in mergedOverrides
           Object.keys(mergedOverrides).forEach(key => {
             const val = mergedOverrides[key];
-            if (val && typeof val === "object" && val.name && val.isCustom === true && !activeDeletedIds.has(key)) {
+            if (val && typeof val === "object" && val.name && val.isCustom === true && !activeDeletedIds.has(key) && !isRestrictedHomeWorkout(val).isViolating) {
               if (!baseList.some(b => b.id === key)) {
                 customMap.set(key, {
                   id: key,
@@ -2200,7 +2211,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       selectedEquipment: "All",
       selectedExerciseType: "All",
       selectedTrainingGoal: "All",
-      activeBrowseTab: "bodyparts" as const
+      activeBrowseTab: "bodyparts" as const,
+      selectedEnvironment: "all" as const
     };
 
     const pFilters = localStorage.getItem(`fit_workout_filters_${uid}`);
@@ -2216,7 +2228,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             selectedEquipment: typeof parsed.selectedEquipment === "string" ? parsed.selectedEquipment : defaults.selectedEquipment,
             selectedExerciseType: typeof parsed.selectedExerciseType === "string" ? parsed.selectedExerciseType : defaults.selectedExerciseType,
             selectedTrainingGoal: typeof parsed.selectedTrainingGoal === "string" ? parsed.selectedTrainingGoal : defaults.selectedTrainingGoal,
-            activeBrowseTab: (parsed.activeBrowseTab === "bodyparts" || parsed.activeBrowseTab === "cardio" || parsed.activeBrowseTab === "mobility" || parsed.activeBrowseTab === "programs" || parsed.activeBrowseTab === "all") ? parsed.activeBrowseTab : defaults.activeBrowseTab
+            activeBrowseTab: (parsed.activeBrowseTab === "bodyparts" || parsed.activeBrowseTab === "cardio" || parsed.activeBrowseTab === "mobility" || parsed.activeBrowseTab === "programs" || parsed.activeBrowseTab === "all") ? parsed.activeBrowseTab : defaults.activeBrowseTab,
+            selectedEnvironment: (parsed.selectedEnvironment === "home" || parsed.selectedEnvironment === "gym") ? parsed.selectedEnvironment : defaults.selectedEnvironment
           };
           setWorkoutFiltersState(loaded);
         }
@@ -2235,7 +2248,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             selectedEquipment: typeof data.selectedEquipment === "string" ? data.selectedEquipment : defaults.selectedEquipment,
             selectedExerciseType: typeof data.selectedExerciseType === "string" ? data.selectedExerciseType : defaults.selectedExerciseType,
             selectedTrainingGoal: typeof data.selectedTrainingGoal === "string" ? data.selectedTrainingGoal : defaults.selectedTrainingGoal,
-            activeBrowseTab: (data.activeBrowseTab === "bodyparts" || data.activeBrowseTab === "cardio" || data.activeBrowseTab === "mobility" || data.activeBrowseTab === "programs" || data.activeBrowseTab === "all") ? data.activeBrowseTab : defaults.activeBrowseTab
+            activeBrowseTab: (data.activeBrowseTab === "bodyparts" || data.activeBrowseTab === "cardio" || data.activeBrowseTab === "mobility" || data.activeBrowseTab === "programs" || data.activeBrowseTab === "all") ? data.activeBrowseTab : defaults.activeBrowseTab,
+            selectedEnvironment: (data.selectedEnvironment === "home" || data.selectedEnvironment === "gym") ? data.selectedEnvironment : defaults.selectedEnvironment
           };
           setWorkoutFiltersState(loadedFilters);
           safeSetItem(`fit_workout_filters_${uid}`, JSON.stringify(loadedFilters));
@@ -2538,7 +2552,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         selectedEquipment: "All",
         selectedExerciseType: "All",
         selectedTrainingGoal: "All",
-        activeBrowseTab: "bodyparts"
+        activeBrowseTab: "bodyparts",
+        selectedEnvironment: "all"
       };
       setWorkoutFiltersState(defaultFilters);
       try {
@@ -5045,6 +5060,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     triggerWeeklyReportGeneration,
     workoutFilters,
     setWorkoutFilters,
+    getAdminHeaders,
     programProgress,
     enrollProgram,
     updateProgramProgress,
@@ -5130,6 +5146,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     triggerWeeklyReportGeneration,
     workoutFilters,
     setWorkoutFilters,
+    getAdminHeaders,
     programProgress,
     enrollProgram,
     updateProgramProgress,

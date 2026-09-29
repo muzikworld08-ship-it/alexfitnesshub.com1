@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../../utils/mediaStorageService";
 import { AssetManifestService } from "../../services/AssetManifestService";
+import { purgeRestrictedHomeWorkouts, PurgeRestrictedHomeResult } from "../../utils/adminWorkoutCleaner";
 import DeleteWorkoutConfirmModal, { DeleteWorkoutTarget } from "./DeleteWorkoutConfirmModal";
 
 const CATEGORIES = [
@@ -57,7 +58,7 @@ const PROGRAM_OPTIONS = [
 ];
 
 export default function AdminWorkoutEditor() {
-  const { exercises, editExercise, addWorkout, deleteWorkout, uploadExerciseMedia } = useApp();
+  const { exercises, editExercise, addWorkout, deleteWorkout, uploadExerciseMedia, getAdminHeaders } = useApp();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -82,6 +83,29 @@ export default function AdminWorkoutEditor() {
       alert("Error deleting workout: " + (e?.message || "Internal server error"));
     } finally {
       setIsDeletingWorkout(false);
+    }
+  };
+
+  // Admin Utility: Purge Restricted Home Workouts (Barbells / Dumbbells in Home)
+  const [isPurgingHome, setIsPurgingHome] = useState(false);
+  const [purgeStatusText, setPurgeStatusText] = useState("");
+  const [purgeResult, setPurgeResult] = useState<PurgeRestrictedHomeResult | null>(null);
+
+  const handleRunHomeAuditPurge = async () => {
+    if (!window.confirm("Run Home Workout Equipment Integrity Audit?\n\nThis utility scans all workouts categorized as 'home' and permanently deletes any that contain restricted equipment tags (such as 'barbell' or 'dumbbell').\n\nProceed?")) {
+      return;
+    }
+    setIsPurgingHome(true);
+    setPurgeStatusText("Scanning exercises across database...");
+    try {
+      const headers = await getAdminHeaders().catch(() => ({}));
+      const res = await purgeRestrictedHomeWorkouts((msg) => setPurgeStatusText(msg), headers);
+      setPurgeResult(res);
+    } catch (err: any) {
+      alert("Purge error: " + (err?.message || "Unknown error"));
+    } finally {
+      setIsPurgingHome(false);
+      setPurgeStatusText("");
     }
   };
 
@@ -339,7 +363,22 @@ export default function AdminWorkoutEditor() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex items-center gap-3 w-full md:w-auto flex-wrap sm:flex-nowrap">
+          <button
+            type="button"
+            onClick={handleRunHomeAuditPurge}
+            disabled={isPurgingHome}
+            className="w-full md:w-auto bg-slate-900 hover:bg-black text-white border border-slate-700 font-sans font-black uppercase tracking-wider text-xs px-4 py-3 rounded-2xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
+            title="Scan and delete any workouts categorized as 'home' that contain restricted equipment tags (barbell, dumbbell, machines)"
+          >
+            {isPurgingHome ? (
+              <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
+            ) : (
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            )}
+            <span>{isPurgingHome ? "Auditing Home..." : "Purge Restricted Home Workouts"}</span>
+          </button>
+
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white font-sans font-black uppercase tracking-wider text-xs px-5 py-3 rounded-2xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0"
@@ -1612,6 +1651,70 @@ export default function AdminWorkoutEditor() {
         onConfirm={handleConfirmDeleteWorkout}
         onCancel={() => setDeleteModalTarget(null)}
       />
+
+      {/* Purge Result Modal */}
+      {purgeResult && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full border border-slate-200 shadow-2xl p-6 sm:p-7 space-y-5 animate-scale-up">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                  purgeResult.deletedCount > 0 ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"
+                }`}>
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 uppercase font-sans">
+                    {purgeResult.deletedCount > 0 ? "Restricted Home Workouts Purged" : "Home Workout Audit Clean"}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">
+                    {purgeResult.scannedCount} entries scanned across database
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPurgeResult(null)}
+                className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed">
+              {purgeResult.message}
+            </div>
+
+            {purgeResult.deletedWorkouts.length > 0 && (
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                <div className="text-[11px] font-black uppercase text-slate-500 tracking-wider">
+                  Deleted Restricted Items ({purgeResult.deletedWorkouts.length})
+                </div>
+                {purgeResult.deletedWorkouts.map((item, idx) => (
+                  <div key={idx} className="p-3 bg-red-50/50 border border-red-100 rounded-xl text-xs space-y-1">
+                    <div className="flex items-center justify-between font-bold text-slate-900">
+                      <span>{item.name}</span>
+                      <span className="text-[10px] font-mono text-red-600 uppercase font-black">{item.category}</span>
+                    </div>
+                    <div className="text-[11px] text-red-700 font-medium">
+                      ⚠️ {item.reason}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPurgeResult(null)}
+                className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white text-xs font-black uppercase tracking-wider rounded-xl transition cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
