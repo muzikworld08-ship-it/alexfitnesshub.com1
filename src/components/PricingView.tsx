@@ -56,16 +56,7 @@ export default function PricingView({ setView, onOpenAuth }: PricingViewProps) {
     const activeMonths = customMonths || (plan === "multi" ? selectedMonths : undefined);
 
     try {
-      // 1. Fetch active Paystack Public Key configuration
-      const configRes = await fetch("/api/payments/config");
-      const configData = await configRes.json();
-      const publicKey = configData.publicKey || (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || "";
-      
-      if (!publicKey) {
-        throw new Error("Paystack Public Key is not configured in backend or environment.");
-      }
-
-      // 2. Initialize checkout session on our server
+      // 1. Initialize checkout session securely on the backend server
       const res = await fetch("/api/payments/initialize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,7 +72,7 @@ export default function PricingView({ setView, onOpenAuth }: PricingViewProps) {
         throw new Error(data.error || "Unable to initialize secure transaction with Paystack.");
       }
 
-      // 3. Directly redirect user to Paystack secure payment page
+      // 2. Directly redirect user to Paystack secure payment page
       console.log(`[Redirect Flow] Redirecting user ${user.uid} to secure Paystack payment URL: ${data.authorization_url}`);
       window.location.href = data.authorization_url;
 

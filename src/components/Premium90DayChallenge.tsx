@@ -30,8 +30,11 @@ import {
   IMMORTAL_PURE_LOWER_BODY
 } from "../data/challengeEngineDatabase";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
+import RestDayCard from "./RestDayCard";
+import CardioDayCard from "./CardioDayCard";
 import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
 import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
+import { cleanFirestoreData } from "../lib/firebase";
 
 
 // 1. Definition of the 7 Flagship Premium Challenges
@@ -318,8 +321,9 @@ export default function Premium90DayChallenge() {
   };
 
   const loadChallengeData = async (uid: string): Promise<Premium90DayState | null> => {
+    if (!uid || typeof uid !== "string" || !uid.trim()) return null;
     try {
-      const docRef = doc(db, "user_premium_challenges", uid);
+      const docRef = doc(db, "user_premium_challenges", uid.trim());
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data() as Premium90DayState;
@@ -348,10 +352,11 @@ export default function Premium90DayChallenge() {
   };
 
   const saveChallengeData = async (uid: string, data: Premium90DayState): Promise<boolean> => {
+    if (!uid || typeof uid !== "string" || !uid.trim()) return false;
     localStorage.setItem(getLocalChallengeKey(uid), JSON.stringify(data));
     try {
-      const docRef = doc(db, "user_premium_challenges", uid);
-      await setDoc(docRef, data);
+      const docRef = doc(db, "user_premium_challenges", uid.trim());
+      await setDoc(docRef, cleanFirestoreData(data), { merge: true });
       return true;
     } catch (err) {
       console.warn("Firestore write failed, saved to localStorage fallback successfully:", err);
@@ -610,6 +615,8 @@ export default function Premium90DayChallenge() {
           name: ex.exerciseName,
           category: ex.category,
           muscleGroups: ex.muscleGroup,
+          gifUrl: (ex as any).gifUrl,
+          customMediaUrl: (ex as any).gifUrl,
           equipment: Array.isArray(ex.equipment) ? ex.equipment : (ex.equipment ? [ex.equipment] : ["Bodyweight"]),
           sets: isCardio ? 1 : (ex.sets || setsMultiplier),
           reps: ex.reps || repScheme,
@@ -1305,43 +1312,56 @@ export default function Premium90DayChallenge() {
               </div>
             </div>
 
-            {/* Cardio Notice for Day 3 & Day 7 */}
-            {previewWorkoutDetail.isRecoveryDay && (
-              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-3">
-                <Shield className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="font-bold block text-sm mb-0.5">Strict Cardio & Rest Protocol Enforced:</strong>
-                  No weight training or resistance training today. Only 5 to 10 KM continuous aerobic work followed by full recovery and rehydration.
+            {/* Check if preview day is Rest or Cardio Day */}
+            {(previewDay % 7 === 0 || previewWorkoutDetail.focus.toLowerCase().includes("rest") || previewWorkoutDetail.focus.toLowerCase().includes("recovery")) ? (
+              <div className="py-2">
+                <RestDayCard
+                  programId={dbState.challengeId || "immortal_90"}
+                  programName="90-Day Immortal Challenge"
+                  dayNumber={previewDay}
+                  totalDays={90}
+                  isCompleted={dbState?.completedDays?.includes(previewDay)}
+                />
+              </div>
+            ) : (previewDay % 7 === 3 || previewDay % 7 === 6 || previewWorkoutDetail.focus.toLowerCase().includes("cardio") || previewWorkoutDetail.focus.toLowerCase().includes("running") || previewWorkoutDetail.focus.toLowerCase().includes("walking")) ? (
+              <div className="py-2">
+                <CardioDayCard
+                  programId={dbState.challengeId || "immortal_90"}
+                  programName="90-Day Immortal Challenge"
+                  dayNumber={previewDay}
+                  totalDays={90}
+                  distanceKm={5}
+                  isCompleted={dbState?.completedDays?.includes(previewDay)}
+                />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <h4 className="font-extrabold text-sm uppercase text-slate-500">
+                  Day {previewDay} Exercises ({previewWorkoutDetail.exercises.length} Prescribed)
+                </h4>
+                <div className="divide-y divide-slate-100">
+                  {previewWorkoutDetail.exercises.map((ex, idx) => (
+                    <div key={ex.id || idx} className="py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                      <div>
+                        <h5 className="font-bold text-slate-900 text-sm">{ex.name}</h5>
+                        <p className="text-xs text-slate-500">{ex.instruction}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-[10px] font-bold font-mono shrink-0">
+                        <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100">
+                          {typeof ex.sets === "number" ? `${ex.sets} Sets` : ex.sets}
+                        </span>
+                        <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded border border-amber-100">
+                          {ex.reps}
+                        </span>
+                        <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                          {ex.rest}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
-
-            <div className="space-y-4">
-              <h4 className="font-extrabold text-sm uppercase text-slate-500">
-                Day {previewDay} Exercises ({previewWorkoutDetail.exercises.length} Prescribed)
-              </h4>
-              <div className="divide-y divide-slate-100">
-                {previewWorkoutDetail.exercises.map((ex, idx) => (
-                  <div key={ex.id || idx} className="py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                    <div>
-                      <h5 className="font-bold text-slate-900 text-sm">{ex.name}</h5>
-                      <p className="text-xs text-slate-500">{ex.instruction}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2 text-[10px] font-bold font-mono shrink-0">
-                      <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100">
-                        {typeof ex.sets === "number" ? `${ex.sets} Sets` : ex.sets}
-                      </span>
-                      <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded border border-amber-100">
-                        {ex.reps}
-                      </span>
-                      <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                        {ex.rest}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -1869,134 +1889,150 @@ export default function Premium90DayChallenge() {
                             </div>
                           </div>
 
-                          {/* Cardio Protocol Banner for Day 3 and Day 7 */}
-                          {todayWorkoutDetail.isRecoveryDay && (
-                            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs font-medium rounded-2xl flex items-start gap-3">
-                              <Shield className="w-5 h-5 shrink-0 text-emerald-600 mt-0.5" />
-                              <div>
-                                <p className="font-bold text-sm text-emerald-900">5 to 10 KM Cardio & Complete Rest Protocol:</p>
-                                <p className="mt-0.5 leading-relaxed">
-                                  All resistance training and weightlifting exercises are strictly removed today. Complete 5 to 10 KM at a steady aerobic pace (Zone 2 running or walking). After cardio, relax and allow your muscles to replenish glycogen and repair.
-                                </p>
-                              </div>
+                          {/* Check if active display day is Rest Day or Cardio Day */}
+                          {((activeDisplayDay % 7 === 0) || todayWorkoutDetail.focus.toLowerCase().includes("rest") || todayWorkoutDetail.focus.toLowerCase().includes("recovery")) ? (
+                            <div className="py-4">
+                              <RestDayCard
+                                programId={dbState.challengeId || "immortal_90"}
+                                programName="90-Day Immortal Challenge"
+                                dayNumber={activeDisplayDay}
+                                totalDays={90}
+                                isCompleted={dbState?.completedDays?.includes(activeDisplayDay)}
+                                onComplete={handleCompleteWorkout}
+                              />
                             </div>
-                          )}
-
-                        {/* Injury warnings if onboarding filled */}
-                        {dbState.onboarding.injuries && (
-                          <div className="p-4 bg-amber-50 border border-amber-200/50 text-amber-800 text-xs font-medium rounded-2xl flex items-start gap-3">
-                            <AlertTriangle className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
-                            <div>
-                              <p className="font-bold">Athlete Injury Precaution Flagged:</p>
-                              <p className="opacity-90">Personal Trainer advice: Be careful with: "{dbState.onboarding.injuries}". Keep reps slow, respect mechanical structural alignments, and modify load levels instantly if pain occurs.</p>
+                          ) : (((activeDisplayDay % 7 === 3) || (activeDisplayDay % 7 === 6) || todayWorkoutDetail.focus.toLowerCase().includes("cardio") || todayWorkoutDetail.focus.toLowerCase().includes("running") || todayWorkoutDetail.focus.toLowerCase().includes("walking"))) ? (
+                            <div className="py-4">
+                              <CardioDayCard
+                                programId={dbState.challengeId || "immortal_90"}
+                                programName="90-Day Immortal Challenge"
+                                dayNumber={activeDisplayDay}
+                                totalDays={90}
+                                distanceKm={5}
+                                isCompleted={dbState?.completedDays?.includes(activeDisplayDay)}
+                                onComplete={handleCompleteWorkout}
+                              />
                             </div>
-                          </div>
-                        )}
-
-                        {/* Warm Up List */}
-                        <div className="space-y-4">
-                          <h4 className="font-black text-xs uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                            <Droplet className="w-4 h-4 text-cyan-400" />
-                            Warm-up Routine (10-15 Minutes)
-                          </h4>
-                          <div className="flex flex-col space-y-3 w-full">
-                            {todayWorkoutDetail.warmUp.map((wu, idx) => (
-                              <div key={idx} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl text-left space-y-1">
-                                <span className="text-[9px] text-cyan-500 font-mono font-bold uppercase">{wu.duration}</span>
-                                <h5 className="font-extrabold text-xs text-slate-900">{wu.name}</h5>
-                                <p className="text-[11px] text-slate-500 font-medium leading-tight">{wu.desc}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Main exercises list */}
-                        <div className="space-y-6 pt-4 border-t border-slate-100">
-                          <h4 className="font-black text-xs uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                            <Dumbbell className="w-4 h-4 text-red-500" />
-                            Core Exercises List ({todayWorkoutDetail.exercises.length} Exercises)
-                          </h4>
-
-                          <div className="space-y-8">
-                            {todayWorkoutDetail.exercises.map((ex, idx) => (
-                              <div key={idx} className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-4 shadow-xs relative">
-                                <span className="absolute top-4 right-4 text-3xl font-black text-slate-100 select-none">0{idx + 1}</span>
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                          ) : (
+                            <>
+                              {/* Injury warnings if onboarding filled */}
+                              {dbState.onboarding.injuries && (
+                                <div className="p-4 bg-amber-50 border border-amber-200/50 text-amber-800 text-xs font-medium rounded-2xl flex items-start gap-3">
+                                  <AlertTriangle className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
                                   <div>
-                                    <h5 className="font-extrabold text-sm sm:text-base text-slate-900">{ex.name}</h5>
-                                    <div className="flex flex-wrap gap-2 text-[10px] font-mono font-bold uppercase mt-1 text-slate-400">
-                                      <span>Target: {ex.muscleGroups?.join(", ") || "General Body"}</span>
-                                      <span>•</span>
-                                      <span>{(ex as any).difficulty || "Intermediate"}</span>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex flex-wrap gap-1.5 text-[10px] font-mono font-bold">
-                                    <span className="bg-red-50 text-red-600 px-2.5 py-1 rounded-md border border-red-100">{ex.sets} Sets</span>
-                                    <span className="bg-amber-50 text-amber-700 px-2.5 py-1 rounded-md border border-amber-100">{ex.reps}</span>
-                                    <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md">{ex.weight}</span>
-                                    <span className="bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-md border border-indigo-100">{ex.rest} Rest</span>
+                                    <p className="font-bold">Athlete Injury Precaution Flagged:</p>
+                                    <p className="opacity-90">Personal Trainer advice: Be careful with: "{dbState.onboarding.injuries}". Keep reps slow, respect mechanical structural alignments, and modify load levels instantly if pain occurs.</p>
                                   </div>
                                 </div>
+                              )}
 
-                                {/* HD Giphy loop representation */}
-                                <div className="relative w-full rounded-xl workout-media-frameless flex items-center justify-center">
-                                  <WorkoutVisual 
-                                    exerciseId={ex.id} 
-                                    exerciseName={ex.name} 
-                                    isCard={true} 
-                                    className="w-full"
-                                  />
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-2 border-t border-slate-150">
-                                  <div className="space-y-1.5">
-                                    <p className="font-black uppercase text-[10px] text-slate-400 tracking-wider">Instructions</p>
-                                    <p className="text-slate-600 font-medium leading-relaxed">{ex.instruction}</p>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <div className="bg-amber-50/50 p-2 rounded-xl border border-amber-100 text-[11px]">
-                                      <p className="font-black text-amber-800 uppercase text-[9px] tracking-wider mb-0.5">Common Mistakes</p>
-                                      <p className="text-slate-600 font-medium leading-tight">{ex.mistake}</p>
+                              {/* Warm Up List */}
+                              <div className="space-y-4">
+                                <h4 className="font-black text-xs uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                                  <Droplet className="w-4 h-4 text-cyan-400" />
+                                  Warm-up Routine (10-15 Minutes)
+                                </h4>
+                                <div className="flex flex-col space-y-3 w-full">
+                                  {todayWorkoutDetail.warmUp.map((wu, idx) => (
+                                    <div key={idx} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl text-left space-y-1">
+                                      <span className="text-[9px] text-cyan-500 font-mono font-bold uppercase">{wu.duration}</span>
+                                      <h5 className="font-extrabold text-xs text-slate-900">{wu.name}</h5>
+                                      <p className="text-[11px] text-slate-500 font-medium leading-tight">{wu.desc}</p>
                                     </div>
-                                    <div className="bg-emerald-50/50 p-2 rounded-xl border border-emerald-100 text-[11px]">
-                                      <p className="font-black text-emerald-800 uppercase text-[9px] tracking-wider mb-0.5">Safety Tip</p>
-                                      <p className="text-slate-600 font-medium leading-tight">{ex.safety}</p>
-                                    </div>
-                                  </div>
+                                  ))}
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                        </div>
 
-                        {/* Cool down */}
-                        <div className="space-y-4 pt-6 border-t border-slate-100">
-                          <h4 className="font-black text-xs uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-indigo-400" />
-                            Cool Down & Stretching (5-10 Minutes)
-                          </h4>
-                          <div className="flex flex-col space-y-3 w-full">
-                            {todayWorkoutDetail.coolDown.map((cd, idx) => (
-                              <div key={idx} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl text-left space-y-1">
-                                <span className="text-[9px] text-indigo-500 font-mono font-bold uppercase">{cd.duration}</span>
-                                <h5 className="font-extrabold text-xs text-slate-900">{cd.name}</h5>
-                                <p className="text-[11px] text-slate-500 font-medium leading-tight">{cd.desc}</p>
+                              {/* Main exercises list */}
+                              <div className="space-y-6 pt-4 border-t border-slate-100">
+                                <h4 className="font-black text-xs uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                                  <Dumbbell className="w-4 h-4 text-red-500" />
+                                  Core Exercises List ({todayWorkoutDetail.exercises.length} Exercises)
+                                </h4>
+
+                                <div className="space-y-8">
+                                  {todayWorkoutDetail.exercises.map((ex, idx) => (
+                                    <div key={idx} className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-4 shadow-xs relative">
+                                      <span className="absolute top-4 right-4 text-3xl font-black text-slate-100 select-none">0{idx + 1}</span>
+                                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                        <div>
+                                          <h5 className="font-extrabold text-sm sm:text-base text-slate-900">{ex.name}</h5>
+                                          <div className="flex flex-wrap gap-2 text-[10px] font-mono font-bold uppercase mt-1 text-slate-400">
+                                            <span>Target: {ex.muscleGroups?.join(", ") || "General Body"}</span>
+                                            <span>•</span>
+                                            <span>{(ex as any).difficulty || "Intermediate"}</span>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-1.5 text-[10px] font-mono font-bold">
+                                          <span className="bg-red-50 text-red-600 px-2.5 py-1 rounded-md border border-red-100">{ex.sets} Sets</span>
+                                          <span className="bg-amber-50 text-amber-700 px-2.5 py-1 rounded-md border border-amber-100">{ex.reps}</span>
+                                          <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md">{ex.weight}</span>
+                                          <span className="bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-md border border-indigo-100">{ex.rest} Rest</span>
+                                        </div>
+                                      </div>
+
+                                      {/* HD Giphy loop representation */}
+                                      <div className="relative w-full rounded-xl workout-media-frameless flex items-center justify-center">
+                                        <WorkoutVisual 
+                                          exerciseId={ex.id} 
+                                          exerciseName={ex.name} 
+                                          customMediaUrl={(ex as any).gifUrl}
+                                          isCard={true} 
+                                          className="w-full"
+                                        />
+                                      </div>
+
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-2 border-t border-slate-150">
+                                        <div className="space-y-1.5">
+                                          <p className="font-black uppercase text-[10px] text-slate-400 tracking-wider">Instructions</p>
+                                          <p className="text-slate-600 font-medium leading-relaxed">{ex.instruction}</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                          <div className="bg-amber-50/50 p-2 rounded-xl border border-amber-100 text-[11px]">
+                                            <p className="font-black text-amber-800 uppercase text-[9px] tracking-wider mb-0.5">Common Mistakes</p>
+                                            <p className="text-slate-600 font-medium leading-tight">{ex.mistake}</p>
+                                          </div>
+                                          <div className="bg-emerald-50/50 p-2 rounded-xl border border-emerald-100 text-[11px]">
+                                            <p className="font-black text-emerald-800 uppercase text-[9px] tracking-wider mb-0.5">Safety Tip</p>
+                                            <p className="text-slate-600 font-medium leading-tight">{ex.safety}</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            ))}
-                          </div>
-                        </div>
 
-                        {/* Actions block */}
-                        <div className="pt-6 border-t border-slate-100 flex justify-end">
-                          <button
-                            onClick={handleCompleteWorkout}
-                            className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-wider text-xs px-8 py-4 rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-95"
-                          >
-                            <CheckCircle2 className="w-5 h-5 text-white" />
-                            Finish Day {dbState.currentDay} Workout
-                          </button>
-                        </div>
+                              {/* Cool down */}
+                              <div className="space-y-4 pt-6 border-t border-slate-100">
+                                <h4 className="font-black text-xs uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                                  <Clock className="w-4 h-4 text-indigo-400" />
+                                  Cool Down & Stretching (5-10 Minutes)
+                                </h4>
+                                <div className="flex flex-col space-y-3 w-full">
+                                  {todayWorkoutDetail.coolDown.map((cd, idx) => (
+                                    <div key={idx} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl text-left space-y-1">
+                                      <span className="text-[9px] text-indigo-500 font-mono font-bold uppercase">{cd.duration}</span>
+                                      <h5 className="font-extrabold text-xs text-slate-900">{cd.name}</h5>
+                                      <p className="text-[11px] text-slate-500 font-medium leading-tight">{cd.desc}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Actions block */}
+                              <div className="pt-6 border-t border-slate-100 flex justify-end">
+                                <button
+                                  onClick={handleCompleteWorkout}
+                                  className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-wider text-xs px-8 py-4 rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-95"
+                                >
+                                  <CheckCircle2 className="w-5 h-5 text-white" />
+                                  Finish Day {dbState.currentDay} Workout
+                                </button>
+                              </div>
+                            </>
+                          )}
                       </div>
                     </div>
 

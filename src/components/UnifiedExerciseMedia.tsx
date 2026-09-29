@@ -5,6 +5,7 @@ import { OptimizedImage } from "./OptimizedImage";
 import { findMatchingExercise } from "../utils/exerciseMatching";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
 import { getAccurateExerciseGif } from "../data/exerciseMediaCatalog";
+import { resolveAuthenticExercise } from "../data/authoritativeExerciseMap";
 import { isImageCached } from "../utils/imageCache";
 
 interface UnifiedExerciseMediaProps {
@@ -30,56 +31,16 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = React.m
 
   // Search for the centralized exercise matching ID or Name cleanly
   const exercise = findMatchingExercise(exercises, exerciseId, exerciseName);
+  const canonicalName = exerciseName || exercise?.name || exerciseId || "";
 
-  const canonicalName = exercise?.name || exerciseName || exerciseId || "";
+  // Guaranteed authentic matching GIF resolved through authoritative dataset mapping
+  const authentic = useMemo(() => {
+    const candidate = mediaUrl || exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl;
+    return resolveAuthenticExercise(canonicalName, candidate, exercise?.category);
+  }, [canonicalName, mediaUrl, exercise?.customMediaUrl, exercise?.gifUrl, exercise?.imageUrl, exercise?.category]);
 
-  const defaultFallbackUrl = useMemo(() => {
-    return getAccurateExerciseGif(canonicalName, exercise?.category);
-  }, [canonicalName, exercise?.category]);
-
-  const rawCandidate = mediaUrl || exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl;
-  // If candidate is a legacy broken giphy URL, mismatched exercise GIF, or wrong movement pattern, prioritize the accurate catalog URL
-  const isCandidateProblematic = useMemo(() => {
-    const candidateToCheck = mediaUrl || rawCandidate;
-    if (!candidateToCheck) return true;
-    const candLower = candidateToCheck.toLowerCase();
-    const nameLower = canonicalName.toLowerCase();
-    const isFacePull = nameLower.includes("face pull") || nameLower.includes("facepull");
-    const isChestDip = nameLower.includes("dip") || nameLower.includes("chest dip");
-    const isPullUp = nameLower.includes("pull-up") || nameLower.includes("pull up") || nameLower.includes("pullup") || nameLower.includes("chin up") || nameLower.includes("chin-up");
-
-    if (candLower.includes("giphy.com")) return true;
-    if (candLower.includes("0174-8b6lc55")) return true; // known 404 URL
-    if (candLower.includes("0337-l2v5nan") && isFacePull) return true; // lying across-face press wrongly on face pull
-    if (candLower.includes("0139-50betrz") && isFacePull) return true;
-    if (candLower.includes("0991-vttbip3") && isFacePull) return true;
-    if (candLower.includes("0063-elhhvgj") && !nameLower.includes("squat")) return true;
-    if (candLower.includes("u8946fanhq6ch9r16e") && !nameLower.includes("squat")) return true;
-
-    // Biomechanical validation: Detect Pull Ups vs Chest Dips mismatch
-    if (isChestDip && (candLower.includes("0652-lbdjfxj") || candLower.includes("2808-bmrwwzo") || candLower.includes("pullup") || candLower.includes("pull-up") || candLower.includes("pull_up"))) {
-      return true;
-    }
-    if (isPullUp && (candLower.includes("0251-9wtm7dq") || candLower.includes("3288-rwobmi5") || candLower.includes("3289-05cf2v8") || candLower.includes("dip"))) {
-      return true;
-    }
-
-    return false;
-  }, [mediaUrl, rawCandidate, canonicalName]);
-
-  // Derive mediaUrl safely: if candidate is problematic or mismatched, default to accurate canonical catalog
-  const rawMediaUrl = useMemo(() => {
-    if (isCandidateProblematic) {
-      return defaultFallbackUrl;
-    }
-    if (mediaUrl && !mediaUrl.includes("giphy.com") && !mediaUrl.includes("0174-8b6lC55")) {
-      return mediaUrl;
-    }
-    if (rawCandidate) {
-      return rawCandidate;
-    }
-    return defaultFallbackUrl;
-  }, [mediaUrl, isCandidateProblematic, rawCandidate, defaultFallbackUrl]);
+  const defaultFallbackUrl = authentic.gifUrl || getAccurateExerciseGif(canonicalName, exercise?.category);
+  const rawMediaUrl = authentic.gifUrl || defaultFallbackUrl;
 
   const initialResolvedUrl = resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl;
 

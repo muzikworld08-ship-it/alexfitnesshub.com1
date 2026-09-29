@@ -1,4 +1,4 @@
-import { db, auth, isMockFirebase } from "../lib/firebase";
+import { db, auth, isMockFirebase, cleanFirestoreData } from "../lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
 /**
@@ -111,14 +111,14 @@ function saveWorkoutCompletions(records: WorkoutCompletionRecord[]): void {
     
     // Asynchronously synchronize with Firestore so progress is mirrored across all devices
     const currentUid = auth?.currentUser?.uid;
-    if (currentUid && !isMockFirebase) {
+    if (currentUid && typeof currentUid === "string" && currentUid.trim() && !isMockFirebase) {
       setDoc(
         doc(db, "user_streak_history", currentUid),
-        {
+        cleanFirestoreData({
           userId: currentUid,
           records: records.slice(0, 150),
           updatedAt: new Date().toISOString()
-        },
+        }),
         { merge: true }
       ).catch((err) => {
         console.warn("Notice: background streak sync to Firestore:", err?.message || err);
@@ -157,14 +157,14 @@ export async function syncStreakWithFirestore(uid: string): Promise<WorkoutCompl
       return mergedList;
     } else {
       const localRecords = getStoredWorkoutCompletions();
-      if (localRecords.length > 0) {
+      if (localRecords.length > 0 && uid && typeof uid === "string" && uid.trim()) {
         setDoc(
           doc(db, "user_streak_history", uid),
-          {
+          cleanFirestoreData({
             userId: uid,
             records: localRecords.slice(0, 150),
             updatedAt: new Date().toISOString()
-          },
+          }),
           { merge: true }
         ).catch(() => {});
       }

@@ -13,6 +13,7 @@ import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { findMatchingExercise } from "../utils/exerciseMatching";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
 import { getExerciseGifUrl } from "../data/exercises";
+import { resolveAuthenticExercise } from "../data/authoritativeExerciseMap";
 import { getSupabaseCdnUrl } from "../utils/supabaseImage";
 import { isImageCached, markImageCached } from "../utils/imageCache";
 
@@ -51,29 +52,16 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
   const displayEquipment = exercise?.equipment || [];
   const displayDifficulty = exercise?.difficulty || "Beginner";
 
-  const defaultGifUrl = React.useMemo(() => {
-    return getExerciseGifUrl(exercise?.name || exerciseName || category || "");
-  }, [exercise?.name, exerciseName, category]);
+  const targetName = exercise?.name || exerciseName || category || "";
 
-  const isCandidateProblematic = React.useMemo(() => {
-    const raw = customMediaUrl || exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl;
-    if (!raw) return false;
-    const candLower = raw.toLowerCase();
-    const nameLower = (exercise?.name || exerciseName || "").toLowerCase();
-    const isFacePull = nameLower.includes("face pull") || nameLower.includes("facepull");
+  // Guaranteed authentic matching GIF resolved through authoritative dataset mapping
+  const authentic = React.useMemo(() => {
+    const candidate = customMediaUrl || exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl;
+    return resolveAuthenticExercise(targetName, candidate, displayCategory);
+  }, [targetName, customMediaUrl, exercise?.customMediaUrl, exercise?.gifUrl, exercise?.imageUrl, displayCategory]);
 
-    if (candLower.includes("giphy.com")) return true;
-    if (candLower.includes("0174-8b6lc55")) return true;
-    if (candLower.includes("0337-l2v5nan") && isFacePull) return true;
-    if (candLower.includes("0139-50betrz") && isFacePull) return true;
-    if (candLower.includes("0991-vttbip3") && isFacePull) return true;
-    if (candLower.includes("0063-elhhvgj") && !nameLower.includes("squat")) return true;
-    return false;
-  }, [customMediaUrl, exercise?.customMediaUrl, exercise?.gifUrl, exercise?.imageUrl, exercise?.name, exerciseName]);
-
-  const primaryRawUrl = isCandidateProblematic
-    ? defaultGifUrl
-    : (customMediaUrl || exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl || defaultGifUrl);
+  const defaultGifUrl = authentic.gifUrl || getExerciseGifUrl(targetName, displayCategory);
+  const primaryRawUrl = authentic.gifUrl || defaultGifUrl;
   const initialResolvedUrl = resolveAdminMediaUrl(primaryRawUrl) || defaultGifUrl;
   
   // Performance & Robustness states

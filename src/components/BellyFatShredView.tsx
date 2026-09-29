@@ -15,12 +15,16 @@ import WorkoutVisual from "./WorkoutVisual";
 import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import { bellyFatCardioCircuit } from "../data/homeWorkouts";
+import { resolveAuthenticExercise } from "../data/authoritativeExerciseMap";
 import HomeWorkoutPlayer from "./HomeWorkoutPlayer";
 import GlobalSkeletonLoader, { DashboardSkeleton } from "./SkeletonLoader";
 import bellyShredHeroImg from "../assets/images/belly_shred_hero_1784283617530.jpg";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
+import RestDayCard from "./RestDayCard";
+import CardioDayCard from "./CardioDayCard";
 import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
 import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
+import { cleanFirestoreData } from "../lib/firebase";
 
 // High-fidelity local types
 interface WeightEntry {
@@ -398,6 +402,7 @@ const BoldDrillCard: React.FC<BoldDrillCardProps> = ({
   accentColor = "#D32F2F"
 }) => {
   const details = parseDrillDetails(drill, sectionType);
+  const authentic = resolveAuthenticExercise(details.libName || details.name);
 
   return (
     <div
@@ -410,7 +415,8 @@ const BoldDrillCard: React.FC<BoldDrillCardProps> = ({
       {/* Frameless Edge-to-Edge Bold Media Header */}
       <div className="relative w-full aspect-[16/10] workout-media-frameless flex items-center justify-center overflow-hidden">
         <UnifiedExerciseMedia
-          exerciseName={details.libName}
+          exerciseName={authentic.name}
+          mediaUrl={authentic.gifUrl}
           className="w-full h-full object-contain workout-gif-display workout-gif-bold group-hover:scale-105 transition-transform duration-500"
         />
 
@@ -457,13 +463,13 @@ const BoldDrillCard: React.FC<BoldDrillCardProps> = ({
                   : (isDark ? "text-white" : "text-slate-950")
               }`}
             >
-              {details.name}
+              {authentic.name}
             </h4>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-[9px] font-mono font-black uppercase tracking-wider text-[#D32F2F] bg-[#D32F2F]/10 px-2.5 py-0.5 rounded-full border border-[#D32F2F]/20">
-              {details.libName}
+              {authentic.name}
             </span>
             <span className="text-[9px] font-mono text-slate-400 uppercase font-semibold">
               Drill #{drillIndex + 1}
@@ -722,16 +728,16 @@ export default function BellyFatShredView() {
     }
 
     // 2. Firestore integration load
-    if (!isMockFirebase && user) {
+    if (!isMockFirebase && user?.uid && typeof user.uid === "string" && user.uid.trim()) {
       try {
-        const docRef = doc(db, "belly_fat_shred_progress", user.uid);
+        const docRef = doc(db, "belly_fat_shred_progress", user.uid.trim());
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const dbData = docSnap.data() as BellyFatShredProgress;
           initialProgress = { ...initialProgress, ...dbData };
         }
       } catch (err) {
-        console.error("Firestore progress load error:", err);
+        console.warn("Firestore progress load notice:", err);
       }
     }
 
@@ -786,18 +792,17 @@ export default function BellyFatShredView() {
   }, [progress?.currentWeek, progress?.currentDay, progress?.completedWorkouts?.length]);
 
   const syncProgress = async (updated: BellyFatShredProgress) => {
-    if (!user) return;
+    if (!user?.uid || typeof user.uid !== "string" || !user.uid.trim()) return;
     setProgress(updated);
-    localStorage.setItem(`belly_fat_shred_progress_${user.uid}`, JSON.stringify(updated));
+    localStorage.setItem(`belly_fat_shred_progress_${user.uid.trim()}`, JSON.stringify(updated));
 
     if (!isMockFirebase) {
       setSavingDb(true);
       try {
-        const docRef = doc(db, "belly_fat_shred_progress", user.uid);
-        await setDoc(docRef, updated);
+        const docRef = doc(db, "belly_fat_shred_progress", user.uid.trim());
+        await setDoc(docRef, cleanFirestoreData(updated), { merge: true });
       } catch (err) {
-        console.error("Error syncing belly fat progress:", err);
-        handleFirestoreError(err, OperationType.WRITE, `belly_fat_shred_progress/${user.uid}`);
+        console.warn("Notice syncing belly fat progress:", err);
       } finally {
         setSavingDb(false);
       }
@@ -1036,6 +1041,19 @@ export default function BellyFatShredView() {
       }
     };
     syncProgress(updated);
+
+    if (isCompleted) {
+      const daySeq = ((progress.currentWeek - 1) * 7) + progress.currentDay;
+      recordDailyWorkoutCompletion("belly_fat_shred", daySeq);
+      setCelebrationModalData({
+        isOpen: true,
+        completedDay: daySeq,
+        totalDays: 140,
+        streakCount: nextRunningStreak || 1,
+        caloriesBurned: 420,
+        exercisesCount: 1
+      });
+    }
   };
 
   // Lemon Water toggling
@@ -2608,6 +2626,44 @@ export default function BellyFatShredView() {
               </div>
             </div>
 
+            {/* Check if today is Scheduled Rest Day (Sunday Day 7) or Scheduled Cardio Run (Wednesday Day 3) */}
+            {progress.currentDay === 7 ? (
+              <div className="space-y-6">
+                <RestDayCard
+                  programId="belly_fat_shred"
+                  programName="5-Month Belly Fat Shred Program"
+                  dayNumber={((progress.currentWeek - 1) * 7) + progress.currentDay}
+                  totalDays={140}
+                  isCompleted={progress.completedWorkouts.includes(`week_${progress.currentWeek}_day_${progress.currentDay}`) || progress.completedRuns.includes(`week_${progress.currentWeek}_run_${progress.currentDay}`)}
+                  onComplete={() => handleToggleWorkout()}
+                />
+                <div className="text-center py-2">
+                  <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest">— OR COMPLETE OPTIONAL AEROBIC CARDIO —</span>
+                </div>
+                <CardioDayCard
+                  programId="belly_fat_shred"
+                  programName="5-Month Belly Fat Shred Program"
+                  dayNumber={((progress.currentWeek - 1) * 7) + progress.currentDay}
+                  totalDays={140}
+                  distanceKm={5}
+                  isCompleted={progress.completedRuns.includes(`week_${progress.currentWeek}_run_${progress.currentDay}`)}
+                  onComplete={() => handleToggleRun()}
+                />
+              </div>
+            ) : progress.currentDay === 3 ? (
+              <div className="py-4">
+                <CardioDayCard
+                  programId="belly_fat_shred"
+                  programName="5-Month Belly Fat Shred Program"
+                  dayNumber={((progress.currentWeek - 1) * 7) + progress.currentDay}
+                  totalDays={140}
+                  distanceKm={5}
+                  isCompleted={progress.completedRuns.includes(`week_${progress.currentWeek}_run_${progress.currentDay}`)}
+                  onComplete={() => handleToggleRun()}
+                />
+              </div>
+            ) : (
+              <>
             {/* SECTION 01: WARM-UP MOBILITY */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -2823,6 +2879,8 @@ export default function BellyFatShredView() {
                 })}
               </div>
             </div>
+            </>
+            )}
 
             {/* Modifications & Intensity Scaling panel */}
             <div className="grid lg:grid-cols-3 gap-6 pt-4">
@@ -2943,22 +3001,25 @@ export default function BellyFatShredView() {
                             </span>
                           </div>
                           <div className="grid sm:grid-cols-2 gap-4 pt-3 border-t border-slate-200/50">
-                            {w.exercises?.map((ex: any, idx: number) => (
-                              <div key={idx} className={`rounded-2xl overflow-hidden border flex flex-col justify-between transition-all hover:shadow-md ${isDark ? "bg-slate-900/90 border-slate-800" : "bg-white border-slate-200"}`}>
-                                <div className="w-full aspect-video workout-media-frameless flex items-center justify-center relative overflow-hidden">
-                                  <UnifiedExerciseMedia exerciseName={ex.name} mediaUrl={ex.gifUrl} className="w-full h-full object-contain workout-gif-display" />
-                                  <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/80 backdrop-blur-md rounded-md text-[9px] font-mono font-bold text-white z-10 border border-white/10">
-                                    {ex.sets} sets × {ex.reps}
+                            {w.exercises?.map((ex: any, idx: number) => {
+                              const auth = resolveAuthenticExercise(ex.name, ex.gifUrl);
+                              return (
+                                <div key={idx} className={`rounded-2xl overflow-hidden border flex flex-col justify-between transition-all hover:shadow-md ${isDark ? "bg-slate-900/90 border-slate-800" : "bg-white border-slate-200"}`}>
+                                  <div className="w-full aspect-video workout-media-frameless flex items-center justify-center relative overflow-hidden">
+                                    <UnifiedExerciseMedia exerciseName={auth.name} mediaUrl={auth.gifUrl} className="w-full h-full object-contain workout-gif-display" />
+                                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/80 backdrop-blur-md rounded-md text-[9px] font-mono font-bold text-white z-10 border border-white/10">
+                                      {ex.sets} sets × {ex.reps}
+                                    </div>
+                                  </div>
+                                  <div className="p-3 text-[11px] space-y-1">
+                                    <span className={`font-mono font-black uppercase block truncate ${isDark ? "text-slate-200" : "text-slate-900"}`}>
+                                      {auth.name}
+                                    </span>
+                                    <span className="text-slate-400 text-[10px] line-clamp-2">{ex.instructions}</span>
                                   </div>
                                 </div>
-                                <div className="p-3 text-[11px] space-y-1">
-                                  <span className={`font-mono font-black uppercase block truncate ${isDark ? "text-slate-200" : "text-slate-900"}`}>
-                                    {ex.name}
-                                  </span>
-                                  <span className="text-slate-400 text-[10px] line-clamp-2">{ex.instructions}</span>
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       ))}
@@ -3123,8 +3184,17 @@ export default function BellyFatShredView() {
 
               {/* Grid content */}
               <div className={`grid md:grid-cols-2 gap-6 ${user.subscriptionStatus !== "premium" && user.role !== "admin" ? "blur-md select-none pointer-events-none opacity-35" : ""}`}>
+                {bellyFatCardioCircuit.exercises.length === 0 && (
+                  <div className="col-span-full py-16 px-6 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50/50 dark:bg-slate-900/30">
+                    <p className={`text-sm font-bold uppercase tracking-wider ${textPrimary}`}>No Pre-Existing Exercises Loaded</p>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                      Legacy default exercises and GIFs have been cleared. As admin uploads exercises, they will appear dynamically here.
+                    </p>
+                  </div>
+                )}
                 {bellyFatCardioCircuit.exercises.map((exercise, idx) => {
                   const isFav = favoriteExercises.includes(exercise.id);
+                  const auth = resolveAuthenticExercise(exercise.name || exercise.mediaName, (exercise as any).gifUrl);
                   return (
                     <div key={exercise.id} className={`border rounded-3xl p-5 flex flex-col justify-between gap-4 ${cardBg} hover:shadow-xl transition-all duration-300`}>
                       <div className="space-y-3">
@@ -3132,7 +3202,7 @@ export default function BellyFatShredView() {
                           <div className="space-y-1">
                             <span className="text-[10px] font-mono text-slate-500 block uppercase font-black">Movement {idx + 1}</span>
                             <h3 className={`text-lg font-black uppercase font-display leading-tight ${textPrimary}`}>
-                              {exercise.name}
+                              {auth.name}
                             </h3>
                           </div>
                           
@@ -3156,7 +3226,8 @@ export default function BellyFatShredView() {
                         {/* Interactive Visual Media */}
                         <div className="rounded-2xl overflow-hidden workout-media-frameless w-full aspect-video flex items-center justify-center relative shadow-md">
                           <UnifiedExerciseMedia 
-                            exerciseName={exercise.mediaName || exercise.name} 
+                            exerciseName={auth.name} 
+                            mediaUrl={auth.gifUrl}
                             className="w-full h-full object-contain workout-gif-display"
                           />
                           <div className="absolute top-2.5 left-2.5 px-2.5 py-1 bg-black/80 backdrop-blur-md rounded-lg text-[9px] font-mono font-bold text-white z-10 flex items-center gap-1 shadow-sm border border-white/10">

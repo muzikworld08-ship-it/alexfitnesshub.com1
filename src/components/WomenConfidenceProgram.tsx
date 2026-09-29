@@ -24,9 +24,13 @@ import {
   WOMEN_EXERCISE_CATALOG
 } from "../data/womenConfidenceProgramData";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
+import { resolveAuthenticExercise } from "../data/authoritativeExerciseMap";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
+import RestDayCard from "./RestDayCard";
+import CardioDayCard from "./CardioDayCard";
 import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
 import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
+import { cleanFirestoreData } from "../lib/firebase";
 
 interface WomenConfidenceProgressState {
   userId: string;
@@ -195,9 +199,9 @@ export default function WomenConfidenceProgram() {
         }
 
         // 2. Try Firestore if logged in
-        if (user && !isMockFirebase) {
+        if (user?.uid && typeof user.uid === "string" && user.uid.trim() && !isMockFirebase) {
           try {
-            const docRef = doc(db, "users", user.uid, "programs", "women_confidence");
+            const docRef = doc(db, "users", user.uid.trim(), "programs", "women_confidence");
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
               const remoteData = docSnap.data() as WomenConfidenceProgressState;
@@ -250,9 +254,9 @@ export default function WomenConfidenceProgram() {
         });
       }
 
-      if (user && !isMockFirebase) {
-        const docRef = doc(db, "users", user.uid, "programs", "women_confidence");
-        await setDoc(docRef, newState, { merge: true });
+      if (user?.uid && typeof user.uid === "string" && user.uid.trim() && !isMockFirebase) {
+        const docRef = doc(db, "users", user.uid.trim(), "programs", "women_confidence");
+        await setDoc(docRef, cleanFirestoreData(newState), { merge: true });
       }
     } catch (err) {
       console.warn("Failed to persist Women Confidence progress:", err);
@@ -1618,48 +1622,76 @@ export default function WomenConfidenceProgram() {
             </div>
           )}
 
-          {/* Exercise List (8-10 exercises) */}
-          <div className="space-y-4 w-full">
-            {currentWorkout.exercises.map((ex, index) => {
-              const dayKey = `day_${selectedDayNumber}`;
-              const isCompleted = (progState.completedExercises[dayKey] || []).includes(ex.id);
+          {/* Check if current day is Rest Day or Cardio Day */}
+          {(currentWorkout.dayType === "rest" || currentWorkout.dayType === "active_recovery" || currentWorkout.title.toLowerCase().includes("rest") || currentWorkout.title.toLowerCase().includes("recovery") || currentWorkout.focus.toLowerCase().includes("rest")) ? (
+            <div className="py-4 w-full">
+              <RestDayCard
+                programId="women_confidence"
+                programName="Women Confidence Program"
+                dayNumber={selectedDayNumber}
+                totalDays={180}
+                isCompleted={(progState.completedDays || []).includes(selectedDayNumber)}
+                onComplete={() => handleCompleteFullDay(selectedDayNumber)}
+              />
+            </div>
+          ) : (currentWorkout.dayType === "walking" || currentWorkout.title.toLowerCase().includes("cardio") || currentWorkout.focus.toLowerCase().includes("cardio") || currentWorkout.title.toLowerCase().includes("walk") || currentWorkout.title.toLowerCase().includes("run")) ? (
+            <div className="py-4 w-full">
+              <CardioDayCard
+                programId="women_confidence"
+                programName="Women Confidence Program"
+                dayNumber={selectedDayNumber}
+                totalDays={180}
+                distanceKm={5}
+                isCompleted={(progState.completedDays || []).includes(selectedDayNumber)}
+                onComplete={() => handleCompleteFullDay(selectedDayNumber)}
+              />
+            </div>
+          ) : (
+            /* Exercise List (8-10 exercises) - Only on regular training days */
+            <div className="space-y-4 w-full">
+              {currentWorkout.exercises.map((ex, index) => {
+                const dayKey = `day_${selectedDayNumber}`;
+                const isCompleted = (progState.completedExercises[dayKey] || []).includes(ex.id);
 
-              return (
-                <div 
-                  key={ex.id}
-                  className={`bg-white rounded-2xl border transition-all overflow-hidden w-full ${
-                    isCompleted ? "border-emerald-300 bg-emerald-50/20" : "border-gray-200 shadow-sm"
-                  }`}
-                >
-                  <div className="p-4 sm:p-6 flex flex-col lg:flex-row gap-5 sm:gap-6 items-start w-full">
-                    {/* Media / Unified Media Demonstration */}
-                    <div className="w-full lg:w-72 aspect-video rounded-xl overflow-hidden workout-media-frameless flex-shrink-0 relative">
-                      <UnifiedExerciseMedia 
-                        exerciseName={ex.name}
-                        exerciseId={ex.id}
-                        mediaUrl={ex.gifUrl}
-                        className="w-full h-full object-contain workout-gif-display"
-                        fallbackType="dumbbell"
-                      />
-                      <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/80 backdrop-blur-xs text-white text-[10px] font-mono font-bold z-10 border border-white/10">
-                        Drill #{index + 1}
-                      </div>
-                      {isCompleted && (
-                        <div className="absolute inset-0 bg-emerald-950/40 backdrop-blur-[1px] flex items-center justify-center z-10">
-                          <div className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1 shadow-md">
-                            <Check className="w-3.5 h-3.5" /> COMPLETED
+                return (
+                  <div 
+                    key={ex.id}
+                    className={`bg-white rounded-2xl border transition-all overflow-hidden w-full ${
+                      isCompleted ? "border-emerald-300 bg-emerald-50/20" : "border-gray-200 shadow-sm"
+                    }`}
+                  >
+                    {(() => {
+                      const auth = resolveAuthenticExercise(ex.name, ex.gifUrl);
+                      return (
+                        <div className="p-4 sm:p-6 flex flex-col lg:flex-row gap-5 sm:gap-6 items-start w-full">
+                          {/* Media / Unified Media Demonstration */}
+                          <div className="w-full lg:w-72 aspect-video rounded-xl overflow-hidden workout-media-frameless flex-shrink-0 relative">
+                            <UnifiedExerciseMedia 
+                              exerciseName={auth.name}
+                              exerciseId={ex.id}
+                              mediaUrl={auth.gifUrl}
+                              className="w-full h-full object-contain workout-gif-display"
+                              fallbackType="dumbbell"
+                            />
+                            <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/80 backdrop-blur-xs text-white text-[10px] font-mono font-bold z-10 border border-white/10">
+                              Drill #{index + 1}
+                            </div>
+                            {isCompleted && (
+                              <div className="absolute inset-0 bg-emerald-950/40 backdrop-blur-[1px] flex items-center justify-center z-10">
+                                <div className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1 shadow-md">
+                                  <Check className="w-3.5 h-3.5" /> COMPLETED
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      )}
-                    </div>
 
-                    {/* Exercise Spec & Details */}
-                    <div className="flex-1 space-y-3 min-w-0 w-full">
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs font-bold text-rose-600 uppercase tracking-wider">{ex.targetMuscles}</div>
-                          <h3 className="text-base sm:text-lg font-bold text-gray-900 break-words">{ex.name}</h3>
-                        </div>
+                        {/* Exercise Spec & Details */}
+                        <div className="flex-1 space-y-3 min-w-0 w-full">
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold text-rose-600 uppercase tracking-wider">{ex.targetMuscles}</div>
+                              <h3 className="text-base sm:text-lg font-bold text-gray-900 break-words">{auth.name}</h3>
+                            </div>
                         <button
                           type="button"
                           onClick={() => handleToggleExercise(ex.id)}
@@ -1710,10 +1742,13 @@ export default function WomenConfidenceProgram() {
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })()}
+            </div>
+          );
+        })}
+      </div>
+    )}
 
           {/* Complete Day Workout Button */}
           <div className="p-5 sm:p-6 rounded-2xl bg-white border border-gray-200 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 w-full">

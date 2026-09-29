@@ -22,14 +22,18 @@ import {
   getHomeWorkoutForDay 
 } from "../data/homeWorkoutChallengeData";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
+import { resolveAuthenticExercise } from "../data/authoritativeExerciseMap";
 import { saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
 import { DailyLifestyleChecklist, DailyLifestyleHabits } from "./DailyLifestyleChecklist";
 import { getExerciseGifUrl } from "../data/exercises";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
 import { preloadImage } from "../utils/imageCache";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
+import RestDayCard from "./RestDayCard";
+import CardioDayCard from "./CardioDayCard";
 import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
 import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
+import { cleanFirestoreData } from "../lib/firebase";
 
 interface HomeChallengeState {
   userId: string;
@@ -161,7 +165,7 @@ export default function HomeWorkoutChallengeView() {
     let isMounted = true;
 
     async function loadData() {
-      if (!user) {
+      if (!user || !user.uid) {
         // Check localStorage for offline/guest persistence
         const cached = localStorage.getItem("fit_home_challenge_state");
         if (cached) {
@@ -178,8 +182,8 @@ export default function HomeWorkoutChallengeView() {
       }
 
       try {
-        if (!isMockFirebase) {
-          const docRef = doc(db, "home_workout_challenge", user.uid);
+        if (!isMockFirebase && user.uid && typeof user.uid === "string" && user.uid.trim()) {
+          const docRef = doc(db, "home_workout_challenge", user.uid.trim());
           const snap = await getDoc(docRef);
           if (snap.exists() && isMounted) {
             const d = snap.data() as HomeChallengeState;
@@ -194,7 +198,8 @@ export default function HomeWorkoutChallengeView() {
       }
 
       // Fallback to local storage
-      const local = localStorage.getItem(`fit_home_challenge_${user.uid}`);
+      const uidKey = user.uid ? user.uid.trim() : "guest";
+      const local = localStorage.getItem(`fit_home_challenge_${uidKey}`);
       if (local && isMounted) {
         try {
           const parsed = JSON.parse(local);
@@ -212,13 +217,14 @@ export default function HomeWorkoutChallengeView() {
   // Sync state to local and Firestore
   const saveState = async (newState: HomeChallengeState) => {
     setState(newState);
-    const storageKey = user ? `fit_home_challenge_${user.uid}` : "fit_home_challenge_state";
+    const uidKey = user?.uid ? user.uid.trim() : "guest";
+    const storageKey = user?.uid ? `fit_home_challenge_${uidKey}` : "fit_home_challenge_state";
     localStorage.setItem(storageKey, JSON.stringify(newState));
 
-    if (user && !isMockFirebase) {
+    if (user?.uid && typeof user.uid === "string" && user.uid.trim() && !isMockFirebase) {
       try {
-        const docRef = doc(db, "home_workout_challenge", user.uid);
-        await setDoc(docRef, { ...newState, updatedAt: new Date().toISOString() }, { merge: true });
+        const docRef = doc(db, "home_workout_challenge", user.uid.trim());
+        await setDoc(docRef, cleanFirestoreData({ ...newState, updatedAt: new Date().toISOString() }), { merge: true });
       } catch (e) {
         console.warn("[HomeChallenge] Firestore sync notice:", e);
       }
@@ -1271,38 +1277,33 @@ export default function HomeWorkoutChallengeView() {
             </div>
 
             {currentWorkout.isRestDay ? (
-              <div className="bg-blue-50 border border-blue-200 p-6 rounded-2xl text-blue-900 space-y-3">
-                <div className="flex items-center gap-2 font-bold text-sm">
-                  <Moon className="w-5 h-5 text-blue-600" />
-                  <span>Active Recovery & Joint Restoration Day</span>
-                </div>
-                <p className="text-xs text-blue-800/90 leading-relaxed">
-                  Today is scheduled for tissue healing and mental decompression. Take a 20-minute relaxing outdoor walk, perform light stretching below, and focus on deep hydration and hitting your 7:30 PM eating cut-off.
-                </p>
+              <div className="py-4">
+                <RestDayCard
+                  programId="home_180"
+                  programName="180 Day Home Workout Challenge"
+                  dayNumber={selectedDayNumber}
+                  totalDays={180}
+                  isCompleted={state.completedDays.includes(selectedDayNumber)}
+                  onComplete={() => handleToggleWorkoutComplete(selectedDayNumber)}
+                />
               </div>
             ) : currentWorkout.is5KmCardioDay ? (
-              <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl text-amber-900 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 font-bold text-sm">
-                    <Footprints className="w-5 h-5 text-amber-600" />
-                    <span>5 Kilometer Aerobic Milestone Scheduled</span>
-                  </div>
-                  <button
-                    onClick={() => setActiveTab("cardio")}
-                    className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold cursor-pointer"
-                  >
-                    Open Cardio Tracker
-                  </button>
-                </div>
-                <p className="text-xs text-amber-800/90 leading-relaxed">
-                  Choose between a <strong>5 KM Run</strong> or <strong>5 KM Walk</strong>. Complete the distance at your own pace and log your time in the Cardio Tracker tab!
-                </p>
+              <div className="py-4">
+                <CardioDayCard
+                  programId="home_180"
+                  programName="180 Day Home Workout Challenge"
+                  dayNumber={selectedDayNumber}
+                  totalDays={180}
+                  distanceKm={5}
+                  isCompleted={state.completedDays.includes(selectedDayNumber)}
+                  onComplete={() => handleToggleWorkoutComplete(selectedDayNumber)}
+                />
               </div>
             ) : null}
           </div>
 
-          {/* Interactive Workout Timer & Straight-Line Exercise Feed */}
-          {currentWorkout.exercises.length > 0 && (
+          {/* Interactive Workout Timer & Straight-Line Exercise Feed (Only on non-cardio, non-rest days) */}
+          {!currentWorkout.isRestDay && !currentWorkout.is5KmCardioDay && currentWorkout.exercises.length > 0 && (
             <div className="space-y-6">
               
               {/* Section Navigation Ribbon with Smooth Jump Anchors & Progress */}
@@ -1497,9 +1498,16 @@ export default function HomeWorkoutChallengeView() {
                               </span>
                             </div>
 
-                            <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                              {ex.name}
-                            </h3>
+                            {(() => {
+                              const auth = resolveAuthenticExercise(ex.name, ex.gifUrl, ex.workoutType);
+                              return (
+                                <>
+                                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                                    {auth.name}
+                                  </h3>
+                                </>
+                              );
+                            })()}
                           </div>
 
                           {/* Completed Drill Toggle */}
@@ -1519,14 +1527,19 @@ export default function HomeWorkoutChallengeView() {
 
                         {/* Frameless GIF Display - Centered, Crisp, Seamless */}
                         <div className="relative aspect-video sm:aspect-[16/10] w-full max-w-2xl mx-auto overflow-hidden workout-media-frameless workout-gif-frameless flex items-center justify-center bg-transparent py-2">
-                          <UnifiedExerciseMedia
-                            key={`${ex.id}-${ex.name}-${exIdx}`}
-                            exerciseId={ex.id}
-                            exerciseName={ex.name}
-                            mediaUrl={ex.gifUrl}
-                            className="w-full h-full object-contain workout-gif-display workout-gif-frameless"
-                            priority={exIdx < 2}
-                          />
+                          {(() => {
+                            const auth = resolveAuthenticExercise(ex.name, ex.gifUrl, ex.workoutType);
+                            return (
+                              <UnifiedExerciseMedia
+                                key={`${ex.id}-${auth.name}-${exIdx}`}
+                                exerciseId={ex.id}
+                                exerciseName={auth.name}
+                                mediaUrl={auth.gifUrl}
+                                className="w-full h-full object-contain workout-gif-display workout-gif-frameless"
+                                priority={exIdx < 2}
+                              />
+                            );
+                          })()}
                         </div>
 
                         {/* Sets, Reps/Duration, Rest Interval */}
@@ -2247,7 +2260,7 @@ export default function HomeWorkoutChallengeView() {
         <WorkoutCelebrationModal
           isOpen={celebrationModalData.isOpen}
           onClose={() => setCelebrationModalData(null)}
-          programId="home_180_challenge"
+          programId="home_180"
           programName="180 Day Home Workout Challenge"
           completedDay={celebrationModalData.completedDay}
           totalDays={celebrationModalData.totalDays}

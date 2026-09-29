@@ -11,6 +11,7 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { queueLifestyleAcademyReminderEmail } from "../lib/mailTriggers";
 import WorkoutVisual from "./WorkoutVisual";
+import { resolveAuthenticExercise } from "../data/authoritativeExerciseMap";
 import { findMatchingExercise, isExerciseMatch } from "../utils/exerciseMatching";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
 import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
@@ -926,35 +927,9 @@ export default function LifestyleFitnessAcademy() {
   const habitsUnlocked = isStretchingCompleted;
 
   const getMatchedExerciseName = (targetName: string): string => {
-    if (!exercises || !targetName) return targetName;
-    const matchedEx = findMatchingExercise(exercises, null, targetName);
-    if (matchedEx) return matchedEx.name;
-
-    const targetLower = targetName.toLowerCase().trim();
-
-    // Map specific Academy Stretches to their actual central exercise names
-    if (targetLower.includes("cat-cow") || targetLower.includes("spinal wave")) {
-      const ex = exercises.find(e => e.name.toLowerCase().includes("cat-cow"));
-      if (ex) return ex.name;
-    }
-    if (targetLower.includes("thoracic")) {
-      const ex = exercises.find(e => e.name.toLowerCase().includes("thoracic"));
-      if (ex) return ex.name;
-    }
-    if (targetLower.includes("hip opener") || targetLower.includes("90/90 active")) {
-      const ex = exercises.find(e => e.name.toLowerCase().includes("90/90 active hip"));
-      if (ex) return ex.name;
-    }
-    if (targetLower.includes("dorsiflexion")) {
-      const ex = exercises.find(e => e.name.toLowerCase().includes("dorsiflexion"));
-      if (ex) return ex.name;
-    }
-    if (targetLower.includes("diaphragmatic")) {
-      const ex = exercises.find(e => e.name.toLowerCase().includes("diaphragmatic"));
-      if (ex) return ex.name;
-    }
-
-    return targetName;
+    if (!targetName) return "";
+    const auth = resolveAuthenticExercise(targetName);
+    return auth.name;
   };
 
   // Total Academy Progress Metrics
@@ -1376,7 +1351,7 @@ export default function LifestyleFitnessAcademy() {
                               </span>
                             </div>
                             <h4 className="text-sm font-black uppercase text-slate-900">
-                              {stretch.name}
+                              {getMatchedExerciseName(stretch.name)}
                             </h4>
                             <p className="text-xs text-slate-600 font-semibold leading-relaxed mt-1">
                               {stretch.instructions}
@@ -1498,7 +1473,7 @@ export default function LifestyleFitnessAcademy() {
                               <div className="flex-grow flex flex-col justify-between min-w-0 w-full">
                                 <div className="space-y-1">
                                   <div className="flex justify-between items-start gap-4">
-                                    <h5 className="font-bold text-xs uppercase text-[#D32F2F]">{ex.name}</h5>
+                                    <h5 className="font-bold text-xs uppercase text-[#D32F2F]">{getMatchedExerciseName(ex.name)}</h5>
                                     <span className="bg-slate-50 px-2.5 py-0.5 rounded text-[9px] font-mono text-slate-500 font-bold uppercase">{ex.reps}</span>
                                   </div>
                                   <p className="text-xs text-slate-600 font-semibold leading-relaxed">

@@ -21,6 +21,7 @@ import { EXERCISES, Exercise } from "../data/exercises";
 import LiveWorkoutPlayerModal from "./generator/LiveWorkoutPlayerModal";
 import ExerciseSwapperModal from "./generator/ExerciseSwapperModal";
 import MasterLibraryBrowserModal from "./generator/MasterLibraryBrowserModal";
+import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
 
 interface WorkoutGeneratorViewProps {
   setView?: (view: string) => void;
@@ -50,6 +51,15 @@ export default function WorkoutGeneratorView({ setView }: WorkoutGeneratorViewPr
   const [isLivePlayerOpen, setIsLivePlayerOpen] = useState<boolean>(false);
   const [exerciseToSwap, setExerciseToSwap] = useState<DailyWorkoutExerciseItem | null>(null);
   const [isMasterLibraryOpen, setIsMasterLibraryOpen] = useState<boolean>(false);
+  const [celebrationData, setCelebrationData] = useState<{
+    isOpen: boolean;
+    completedDay: number;
+    totalDays: number;
+    programId: string;
+    programName: string;
+    calories: number;
+    exercisesCount: number;
+  } | null>(null);
 
   // Single Search Drill State (Preserved legacy generator)
   const [singleSearchQuery, setSingleSearchQuery] = useState("");
@@ -1161,6 +1171,15 @@ export default function WorkoutGeneratorView({ setView }: WorkoutGeneratorViewPr
           onClose={() => setIsLivePlayerOpen(false)}
           onWorkoutCompleted={stats => {
             triggerToast(`🎉 Workout completed and logged! Est burn: ${stats.estimatedCalories}`);
+            setCelebrationData({
+              isOpen: true,
+              completedDay: dailyWorkout.dayNumber,
+              totalDays: PROGRAM_METADATA_CONFIG[selectedProgram]?.defaultDays || 90,
+              programId: selectedProgram,
+              programName: dailyWorkout.programName,
+              calories: parseInt(stats.estimatedCalories) || 350,
+              exercisesCount: dailyWorkout.exercises.length
+            });
           }}
         />
       )}
@@ -1188,6 +1207,22 @@ export default function WorkoutGeneratorView({ setView }: WorkoutGeneratorViewPr
               triggerToast(`Added "${newItem.name}" to today's workout!`);
             }
           }}
+        />
+      )}
+
+      {/* 4. Workout Celebration Modal with Live Countdown Timer */}
+      {celebrationData && (
+        <WorkoutCelebrationModal
+          isOpen={celebrationData.isOpen}
+          onClose={() => setCelebrationData(null)}
+          programId={celebrationData.programId}
+          programName={celebrationData.programName}
+          completedDay={celebrationData.completedDay}
+          totalDays={celebrationData.totalDays}
+          streakCount={1}
+          caloriesBurned={celebrationData.calories}
+          exercisesCompletedCount={celebrationData.exercisesCount}
+          onContinue={() => setCelebrationData(null)}
         />
       )}
     </div>

@@ -17,6 +17,7 @@ import WorkoutVisual from "./WorkoutVisual";
 import MuscleAnatomyVisual from "./MuscleAnatomyVisual";
 import PageHero from "./PageHero";
 import WorkoutPlayer from "./WorkoutPlayer";
+import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
 import { OptimizedImage } from "./OptimizedImage";
 import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
@@ -534,6 +535,16 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
   const [loggedWeight, setLoggedWeight] = useState("50");
   const [loggedNotes, setLoggedNotes] = useState("");
   const [logSuccess, setLogSuccess] = useState(false);
+  const [celebrationModalData, setCelebrationModalData] = useState<{
+    isOpen: boolean;
+    programId: string;
+    programName: string;
+    completedDay: number;
+    totalDays: number;
+    streakCount: number;
+    caloriesBurned: number;
+    exercisesCompletedCount: number;
+  } | null>(null);
 
   // Live real-time loading simulation state engines
   const [isLiveLoading, setIsLiveLoading] = useState(false);
@@ -1882,6 +1893,16 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             12, // weight
             `Completed clinical workout player session: ${activePlayerSession.title}. Burnt ${calories} kcal in ${minutes} mins.`
           );
+          setCelebrationModalData({
+            isOpen: true,
+            programId: "workout_library",
+            programName: activePlayerSession.title || "Workout Library Session",
+            completedDay: 1,
+            totalDays: 30,
+            streakCount: 1,
+            caloriesBurned: calories || 320,
+            exercisesCompletedCount: activePlayerSession.exercises.length || 6
+          });
           setActivePlayerSession(null);
           setLogSuccess(true);
         }}
@@ -4488,6 +4509,22 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
         </div>
       )}
         </>
+      )}
+
+      {/* Celebratory Workout Completion Modal with Live Countdown Timer */}
+      {celebrationModalData && (
+        <WorkoutCelebrationModal
+          isOpen={celebrationModalData.isOpen}
+          onClose={() => setCelebrationModalData(null)}
+          programId={celebrationModalData.programId}
+          programName={celebrationModalData.programName}
+          completedDay={celebrationModalData.completedDay}
+          totalDays={celebrationModalData.totalDays}
+          streakCount={celebrationModalData.streakCount}
+          caloriesBurned={celebrationModalData.caloriesBurned}
+          exercisesCompletedCount={celebrationModalData.exercisesCompletedCount}
+          onContinue={() => setCelebrationModalData(null)}
+        />
       )}
 
       </div>

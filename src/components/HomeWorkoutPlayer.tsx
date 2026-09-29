@@ -89,7 +89,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  const currentExercise = circuit.exercises[currentIndex];
+  const currentExercise = circuit.exercises && circuit.exercises.length > 0 ? circuit.exercises[currentIndex] : null;
 
   // Helper function for Voice Countdown Speech Synthesis
   const speak = (text: string) => {
@@ -107,11 +107,13 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
 
   // Trigger speech on prep phase starts
   useEffect(() => {
-    speak("Prepare yourself for the Belly Fat Cardio Circuit! High knees is up first. Get ready in 5 seconds.");
-  }, []);
+    if (!currentExercise) return;
+    speak(`Prepare yourself for the Belly Fat Cardio Circuit! ${currentExercise.name} is up first. Get ready in 5 seconds.`);
+  }, [currentExercise]);
 
   // Prep Phase Timer
   useEffect(() => {
+    if (!currentExercise) return;
     let interval: any = null;
     if (isPrepPhase) {
       interval = setInterval(() => {
@@ -120,7 +122,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
             clearInterval(interval);
             setIsPrepPhase(false);
             setIsPlaying(true);
-            speak("Start " + circuit.exercises[0].name + "! Let's go!");
+            speak("Start " + (circuit.exercises[0]?.name || "workout") + "! Let's go!");
             return 0;
           }
           const nextVal = prev - 1;
@@ -132,7 +134,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isPrepPhase]);
+  }, [isPrepPhase, currentExercise]);
 
   // Main Exercise Timer
   useEffect(() => {
@@ -380,6 +382,26 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
       })
       .join(" ");
   };
+
+  if (!currentExercise) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-6 text-center text-white">
+        <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500 mb-4">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold uppercase tracking-wider mb-2">No Circuit Exercises Loaded</h2>
+        <p className="text-sm text-slate-400 max-w-md mb-6">
+          All legacy exercises have been cleared. As soon as the admin uploads workouts or exercises, they will appear here.
+        </p>
+        <button
+          onClick={onClose}
+          className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition cursor-pointer"
+        >
+          Exit Player
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col justify-between overflow-y-auto">

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Trophy, 
@@ -9,15 +9,19 @@ import {
   CheckCircle2, 
   ArrowRight, 
   Zap, 
-  Clock,
-  Heart,
-  Ban,
-  Moon,
-  ShieldCheck,
-  Activity,
-  X
+  Clock, 
+  Heart, 
+  Ban, 
+  Moon, 
+  ShieldCheck, 
+  Activity, 
+  Footprints,
+  Dumbbell,
+  X 
 } from "lucide-react";
 import { scheduleNextDayMorningNotification } from "../utils/notificationScheduler";
+import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
+import { getProgramWaitState } from "../utils/programWaitManager";
 import ResendEmailWidget from "./ResendEmailWidget";
 
 interface WorkoutCelebrationModalProps {
@@ -49,6 +53,68 @@ export default function WorkoutCelebrationModal({
   const nextDay = completedDay + 1;
   const isFinalDay = completedDay >= totalDays;
 
+  // Live countdown timer state (ticks every second)
+  const [remainingTime, setRemainingTime] = useState<{ hours: number; minutes: number; seconds: number; formatted: string }>({
+    hours: 5,
+    minutes: 0,
+    seconds: 0,
+    formatted: "05:00:00"
+  });
+
+  // Calculate tomorrow's workout plan
+  const tomorrowPlan = useMemo(() => {
+    if (isFinalDay) return null;
+    try {
+      return getWorkoutForProgramAndDay(programId, nextDay);
+    } catch (e) {
+      // Fallback: Day 7 cycle is Rest Day
+      const isRest = nextDay % 7 === 0;
+      return {
+        meta: {
+          title: isRest ? `Day ${nextDay}: Active Rest & Recovery` : `Day ${nextDay}: Progressive Strength & Conditioning`,
+          category: isRest ? "Rest & Recovery" : "Full Body Conditioning",
+          isRestDay: isRest,
+          isCardioOnly: false,
+          targetMuscles: isRest ? ["Recovery", "Mobility"] : ["Core", "Full Body"],
+          estimatedDuration: isRest ? "15-20 mins" : "35-45 mins",
+          estimatedCalories: isRest ? 100 : 350
+        },
+        exercises: []
+      };
+    }
+  }, [programId, nextDay, isFinalDay]);
+
+  // Real-time Countdown Timer effect
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const updateTimer = () => {
+      const waitState = getProgramWaitState(programId);
+      let ms = waitState.remainingMs;
+
+      // If no active cooldown in localStorage, calculate default 5-hour recovery window or time until tomorrow 5:00 AM
+      if (ms <= 0) {
+        const now = new Date();
+        const tomorrow5AM = new Date(now);
+        tomorrow5AM.setDate(tomorrow5AM.getDate() + 1);
+        tomorrow5AM.setHours(5, 0, 0, 0);
+        ms = Math.max(0, tomorrow5AM.getTime() - now.getTime());
+      }
+
+      const totalSec = Math.floor(ms / 1000);
+      const hours = Math.floor(totalSec / 3600);
+      const minutes = Math.floor((totalSec % 3600) / 60);
+      const seconds = totalSec % 60;
+
+      const formatted = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+      setRemainingTime({ hours, minutes, seconds, formatted });
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [isOpen, programId]);
+
   // Auto-schedule next day morning notification when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -67,7 +133,6 @@ export default function WorkoutCelebrationModal({
       if (Notification.permission !== "granted") {
         const perm = await Notification.requestPermission();
         if (perm !== "granted") {
-          alert("Please allow notifications in your browser settings to receive morning reminders.");
           return;
         }
       }
@@ -80,8 +145,6 @@ export default function WorkoutCelebrationModal({
       } catch (e) {
         console.warn("Could not fire notification directly", e);
       }
-    } else {
-      alert("Browser desktop notifications are not supported in this environment.");
     }
   };
 
@@ -93,6 +156,9 @@ export default function WorkoutCelebrationModal({
   };
 
   if (!isOpen) return null;
+
+  const isTomorrowRest = tomorrowPlan?.meta?.isRestDay || (nextDay % 7 === 0);
+  const isTomorrowCardio = tomorrowPlan?.meta?.isCardioOnly;
 
   return (
     <AnimatePresence>
@@ -107,10 +173,10 @@ export default function WorkoutCelebrationModal({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 15 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
-          className="relative my-auto w-full max-w-lg bg-neutral-900 border border-neutral-700/80 rounded-3xl p-5 sm:p-7 text-white shadow-2xl shadow-red-950/40 overflow-hidden shrink-0"
+          className="relative my-auto w-full max-w-xl bg-neutral-900 border border-neutral-700/80 rounded-3xl p-5 sm:p-7 text-white shadow-2xl shadow-red-950/40 overflow-hidden shrink-0"
         >
           {/* Top Radial Glow Accent */}
-          <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-red-600/20 via-amber-500/10 to-transparent pointer-events-none" />
+          <div className="absolute top-0 inset-x-0 h-36 bg-gradient-to-b from-red-600/25 via-amber-500/15 to-transparent pointer-events-none" />
 
           {/* Dismiss Button */}
           <button
@@ -123,12 +189,12 @@ export default function WorkoutCelebrationModal({
           </button>
 
           {/* Header Trophy & Badge */}
-          <div className="relative text-center space-y-2.5 pt-2">
+          <div className="relative text-center space-y-2 pt-2">
             <motion.div 
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 350, delay: 0.1 }}
-              className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl bg-gradient-to-tr from-amber-500 to-red-500 text-white shadow-xl shadow-red-500/30 ring-4 ring-amber-400/20"
+              className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-tr from-amber-500 via-red-500 to-rose-600 text-white shadow-xl shadow-red-500/30 ring-4 ring-amber-400/20"
             >
               <Trophy className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
             </motion.div>
@@ -140,171 +206,167 @@ export default function WorkoutCelebrationModal({
             </div>
 
             <h2 className="text-2xl sm:text-3xl font-black font-sans tracking-tight text-white uppercase">
-              Day {completedDay} Completed!
+              🎉 Congratulations! Day {completedDay} Finished!
             </h2>
-            <p className="text-xs sm:text-sm text-neutral-300 max-w-sm mx-auto font-medium leading-relaxed">
-              Outstanding discipline! You conquered today's challenge and elevated your physical conditioning.
+            <p className="text-xs sm:text-sm text-neutral-300 max-w-md mx-auto font-medium leading-relaxed">
+              Outstanding consistency! You completed all scheduled drills for today and earned your progress milestone.
             </p>
           </div>
 
           {/* Performance Stats Grid */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 my-5">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 my-4">
             <div className="bg-neutral-800/80 border border-neutral-700/60 rounded-2xl p-2.5 sm:p-3 text-center">
-              <div className="flex items-center justify-center gap-1 text-amber-400 mb-1">
+              <div className="flex items-center justify-center gap-1 text-amber-400 mb-0.5">
                 <Flame className="w-3.5 h-3.5 fill-amber-400" />
-                <span className="text-[11px] font-mono font-bold uppercase">Burned</span>
+                <span className="text-[10px] font-mono font-bold uppercase">Burned</span>
               </div>
               <div className="text-lg sm:text-2xl font-black font-mono text-white">
                 {caloriesBurned}
               </div>
-              <span className="text-[10px] text-neutral-400 font-mono">kcal</span>
+              <span className="text-[9px] text-neutral-400 font-mono">kcal</span>
             </div>
 
             <div className="bg-neutral-800/80 border border-neutral-700/60 rounded-2xl p-2.5 sm:p-3 text-center">
-              <div className="flex items-center justify-center gap-1 text-emerald-400 mb-1">
+              <div className="flex items-center justify-center gap-1 text-emerald-400 mb-0.5">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span className="text-[11px] font-mono font-bold uppercase">Drills</span>
+                <span className="text-[10px] font-mono font-bold uppercase">Drills</span>
               </div>
               <div className="text-lg sm:text-2xl font-black font-mono text-white">
                 {exercisesCompletedCount}
               </div>
-              <span className="text-[10px] text-neutral-400 font-mono">drills</span>
+              <span className="text-[9px] text-neutral-400 font-mono">completed</span>
             </div>
 
             <div className="bg-neutral-800/80 border border-neutral-700/60 rounded-2xl p-2.5 sm:p-3 text-center">
-              <div className="flex items-center justify-center gap-1 text-red-400 mb-1">
+              <div className="flex items-center justify-center gap-1 text-red-400 mb-0.5">
                 <Zap className="w-3.5 h-3.5 fill-red-400" />
-                <span className="text-[11px] font-mono font-bold uppercase">Streak</span>
+                <span className="text-[10px] font-mono font-bold uppercase">Streak</span>
               </div>
               <div className="text-lg sm:text-2xl font-black font-mono text-white">
                 {streakCount}
               </div>
-              <span className="text-[10px] text-neutral-400 font-mono">days active</span>
+              <span className="text-[9px] text-neutral-400 font-mono">days active</span>
             </div>
           </div>
 
-          {/* Overall Challenge Progress Bar */}
-          <div className="bg-neutral-800/50 border border-neutral-700/50 rounded-2xl p-3.5 mb-5 space-y-1.5">
-            <div className="flex justify-between items-center text-xs font-mono">
-              <span className="text-neutral-400 uppercase font-bold">Challenge Progression</span>
-              <span className="text-red-400 font-black">
-                Day {completedDay} of {totalDays} ({Math.round((completedDay / totalDays) * 100)}%)
-              </span>
-            </div>
-            <div className="w-full bg-neutral-700 h-2.5 rounded-full overflow-hidden">
-              <motion.div 
-                className="bg-gradient-to-r from-red-600 via-amber-500 to-emerald-500 h-full rounded-full"
-                initial={{ width: `${Math.max(2, Math.round(((completedDay - 1) / totalDays) * 100))}%` }}
-                animate={{ width: `${Math.round((completedDay / totalDays) * 100)}%` }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
-              />
-            </div>
-          </div>
-
-          {/* MANDATORY COACHING DIRECTIVES */}
-          <div className="mb-5 space-y-2.5 text-left">
-            <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-amber-400">
-              <Sparkles className="w-4 h-4" />
-              <span>Coach Alex's Mandatory Directives</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Directive 1 */}
-              <div className="bg-red-950/40 border border-red-500/30 rounded-2xl p-3 space-y-1">
-                <div className="flex items-center gap-1.5 text-red-400 font-bold text-xs uppercase">
-                  <Ban className="w-3.5 h-3.5 shrink-0" />
-                  <span>Strictly Cut Out Sugar</span>
-                </div>
-                <p className="text-[11px] text-neutral-300 leading-relaxed">
-                  Eliminate all sodas, juices, and sweets today. Keeping blood sugar baseline ensures 100% fat burning mode.
-                </p>
-              </div>
-
-              {/* Directive 2 */}
-              <div className="bg-amber-950/40 border border-amber-500/30 rounded-2xl p-3 space-y-1">
-                <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs uppercase">
-                  <Moon className="w-3.5 h-3.5 shrink-0" />
-                  <span>No Late-Night Eating</span>
-                </div>
-                <p className="text-[11px] text-neutral-300 leading-relaxed">
-                  Stop eating after 7:30 PM. Overnight fasting maximizes natural growth hormone release and burns stubborn fat while you sleep.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* 5-Hour Program Waiting Notification Notice Box */}
-          {!isFinalDay ? (
-            <div className="bg-gradient-to-r from-amber-950/40 via-neutral-900 to-neutral-900 border border-amber-500/30 rounded-2xl p-3.5 mb-5 space-y-2 text-left">
+          {/* DYNAMIC TIMER TO TOMORROW'S PLAN */}
+          {!isFinalDay && (
+            <div className="my-4 p-4 rounded-2xl bg-gradient-to-br from-neutral-800 via-neutral-850 to-neutral-900 border border-amber-500/40 text-left space-y-3 shadow-lg">
+              
+              {/* Timer Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-amber-400">
-                  <Clock className="w-4 h-4" />
-                  <span className="text-xs font-mono font-bold uppercase tracking-wide">
-                    Next Up: Day {nextDay} (5-Hour Wait Active)
+                  <Clock className="w-4 h-4 animate-pulse" />
+                  <span className="text-xs font-mono font-black uppercase tracking-wider">
+                    Next Session Countdown (Day {nextDay})
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
-                  5h Recovery
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[10px] font-mono font-bold">
+                  Active Recovery Lock
                 </span>
               </div>
-              <p className="text-xs text-neutral-300 leading-relaxed">
-                Day {completedDay} is complete! Each program waits for <strong>5 hours</strong> before displaying the next workout, so when you visit tomorrow, Day {nextDay} will be ready and waiting for you.
-              </p>
-              
-              <div className="pt-1 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={handleTestMorningAlert}
-                  className="text-[11px] font-mono font-bold text-amber-400 hover:text-amber-300 underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  {testNotificationSent ? "Morning Alert Sent! Check device" : "Test Morning Reminder"}
-                </button>
-                <span className="text-[10px] font-mono text-neutral-400">Next Workout Ready Tomorrow</span>
+
+              {/* Digital Countdown Timer Display */}
+              <div className="flex items-center justify-center gap-2 py-2 bg-neutral-950/70 rounded-xl border border-neutral-700/60">
+                <div className="text-center px-3">
+                  <span className="text-2xl sm:text-3xl font-mono font-black text-amber-400">
+                    {remainingTime.hours.toString().padStart(2, "0")}
+                  </span>
+                  <span className="text-[9px] font-mono text-neutral-400 uppercase block">Hours</span>
+                </div>
+                <span className="text-2xl font-mono font-black text-amber-500">:</span>
+                <div className="text-center px-3">
+                  <span className="text-2xl sm:text-3xl font-mono font-black text-amber-400">
+                    {remainingTime.minutes.toString().padStart(2, "0")}
+                  </span>
+                  <span className="text-[9px] font-mono text-neutral-400 uppercase block">Mins</span>
+                </div>
+                <span className="text-2xl font-mono font-black text-amber-500">:</span>
+                <div className="text-center px-3">
+                  <span className="text-2xl sm:text-3xl font-mono font-black text-emerald-400">
+                    {remainingTime.seconds.toString().padStart(2, "0")}
+                  </span>
+                  <span className="text-[9px] font-mono text-neutral-400 uppercase block">Secs</span>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-4 mb-5 text-center space-y-1">
-              <span className="text-sm font-bold text-emerald-400">🎉 Challenge Champion!</span>
-              <p className="text-xs text-neutral-300">
-                You have reached the final milestone of the entire program. Extraordinary work!
-              </p>
+
+              {/* TOMORROW'S PREVIEW ACCORDING TO PLAN */}
+              <div className="pt-1">
+                {isTomorrowRest ? (
+                  /* Tomorrow is Rest Day Preview */
+                  <div className="p-3.5 rounded-xl bg-blue-950/50 border border-blue-500/30 flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-blue-400/30 bg-slate-900">
+                      <img 
+                        src="/images/rest-day.jpg" 
+                        alt="Rest Day" 
+                        className="w-full h-full object-cover" 
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="flex items-center gap-1.5 text-blue-400 text-xs font-mono font-black uppercase">
+                        <Moon className="w-3.5 h-3.5 fill-blue-400" />
+                        <span>Tomorrow: Rest & Recovery Day</span>
+                      </div>
+                      <p className="text-[11px] text-blue-200/90 leading-tight">
+                        No weightlifting or heavy drills tomorrow. Focus on hydration, mobility, and 8 hours of restorative deep sleep!
+                      </p>
+                    </div>
+                  </div>
+                ) : isTomorrowCardio ? (
+                  /* Tomorrow is Cardio Day Preview */
+                  <div className="p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/30 flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-emerald-400/30 bg-slate-900">
+                      <img 
+                        src="/images/cardio-day.jpg" 
+                        alt="Cardio Day" 
+                        className="w-full h-full object-cover" 
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-mono font-black uppercase">
+                        <Footprints className="w-3.5 h-3.5 fill-emerald-400" />
+                        <span>Tomorrow: 5 KM Aerobic Cardio Day</span>
+                      </div>
+                      <p className="text-[11px] text-emerald-200/90 leading-tight">
+                        Aerobic endurance & fat oxidation protocol. Get ready for an outdoor trail run or brisk power walk.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  /* Tomorrow is Regular Workout Day Preview */
+                  <div className="p-3.5 rounded-xl bg-neutral-900/90 border border-neutral-700/80 flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-xl bg-red-950/50 border border-red-500/30 flex items-center justify-center shrink-0 text-red-400 font-mono font-black text-sm">
+                      <Dumbbell className="w-5 h-5 text-red-400" />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="flex items-center gap-1.5 text-amber-400 text-xs font-mono font-black uppercase truncate">
+                        <span>Tomorrow: Day {nextDay} • {tomorrowPlan?.meta?.category || "Strength Routine"}</span>
+                      </div>
+                      <p className="text-[11px] text-neutral-300 leading-tight truncate">
+                        Target Focus: {tomorrowPlan?.meta?.targetMuscles?.join(", ") || "Progressive Hypertrophy & Density"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
 
-          {/* Resend Email Dispatch Widget */}
-          <div className="mb-5 text-left">
-            <ResendEmailWidget
-              programName={programName}
-              dayNumber={completedDay}
-              compact={true}
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="space-y-2">
+          {/* Continue / Action Button */}
+          <div className="pt-2 space-y-2">
             <button
-              id="celebration-continue-button"
               type="button"
               onClick={handleContinue}
-              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
+              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-sans font-black text-xs uppercase tracking-wider transition-all duration-200 shadow-xl shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
             >
-              <span>Claim Victory & Continue</span>
+              <span>Back to Program Overview</span>
               <ArrowRight className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                window.location.hash = "progress-tracker";
-                window.dispatchEvent(new CustomEvent("alexfit_navigate", { detail: { view: "progress-tracker" } }));
-              }}
-              className="w-full py-2.5 px-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"
-            >
-              <Activity className="w-3.5 h-3.5 text-emerald-400" />
-              <span>View In Progress & Activity Tracker</span>
-            </button>
           </div>
+
         </motion.div>
       </div>
     </AnimatePresence>

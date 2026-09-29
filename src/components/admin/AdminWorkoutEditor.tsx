@@ -257,7 +257,7 @@ export default function AdminWorkoutEditor() {
 
     setIsSavingNew(true);
     try {
-      const mediaUrl = newMediaInput.trim() || newWorkout.customMediaUrl || "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80";
+      const mediaUrl = newMediaInput.trim() || newWorkout.customMediaUrl || "";
       const isVideo = mediaUrl.endsWith(".mp4") || mediaUrl.endsWith(".webm");
 
       await addWorkout({

@@ -88,17 +88,7 @@ export const CheckoutModal: React.FC = () => {
     setErrorMessage(null);
 
     try {
-      // 1. Check if backend Paystack is configured
-      let paystackPublicKey = "";
-      try {
-        const cfgRes = await fetch("/api/payments/config");
-        const cfg = await cfgRes.json();
-        paystackPublicKey = cfg.publicKey || "";
-      } catch (err) {
-        console.warn("Could not check /api/payments/config:", err);
-      }
-
-      // Try server store payment initialization
+      // 1. Try server store payment initialization via live Paystack gateway
       try {
         const initRes = await fetch("/api/payments/store/initialize", {
           method: "POST",

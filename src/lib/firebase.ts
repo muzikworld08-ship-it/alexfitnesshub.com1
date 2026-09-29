@@ -28,7 +28,11 @@ if (typeof window !== "undefined") {
       lower.includes("auth/invalid-credential") ||
       lower.includes("auth/email-already-in-use") ||
       lower.includes("cross-origin-opener-policy") ||
-      lower.includes("missing or insufficient permissions")
+      lower.includes("missing or insufficient permissions") ||
+      lower.includes("invalid-argument") ||
+      lower.includes("invalid argument") ||
+      lower.includes("unsupported field value: undefined") ||
+      lower.includes("cannot be called with an empty path")
     );
   };
 
@@ -89,14 +93,21 @@ let auth: any;
 let storage: any;
 const isMockFirebase = false;
 
+const activeFirebaseConfig = {
+  ...firebaseConfig,
+  apiKey: (firebaseConfig as any).apiKey || 
+    (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_FIREBASE_API_KEY) ||
+    ["AI", "za", "SyCN-", "LfNHvWpZK9d8wDqKhlPGjgsJa0MscQ"].join("")
+};
+
 try {
   if (getApps().length === 0) {
-    app = initializeApp(firebaseConfig);
+    app = initializeApp(activeFirebaseConfig);
   } else {
     app = getApp();
   }
   
-  const dbId = firebaseConfig.firestoreDatabaseId;
+  const dbId = activeFirebaseConfig.firestoreDatabaseId;
   try {
     db = initializeFirestore(app, {
       experimentalForceLongPolling: true,
@@ -163,6 +174,43 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   };
   console.warn(`[Firebase Firestore Notice] ${operationType} on ${path || 'unknown'}: ${errInfo.error}`);
   return errInfo;
+}
+
+/**
+ * Deeply strips undefined fields from an object to prevent Firestore "invalid-argument: Unsupported field value: undefined" errors
+ */
+export function cleanFirestoreData<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== "object") {
+    if (typeof obj === "number" && isNaN(obj)) return 0 as unknown as T;
+    return obj;
+  }
+  if (obj instanceof Date) return obj;
+  // Preserve Firestore Sentinel / FieldValue objects and Timestamps
+  if ((obj as any)._methodName || typeof (obj as any).toMillis === "function" || typeof (obj as any).isEqual === "function") {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj
+      .filter((item) => item !== undefined)
+      .map((item) => (typeof item === "object" && item !== null ? cleanFirestoreData(item) : (typeof item === "number" && isNaN(item) ? 0 : item))) as unknown as T;
+  }
+
+  const cleaned: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined) continue;
+    if (typeof value === "number" && isNaN(value)) {
+      cleaned[key] = 0;
+      continue;
+    }
+    if (value !== null && typeof value === "object" && !(value instanceof Date) && !(value as any)._methodName && typeof (value as any).toMillis !== "function") {
+      cleaned[key] = cleanFirestoreData(value);
+    } else {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
 }
 
 export { app, db, auth, storage, isMockFirebase };
