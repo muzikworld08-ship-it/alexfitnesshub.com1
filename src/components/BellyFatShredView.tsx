@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import { 
   Flame, Droplets, Trophy, CheckSquare, LineChart, Shield, Calendar, Play, 
@@ -25,6 +25,15 @@ import CardioDayCard from "./CardioDayCard";
 import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
 import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
 import { cleanFirestoreData } from "../lib/firebase";
+import { 
+  isChestExercise, 
+  isBackExercise, 
+  isBicepsExercise, 
+  isLegExercise, 
+  isCoreExercise 
+} from "../utils/dynamicWorkoutEngine";
+import { Exercise } from "../data/exercises";
+import { ChallengeExerciseItem } from "../types/challengeEngine";
 
 // High-fidelity local types
 interface WeightEntry {
@@ -278,8 +287,13 @@ export const parseDrillDetails = (drill: string, sectionType: string): ParsedDri
   };
 };
 
-// Generate high-fidelity workouts progression for weeks 1 to 20
-const getWorkoutForWeekAndDay = (week: number, dayNum: number) => {
+// Dynamic workouts progression for weeks 1 to 20 powered by admin-uploaded library & category splits
+const getWorkoutForWeekAndDay = (
+  week: number, 
+  dayNum: number,
+  availableExercises: Exercise[] = [],
+  adminOverrides: Record<string, any> = {}
+) => {
   // Muscle groups & themes progression
   const phase = week <= 4 ? "Phase 1: Foundational Core & Metabolic Prep" 
               : week <= 8 ? "Phase 2: HIIT Acceleration & Strength Base" 
@@ -296,33 +310,193 @@ const getWorkoutForWeekAndDay = (week: number, dayNum: number) => {
   const calMap = [350, 480, 620, 750, 920];
   const calBurn = calMap[Math.min(4, Math.floor((week - 1) / 4))] + " kcal estimated";
 
+  const daySeq = (week - 1) * 7 + dayNum;
+  const dayKey = String(daySeq);
+  const cycleKey = `cycle_${dayNum}`;
+  const override = adminOverrides[dayKey] || adminOverrides[cycleKey];
+
   // Customize based on week phase & day
-  let title = `Full-Body fat loss focus - Day ${dayNum}`;
-  let exercises: string[] = [];
-  let strengthReps = week <= 4 ? "3 sets x 12 reps (Bodyweight)" : (week <= 12 ? "4 sets x 10 reps (Moderate Weight)" : "4 sets x 8 reps (Progressive Overload)");
-  
-  if (dayNum === 1) {
-    title = `HIIT Intervals & Midsection Stability`;
-    exercises = ["High Knees", "Plank", "Russian Twist", "Mountain Climbers", "Bicycle Crunch", "Flutter Kicks", "Jumping Jacks", "Dead Bug", "Push-ups"];
-  } else if (dayNum === 2) {
-    title = `Core Armor & Lower Body Toning`;
-    exercises = ["Squats", "Plank", "Russian Twist", "Lunges", "Glute Bridges", "Dead Bug", "Push-ups", "Bicycle Crunch"];
-  } else if (dayNum === 3) {
-    title = `Wednesday 5-10 KM Running or Walking & Complete Rest`;
-    exercises = ["Dead Bug", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing", "Child's Pose Spinal Reach"];
-  } else if (dayNum === 4) {
-    title = `Upper Body Push-Pull & Midsection Sculpt`;
-    exercises = ["Push-ups", "Plank", "Mountain Climbers", "Side Plank", "Bear Crawl", "Arm Circles", "Dead Bug"];
-  } else if (dayNum === 5) {
-    title = `Lower Body Shred & Isometric Core`;
-    exercises = ["Squats", "Lunges", "Glute Bridges", "Wall Sit", "Plank", "Russian Twist", "Flutter Kicks", "Dead Bug"];
-  } else if (dayNum === 6) {
-    title = `Saturday Total Body Resistance & Functional Core`;
-    exercises = ["Push-ups", "Squats", "Plank", "Mountain Climbers", "Russian Twist", "Burpees", "Bicycle Crunch", "Flutter Kicks"];
-  } else {
-    title = `Sunday 5-10 KM Running or Walking & Complete Rest`;
-    exercises = ["Dead Bug", "Primal Cat-Cow Spinal Waves", "Deep Diaphragmatic Box Breathing", "Child's Pose Spinal Reach"];
+  let defaultTitle = `Full-Body fat loss focus - Day ${dayNum}`;
+  if (dayNum === 1) defaultTitle = "HIIT Intervals & Midsection Stability";
+  else if (dayNum === 2) defaultTitle = "Core Armor & Lower Body Toning";
+  else if (dayNum === 3) defaultTitle = "Wednesday 5-10 KM Running or Walking & Complete Rest";
+  else if (dayNum === 4) defaultTitle = "Upper Body Push-Pull & Midsection Sculpt";
+  else if (dayNum === 5) defaultTitle = "Lower Body Shred & Isometric Core";
+  else if (dayNum === 6) defaultTitle = "Saturday Total Body Resistance & Functional Core";
+  else defaultTitle = "Sunday 5-10 KM Running or Walking & Complete Rest";
+
+  const title = override?.title || defaultTitle;
+
+  // Cardio & Rest Days (Wednesday Day 3 and Sunday Day 7)
+  if (dayNum === 3 || dayNum === 7) {
+    return {
+      phase,
+      difficulty,
+      duration: "50-70 mins",
+      calBurn: "500-650 kcal",
+      title,
+      warmup: [
+        "Light joint rotations & dynamic spinal flexion — 3 mins",
+        "Dynamic ankle & hamstring mobility sweeps — 3 mins",
+        "Active diaphragmatic breathing & pelvic alignment — 2 mins"
+      ],
+      core: [
+        "Dead Bug: 3 sets x 12 reps with controlled pelvic tilt",
+        "Primal Cat-Cow Spinal Waves: 3 sets x 60s rhythmic decompression",
+        "Deep Diaphragmatic Box Breathing: 3 mins recovery focus"
+      ],
+      hiit: [
+        "No HIIT Circuit Today: Scheduled purely for 5 to 10 KM aerobic running or walking.",
+        "Aerobic Focus: Maintain Zone 2 aerobic rhythm without high-impact intervals."
+      ],
+      strength: [
+        "Workout Removed: All strength exercises are removed on cardio days.",
+        "Post-Cardio Rest: Lie down or relax, hydrate, and let your body recover completely after your 5-10 KM running or walking session."
+      ],
+      fullBodyCircuit: [
+        "Aerobic Cardio Assignment: 5 to 10 KM Running or Walking (Outdoors or Treadmill).",
+        "Cardio-Only Protocol: Wednesday and Sunday are the ONLY cardio sessions on the entire program."
+      ],
+      cooldown: [
+        "Cobra pose stretch — hold 30s x 2",
+        "Kneeling hamstring stretch — 1 min per side",
+        "Child's pose deep breathing — 2 mins"
+      ],
+      modifications: {
+        beginner: "Walk 3 to 5 KM at a brisk steady pace (4.5 - 5.5 km/h) with zero jogging if needed.",
+        intermediate: "Jog-walk intervals: alternate 800m jogging with 200m brisk walk for 5 to 8 KM.",
+        advanced: "Steady continuous Zone 2 run for 8 to 10 KM at 6:00 - 6:30 min/km pace."
+      },
+      exercisesList: ["Dead Bug", "Cat-Cow Waves", "5-10 KM Aerobic Run/Walk", "Diaphragmatic Breathing"]
+    };
   }
+
+  // Active Training Days (1, 2, 4, 5, 6)
+  const strengthReps = week <= 4 ? "3 sets x 12 reps (Bodyweight)" : (week <= 12 ? "4 sets x 10 reps (Moderate Weight)" : "4 sets x 8 reps (Progressive Overload)");
+  const corePrescription = week <= 4 ? "3 sets x 12 reps" : (week <= 12 ? "4 sets x 15 reps" : "4 sets x 20 reps (Weighted)");
+  const hiitPrescription = week <= 8 ? "4 rounds x 30s work / 15s rest" : "4 rounds x 45s work / 15s rest";
+
+  // Check admin overrides for this day/cycle
+  const overrideExercises: ChallengeExerciseItem[] = override?.exercises;
+  let warmupDrills: string[] = [];
+  let coreDrills: string[] = [];
+  let hiitDrills: string[] = [];
+  let strengthDrills: string[] = [];
+  const finisherDrills: string[] = [
+    "Bear Crawl: 3 sets x 40 seconds",
+    "Core Functional Isometric: 3 sets x 45s Plank & Hollow Body Hold"
+  ];
+  const cooldownDrills: string[] = [
+    "Cobra pose stretch — hold 30s x 2",
+    "Kneeling hamstring stretch — 1 min per side",
+    "Child's pose deep breathing — 2 mins"
+  ];
+
+  if (overrideExercises && Array.isArray(overrideExercises) && overrideExercises.length > 0) {
+    for (const ex of overrideExercises) {
+      const name = ex.exerciseName || (ex as any).name || "";
+      const cat = (ex.category || "").toLowerCase();
+      const presc = `${ex.sets || 3} sets x ${ex.reps || "12 reps"}`;
+      const drillStr = `${name}: ${presc}`;
+
+      if (cat.includes("core") || cat.includes("abs") || isCoreExercise(name, cat)) {
+        coreDrills.push(drillStr);
+      } else if (cat.includes("hiit") || cat.includes("cardio")) {
+        hiitDrills.push(drillStr);
+      } else if (cat.includes("warmup") || cat.includes("mobility")) {
+        warmupDrills.push(drillStr);
+      } else {
+        strengthDrills.push(drillStr);
+      }
+    }
+  }
+
+  // If no override or sections need authentic exercises, dynamically pull and categorize from admin's library
+  if (availableExercises && availableExercises.length > 0) {
+    const coreMatches = availableExercises.filter(e => isCoreExercise(e.name, e.category || ""));
+    const hiitMatches = availableExercises.filter(e => {
+      const c = (e.category || "").toLowerCase();
+      const n = (e.name || "").toLowerCase();
+      return c.includes("hiit") || c.includes("cardio") || n.includes("climber") || n.includes("burpee") || n.includes("jump") || n.includes("jack");
+    });
+    
+    // Day-specific strength matches from admin library
+    const strengthMatches = availableExercises.filter(e => {
+      const c = (e.category || "").toLowerCase();
+      const n = (e.name || "").toLowerCase();
+      if (dayNum === 2 || dayNum === 5) {
+        // Lower body focus
+        return isLegExercise(n, c);
+      } else if (dayNum === 4) {
+        // Upper body push-pull
+        return isChestExercise(n, c) || isBackExercise(n, c) || isBicepsExercise(n, c);
+      } else {
+        // Full body / compound
+        return !isCoreExercise(n, c) && (isLegExercise(n, c) || isChestExercise(n, c) || isBackExercise(n, c));
+      }
+    });
+
+    if (coreDrills.length < 3) {
+      const needed = 3 - coreDrills.length;
+      coreMatches.slice(0, needed).forEach(ex => {
+        const presc = ex.recommendedSets && ex.recommendedReps ? `${ex.recommendedSets} sets x ${ex.recommendedReps}` : corePrescription;
+        coreDrills.push(`${ex.name}: ${presc}`);
+      });
+    }
+
+    if (hiitDrills.length < 3) {
+      const needed = 3 - hiitDrills.length;
+      hiitMatches.slice(0, needed).forEach(ex => {
+        const presc = ex.recommendedSets && ex.recommendedReps ? `${ex.recommendedSets} sets x ${ex.recommendedReps}` : hiitPrescription;
+        hiitDrills.push(`${ex.name}: ${presc}`);
+      });
+    }
+
+    if (strengthDrills.length < 3) {
+      const needed = 3 - strengthDrills.length;
+      strengthMatches.slice(0, needed).forEach(ex => {
+        const presc = ex.recommendedSets && ex.recommendedReps ? `${ex.recommendedSets} sets x ${ex.recommendedReps}` : strengthReps;
+        strengthDrills.push(`${ex.name}: ${presc}`);
+      });
+    }
+  }
+
+  // Fallback defaults if admin library has not populated yet
+  if (warmupDrills.length === 0) {
+    warmupDrills = [
+      "Arm circles & torso twists — 3 mins",
+      "Dynamic hip openers — 2 mins",
+      "Light jumping jacks or marching — 3 mins",
+      week > 8 ? "Spidermans with chest rotations — 2 mins" : "Cat-Cow stretching — 1 min"
+    ];
+  }
+  if (coreDrills.length === 0) {
+    coreDrills = [
+      `Plank Hold: ${week <= 4 ? "3 sets x 30s" : week <= 12 ? "4 sets x 45s" : "4 sets x 60s (Weighted)"}`,
+      `Dead Bug: 3 sets x ${week <= 4 ? "12 reps" : "16 reps with control"}`,
+      `Side Plank Hold: 3 sets x ${week <= 4 ? "20s" : "45s per side"}`
+    ];
+  }
+  if (hiitDrills.length === 0) {
+    hiitDrills = [
+      `Mountain Climbers: 4 rounds x ${week <= 8 ? "30s work / 15s rest" : "45s work / 15s rest"}`,
+      `Burpees: 3 rounds x ${week <= 4 ? "10 reps" : week <= 12 ? "15 reps" : "20 reps with push-up"}`,
+      `Rope Jump intervals: ${week <= 8 ? "3 mins continuous" : "5 mins high intensity double-unders"}`
+    ];
+  }
+  if (strengthDrills.length === 0) {
+    strengthDrills = [
+      `Squats: ${strengthReps}`,
+      `Push-ups (Knee or Full): 3 sets x ${week <= 4 ? "8 reps" : "15 reps with slow negatives"}`,
+      `Reverse Lunges: 3 sets x 12 reps per side ${week > 8 ? "(Hold dumbbells)" : ""}`
+    ];
+  }
+
+  const allNames = Array.from(new Set([
+    ...coreDrills.map(d => d.split(":")[0].split("—")[0].trim()),
+    ...hiitDrills.map(d => d.split(":")[0].split("—")[0].trim()),
+    ...strengthDrills.map(d => d.split(":")[0].split("—")[0].trim())
+  ]));
 
   return {
     phase,
@@ -330,51 +504,18 @@ const getWorkoutForWeekAndDay = (week: number, dayNum: number) => {
     duration,
     calBurn,
     title,
-    warmup: [
-      "Arm circles & torso twists — 3 mins",
-      "Dynamic hip openers — 2 mins",
-      "Light jumping jacks or marching — 3 mins",
-      week > 8 ? "Spidermans with chest rotations — 2 mins" : "Cat-Cow stretching — 1 min"
-    ],
-    core: [
-      `Plank Hold: ${week <= 4 ? "3 sets x 30s" : week <= 12 ? "4 sets x 45s" : "4 sets x 60s (Weighted)"}`,
-      `Dead Bug: 3 sets x ${week <= 4 ? "12 reps" : "16 reps with control"}`,
-      `Side Plank Hold: 3 sets x ${week <= 4 ? "20s" : "45s per side"}`
-    ],
-    hiit: (dayNum === 3 || dayNum === 7) ? [
-      "No HIIT Circuit Today: Scheduled purely for 5 to 10 KM aerobic running or walking.",
-      "Workouts Removed: Full focus is dedicated to the 5-10 KM distance and recovery."
-    ] : [
-      `Mountain Climbers: 4 rounds x ${week <= 8 ? "30s work / 15s rest" : "45s work / 15s rest"}`,
-      `Burpees: 3 rounds x ${week <= 4 ? "10 reps" : week <= 12 ? "15 reps" : "20 reps with push-up"}`,
-      `Rope Jump intervals: ${week <= 8 ? "3 mins continuous" : "5 mins high intensity double-unders"}`
-    ],
-    strength: (dayNum === 3 || dayNum === 7) ? [
-      "Workout Removed: All strength exercises are removed on cardio days.",
-      "Post-Cardio Rest: Lie down or relax, hydrate, and let your body recover completely after your 5-10 KM running or walking session."
-    ] : [
-      `Squats: ${strengthReps}`,
-      `Push-ups (Knee or Full): 3 sets x ${week <= 4 ? "8 reps" : "15 reps with slow negatives"}`,
-      `Reverse Lunges: 3 sets x 12 reps per side ${week > 8 ? "(Hold dumbbells)" : ""}`
-    ],
-    fullBodyCircuit: (dayNum === 3 || dayNum === 7) ? [
-      "Aerobic Cardio Assignment: 5 to 10 KM Running or Walking (Outdoors or Treadmill).",
-      "Cardio-Only Protocol: Wednesday and Sunday are the ONLY cardio sessions on the entire program."
-    ] : [
-      `Bear Crawl: 3 sets x 40 seconds`,
-      `Core Functional Isometric: 3 sets x 45s Plank & Hollow Body Hold`
-    ],
-    cooldown: [
-      "Cobra pose stretch — hold 30s x 2",
-      "Kneeling hamstring stretch — 1 min per side",
-      "Child's pose deep breathing — 2 mins"
-    ],
+    warmup: warmupDrills,
+    core: coreDrills,
+    hiit: hiitDrills,
+    strength: strengthDrills,
+    fullBodyCircuit: finisherDrills,
+    cooldown: cooldownDrills,
     modifications: {
       beginner: "Scale cardio work-to-rest ratio (e.g. 20s work / 20s rest). Use elevated pushups. Do standard bodyweight air squats.",
       intermediate: "Add light dumbbells. Maintain steady pace at full duration. Perform classic pushups.",
       advanced: "Increase dumbbell weights. Replace standard squats with jump squats."
     },
-    exercisesList: exercises
+    exercisesList: allNames
   };
 };
 
@@ -577,6 +718,33 @@ export default function BellyFatShredView() {
   const [logWeightVal, setLogWeightVal] = useState("");
   const [logWaistVal, setLogWaistVal] = useState("");
   const [logPhotoUrl, setLogPhotoUrl] = useState("");
+
+  // Program schedule overrides (synced with Admin Workout Challenge Engine)
+  const [programScheduleOverrides, setProgramScheduleOverrides] = useState<Record<string, any>>(() => {
+    try {
+      const saved = localStorage.getItem("fit_program_schedule_overrides");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        const saved = localStorage.getItem("fit_program_schedule_overrides");
+        if (saved) setProgramScheduleOverrides(JSON.parse(saved));
+      } catch {}
+    };
+    window.addEventListener("fit_schedule_overrides_updated", handleUpdate);
+    fetch("/api/admin/programs/overrides")
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.overrides) setProgramScheduleOverrides(data.overrides);
+      })
+      .catch(() => {});
+    return () => window.removeEventListener("fit_schedule_overrides_updated", handleUpdate);
+  }, []);
   const [logPhotoNote, setLogPhotoNote] = useState("");
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [currentDayTimer, setCurrentDayTimer] = useState<number | null>(null);
@@ -881,8 +1049,16 @@ export default function BellyFatShredView() {
     );
   }
 
-  // Active workout definition
-  const workoutInfo = getWorkoutForWeekAndDay(progress.currentWeek, progress.currentDay);
+  // Active workout definition dynamically resolved from admin library & schedule overrides
+  const bellyOverrides = programScheduleOverrides["belly_fat_shred"] || {};
+  const workoutInfo = useMemo(() => {
+    return getWorkoutForWeekAndDay(
+      progress.currentWeek, 
+      progress.currentDay, 
+      centralizedExercises, 
+      bellyOverrides
+    );
+  }, [progress.currentWeek, progress.currentDay, centralizedExercises, bellyOverrides]);
 
   // Check if today is Run Day (Wednesday Day 3 and Sunday Day 7 are the ONLY cardio days on the entire program)
   const isRunScheduled = progress.currentDay === 3 || progress.currentDay === 7;
@@ -2445,9 +2621,14 @@ export default function BellyFatShredView() {
             <div className={`border rounded-3xl p-6 sm:p-8 space-y-6 ${cardBg}`}>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <span className="text-[9px] font-mono text-[#D32F2F] uppercase block tracking-widest font-black mb-1">
-                    5-MONTH METABOLIC PROGRAMMING • COMPLETE ARCHITECTURE
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className="text-[9px] font-mono text-[#D32F2F] uppercase block tracking-widest font-black">
+                      5-MONTH METABOLIC PROGRAMMING • COMPLETE ARCHITECTURE
+                    </span>
+                    <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                      ✨ Synced with Admin Workout Library
+                    </span>
+                  </div>
                   <h2 className={`text-2xl sm:text-3xl font-black uppercase font-display tracking-tight ${textPrimary}`}>
                     {workoutInfo.title}
                   </h2>

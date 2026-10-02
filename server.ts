@@ -21,6 +21,7 @@ import {
 } from "./src/server/mailUtility";
 import { EXERCISES, getExerciseGifUrl } from "./src/data/exercises";
 import { getWorkoutForProgramAndDay, normalizeProgramId } from "./src/data/challengeEngineDatabase";
+import { registerPrintablePdfRoutes } from "./src/server/printablePdfRoutes";
 
 // Load environment variables
 dotenv.config();
@@ -4236,6 +4237,49 @@ app.post("/api/admin/programs/save-cycle-template", requireAdmin, async (req: an
   }
 });
 
+// POST purge all splits and manifest clean category exercises
+app.post("/api/admin/programs/purge-all-splits", requireAdmin, async (req: any, res) => {
+  const { programId, overrides } = req.body;
+  if (!programId || !overrides) {
+    return res.status(400).json({ success: false, error: "programId and overrides are required." });
+  }
+
+  try {
+    let allOverrides: Record<string, any> = {};
+    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      try {
+        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+        if (raw) allOverrides = JSON.parse(raw);
+      } catch (err) {
+        console.error("Failed parsing program schedule overrides:", err);
+      }
+    }
+
+    allOverrides[programId] = overrides;
+    fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
+
+    try {
+      await setServerFirestoreDoc("program_overrides", `${programId}_all_purged`, {
+        programId,
+        overrides,
+        updatedAt: new Date().toISOString(),
+        updatedBy: req.user?.email || "admin"
+      }, true);
+    } catch (fsErr) {
+      console.warn("Firestore sync warning on purge:", fsErr);
+    }
+
+    res.json({
+      success: true,
+      message: `Clean category splits successfully purged, manifested, and persisted for ${programId}.`,
+      programOverrides: allOverrides[programId]
+    });
+  } catch (error: any) {
+    console.error("Failed purging program splits:", error);
+    res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
 // POST delete workout from program day & automatically fetch or assign replacement
 app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any, res) => {
   const { 
@@ -6362,6 +6406,43 @@ app.post(["/api/payments/webhook", "/api/paystack/webhook", "/api/webhook"], asy
         return res.status(200).json({ status: "skipped", reason: `Transaction status is ${status}` });
       }
 
+      // Handle Printable PDF orders idempotently without interfering with membership subscriptions
+      const isPdfOrder = (reference && reference.startsWith("ref_afh_pdf_")) || 
+                         (txFinal.metadata && (txFinal.metadata.type === "printable_pdf" || txFinal.metadata.productType === "printable_pdf"));
+      if (isPdfOrder) {
+        console.log(`[Paystack Webhook] Detected Printable PDF order reference: ${reference}`);
+        const { getPdfOrders, saveOrUpdateOrder, generatePersonalizedPdf, getPdfProducts, generateMasterPdfFallback } = await import("./src/server/printablePdfEngine");
+        const pdfOrders = getPdfOrders();
+        let targetOrder = pdfOrders.find((o: any) => o.paymentReference === reference || (txFinal.metadata && txFinal.metadata.orderId && o.id === txFinal.metadata.orderId));
+        if (targetOrder) {
+          if (targetOrder.paymentStatus === "paid" && targetOrder.pdfGenerationStatus === "ready") {
+            return res.status(200).json({ status: "success", reference, alreadyProcessed: true, type: "printable_pdf" });
+          }
+          targetOrder.paymentStatus = "paid";
+          targetOrder.paidAt = targetOrder.paidAt || new Date().toISOString();
+          targetOrder.pdfGenerationStatus = "processing";
+          saveOrUpdateOrder(targetOrder);
+
+          const products = getPdfProducts();
+          const product = products.find((p: any) => p.id === targetOrder.productId) || products[0];
+
+          try {
+            if (targetOrder.personalizationRequired && targetOrder.uploadedPhotoFilename) {
+              const genName = await generatePersonalizedPdf(product, targetOrder);
+              targetOrder.generatedPdfFilename = genName;
+              targetOrder.pdfGenerationStatus = "ready";
+            } else {
+              targetOrder.pdfGenerationStatus = "ready";
+            }
+          } catch (e: any) {
+            console.error("[Paystack Webhook PDF Generation Error]", e);
+            targetOrder.pdfGenerationStatus = "failed";
+          }
+          saveOrUpdateOrder(targetOrder);
+          return res.status(200).json({ status: "success", reference, type: "printable_pdf" });
+        }
+      }
+
       const result = await processSuccessfulPayment(reference, txFinal);
       console.log(`[Paystack Webhook Success] Processed reference ${reference}. User upgraded successfully. Already processed: ${result.alreadyProcessed}`);
       
@@ -6823,6 +6904,13 @@ app.get("/api/premium/belly-fat-shred/content", checkPremiumStatus, (req: any, r
       { title: "The Empty-Stomach Cardio Window", details: "Doing your steady-state aerobic run of 3-5 KM in a fasted state accelerates lipolysis by tapping directly into stored subcutaneous fats." }
     ]
   });
+});
+
+// Register Printable PDF Store & Order Management Routes
+registerPrintablePdfRoutes(app, {
+  requireAdmin,
+  paystackSecretKey: PAYSTACK_SECRET_KEY,
+  appUrl: APP_URL
 });
 
 // Serve frontend via Vite (development/production fallback configuration)

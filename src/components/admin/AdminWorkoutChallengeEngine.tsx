@@ -13,6 +13,11 @@ import {
   getWorkoutForProgramAndDay,
   normalizeProgramId 
 } from "../../data/challengeEngineDatabase";
+import { 
+  purgeMismatchedExercisesFromRoutine, 
+  isExerciseBelongingToSplit, 
+  PROGRAM_SPLIT_DEFINITIONS 
+} from "../../utils/dynamicWorkoutEngine";
 import { getExerciseGifUrl, Exercise } from "../../data/exercises";
 import { ChallengeValidationService } from "../../services/challengeValidationService";
 import { useApp } from "../../context/AppContext";
@@ -56,6 +61,7 @@ export default function AdminWorkoutChallengeEngine() {
   const [isLoadingOverrides, setIsLoadingOverrides] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+  const [isPurging, setIsPurging] = useState<boolean>(false);
 
   // Drag and Drop State
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -638,10 +644,144 @@ export default function AdminWorkoutChallengeEngine() {
     }
   };
 
+  // Purge mismatched workouts from the active day/split
+  const handlePurgeMismatchedWorkouts = async (overrideCycleDay?: number) => {
+    setIsPurging(true);
+    try {
+      const cycleDay = overrideCycleDay !== undefined ? overrideCycleDay : ((effectiveDayNumber - 1) % 7) + 1;
+      const targetDay = overrideCycleDay !== undefined ? overrideCycleDay : effectiveDayNumber;
+      
+      const splitResolver = PROGRAM_SPLIT_DEFINITIONS[normalizeProgramId(selectedProgramId)] || PROGRAM_SPLIT_DEFINITIONS["immortal_90"];
+      const splitDef = splitResolver(cycleDay);
+
+      const targetMuscles = Array.isArray(baseDayPlan.meta.targetMuscles) && baseDayPlan.meta.targetMuscles.length > 0
+        ? baseDayPlan.meta.targetMuscles
+        : splitDef.targetMuscles;
+      const categoryTitle = splitCategory || splitDef.categoryTitle;
+
+      const result = purgeMismatchedExercisesFromRoutine(
+        activeExercises,
+        targetMuscles,
+        categoryTitle,
+        libraryExercises || [],
+        selectedProgramId,
+        targetDay
+      );
+
+      // Reorder and persist the sanitized exercise array
+      await handleReorderExercises(result.cleanedExercises);
+
+      if (result.removedNames.length > 0) {
+        setSaveSuccessMsg(
+          `🧹 Purged ${result.removedNames.length} mismatched workout(s): ${result.removedNames.join(", ")}. Split reset to strictly contain only valid ${categoryTitle} exercises!`
+        );
+      } else {
+        setSaveSuccessMsg(`✨ Zero mismatched workouts found! Every drill in this split 100% authentically belongs to ${categoryTitle}.`);
+      }
+      setTimeout(() => setSaveSuccessMsg(null), 5000);
+    } catch (err) {
+      console.error("Purge error:", err);
+      alert("Error purging workouts: " + (err as any)?.message);
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
+  // Purge mismatched workouts across the ENTIRE 7-day program cadence
+  const handlePurgeAllProgramSplits = async () => {
+    const confirmMsg = `Purge and reset all 7 days of ${currentProgramMeta.name}?\n\nThis will scan every day of the split, immediately purge every workout that does not belong to that day's target category (e.g. flat bench press appearing on back day), and restore strictly valid category drills.`;
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+    setIsPurging(true);
+    try {
+      const updatedOverrides = { ...(serverOverrides[selectedProgramId] || {}) };
+      const splitResolver = PROGRAM_SPLIT_DEFINITIONS[normalizeProgramId(selectedProgramId)] || PROGRAM_SPLIT_DEFINITIONS["immortal_90"];
+      let totalPurged = 0;
+      const allRemovedItems: string[] = [];
+
+      for (let cDay = 1; cDay <= 7; cDay++) {
+        const splitDef = splitResolver(cDay);
+        const dayPlan = getWorkoutForProgramAndDay(selectedProgramId as ProgramId, cDay);
+        const existingOverride = updatedOverrides[String(cDay)] || updatedOverrides[`cycle_${cDay}`];
+        const existingList = (existingOverride && Array.isArray(existingOverride.exercises)) 
+          ? existingOverride.exercises 
+          : (dayPlan.exercises || []);
+
+        const result = purgeMismatchedExercisesFromRoutine(
+          existingList,
+          splitDef.targetMuscles,
+          splitDef.categoryTitle,
+          libraryExercises || [],
+          selectedProgramId,
+          cDay
+        );
+
+        totalPurged += result.removedNames.length;
+        if (result.removedNames.length > 0) {
+          allRemovedItems.push(`Day ${cDay} (${splitDef.categoryTitle}): removed [${result.removedNames.join(", ")}]`);
+        }
+
+        const dayData = {
+          ...(existingOverride || {}),
+          title: splitDef.categoryTitle,
+          category: splitDef.categoryTitle,
+          focus: splitDef.categoryTitle,
+          isCardioOnly: !!splitDef.isCardioOnly,
+          cardioDistance: splitDef.cardioDistance || "5.0 - 10.0 KM",
+          exercises: result.cleanedExercises,
+          updatedAt: new Date().toISOString()
+        };
+
+        updatedOverrides[String(cDay)] = dayData;
+        updatedOverrides[`cycle_${cDay}`] = dayData;
+      }
+
+      setServerOverrides(prev => ({
+        ...prev,
+        [selectedProgramId]: updatedOverrides
+      }));
+      broadcastOverridesUpdated({
+        ...serverOverrides,
+        [selectedProgramId]: updatedOverrides
+      });
+
+      // Persist to backend server
+      const token = await auth.currentUser?.getIdToken().catch(() => null);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      headers["x-admin-email"] = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
+
+      await fetch("/api/admin/programs/purge-all-splits", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          programId: selectedProgramId,
+          overrides: updatedOverrides
+        })
+      }).catch(err => console.warn("Purge sync warn:", err));
+
+      setSaveSuccessMsg(
+        totalPurged > 0
+          ? `🚀 Full Program Purged! Removed ${totalPurged} mismatched drills across the 7-day split. All splits strictly reset to authentic category exercises!`
+          : `✨ Program Cadence Audited: All 7 days are already strictly aligned with their official muscle splits!`
+      );
+      setTimeout(() => setSaveSuccessMsg(null), 6000);
+    } catch (err) {
+      console.error("Purge all error:", err);
+      alert("Error purging all splits: " + (err as any)?.message);
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
   // Available programs list
   const programOptions = useMemo(() => {
     const standard = [
       { id: "immortal_90", label: "Immortal 90 Day Challenge (90 Days - 7 Day Rolling Cadence)" },
+      { id: "belly_fat_shred", label: "5-Month Belly Fat Shred System (140 Days - 20 Weeks)" },
+      { id: "home_180", label: "180 Day Home Workout Challenge (180 Days)" },
+      { id: "women_confidence", label: "Women Confidence Program (30 Days)" },
       { id: "lean_muscle", label: "90 Day Lean Muscle Challenge (90 Days)" },
       { id: "fat_burning", label: "90 Day Fat Burning Challenge (90 Days)" },
       { id: "body_transformation", label: "90 Day Body Transformation (90 Days)" },
@@ -649,9 +789,6 @@ export default function AdminWorkoutChallengeEngine() {
       { id: "strength_challenge", label: "90 Day Strength Challenge (90 Days)" },
       { id: "home_fitness", label: "90 Day Home Fitness Challenge (90 Days)" },
       { id: "six_pack_core", label: "90 Day Six Pack & Core Challenge (90 Days)" },
-      { id: "home_180", label: "180 Day Home Workout Challenge (180 Days)" },
-      { id: "women_confidence", label: "Women Confidence Program (30 Days)" },
-      { id: "belly_fat_shred", label: "Belly Fat Shred System (30 Days)" },
       { id: "posture_vitality", label: "Reclaim Your Posture & Vitality (21 Days)" },
       { id: "cardio_calisthenics", label: "Cardio, Calisthenics & Military (30 Days)" },
       { id: "lifestyle_academy", label: "Alex Lifestyle Academy (60 Days)" }
@@ -689,6 +826,17 @@ export default function AdminWorkoutChallengeEngine() {
           </div>
 
           <div className="flex items-center gap-3 shrink-0 flex-wrap">
+            <button
+              type="button"
+              onClick={handlePurgeAllProgramSplits}
+              disabled={isPurging}
+              className="px-4 py-2.5 rounded-2xl bg-amber-950/60 border border-amber-500/50 hover:border-amber-400 text-xs font-bold text-amber-300 hover:text-white transition flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-950/50 disabled:opacity-50"
+              title="Audit and purge mismatched exercises across all 7 days of this program cadence"
+            >
+              <Trash2 className="w-4 h-4 text-amber-400" />
+              <span>{isPurging ? "Purging..." : "Purge Entire Program Cadence"}</span>
+            </button>
+
             <button
               type="button"
               onClick={handleRunAudit}
@@ -943,7 +1091,18 @@ export default function AdminWorkoutChallengeEngine() {
             </h3>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => handlePurgeMismatchedWorkouts()}
+              disabled={isPurging}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-amber-600/25 disabled:opacity-50"
+              title="Purge exercises that do not belong to this split (e.g. remove Flat Bench Press from Back & Biceps day) and reset strictly with authentic category drills"
+            >
+              <Sparkles className="w-4 h-4 text-white" />
+              <span>{isPurging ? "Purging..." : "Purge Mismatched Workouts"}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setIsAddModalOpen(true)}

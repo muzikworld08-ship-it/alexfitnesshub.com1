@@ -28,6 +28,10 @@ export type AppView =
   | "pricing"
   | "store"
   | "product-detail"
+  | "printable-pdfs"
+  | "printable-pdf-detail"
+  | "printable-pdf-success"
+  | "my-digital-products"
   | "onboarding"
   | "login"
   | "signin"
@@ -67,6 +71,10 @@ export const VIEW_TO_PATH_MAP: Record<string, string> = {
   pricing: "/pricing",
   store: "/store",
   "product-detail": "/product-detail",
+  "printable-pdfs": "/printable-pdfs",
+  "printable-pdf-detail": "/printable-pdf-detail",
+  "printable-pdf-success": "/printable-pdfs/success",
+  "my-digital-products": "/my-digital-products",
   onboarding: "/onboarding",
   login: "/login",
   signin: "/login",
@@ -143,6 +151,18 @@ export const PATH_TO_VIEW_MAP: Record<string, string> = {
   "/product": "product-detail",
   "/product-detail": "product-detail",
   "/item": "product-detail",
+  "/printable-pdfs": "printable-pdfs",
+  "/printable": "printable-pdfs",
+  "/printables": "printable-pdfs",
+  "/pdf": "printable-pdfs",
+  "/pdfs": "printable-pdfs",
+  "/journals": "printable-pdfs",
+  "/printable-pdf-detail": "printable-pdf-detail",
+  "/printable-pdfs/success": "printable-pdf-success",
+  "/printable-pdf-success": "printable-pdf-success",
+  "/my-digital-products": "my-digital-products",
+  "/digital-products": "my-digital-products",
+  "/my-pdfs": "my-digital-products",
   "/onboarding": "onboarding",
   "/login": "login",
   "/signin": "login",

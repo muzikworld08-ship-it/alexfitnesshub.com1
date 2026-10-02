@@ -4,7 +4,7 @@ import {
   Users, Sparkles, Dumbbell, ShieldCheck, UserCheck, Trash2, ArrowUpDown, Key, ToggleLeft, ToggleRight,
   Check, Copy, Link, Cpu, Globe, Activity, ChevronRight, AlertTriangle, Terminal, Settings, CreditCard, RefreshCw,
   Upload, Image as ImageIcon, Video, Search, Filter, Play, RotateCcw, CheckCircle2, Trophy, Layers, Edit3,
-  SlidersHorizontal, CheckSquare, Eye, ExternalLink, ShoppingBag, Calendar
+  SlidersHorizontal, CheckSquare, Eye, ExternalLink, ShoppingBag, Calendar, FileText
 } from "lucide-react";
 import { TestimonialAdminManager } from "./TestimonialAdminManager";
 import AdminAssetManager from "./AdminAssetManager";
@@ -12,6 +12,7 @@ import AdminWorkoutEditor from "./admin/AdminWorkoutEditor";
 import AdminChallengeManager from "./admin/AdminChallengeManager";
 import AdminWorkoutChallengeEngine from "./admin/AdminWorkoutChallengeEngine";
 import { AdminStoreManager } from "./admin/AdminStoreManager";
+import { AdminPdfManager } from "./admin/AdminPdfManager";
 import { db } from "../lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { PREMIUM_CHALLENGES } from "./Premium90DayChallenge";
@@ -35,7 +36,7 @@ export default function AdminDashboard() {
   
   const [userQuery, setUserQuery] = useState("");
   const [exerciseQuery, setExerciseQuery] = useState("");
-  const [activeAdminTab, setActiveAdminTab] = useState<"workouts" | "challenges" | "engine" | "media" | "directory" | "store" | "paystack">("workouts");
+  const [activeAdminTab, setActiveAdminTab] = useState<"workouts" | "challenges" | "engine" | "media" | "directory" | "store" | "paystack" | "printable-pdfs">("workouts");
 
   // Media Manager Filters & Local Inputs
   const [mediaSearch, setMediaSearch] = useState("");
@@ -491,6 +492,18 @@ export default function AdminDashboard() {
           </button>
 
           <button
+            onClick={() => setActiveAdminTab("printable-pdfs")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "printable-pdfs"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <FileText className="w-4 h-4 text-red-600 shrink-0" />
+            <span>Printable PDFs</span>
+          </button>
+
+          <button
             onClick={() => setActiveAdminTab("paystack")}
             className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
               activeAdminTab === "paystack"
@@ -505,9 +518,16 @@ export default function AdminDashboard() {
 
         <div className="sm:hidden text-[10px] text-slate-500 font-mono flex items-center justify-between px-2 pt-1">
           <span>← Swipe horizontally to view all management tabs</span>
-          <span>6 Modules →</span>
+          <span>7 Modules →</span>
         </div>
       </div>
+
+      {/* VIEW: PRINTABLE PDFS MANAGER */}
+      {activeAdminTab === "printable-pdfs" && (
+        <div className="space-y-6 animate-fade-in">
+          <AdminPdfManager />
+        </div>
+      )}
 
       {/* VIEW 0: STORE & FITNESS WEAR MANAGEMENT */}
       {activeAdminTab === "store" && (

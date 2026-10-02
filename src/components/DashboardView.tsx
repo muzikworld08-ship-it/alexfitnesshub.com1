@@ -9,8 +9,9 @@ import {
   Flame, Droplet, Clock, Coffee, ChevronDown,
   ChevronUp, Scale, AlertCircle, Dumbbell,
   MessageSquare, ChefHat, Tv, Users, Menu, X,
-  Timer, RotateCcw, Pause, Heart, Info as InfoIcon
+  Timer, RotateCcw, Pause, Heart, Info as InfoIcon, FileText
 } from "lucide-react";
+import { MyDigitalProductsView } from "./pdf/MyDigitalProductsView";
 import {
   ResponsiveContainer,
   LineChart,
@@ -141,6 +142,7 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
     else if (activeView === "my-plan") setActiveTab("plan");
     else if (activeView === "ai-coach") setActiveTab("coach");
     else if (activeView === "community") setActiveTab("community");
+    else if (activeView === "my-digital-products" || activeView === "digital-products") setActiveTab("digital-products");
   }, [activeView]);
 
   // Load weekly reports on mount
@@ -150,8 +152,14 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
     }
   }, [user, isPremium]);
 
-  // Navigation Items defined with strict categories matching the 13 required sections
+  // Navigation Items defined with strict categories matching the required sections
   const menuCategories = [
+    {
+      title: "Digital Stationery & Orders",
+      items: [
+        { id: "digital-products", label: "My Digital Products", icon: FileText, desc: "Purchased Printable PDFs" },
+      ]
+    },
     {
       title: "Physical Performance",
       items: [
@@ -612,6 +620,13 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
                         </p>
                       </div>
                       <CommunityView />
+                    </div>
+                  )}
+
+                  {/* 14. My Digital Products & Printable PDFs */}
+                  {(activeTab === "digital-products" || activeTab === "my-pdfs") && (
+                    <div className="space-y-6">
+                      <MyDigitalProductsView onNavigateStore={() => setView("printable-pdfs")} />
                     </div>
                   )}
                 </motion.div>

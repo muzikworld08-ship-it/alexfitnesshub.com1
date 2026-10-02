@@ -4,7 +4,7 @@ import {
   Menu, X, Shield, Lock, Award, ChevronDown, Calendar, Flame, 
   Dumbbell, Sparkles, BookOpen, Activity, Heart, Users, Video, 
   Bookmark, BarChart3, Calculator, Crown, Star, ArrowRight, LogOut,
-  ShoppingBag, RotateCcw, Bell, BellRing, Mail, Clock
+  ShoppingBag, RotateCcw, Bell, BellRing, Mail, Clock, FileText
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import Logo from "./Logo";
@@ -165,6 +165,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     { id: "dashboard", label: "Athlete Performance Desk", desc: "Your metrics, streaks & performance reports", icon: Shield, color: "text-sky-600 bg-sky-50" },
     { id: "notification-settings", label: "Notification Settings", desc: "Alarm schedule, sound chime & email alerts", icon: Bell, color: "text-amber-600 bg-amber-50" },
     { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
+    { id: "printable-pdfs", label: "Printable PDFs & Journals", desc: "Digital fitness workbooks, meal planners & guides", icon: FileText, color: "text-red-600 bg-red-50" },
     { id: "home-workout-challenge", label: "180 Day Home Workout Challenge", desc: "Zero equipment bodyweight transformation & 5KM cardio", icon: Dumbbell, color: "text-amber-600 bg-amber-50" },
     { id: "daily-plan", label: "My Daily Plan", desc: "Personalized daily schedule & drills", icon: Calendar, color: "text-red-600 bg-red-50" },
     { id: "women-confidence", label: "Women Confidence Program", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-50" },
@@ -188,6 +189,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     { id: "progress-tracker", label: "Progress & Activity Tracker", desc: "Workouts, cardio, water intake, meals & 7-day reports", icon: Activity, color: "text-emerald-600 bg-emerald-50", isHighlight: true },
     { id: "notification-settings", label: "Notification Settings", desc: "Alarm schedule, sound chime & email alerts", icon: Bell, color: "text-amber-600 bg-amber-50" },
     { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
+    { id: "printable-pdfs", label: "Printable PDFs & Journals", desc: "Digital fitness workbooks, meal planners & guides", icon: FileText, color: "text-red-600 bg-red-50" },
     { id: "home-workout-challenge", label: "180 Day Home Workout Challenge", desc: "Zero equipment bodyweight transformation & 5KM cardio", icon: Dumbbell, color: "text-amber-600 bg-amber-50", isProBadge: true },
     { id: "women-confidence", label: "Women Confidence Program", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-50", isProBadge: true },
     { id: "belly-fat-shred", label: "Belly Fat Shred System", desc: "5-Month core & metabolic shredding protocol", icon: Flame, color: "text-orange-600 bg-orange-50", isProBadge: true },

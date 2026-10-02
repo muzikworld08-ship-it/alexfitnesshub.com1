@@ -48,6 +48,10 @@ const PricingView = React.lazy(() => import("./components/PricingView"));
 const StoreView = React.lazy(() => import("./components/StoreView"));
 const ProductDetailView = React.lazy(() => import("./components/ProductDetailView").then(m => ({ default: m.ProductDetailView })));
 const PremiumUpgradeModal = React.lazy(() => import("./components/PremiumUpgradeModal"));
+const PrintablePdfStoreView = React.lazy(() => import("./components/pdf/PrintablePdfStoreView").then(m => ({ default: m.PrintablePdfStoreView })));
+const PdfProductDetailView = React.lazy(() => import("./components/pdf/PdfProductDetailView").then(m => ({ default: m.PdfProductDetailView })));
+const PdfDownloadSuccessView = React.lazy(() => import("./components/pdf/PdfDownloadSuccessView").then(m => ({ default: m.PdfDownloadSuccessView })));
+const MyDigitalProductsView = React.lazy(() => import("./components/pdf/MyDigitalProductsView").then(m => ({ default: m.MyDigitalProductsView })));
 
 const pageTransitionVariants: Variants = {
   initial: {
@@ -83,6 +87,9 @@ function FitnessAppContent() {
   } = useApp();
 
   const { selectedProductForDetail, setSelectedProductForDetail } = useStore();
+  const [selectedPdfProductId, setSelectedPdfProductId] = useState<string>("afh-journal-weight-loss");
+  const [pdfSuccessOrderId, setPdfSuccessOrderId] = useState<string>("");
+  const [pdfSuccessReference, setPdfSuccessReference] = useState<string>("");
 
   const renderSkeletonForView = (view: string) => {
     if (["dashboard", "weekly-reports", "daily-habit-tracker", "daily-calibration-desk", "handbook", "weight-trajectory"].includes(view)) {
@@ -673,6 +680,44 @@ function FitnessAppContent() {
 
               {currentView === "product-detail" && (
                 <ProductDetailView setView={handleSetView} />
+              )}
+
+              {["printable-pdfs", "printable", "printables", "pdf", "pdfs", "journals"].includes(currentView) && (
+                <PrintablePdfStoreView 
+                  onSelectProduct={(id) => {
+                    setSelectedPdfProductId(id);
+                    handleSetView("printable-pdf-detail");
+                  }}
+                  onNavigateMyProducts={() => handleSetView("my-digital-products")}
+                />
+              )}
+
+              {currentView === "printable-pdf-detail" && (
+                <PdfProductDetailView 
+                  productId={selectedPdfProductId}
+                  onBack={() => handleSetView("printable-pdfs")}
+                  onOrderSuccess={(orderId, ref) => {
+                    setPdfSuccessOrderId(orderId);
+                    setPdfSuccessReference(ref);
+                    handleSetView("printable-pdf-success");
+                  }}
+                />
+              )}
+
+              {["printable-pdf-success", "printable-pdfs/success"].includes(currentView) && (
+                <PdfDownloadSuccessView 
+                  orderId={pdfSuccessOrderId}
+                  reference={pdfSuccessReference}
+                  onNavigateHome={() => handleSetView("home")}
+                  onNavigateStore={() => handleSetView("printable-pdfs")}
+                  onNavigateMyProducts={() => handleSetView("my-digital-products")}
+                />
+              )}
+
+              {["my-digital-products", "digital-products", "my-pdfs"].includes(currentView) && (
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full">
+                  <MyDigitalProductsView onNavigateStore={() => handleSetView("printable-pdfs")} />
+                </div>
               )}
 
               {currentView === "admin" && (

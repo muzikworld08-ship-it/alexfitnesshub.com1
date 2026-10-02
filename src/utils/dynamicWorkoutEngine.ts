@@ -2,6 +2,143 @@ import { Exercise } from "../data/exercises";
 import { ChallengeExerciseItem, DayWorkoutMeta, DayExecutionPlan } from "../types/challengeEngine";
 
 /**
+ * Checks whether an exercise is primarily a Chest movement.
+ */
+export function isChestExercise(name: string, category: string): boolean {
+  const n = (name || "").toLowerCase();
+  const c = (category || "").toLowerCase();
+  if (c.includes("chest") || c.includes("pec")) return true;
+  if (n.includes("bench press") || n.includes("chest press") || n.includes("incline press") || 
+      n.includes("decline press") || n.includes("flat bench") || n.includes("pushup") || 
+      n.includes("push up") || n.includes("push-up") || n.includes("pec fly") || 
+      n.includes("pec deck") || n.includes("chest fly") || n.includes("svend press") || 
+      n.includes("cable crossover") || n.includes("dumbbell fly")) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Checks whether an exercise is primarily a Back movement.
+ */
+export function isBackExercise(name: string, category: string): boolean {
+  const n = (name || "").toLowerCase();
+  const c = (category || "").toLowerCase();
+  if (c.includes("back") || c.includes("lat") || c.includes("trap")) return true;
+  if (n.includes("row") || n.includes("pulldown") || n.includes("pull up") || 
+      n.includes("pullup") || n.includes("pull-up") || n.includes("chin up") || 
+      n.includes("chinup") || n.includes("chin-up") || n.includes("deadlift") || 
+      n.includes("lat ") || n.includes("lats") || n.includes("shrug") || 
+      n.includes("face pull") || n.includes("hyperextension") || n.includes("back extension")) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Checks whether an exercise is primarily a Biceps movement.
+ */
+export function isBicepsExercise(name: string, category: string): boolean {
+  const n = (name || "").toLowerCase();
+  const c = (category || "").toLowerCase();
+  if (c.includes("bicep") || c.includes("arm")) return true;
+  if (n.includes("curl") || n.includes("bicep") || n.includes("preacher") || 
+      n.includes("hammer curl") || n.includes("concentration curl") || n.includes("spider curl")) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Checks whether an exercise is primarily a Leg / Lower Body movement.
+ */
+export function isLegExercise(name: string, category: string): boolean {
+  const n = (name || "").toLowerCase();
+  const c = (category || "").toLowerCase();
+  if (c.includes("leg") || c.includes("quad") || c.includes("hamstring") || c.includes("calf") || c.includes("glute")) return true;
+  if (n.includes("squat") || n.includes("lunge") || n.includes("leg press") || 
+      n.includes("leg extension") || n.includes("leg curl") || n.includes("calf raise") || 
+      n.includes("step up") || n.includes("hip thrust") || n.includes("glute bridge") || 
+      n.includes("romanian deadlift") || n.includes("rdl") || n.includes("hack squat") || 
+      n.includes("wall sit")) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Checks whether an exercise is primarily a Core / Abs movement.
+ */
+export function isCoreExercise(name: string, category: string): boolean {
+  const n = (name || "").toLowerCase();
+  const c = (category || "").toLowerCase();
+  if (c.includes("core") || c.includes("abs") || c.includes("abdom")) return true;
+  if (n.includes("plank") || n.includes("crunch") || n.includes("sit up") || 
+      n.includes("sit-up") || n.includes("dead bug") || n.includes("russian twist") || 
+      n.includes("bicycle crunch") || n.includes("hollow body") || n.includes("flutter kick") || 
+      n.includes("leg raise") || n.includes("ab rollout") || n.includes("vacuum") || 
+      n.includes("mountain climber")) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Strict validator: Does this exercise authentically belong to the split targets?
+ * Completely eliminates cross-contamination (e.g. Bench Press appearing on Back/Biceps Day).
+ */
+export function isExerciseBelongingToSplit(
+  ex: Exercise | ChallengeExerciseItem | any,
+  targets: string[],
+  categoryTitle: string = ""
+): boolean {
+  if (!ex) return false;
+  const name = (ex.name || ex.exerciseName || "").trim();
+  const category = (ex.category || "").trim();
+  const targetLower = targets.map(t => t.toLowerCase().trim());
+  const titleLower = categoryTitle.toLowerCase().trim();
+
+  const allowsChest = targetLower.some(t => t.includes("chest") || t.includes("pec") || t.includes("upper body push")) || titleLower.includes("chest");
+  const allowsBack = targetLower.some(t => t.includes("back") || t.includes("lat") || t.includes("pull")) || titleLower.includes("back");
+  const allowsBiceps = targetLower.some(t => t.includes("bicep") || t.includes("arm") || t.includes("pull")) || titleLower.includes("bicep");
+  const allowsTriceps = targetLower.some(t => t.includes("tricep") || t.includes("arm") || t.includes("push")) || titleLower.includes("tricep");
+  const allowsLegs = targetLower.some(t => t.includes("leg") || t.includes("quad") || t.includes("hamstring") || t.includes("glute") || t.includes("lower body")) || titleLower.includes("leg");
+  const allowsCore = targetLower.some(t => t.includes("core") || t.includes("abs") || t.includes("abdom")) || titleLower.includes("core") || titleLower.includes("abs");
+  const isFullBody = targetLower.some(t => t.includes("full body") || t.includes("functional")) || titleLower.includes("full body");
+  const isPureCardio = (targetLower.some(t => t.includes("cardio") || t.includes("running") || t.includes("walking")) || titleLower.includes("cardio")) && !allowsChest && !allowsBack && !allowsLegs;
+
+  // Rule 1: Back and Biceps day MUST NOT contain Chest exercises (e.g. Flat Bench Press, Incline Press, Pushups)
+  if (allowsBack && allowsBiceps && !allowsChest) {
+    if (isChestExercise(name, category)) return false;
+    if (isLegExercise(name, category)) return false;
+    return isBackExercise(name, category) || isBicepsExercise(name, category);
+  }
+
+  // Rule 2: Chest and Triceps day MUST NOT contain Back or Leg exercises
+  if (allowsChest && allowsTriceps && !allowsBack && !allowsLegs) {
+    if (isBackExercise(name, category)) return false;
+    if (isLegExercise(name, category)) return false;
+    return isChestExercise(name, category) || nTricep(name, category);
+  }
+
+  // Rule 3: Pure Cardio days (Days 3 & 7) cannot have heavy barbell/dumbbell compound lifts
+  if (isPureCardio) {
+    if (isChestExercise(name, category) || isBackExercise(name, category) || isLegExercise(name, category)) {
+      return false;
+    }
+  }
+
+  // Fallback to intelligent categorization
+  return matchesTargetCategories(ex as Exercise, targets);
+}
+
+function nTricep(name: string, category: string): boolean {
+  const n = (name || "").toLowerCase();
+  const c = (category || "").toLowerCase();
+  return c.includes("tricep") || n.includes("tricep") || n.includes("pushdown") || n.includes("skull crusher") || n.includes("dip");
+}
+
+/**
  * Intelligent categorization and muscle matching helper.
  * When an admin adds an exercise (e.g. "Bench Press" with category "Chest"),
  * this engine automatically maps it to every program, split, and challenge day where that muscle/category appears.
@@ -16,6 +153,18 @@ export function matchesTargetCategories(ex: Exercise, targets: string[]): boolea
   const exSecondary = (ex.secondaryMuscles || []).map(s => s.toLowerCase().trim());
   const exWorked = (ex.musclesWorked || []).map(w => w.toLowerCase().trim());
   const exName = (ex.name || "").toLowerCase().trim();
+
+  const isBackDayOnly = targetSet.some(t => t.includes("back") || t.includes("bicep")) && !targetSet.some(t => t.includes("chest"));
+  const isChestDayOnly = targetSet.some(t => t.includes("chest") || t.includes("tricep")) && !targetSet.some(t => t.includes("back"));
+
+  // Strictly prevent chest moves on back-only day
+  if (isBackDayOnly && isChestExercise(exName, exCat)) {
+    return false;
+  }
+  // Strictly prevent back moves on chest-only day
+  if (isChestDayOnly && isBackExercise(exName, exCat)) {
+    return false;
+  }
 
   const allExAttributes = new Set([
     exCat,
@@ -384,5 +533,72 @@ export function buildDynamicDayPlan(
   return {
     meta,
     exercises: challengeItems
+  };
+}
+
+/**
+ * Purges every exercise that does not authentically belong to this split's category/muscles,
+ * and resets or refills the day with strictly authentic matching exercises from the library.
+ * e.g. on Back & Biceps Day, Flat Bench Press is purged, leaving ONLY Back and Biceps exercises.
+ */
+export function purgeMismatchedExercisesFromRoutine(
+  currentExercises: ChallengeExerciseItem[],
+  targetMuscles: string[],
+  categoryTitle: string,
+  availableLibraryExercises: Exercise[],
+  programId: string,
+  dayNumber: number
+): {
+  cleanedExercises: ChallengeExerciseItem[];
+  removedNames: string[];
+  addedNames: string[];
+} {
+  const removedNames: string[] = [];
+  const keptExercises: ChallengeExerciseItem[] = [];
+  const seenKept = new Set<string>();
+
+  for (const item of currentExercises) {
+    const name = (item.exerciseName || item.name || "").trim();
+    if (!name) continue;
+    const belongs = isExerciseBelongingToSplit(item, targetMuscles, categoryTitle);
+    if (!belongs) {
+      removedNames.push(name);
+    } else {
+      const lower = name.toLowerCase();
+      if (!seenKept.has(lower)) {
+        seenKept.add(lower);
+        keptExercises.push(item);
+      }
+    }
+  }
+
+  const addedNames: string[] = [];
+  // If fewer than 5 exercises remain, replenish with authentic matching exercises from the admin library
+  if (keptExercises.length < 5 && availableLibraryExercises && availableLibraryExercises.length > 0) {
+    const isHome = programId.includes("home");
+    const matchingFromLib = filterExercisesForSplit(
+      availableLibraryExercises,
+      targetMuscles,
+      { requireHomeOnly: isHome }
+    ).filter(ex => isExerciseBelongingToSplit(ex, targetMuscles, categoryTitle));
+
+    for (const ex of matchingFromLib) {
+      if (keptExercises.length >= 6) break;
+      const cleanName = (ex.name || "").trim();
+      const lower = cleanName.toLowerCase();
+      if (!seenKept.has(lower)) {
+        seenKept.add(lower);
+        addedNames.push(cleanName);
+        keptExercises.push(
+          exerciseToChallengeItem(ex, programId, dayNumber, keptExercises.length)
+        );
+      }
+    }
+  }
+
+  return {
+    cleanedExercises: keptExercises,
+    removedNames,
+    addedNames
   };
 }
