@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useApp, isEmailAdmin } from "../context/AppContext";
 import { Exercise, PROGRAMS, Program, EXERCISES, getExerciseGifUrl } from "../data/exercises";
-import { WORKOUTS_DATABASE, WORKOUT_CATEGORIES_INFO, Workout, WorkoutExercise, getWorkoutMappedCategory } from "../data/workoutsData";
+import { WORKOUTS_DATABASE, WORKOUT_CATEGORIES_INFO, Workout, WorkoutExercise, getWorkoutMappedCategory, calculateWorkoutDuration } from "../data/workoutsData";
 import YouTubePlayer from "./video/YouTubePlayer";
 import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
@@ -11,7 +11,7 @@ import {
   Search, SlidersHorizontal, Lock, CheckCircle, PlusCircle, Sparkles, X, 
   ChevronRight, HelpCircle, AlertTriangle, Play, Shield, Calendar, Apple, Dumbbell, ArrowRight, Clipboard,
   Compass, CheckCircle2, UploadCloud, FileVideo, FileImage, Trash2, ArrowLeft, RotateCcw, Award, Activity,
-  Heart, Bookmark, Crown, Flame, Home, Layers
+  Heart, Bookmark, Crown, Flame, Home, Layers, Clock
 } from "lucide-react";
 import { isHomeEligibleExercise } from "../utils/dynamicWorkoutEngine";
 import WorkoutVisual from "./WorkoutVisual";
@@ -1368,20 +1368,28 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
               {workout.description}
             </p>
 
-            <div className="grid grid-cols-3 gap-2 py-2 mt-2 border-y border-[#F0F0F0] text-[10px] font-mono text-slate-500 uppercase tracking-wider">
-              <div>
-                <span className="text-slate-400 block text-[9px]">Level</span>
-                <span className="font-bold text-slate-800">{workout.difficulty}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[9px]">Time</span>
-                <span className="font-bold text-slate-800">{workout.duration}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[9px]">Burn</span>
-                <span className="font-bold text-[#C0392B]">{workout.caloriesBurned} kcal</span>
-              </div>
-            </div>
+            {(() => {
+              const durInfo = calculateWorkoutDuration(workout);
+              return (
+                <div className="grid grid-cols-3 gap-2 py-2 mt-2 border-y border-[#F0F0F0] text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+                  <div>
+                    <span className="text-slate-400 block text-[9px]">Level</span>
+                    <span className="font-bold text-slate-800">{workout.difficulty}</span>
+                  </div>
+                  <div title={durInfo.calculationSummary} className="cursor-help">
+                    <span className="text-slate-400 block text-[9px]">Est. Time</span>
+                    <span className="font-bold text-slate-800">{durInfo.formatted}</span>
+                    {durInfo.totalSets > 0 && (
+                      <span className="text-[8px] text-slate-400 block font-normal -mt-0.5">{durInfo.totalSets} Sets</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[9px]">Burn</span>
+                    <span className="font-bold text-[#C0392B]">{workout.caloriesBurned} kcal</span>
+                  </div>
+                </div>
+              );
+            })()}
 
             <div className="flex flex-wrap gap-1 mt-2">
               {workout.exercises.slice(0, 3).map((ex, idx) => (
@@ -2237,9 +2245,18 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 {activeWorkout.targetMuscle}
               </span>
               <span className="text-slate-300">•</span>
-              <span className="text-slate-600 uppercase font-bold">
-                {activeWorkout.duration}
-              </span>
+              {(() => {
+                const durInfo = calculateWorkoutDuration(activeWorkout);
+                return (
+                  <span className="text-slate-700 uppercase font-bold flex items-center gap-1" title={durInfo.calculationSummary}>
+                    <Clock className="w-3.5 h-3.5 text-[#C0392B]" />
+                    <span>{durInfo.formatted}</span>
+                    {durInfo.totalSets > 0 && (
+                      <span className="text-slate-400 font-normal">({durInfo.totalSets} Sets)</span>
+                    )}
+                  </span>
+                );
+              })()}
             </div>
 
             <h1 className="text-3xl sm:text-4xl font-black text-slate-950 uppercase tracking-tight font-sans">
@@ -3801,20 +3818,28 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                                             </p>
                                           </div>
 
-                                          <div className="grid grid-cols-3 gap-2 py-2.5 border-y border-[#ECECEC] text-[10px] font-mono text-slate-500 uppercase tracking-wider">
-                                            <div>
-                                              <span className="text-slate-400 block mb-0.5">Level</span>
-                                              <span className="font-bold text-slate-800">{workout.difficulty}</span>
-                                            </div>
-                                            <div>
-                                              <span className="text-slate-400 block mb-0.5">Time</span>
-                                              <span className="font-bold text-slate-800">{workout.duration}</span>
-                                            </div>
-                                            <div>
-                                              <span className="text-slate-400 block mb-0.5">Burn</span>
-                                              <span className="font-bold text-[#E53935]">{workout.caloriesBurned} kcal</span>
-                                            </div>
-                                          </div>
+                                          {(() => {
+                                            const durInfo = calculateWorkoutDuration(workout);
+                                            return (
+                                              <div className="grid grid-cols-3 gap-2 py-2.5 border-y border-[#ECECEC] text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+                                                <div>
+                                                  <span className="text-slate-400 block mb-0.5">Level</span>
+                                                  <span className="font-bold text-slate-800">{workout.difficulty}</span>
+                                                </div>
+                                                <div title={durInfo.calculationSummary} className="cursor-help">
+                                                  <span className="text-slate-400 block mb-0.5">Est. Time</span>
+                                                  <span className="font-bold text-slate-800">{durInfo.formatted}</span>
+                                                  {durInfo.totalSets > 0 && (
+                                                    <span className="text-[8px] text-slate-400 block font-normal -mt-0.5">{durInfo.totalSets} Sets</span>
+                                                  )}
+                                                </div>
+                                                <div>
+                                                  <span className="text-slate-400 block mb-0.5">Burn</span>
+                                                  <span className="font-bold text-[#E53935]">{workout.caloriesBurned} kcal</span>
+                                                </div>
+                                              </div>
+                                            );
+                                          })()}
                                         </div>
 
                                         <div className="flex items-center gap-3 pt-1">

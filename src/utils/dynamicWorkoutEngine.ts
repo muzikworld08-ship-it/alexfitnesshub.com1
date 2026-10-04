@@ -1,5 +1,6 @@
 import { Exercise } from "../data/exercises";
 import { ChallengeExerciseItem, DayWorkoutMeta, DayExecutionPlan } from "../types/challengeEngine";
+import { isWomenWorkoutEligibleExercise } from "../data/womenConfidenceProgramData";
 
 /**
  * Checks whether an exercise is primarily a Chest movement.
@@ -564,11 +565,11 @@ export const PROGRAM_SPLIT_DEFINITIONS: Record<string, (cycleDay: number) => Spl
   women_confidence: (cycleDay: number) => {
     switch (cycleDay) {
       case 1:
-        return { categoryTitle: "Glute & Posterior Awakening", targetMuscles: ["Glutes", "Hamstrings", "Lower Body"] };
+        return { categoryTitle: "Glute & Posterior Awakening", targetMuscles: ["Glutes", "Hamstrings", "Lower Body", "Hips"] };
       case 2:
-        return { categoryTitle: "Upper Body Posture & Sculpt", targetMuscles: ["Upper Body", "Back", "Shoulders", "Chest", "Arms"] };
+        return { categoryTitle: "Upper Body Posture & Sculpt", targetMuscles: ["Upper Body", "Back", "Shoulders", "Arms", "Posture"] };
       case 3:
-        return { categoryTitle: "Aerobic Step Walk & Active Reset", targetMuscles: ["Cardio", "Walking"], isCardioOnly: true, cardioDistance: "3 to 5 KM" };
+        return { categoryTitle: "Aerobic Step Walk & Active Reset", targetMuscles: ["Cardio", "Walking", "Core"], isCardioOnly: true, cardioDistance: "3 to 5 KM" };
       case 4:
         return { categoryTitle: "Core & Waist Kinetic Compression", targetMuscles: ["Core", "Abs", "Obliques"] };
       case 5:
@@ -577,7 +578,7 @@ export const PROGRAM_SPLIT_DEFINITIONS: Record<string, (cycleDay: number) => Spl
         return { categoryTitle: "Deep Pelvic Mobility & Glute Sculpt", targetMuscles: ["Glutes", "Hips", "Mobility"] };
       case 7:
       default:
-        return { categoryTitle: "Restorative Regeneration & Rest", targetMuscles: ["Recovery", "Mobility"], isRestDay: true };
+        return { categoryTitle: "Restorative Regeneration & Rest", targetMuscles: ["Recovery", "Mobility", "Posture"], isRestDay: true };
     }
   },
   home_180: (cycleDay: number) => {
@@ -637,7 +638,14 @@ export function buildDynamicDayPlan(
   const splitDef = splitResolver(cycleDay);
 
   const isHomeProgram = programKey.includes("home") || programKey === "home_180";
-  const matchedExercises = filterExercisesForSplit(allExercises, splitDef.targetMuscles, { requireHomeOnly: isHomeProgram });
+  const isWomenProgram = programKey.includes("women") || programKey === "women_confidence";
+  
+  let eligibleExercises = allExercises;
+  if (isWomenProgram) {
+    eligibleExercises = allExercises.filter(isWomenWorkoutEligibleExercise);
+  }
+
+  const matchedExercises = filterExercisesForSplit(eligibleExercises, splitDef.targetMuscles, { requireHomeOnly: isHomeProgram });
   // Enforce strict maximum of 10 workouts daily
   const challengeItems = matchedExercises.slice(0, 10).map((ex, idx) =>
     exerciseToChallengeItem(ex, programId, safeDay, idx)

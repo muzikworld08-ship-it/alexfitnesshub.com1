@@ -158,3 +158,101 @@ export function getWorkoutMappedCategory(workout: Workout): string {
   if (workout.category === "Category 2") return "HIIT";
   return "Strength";
 }
+
+export interface CalculatedWorkoutDuration {
+  formatted: string;
+  totalSets: number;
+  totalMinutes: number;
+  calculationSummary: string;
+}
+
+/**
+ * Dynamically calculates the expected total duration of a workout program or routine
+ * based on the sum of its individual exercise sets, estimated tempo per repetition,
+ * set rest intervals, and intra-exercise equipment transitions.
+ */
+export function calculateWorkoutDuration(workout: {
+  exercises?: Array<{ sets?: string | number; reps?: string; rest?: string }>;
+  duration?: string;
+}): CalculatedWorkoutDuration {
+  if (!workout.exercises || workout.exercises.length === 0) {
+    const raw = workout.duration || "20 Mins";
+    const num = parseInt(raw, 10) || 20;
+    return {
+      formatted: raw.toLowerCase().includes("min") ? raw : `${num} Mins`,
+      totalSets: 0,
+      totalMinutes: num,
+      calculationSummary: "Estimated base duration"
+    };
+  }
+
+  let totalSeconds = 0;
+  let totalSetsCount = 0;
+
+  workout.exercises.forEach((ex, idx) => {
+    // 1. Parse number of sets (e.g. "3", "4", "3-4", 4)
+    let sets = 3;
+    if (typeof ex.sets === "number") {
+      sets = ex.sets;
+    } else if (typeof ex.sets === "string") {
+      const match = ex.sets.match(/\d+/);
+      if (match) sets = parseInt(match[0], 10);
+    }
+    if (sets <= 0 || isNaN(sets)) sets = 3;
+    totalSetsCount += sets;
+
+    // 2. Parse work time per set
+    const repsStr = (ex.reps || "").toLowerCase().trim();
+    let workSecondsPerSet = 40; // Default tempo: ~10 reps @ 4s tempo (2s eccentric, 1s concentric, 1s pause)
+
+    if (repsStr.includes("min")) {
+      const minMatch = repsStr.match(/(\d+(\.\d+)?)\s*min/);
+      if (minMatch) workSecondsPerSet = Math.round(parseFloat(minMatch[1]) * 60);
+    } else if (repsStr.includes("s") || repsStr.includes("sec")) {
+      const secMatch = repsStr.match(/(\d+)\s*(s|sec)/);
+      if (secMatch) workSecondsPerSet = parseInt(secMatch[1], 10);
+    } else {
+      const numMatches = repsStr.match(/\d+/g);
+      if (numMatches && numMatches.length > 0) {
+        const nums = numMatches.map(n => parseInt(n, 10));
+        const avgReps = nums.reduce((a, b) => a + b, 0) / nums.length;
+        workSecondsPerSet = Math.max(15, Math.min(120, Math.round(avgReps * 3.5)));
+      }
+    }
+
+    // 3. Parse rest interval between sets
+    const restStr = (ex.rest || "").toLowerCase().trim();
+    let restSeconds = 60; // Standard 60s rest
+    if (restStr.includes("min")) {
+      const minMatch = restStr.match(/(\d+(\.\d+)?)\s*min/);
+      if (minMatch) restSeconds = Math.round(parseFloat(minMatch[1]) * 60);
+    } else if (restStr.match(/\d+/)) {
+      const secMatch = restStr.match(/(\d+)/);
+      if (secMatch) restSeconds = parseInt(secMatch[1], 10);
+    }
+
+    // Work time for all sets + rest intervals between sets (N - 1)
+    const exerciseWorkTime = sets * workSecondsPerSet;
+    const exerciseRestTime = Math.max(0, sets - 1) * restSeconds;
+    
+    // Transition time between exercises (~45 seconds)
+    const transitionTime = idx < workout.exercises.length - 1 ? 45 : 0;
+
+    totalSeconds += exerciseWorkTime + exerciseRestTime + transitionTime;
+  });
+
+  const totalMinutes = Math.max(5, Math.round(totalSeconds / 60));
+  let formatted = `${totalMinutes} Mins`;
+  if (totalMinutes >= 60) {
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    formatted = mins > 0 ? `${hours}h ${mins}m` : `${hours} Hours`;
+  }
+
+  return {
+    formatted,
+    totalSets: totalSetsCount,
+    totalMinutes,
+    calculationSummary: `Calculated from ${totalSetsCount} sets (${workout.exercises.length} drills) + rest intervals`
+  };
+}

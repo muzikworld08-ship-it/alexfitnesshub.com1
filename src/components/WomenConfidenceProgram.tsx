@@ -1519,14 +1519,37 @@ export default function WomenConfidenceProgram() {
           <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 w-full">
             <div className="space-y-1 min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-bold uppercase">
-                  Day {selectedDayNumber} of 180
-                </span>
+                <div className="flex items-center gap-1 bg-rose-50 border border-rose-200/80 rounded-full px-1.5 py-0.5">
+                  <button
+                    type="button"
+                    disabled={selectedDayNumber <= 1}
+                    onClick={() => setSelectedDayNumber(prev => Math.max(1, prev - 1))}
+                    className="p-1 rounded-full text-rose-700 hover:bg-rose-100 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+                    title="Previous Day"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-xs font-black text-rose-700 uppercase px-1">
+                    Day {selectedDayNumber} of 180
+                  </span>
+                  <button
+                    type="button"
+                    disabled={selectedDayNumber >= 180}
+                    onClick={() => setSelectedDayNumber(prev => Math.min(180, prev + 1))}
+                    className="p-1 rounded-full text-rose-700 hover:bg-rose-100 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+                    title="Next Day"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
                 <span className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
                   {currentWorkout.dayType.toUpperCase()}
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-medium">
                   {currentWorkout.intensity} Intensity
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 text-xs font-bold">
+                  {currentWorkout.exercises.length} Daily Workouts
                 </span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-gray-900 break-words">{currentWorkout.title}</h2>
@@ -1622,9 +1645,9 @@ export default function WomenConfidenceProgram() {
             </div>
           )}
 
-          {/* Check if current day is Rest Day or Cardio Day */}
-          {(currentWorkout.dayType === "rest" || currentWorkout.dayType === "active_recovery" || currentWorkout.title.toLowerCase().includes("rest") || currentWorkout.title.toLowerCase().includes("recovery") || currentWorkout.focus.toLowerCase().includes("rest")) ? (
-            <div className="py-4 w-full">
+          {/* Card for Rest Day or Cardio Day if applicable */}
+          {(currentWorkout.dayType === "rest" || currentWorkout.dayType === "active_recovery" || currentWorkout.title.toLowerCase().includes("rest") || currentWorkout.title.toLowerCase().includes("recovery") || currentWorkout.focus.toLowerCase().includes("rest")) && (
+            <div className="py-2 w-full">
               <RestDayCard
                 programId="women_confidence"
                 programName="Women Confidence Program"
@@ -1634,8 +1657,10 @@ export default function WomenConfidenceProgram() {
                 onComplete={() => handleCompleteFullDay(selectedDayNumber)}
               />
             </div>
-          ) : (currentWorkout.dayType === "walking" || currentWorkout.title.toLowerCase().includes("cardio") || currentWorkout.focus.toLowerCase().includes("cardio") || currentWorkout.title.toLowerCase().includes("walk") || currentWorkout.title.toLowerCase().includes("run")) ? (
-            <div className="py-4 w-full">
+          )}
+
+          {(currentWorkout.dayType === "walking" || currentWorkout.title.toLowerCase().includes("cardio") || currentWorkout.focus.toLowerCase().includes("cardio") || currentWorkout.title.toLowerCase().includes("walk") || currentWorkout.title.toLowerCase().includes("run")) && (
+            <div className="py-2 w-full">
               <CardioDayCard
                 programId="women_confidence"
                 programName="Women Confidence Program"
@@ -1646,10 +1671,18 @@ export default function WomenConfidenceProgram() {
                 onComplete={() => handleCompleteFullDay(selectedDayNumber)}
               />
             </div>
-          ) : (
-            /* Exercise List (8-10 exercises) - Only on regular training days */
-            <div className="space-y-4 w-full">
-              {currentWorkout.exercises.map((ex, index) => {
+          )}
+
+          {/* Daily 10-Drill Exercise List - Guaranteed 10 workouts daily for all 180 days */}
+          <div className="space-y-4 w-full">
+            <div className="flex items-center justify-between pt-2">
+              <h3 className="text-base sm:text-lg font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
+                <Dumbbell className="w-4 h-4 text-rose-600" />
+                <span>Today's 10 Sculpt & Confidence Drills</span>
+                <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold">10 Drills</span>
+              </h3>
+            </div>
+            {currentWorkout.exercises.map((ex, index) => {
                 const dayKey = `day_${selectedDayNumber}`;
                 const isCompleted = (progState.completedExercises[dayKey] || []).includes(ex.id);
 
@@ -1748,7 +1781,6 @@ export default function WomenConfidenceProgram() {
           );
         })}
       </div>
-    )}
 
           {/* Complete Day Workout Button */}
           <div className="p-5 sm:p-6 rounded-2xl bg-white border border-gray-200 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 w-full">
