@@ -18,6 +18,8 @@ const CATEGORY_FILTERS = [
   "All",
   "Chest",
   "Back",
+  "Biceps",
+  "Triceps",
   "Legs",
   "Shoulders",
   "Arms",
@@ -349,11 +351,32 @@ export default function AddWorkoutModal({
                 <label className="text-xs font-bold text-neutral-300 mb-1 block">Category</label>
                 <input
                   type="text"
-                  placeholder="e.g. Chest and Triceps"
+                  placeholder="e.g. Biceps, Triceps, Chest, Back"
                   value={customCategory}
                   onChange={(e) => setCustomCategory(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-sm text-white focus:outline-none focus:border-red-500"
                 />
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {["Biceps", "Triceps", "Chest", "Back", "Legs", "Shoulders", "Arms", "Core"].map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        setCustomCategory(cat);
+                        if (!customMuscleGroup) {
+                          setCustomMuscleGroup(cat);
+                        }
+                      }}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
+                        customCategory === cat
+                          ? "bg-red-600 text-white border-red-600"
+                          : "bg-neutral-900 text-neutral-400 border-neutral-800 hover:text-white"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>

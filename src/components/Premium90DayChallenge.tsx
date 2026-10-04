@@ -10,8 +10,11 @@ import {
   Info, Medal, RefreshCw, Crown, Shield, Eye, Heart, Camera, 
   Download, Share2, Clipboard, ChevronDown, Check, AlertTriangle, 
   MessageSquare, UserCheck, ChevronLeft, Target, ArrowRight, ExternalLink,
-  Layers, X
+  Layers, X, ArrowRightLeft
 } from "lucide-react";
+import UniversalExerciseSwapperModal from "./UniversalExerciseSwapperModal";
+import { detectWorkoutType } from "../utils/dynamicWorkoutEngine";
+import { Exercise } from "../data/exercises";
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, Legend 
@@ -594,7 +597,7 @@ export default function Premium90DayChallenge() {
       const enginePlan = getWorkoutForProgramAndDay(progToQuery, dayNum);
       const isCardioDay = enginePlan.meta.isCardioOnly;
 
-      const exercisesWithDetails = enginePlan.exercises.map((ex, idx) => {
+      const exercisesWithDetails = enginePlan.exercises.slice(0, 10).map((ex, idx) => {
         const isCardio = isCardioDay || ex.muscleGroup?.includes("Cardio") || ex.category.includes("Cardio") || ex.category.includes("Running") || ex.category.includes("Walking");
         const calBurn = isCardio ? 460 : Math.round(setsMultiplier * 75);
 
@@ -738,18 +741,18 @@ export default function Premium90DayChallenge() {
       return matchCat && matchFocus;
     });
 
-    // Select exercises matching this day's routine strictly - guarantee 12 exercises
-    let matchedExercises = filtered.slice(0, 12);
-    if (matchedExercises.length < 12) {
+    // Select exercises matching this day's routine strictly - guarantee maximum 10 workouts daily
+    let matchedExercises = filtered.slice(0, 10);
+    if (matchedExercises.length < 10) {
       // Only pull extras that match the target muscle groups
       const muscleExtras = exercises.filter(ex => 
         !matchedExercises.some(m => m.id === ex.id) &&
         ex.muscleGroups?.some(m => focusWords.some(fw => m.toLowerCase().includes(fw)))
-      ).slice(0, 12 - matchedExercises.length);
+      ).slice(0, 10 - matchedExercises.length);
       matchedExercises = [...matchedExercises, ...muscleExtras];
     }
-    // If still under 12, fill strictly from the corresponding muscle category pool — NEVER cross-contaminate chest into legs!
-    if (matchedExercises.length < 12) {
+    // If still under 10, fill strictly from the corresponding muscle category pool — NEVER cross-contaminate chest into legs!
+    if (matchedExercises.length < 10) {
       const isLegsFocus = focusWords.some(w => ["leg", "legs", "lower", "squat", "quad", "hamstring", "glute", "calf"].includes(w));
       const isChestFocus = focusWords.some(w => ["chest", "tricep", "triceps", "push", "bench", "pec"].includes(w));
       const isBackFocus = focusWords.some(w => ["back", "bicep", "biceps", "pull", "lat", "row", "forearm"].includes(w));
@@ -770,7 +773,7 @@ export default function Premium90DayChallenge() {
 
       const poolExtras = targetedPool
         .filter(pEx => !matchedExercises.some(m => m.name.toLowerCase() === pEx.exerciseName.toLowerCase()))
-        .slice(0, 12 - matchedExercises.length)
+        .slice(0, 10 - matchedExercises.length)
         .map((pEx, idx) => ({
           id: `challenge_fallback_d${dayNum}_${idx + 1}`,
           name: pEx.exerciseName,
@@ -787,7 +790,7 @@ export default function Premium90DayChallenge() {
           safety: "Keep core locked. Maintain neutral spine alignment throughout."
         }));
 
-      matchedExercises = [...matchedExercises, ...poolExtras as any];
+      matchedExercises = [...matchedExercises, ...poolExtras as any].slice(0, 10);
     }
 
     // Construct exercises details list
@@ -1099,6 +1102,46 @@ export default function Premium90DayChallenge() {
 
   const previewWorkoutDetail = getDailyWorkoutDetail(previewDay, "immortal_90");
 
+  // User Exercise Swapper State (when users lack equipment or want an alternative from the same category)
+  const [swappingExerciseItem, setSwappingExerciseItem] = useState<{ exercise: any; index: number } | null>(null);
+  const [userSwappedExercises, setUserSwappedExercises] = useState<Record<string, any>>(() => {
+    try {
+      const saved = localStorage.getItem("fit_premium_user_swaps");
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const handleSwapExercise = (newEx: Exercise) => {
+    if (!swappingExerciseItem) return;
+    const { index } = swappingExerciseItem;
+    const key = `${activeDisplayDay}_${index}`;
+    const current = todayWorkoutDetail.exercises[index] || swappingExerciseItem.exercise;
+    const updated = {
+      ...current,
+      id: newEx.id,
+      name: newEx.name,
+      category: newEx.category,
+      muscleGroups: newEx.muscleGroups,
+      gifUrl: newEx.gifUrl,
+      customMediaUrl: newEx.customMediaUrl || newEx.gifUrl,
+      instruction: newEx.instructions?.[0] || current?.instruction || "Execute with strict posture and control.",
+      mistake: newEx.commonMistakes?.[0] || current?.mistake || "Avoid rushing reps; maintain constant muscular tension.",
+      safety: newEx.safetyTips?.[0] || current?.safety || "Keep joints aligned and core braced throughout."
+    };
+
+    const nextSwaps = {
+      ...userSwappedExercises,
+      [key]: updated
+    };
+    setUserSwappedExercises(nextSwaps);
+    try {
+      localStorage.setItem("fit_premium_user_swaps", JSON.stringify(nextSwaps));
+    } catch (e) {}
+    setSwappingExerciseItem(null);
+  };
+
   // Switch current active day for athlete
   const handleSetCurrentDay = async (targetDay: number) => {
     if (!dbState || !user) return;
@@ -1146,10 +1189,13 @@ export default function Premium90DayChallenge() {
         {/* Background Image */}
         <div className="absolute inset-0 z-0 select-none pointer-events-none">
           <img 
-            src="https://i.ytimg.com/vi/TBsA_4Lg3KE/sddefault.jpg" 
+            src="/images/hero-athlete-shred.png" 
             alt="Immortal 90-Day Challenge Hero"
-            className="w-full h-full object-cover object-center scale-100"
+            className="w-full h-full object-cover object-center scale-100 filter brightness-90"
             referrerPolicy="no-referrer"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "https://raw.githubusercontent.com/muzikmail2-arch/Git/main/ChatGPT%20Image%20Jul%2018%2C%202026%2C%2007_15_20%20PM.png";
+            }}
           />
         </div>
         
@@ -1951,12 +1997,22 @@ export default function Premium90DayChallenge() {
                                 </h4>
 
                                 <div className="space-y-8">
-                                  {todayWorkoutDetail.exercises.map((ex, idx) => (
+                                  {todayWorkoutDetail.exercises.map((rawEx, idx) => {
+                                    const ex = userSwappedExercises[`${activeDisplayDay}_${idx}`] || rawEx;
+                                    const isTimeBased = detectWorkoutType(ex.name, ex.reps) === "time";
+                                    return (
                                     <div key={idx} className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-4 shadow-xs relative">
                                       <span className="absolute top-4 right-4 text-3xl font-black text-slate-100 select-none">0{idx + 1}</span>
                                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                         <div>
-                                          <h5 className="font-extrabold text-sm sm:text-base text-slate-900">{ex.name}</h5>
+                                          <div className="flex items-center gap-2">
+                                            <h5 className="font-extrabold text-sm sm:text-base text-slate-900">{ex.name}</h5>
+                                            {userSwappedExercises[`${activeDisplayDay}_${idx}`] && (
+                                              <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                                SWAPPED
+                                              </span>
+                                            )}
+                                          </div>
                                           <div className="flex flex-wrap gap-2 text-[10px] font-mono font-bold uppercase mt-1 text-slate-400">
                                             <span>Target: {ex.muscleGroups?.join(", ") || "General Body"}</span>
                                             <span>•</span>
@@ -1964,11 +2020,31 @@ export default function Premium90DayChallenge() {
                                           </div>
                                         </div>
 
-                                        <div className="flex flex-wrap gap-1.5 text-[10px] font-mono font-bold">
+                                        <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-mono font-bold">
+                                          {/* Time-Based vs Rep-Based Counter Badge */}
+                                          <span className={`px-2.5 py-1 rounded-md border flex items-center gap-1 ${
+                                            isTimeBased 
+                                              ? "bg-blue-50 text-blue-700 border-blue-200" 
+                                              : "bg-amber-50 text-amber-800 border-amber-200"
+                                          }`}>
+                                            {isTimeBased ? <Clock className="w-3 h-3 text-blue-600" /> : <Dumbbell className="w-3 h-3 text-amber-600" />}
+                                            <span>{isTimeBased ? "Time-Based" : "Rep-Based"} ({ex.reps})</span>
+                                          </span>
+
                                           <span className="bg-red-50 text-red-600 px-2.5 py-1 rounded-md border border-red-100">{ex.sets} Sets</span>
-                                          <span className="bg-amber-50 text-amber-700 px-2.5 py-1 rounded-md border border-amber-100">{ex.reps}</span>
                                           <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md">{ex.weight}</span>
                                           <span className="bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-md border border-indigo-100">{ex.rest} Rest</span>
+
+                                          {/* Workout Swapper Trigger for user lacking equipment or needing alternative */}
+                                          <button
+                                            type="button"
+                                            onClick={() => setSwappingExerciseItem({ exercise: ex, index: idx })}
+                                            className="px-2.5 py-1 rounded-md bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 hover:border-slate-400 flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                                            title="Swap workout: if you lack equipment in your gym or need an alternative, get another drill in the same category"
+                                          >
+                                            <ArrowRightLeft className="w-3 h-3 text-red-600" />
+                                            <span>Swap Drill</span>
+                                          </button>
                                         </div>
                                       </div>
 
@@ -2000,7 +2076,8 @@ export default function Premium90DayChallenge() {
                                         </div>
                                       </div>
                                     </div>
-                                  ))}
+                                  );
+                                })}
                                 </div>
                               </div>
 
@@ -2692,6 +2769,15 @@ export default function Premium90DayChallenge() {
             setBrowsingDay(nextDayNumber);
             setActiveSubTab("workout");
           }}
+        />
+      )}
+      {/* User Exercise Swapper Modal */}
+      {swappingExerciseItem && (
+        <UniversalExerciseSwapperModal
+          isOpen={!!swappingExerciseItem}
+          onClose={() => setSwappingExerciseItem(null)}
+          currentExercise={swappingExerciseItem.exercise}
+          onSelectSwap={handleSwapExercise}
         />
       )}
     </div>

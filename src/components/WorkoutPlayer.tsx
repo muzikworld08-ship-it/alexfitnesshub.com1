@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { 
   Play, 
   Pause, 
@@ -17,11 +17,14 @@ import {
   Maximize2,
   Minimize2,
   RotateCcw,
-  RefreshCw
+  RefreshCw,
+  ArrowRightLeft
 } from "lucide-react";
 import { Exercise } from "../data/exercises";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import { useWorkoutTimer } from "../context/WorkoutTimerContext";
+import { detectWorkoutType } from "../utils/dynamicWorkoutEngine";
+import UniversalExerciseSwapperModal from "./UniversalExerciseSwapperModal";
 
 interface WorkoutPlayerProps {
   exercises: Exercise[];
@@ -32,10 +35,11 @@ interface WorkoutPlayerProps {
 
 export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComplete }: WorkoutPlayerProps) {
   const workoutTimer = useWorkoutTimer();
+  const [workoutExercises, setWorkoutExercises] = useState<Exercise[]>(exercises.slice(0, 10));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
   const totalSets = 3; // Standard 3 sets per exercise
-  const exerciseDuration = 45; // 45 seconds per set
+  const exerciseDuration = 45; // 45 seconds per set for time-based drills
   const restDuration = 30; // 30 seconds rest between sets/exercises
 
   const [secondsRemaining, setSecondsRemaining] = useState(5); // Prep phase countdown
@@ -48,11 +52,46 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
   const [heartRateHistory, setHeartRateHistory] = useState<number[]>(Array(15).fill(75));
   const [elapsedTime, setElapsedTime] = useState(0);
 
+  // Exercise Swapper State
+  const [isSwapperOpen, setIsSwapperOpen] = useState(false);
+
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  const currentExercise = exercises[currentIndex] || exercises[0];
+  const currentExercise = workoutExercises[currentIndex] || workoutExercises[0];
+
+  // Determine counting mode: TIME-BASED vs REP-BASED
+  const workoutType = detectWorkoutType(currentExercise?.name || "", currentExercise?.recommendedReps || "");
+  const isTimeBased = workoutType === "time";
+
+  // Target reps extraction for rep counting
+  const targetRepsNum = useMemo(() => {
+    const r = (currentExercise?.recommendedReps || "").toLowerCase();
+    const match = r.match(/(\d+)/g);
+    if (match && match.length > 0) {
+      return parseInt(match[match.length - 1], 10);
+    }
+    return 12;
+  }, [currentExercise?.recommendedReps]);
+
+  const [repsDone, setRepsDone] = useState(0);
+
+  // Reset reps done when moving exercises or sets
+  useEffect(() => {
+    setRepsDone(0);
+  }, [currentIndex, currentSet]);
+
+  const handleSwapCurrentExercise = (newEx: Exercise) => {
+    setWorkoutExercises(prev => {
+      const next = [...prev];
+      next[currentIndex] = newEx;
+      return next;
+    });
+    setPhase("prep");
+    setSecondsRemaining(5);
+    speak(`Swapped to ${newEx.name}. Get ready.`);
+  };
 
   // Helper function for Voice Countdown Speech Synthesis
   const speak = (text: string) => {
@@ -73,18 +112,22 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
     if (phase === "prep") {
       speak(`Get ready for ${currentExercise?.name || "the next exercise"}. Starting in 5 seconds.`);
     } else if (phase === "work") {
-      speak(`Go! Perform ${currentExercise?.name}. Focus on your posture.`);
+      if (isTimeBased) {
+        speak(`Go! Perform ${currentExercise?.name}. Timer set for ${exerciseDuration} seconds.`);
+      } else {
+        speak(`Go! Perform ${currentExercise?.name}. Target is ${currentExercise?.recommendedReps || targetRepsNum + " reps"}.`);
+      }
     } else if (phase === "rest") {
       if (currentSet < totalSets) {
         speak(`Great set! Rest for ${restDuration} seconds. Sip some water.`);
-      } else if (currentIndex < exercises.length - 1) {
-        speak(`Exercise complete! Take a breather. Up next is ${exercises[currentIndex + 1]?.name}.`);
+      } else if (currentIndex < workoutExercises.length - 1) {
+        speak(`Exercise complete! Take a breather. Up next is ${workoutExercises[currentIndex + 1]?.name}.`);
       } else {
         setPhase("completed");
         speak("Congratulations! Workout session completed. Outstanding job!");
       }
     }
-  }, [phase, currentIndex, currentSet]);
+  }, [phase, currentIndex, currentSet, isTimeBased, workoutExercises]);
 
   // Overall stopwatch
   useEffect(() => {
@@ -97,10 +140,19 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
     return () => clearInterval(timer);
   }, [isPlaying, phase]);
 
-  // Main countdown loop
+  // Main countdown loop (Only ticks down seconds in prep, rest, or when work is TIME-BASED!)
   useEffect(() => {
     let timer: any = null;
     if (isPlaying && phase !== "completed") {
+      // In work phase with rep-based exercise, don't count down seconds automatically; user logs reps
+      if (phase === "work" && !isTimeBased) {
+        timer = setInterval(() => {
+          setCaloriesBurned(c => parseFloat((c + 0.15).toFixed(1)));
+          setHeartRate(hr => (hr < 135 ? hr + 1 : hr));
+        }, 1000);
+        return () => clearInterval(timer);
+      }
+
       timer = setInterval(() => {
         setSecondsRemaining(prev => {
           if (prev <= 1) {
@@ -117,7 +169,6 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
           // Calories math
           if (phase === "work") {
             const met = currentExercise?.difficulty === "Advanced" ? 8 : currentExercise?.difficulty === "Intermediate" ? 6 : 4;
-            // calories per second approx
             setCaloriesBurned(c => parseFloat((c + (met * 3.5 * 70) / (200 * 60)).toFixed(1)));
             
             // Heart rate increase
@@ -139,7 +190,7 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [isPlaying, phase, currentIndex, currentSet]);
+  }, [isPlaying, phase, currentIndex, currentSet, isTimeBased]);
 
   // Track HR history for active dashboard
   useEffect(() => {
@@ -154,7 +205,8 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
   const handlePhaseTransition = () => {
     if (phase === "prep") {
       setPhase("work");
-      setSecondsRemaining(exerciseDuration);
+      setRepsDone(0);
+      setSecondsRemaining(isTimeBased ? exerciseDuration : 0);
     } else if (phase === "work") {
       setPhase("rest");
       setSecondsRemaining(restDuration);
@@ -162,10 +214,11 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
       if (currentSet < totalSets) {
         setCurrentSet(prev => prev + 1);
         setPhase("work");
-        setSecondsRemaining(exerciseDuration);
+        setRepsDone(0);
+        setSecondsRemaining(isTimeBased ? exerciseDuration : 0);
       } else {
         // Move to next exercise
-        if (currentIndex < exercises.length - 1) {
+        if (currentIndex < workoutExercises.length - 1) {
           setCurrentIndex(prev => prev + 1);
           setCurrentSet(1);
           setPhase("prep");
@@ -329,6 +382,16 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
 
         {/* Header Controls */}
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsSwapperOpen(true)}
+            className="px-3 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer"
+            title="Missing equipment or can't perform? Swap with alternative from same category"
+          >
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Swap Drill</span>
+          </button>
+
           <button
             type="button"
             onClick={() => {
@@ -534,41 +597,99 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
               
               {/* Exercise Metadata & Progress */}
               <div className="text-left space-y-1">
-                <div className="flex justify-between text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">
-                  <span>EXERCISE {currentIndex + 1} OF {exercises.length}</span>
-                  <span>{currentExercise?.difficulty}</span>
+                <div className="flex items-center justify-between text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+                  <div className="flex items-center gap-2">
+                    <span>EXERCISE {currentIndex + 1} OF {workoutExercises.length}</span>
+                    <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
+                      isTimeBased 
+                        ? "bg-blue-900/60 text-blue-300 border border-blue-500/30" 
+                        : "bg-amber-900/60 text-amber-300 border border-amber-500/30"
+                    }`}>
+                      {isTimeBased ? "⏱️ Time-Based (Timer)" : "🔢 Rep-Based (Reps)"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsSwapperOpen(true)}
+                    className="text-[10px] text-red-400 hover:text-red-300 flex items-center gap-1 font-bold transition cursor-pointer"
+                    title="Swap exercise with alternative from same category"
+                  >
+                    <ArrowRightLeft className="w-3 h-3" />
+                    <span>Swap Drill</span>
+                  </button>
                 </div>
                 <h3 className="text-lg font-black uppercase text-white truncate leading-snug">{currentExercise?.name}</h3>
                 <p className="text-xs text-slate-400 leading-normal line-clamp-2">{currentExercise?.description || "Isolate your target muscle fibers with proper posture alignment."}</p>
               </div>
 
-              {/* Circular Timer & Countdown */}
-              <div className="my-4 flex items-center justify-center relative">
-                <svg className="w-44 h-44 transform -rotate-90">
-                  <circle 
-                    cx="88" 
-                    cy="88" 
-                    r="76" 
-                    className="stroke-slate-800 fill-transparent"
-                    strokeWidth="10"
-                  />
-                  <circle 
-                    cx="88" 
-                    cy="88" 
-                    r="76" 
-                    className="stroke-[#C0392B] fill-transparent transition-all duration-1000"
-                    strokeWidth="10"
-                    strokeDasharray={2 * Math.PI * 76}
-                    strokeDashoffset={2 * Math.PI * 76 * (1 - secondsRemaining / exerciseDuration)}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute text-center">
-                  <span className="block text-[8px] font-mono font-bold text-slate-500 uppercase tracking-widest">SECONDS LEFT</span>
-                  <span className="text-4xl font-mono font-black text-white">{secondsRemaining}</span>
-                  <span className="block text-[10px] text-[#C0392B] font-mono font-bold uppercase mt-1">ACTIVE WORK</span>
+              {/* Time-Based Countdown Timer OR Rep-Based Counter */}
+              {isTimeBased ? (
+                <div className="my-4 flex items-center justify-center relative">
+                  <svg className="w-44 h-44 transform -rotate-90">
+                    <circle 
+                      cx="88" 
+                      cy="88" 
+                      r="76" 
+                      className="stroke-slate-800 fill-transparent"
+                      strokeWidth="10"
+                    />
+                    <circle 
+                      cx="88" 
+                      cy="88" 
+                      r="76" 
+                      className="stroke-blue-500 fill-transparent transition-all duration-1000"
+                      strokeWidth="10"
+                      strokeDasharray={2 * Math.PI * 76}
+                      strokeDashoffset={2 * Math.PI * 76 * (1 - secondsRemaining / exerciseDuration)}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute text-center">
+                    <span className="block text-[8px] font-mono font-bold text-slate-500 uppercase tracking-widest">SECONDS LEFT</span>
+                    <span className="text-4xl font-mono font-black text-white">{secondsRemaining}</span>
+                    <span className="block text-[10px] text-blue-400 font-mono font-bold uppercase mt-1">TIME-BASED DRILL</span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="my-3 p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center flex flex-col justify-center items-center">
+                  <span className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-widest block">
+                    REPETITIONS TARGET
+                  </span>
+                  <span className="text-xs text-slate-400 font-mono mt-0.5">
+                    {currentExercise?.recommendedReps || `${targetRepsNum} Reps Target`}
+                  </span>
+
+                  <div className="flex items-center gap-4 my-3">
+                    <button
+                      type="button"
+                      onClick={() => setRepsDone(r => Math.max(0, r - 1))}
+                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-lg transition flex items-center justify-center cursor-pointer border border-slate-700"
+                    >
+                      -
+                    </button>
+                    <div className="text-center min-w-[110px]">
+                      <span className="text-4xl font-mono font-black text-white">{repsDone}</span>
+                      <span className="text-xs font-mono text-slate-500 block">/ {targetRepsNum} Reps</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setRepsDone(r => r + 1)}
+                      className="w-10 h-10 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-lg transition flex items-center justify-center cursor-pointer shadow-md shadow-red-600/30"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handlePhaseTransition}
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Complete Set {currentSet} ({repsDone > 0 ? repsDone : targetRepsNum} Reps) & Rest</span>
+                  </button>
+                </div>
+              )}
 
               {/* Real-time Health Monitor Dashboard */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-950 border border-slate-850 rounded-2xl w-full">
@@ -647,6 +768,14 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
           </div>
         </footer>
       )}
+
+      {/* Universal Exercise Swapper Modal */}
+      <UniversalExerciseSwapperModal
+        isOpen={isSwapperOpen}
+        onClose={() => setIsSwapperOpen(false)}
+        currentExercise={currentExercise}
+        onSelectSwap={handleSwapCurrentExercise}
+      />
     </div>
   );
 }

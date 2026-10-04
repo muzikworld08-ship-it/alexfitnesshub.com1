@@ -10,7 +10,8 @@ import {
   saveOrUpdateOrder, 
   generatePersonalizedPdf, 
   generateMasterPdfFallback,
-  ensurePdfDirectories 
+  ensurePdfDirectories,
+  recordDeletedPdfId
 } from "./printablePdfEngine";
 import { PrintablePdfProduct, PrintablePdfOrder } from "../types/printablePdf";
 
@@ -493,10 +494,23 @@ export function registerPrintablePdfRoutes(
   // 11. DELETE /api/admin/printable-pdfs/:id - Delete product
   app.delete("/api/admin/printable-pdfs/:id", requireAdmin, (req: Request, res: Response) => {
     try {
+      const prodId = String(req.params.id);
+      recordDeletedPdfId(prodId);
+
       let products = getPdfProducts();
-      products = products.filter((p) => p.id !== req.params.id);
+      const productToDelete = products.find((p) => p.id === prodId);
+      
+      // Clean up master PDF if custom
+      if (productToDelete?.masterPdfFilename) {
+        const masterPath = path.join(MASTERS_DIR, productToDelete.masterPdfFilename);
+        if (fs.existsSync(masterPath)) {
+          try { fs.unlinkSync(masterPath); } catch {}
+        }
+      }
+
+      products = products.filter((p) => p.id !== prodId);
       savePdfProducts(products);
-      res.json({ success: true });
+      res.json({ success: true, message: `Product ${prodId} permanently deleted.` });
     } catch (err: any) {
       res.status(500).json({ success: false, error: "Failed to delete product" });
     }

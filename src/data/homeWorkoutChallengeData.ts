@@ -1,5 +1,5 @@
 import { Exercise } from "./exercises";
-import { filterExercisesForSplit, isHomeEligibleExercise } from "../utils/dynamicWorkoutEngine";
+import { filterExercisesForSplit, isHomeEligibleExercise, detectWorkoutType } from "../utils/dynamicWorkoutEngine";
 
 export interface HomeOnboardingProfile {
   gender: "Male" | "Female" | "Other";
@@ -250,23 +250,29 @@ export function getHomeWorkoutForDay(
     : getActiveExercisesFromStorage();
 
   // Strictly filter for home-eligible exercises only: no barbell, dumbbell, or gym machines
-  const matched = filterExercisesForSplit(allActive, targets, { requireHomeOnly: true });
+  // Strictly capped at maximum 10 workouts daily
+  const matched = filterExercisesForSplit(allActive, targets, { requireHomeOnly: true }).slice(0, 10);
 
   const exercises: HomeExercise[] = matched.map((ex, idx) => {
     const mediaUrl = ex.customMediaUrl || ex.gifUrl || ex.imageUrl || "";
+    const type = detectWorkoutType(ex.name, ex.recommendedReps);
+    const durationOrReps = type === "time"
+      ? (ex.recommendedReps?.includes("s") ? ex.recommendedReps : ex.duration || "45s Continuous")
+      : (ex.recommendedReps || "12-15 Reps");
+
     return {
       id: `home_d${safeDay}_ex_${idx + 1}`,
       name: ex.name,
       targetMuscles: ex.muscleGroups || targets,
       difficulty: ex.difficulty || level,
-      workoutType: "reps",
+      workoutType: type,
       instructions: ex.instructions && ex.instructions.length > 0 ? ex.instructions : [
         `Assume starting position for ${ex.name}.`,
         `Execute movement with strict form and full range of motion.`,
         `Hold peak contraction briefly, return under control.`
       ],
       sets: `${ex.recommendedSets || "3-4"} Sets`,
-      repsOrDuration: ex.recommendedReps || "12-15 Reps",
+      repsOrDuration: durationOrReps,
       restPeriod: ex.restTime || "45-60s",
       beginnerModification: "Perform with reduced range or bodyweight assistance.",
       advancedProgression: "Slow down eccentric tempo or increase repetition volume.",

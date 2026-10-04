@@ -26,13 +26,34 @@ export interface VerifyOrderResponse {
   error?: string;
 }
 
+const DELETED_PDF_STORAGE_KEY = "afh_deleted_pdf_product_ids";
+
+function getClientDeletedPdfIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DELETED_PDF_STORAGE_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr);
+    }
+  } catch {}
+  return new Set();
+}
+
+function recordClientDeletedPdfId(id: string) {
+  try {
+    const set = getClientDeletedPdfIds();
+    set.add(id);
+    localStorage.setItem(DELETED_PDF_STORAGE_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+
 class PrintablePdfService {
   private getAuthHeaders(): HeadersInit {
     const headers: Record<string, string> = {
       "Content-Type": "application/json"
     };
     try {
-      const email = localStorage.getItem("fit_saved_email") || "alexfitnesshub@gmail.com";
+      const email = localStorage.getItem("fit_user_email") || localStorage.getItem("fit_saved_email") || "alexfitnesshub@gmail.com";
       if (email) {
         headers["x-admin-email"] = email;
       }
@@ -49,7 +70,8 @@ class PrintablePdfService {
       const res = await fetch("/api/printable-pdfs");
       if (!res.ok) throw new Error("Failed to load PDF products");
       const data = await res.json();
-      return data.products || [];
+      const deletedIds = getClientDeletedPdfIds();
+      return (data.products || []).filter((p: PrintablePdfProduct) => !deletedIds.has(p.id));
     } catch (err) {
       console.warn("[PrintablePdfService] getProducts error:", err);
       return [];
@@ -133,7 +155,8 @@ class PrintablePdfService {
     });
     if (!res.ok) throw new Error("Failed to fetch admin products");
     const data = await res.json();
-    return data.products || [];
+    const deletedIds = getClientDeletedPdfIds();
+    return (data.products || []).filter((p: PrintablePdfProduct) => !deletedIds.has(p.id));
   }
 
   async saveProduct(product: Partial<PrintablePdfProduct>): Promise<PrintablePdfProduct> {
@@ -154,6 +177,7 @@ class PrintablePdfService {
   }
 
   async deleteProduct(id: string): Promise<boolean> {
+    recordClientDeletedPdfId(id);
     const res = await fetch(`/api/admin/printable-pdfs/${encodeURIComponent(id)}`, {
       method: "DELETE",
       headers: this.getAuthHeaders()

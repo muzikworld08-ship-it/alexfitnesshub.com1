@@ -13,11 +13,15 @@ import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../../utils/med
 import { AssetManifestService } from "../../services/AssetManifestService";
 import { purgeRestrictedHomeWorkouts, PurgeRestrictedHomeResult } from "../../utils/adminWorkoutCleaner";
 import DeleteWorkoutConfirmModal, { DeleteWorkoutTarget } from "./DeleteWorkoutConfirmModal";
+import { resetAndCleanAllProgramSplits } from "../../utils/dynamicWorkoutEngine";
+import { auth } from "../../lib/firebase";
 
 const CATEGORIES = [
   "All",
   "Chest",
   "Back",
+  "Biceps",
+  "Triceps",
   "Legs",
   "Shoulders",
   "Arms",
@@ -106,6 +110,52 @@ export default function AdminWorkoutEditor() {
     } finally {
       setIsPurgingHome(false);
       setPurgeStatusText("");
+    }
+  };
+
+  // One-Click Clean & Reset All Program Workouts
+  const [isResettingPrograms, setIsResettingPrograms] = useState(false);
+
+  const handleResetAndCleanAllPrograms = async () => {
+    if (!window.confirm("One-Click Reset & Auto-Clean All Program Days?\n\nThis will scan every day of every program split (e.g. 90-Day Immortal, Belly Fat Shred, 180-Day Home, etc.):\n• On Back & Biceps days: any chest or leg exercises will disappear immediately.\n• On Chest & Triceps days: any back or leg exercises will disappear.\n• On Legs days: any chest or back exercises will disappear.\n• Every day's routine is capped strictly at 10 workouts max daily.\n\nProceed?")) {
+      return;
+    }
+
+    setIsResettingPrograms(true);
+    try {
+      let overrides: Record<string, any> = {};
+      try {
+        const cached = localStorage.getItem("fit_program_schedule_overrides");
+        if (cached) overrides = JSON.parse(cached);
+      } catch (e) {}
+
+      const cleanRes = resetAndCleanAllProgramSplits(exercises || [], overrides);
+      
+      // Save locally
+      localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(cleanRes.updatedOverrides));
+      window.dispatchEvent(new CustomEvent("fit_schedule_overrides_updated"));
+
+      // Send to server
+      const token = await auth.currentUser?.getIdToken().catch(() => null);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const adminEmail = localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
+      headers["x-admin-email"] = adminEmail;
+
+      await fetch("/api/admin/programs/reset-and-clean-all-programs", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          allOverrides: cleanRes.updatedOverrides,
+          stats: cleanRes.stats
+        })
+      });
+
+      alert(`Success! All program workouts have been reset and auto-cleaned.\n\n• ${cleanRes.stats.totalProgramsCleaned} programs sanitized\n• ${cleanRes.stats.totalDaysReset} program days verified\n• ${cleanRes.stats.totalMismatchesRemoved} mismatched exercises purged (e.g. cross-contaminations removed)\n• All daily routines capped at maximum 10 workouts daily.`);
+    } catch (err: any) {
+      alert("Error resetting programs: " + (err?.message || "Unknown error"));
+    } finally {
+      setIsResettingPrograms(false);
     }
   };
 
@@ -233,7 +283,20 @@ export default function AdminWorkoutEditor() {
 
     setIsSavingEdit(true);
     try {
-      await editExercise(editingExercise.id, editForm);
+      const updatedForm = { ...editForm };
+      let muscles = Array.isArray(updatedForm.muscleGroups) ? [...updatedForm.muscleGroups] : [];
+      const cat = (updatedForm.category || "").trim();
+      if (cat === "Biceps" && !muscles.includes("Biceps")) muscles.push("Biceps");
+      if (cat === "Triceps" && !muscles.includes("Triceps")) muscles.push("Triceps");
+      if (cat === "Chest" && !muscles.includes("Chest")) muscles.push("Chest");
+      if (cat === "Back" && !muscles.includes("Back")) muscles.push("Back");
+      if (cat === "Legs" && !muscles.includes("Legs")) muscles.push("Legs");
+      if (cat === "Shoulders" && !muscles.includes("Shoulders")) muscles.push("Shoulders");
+      if (cat === "Core" && !muscles.includes("Core")) muscles.push("Core");
+      updatedForm.muscleGroups = muscles;
+      updatedForm.categories = Array.from(new Set([cat, ...(updatedForm.categories || [])]));
+
+      await editExercise(editingExercise.id, updatedForm);
       setEditSuccessMsg("Workout updated successfully!");
       setTimeout(() => {
         setEditingExercise(null);
@@ -367,7 +430,7 @@ export default function AdminWorkoutEditor() {
           <button
             type="button"
             onClick={handleRunHomeAuditPurge}
-            disabled={isPurgingHome}
+            disabled={isPurgingHome || isResettingPrograms}
             className="w-full md:w-auto bg-slate-900 hover:bg-black text-white border border-slate-700 font-sans font-black uppercase tracking-wider text-xs px-4 py-3 rounded-2xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
             title="Scan and delete any workouts categorized as 'home' that contain restricted equipment tags (barbell, dumbbell, machines)"
           >
@@ -377,6 +440,17 @@ export default function AdminWorkoutEditor() {
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
             )}
             <span>{isPurgingHome ? "Auditing Home..." : "Purge Restricted Home Workouts"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleResetAndCleanAllPrograms}
+            disabled={isResettingPrograms || isPurgingHome}
+            className="w-full md:w-auto bg-amber-600 hover:bg-amber-700 text-white font-sans font-black uppercase tracking-wider text-xs px-4 py-3 rounded-2xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
+            title="One-Click Auto Clean: on back & biceps day removes chest or leg drills; limits daily workouts to 10 max"
+          >
+            <RotateCcw className={`w-4 h-4 ${isResettingPrograms ? "animate-spin" : ""}`} />
+            <span>{isResettingPrograms ? "Resetting All Programs..." : "Reset & Clean All Programs"}</span>
           </button>
 
           <button
@@ -966,13 +1040,41 @@ export default function AdminWorkoutEditor() {
                   <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Category</label>
                   <select
                     value={editForm.category || "Gym Workouts"}
-                    onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                    onChange={(e) => {
+                      const cat = e.target.value;
+                      const updatedMuscles = [...(editForm.muscleGroups || [])];
+                      if (cat === "Biceps" && !updatedMuscles.includes("Biceps")) updatedMuscles.push("Biceps");
+                      if (cat === "Triceps" && !updatedMuscles.includes("Triceps")) updatedMuscles.push("Triceps");
+                      setEditForm({ ...editForm, category: cat, muscleGroups: updatedMuscles });
+                    }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
                   >
                     {CATEGORIES.filter(c => c !== "All").map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {["Biceps", "Triceps", "Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Cardio"].map(quickCat => (
+                      <button
+                        key={quickCat}
+                        type="button"
+                        onClick={() => {
+                          const updatedMuscles = [...(editForm.muscleGroups || [])];
+                          if ((quickCat === "Biceps" || quickCat === "Triceps") && !updatedMuscles.includes(quickCat)) {
+                            updatedMuscles.push(quickCat);
+                          }
+                          setEditForm({ ...editForm, category: quickCat, muscleGroups: updatedMuscles });
+                        }}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
+                          editForm.category === quickCat
+                            ? "bg-red-600 text-white border-red-600 shadow-xs"
+                            : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        {quickCat}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Difficulty</label>
@@ -1345,16 +1447,44 @@ export default function AdminWorkoutEditor() {
               {/* Category, Difficulty & Duration */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Category</label>
+                  <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Category *</label>
                   <select
                     value={newWorkout.category || "Gym Workouts"}
-                    onChange={(e) => setNewWorkout({ ...newWorkout, category: e.target.value })}
+                    onChange={(e) => {
+                      const cat = e.target.value;
+                      const updatedMuscles = [...(newWorkout.muscleGroups || [])];
+                      if (cat === "Biceps" && !updatedMuscles.includes("Biceps")) updatedMuscles.push("Biceps");
+                      if (cat === "Triceps" && !updatedMuscles.includes("Triceps")) updatedMuscles.push("Triceps");
+                      setNewWorkout({ ...newWorkout, category: cat, muscleGroups: updatedMuscles });
+                    }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
                   >
                     {CATEGORIES.filter(c => c !== "All").map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {["Biceps", "Triceps", "Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Cardio"].map(quickCat => (
+                      <button
+                        key={quickCat}
+                        type="button"
+                        onClick={() => {
+                          const updatedMuscles = [...(newWorkout.muscleGroups || [])];
+                          if ((quickCat === "Biceps" || quickCat === "Triceps") && !updatedMuscles.includes(quickCat)) {
+                            updatedMuscles.push(quickCat);
+                          }
+                          setNewWorkout({ ...newWorkout, category: quickCat, muscleGroups: updatedMuscles });
+                        }}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
+                          newWorkout.category === quickCat
+                            ? "bg-red-600 text-white border-red-600 shadow-xs"
+                            : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        {quickCat}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Difficulty</label>

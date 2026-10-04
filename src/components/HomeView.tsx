@@ -591,21 +591,21 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       wordOne: "FORGE",
       wordTwo: "ATHLETICISM",
       desc: "Experience world-class body sculpting. Unified by certified clinical kinesiologists, interactive progress logs, and advanced multi-modal Gemini AI coaching. Track actual metric goals with absolute precision.",
-      imageUrl: "https://i0.wp.com/www.muscleandfitness.com/wp-content/uploads/2019/01/Young-Muscular-Fitness-Model-Near-Barbell-Bench.jpg?quality=86&strip=all"
+      imageUrl: "/images/hero-athlete-shred.png"
     },
     {
       eyebrow: "NUTRITIONAL METRICS",
       wordOne: "SHRED",
       wordTwo: "PLATEAUS",
       desc: "Calibrate localized macronutrient diet plans tailored precisely for high protein staples, tracking absolute body weight goals daily with the assistance of interactive progress reports.",
-      imageUrl: "https://img.magnific.com/free-photo/strong-bodybuilder-demonstrating-muscular-body-sports-gym_7502-10713.jpg"
+      imageUrl: "/images/nutrition-meal-calibrator.png"
     },
     {
       eyebrow: "AI POWERED SOLUTIONS",
       wordOne: "COMMAND",
       wordTwo: "INTELLIGENCE",
       desc: "Unlock server-side Gemini intelligence models to consult your lifting technique, optimize water ratios, and design recovery splits tailored for performance athletes.",
-      imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQcaCK8cFkIl7siMw7nHkiPhCfUj9Nzu_fURv1oSooC03cyOt1LpLTuG_2B&s=10"
+      imageUrl: "/images/alex-fitness-coach.png"
     }
   ];
 
@@ -699,16 +699,19 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       {/* 1. HERO SECTION - COMPELLING BRIGHT SOLO VISUAL BANNER */}
       <section id="hero-segment" className="relative h-[55vh] sm:h-[65vh] lg:h-[75vh] w-full overflow-hidden bg-background border-b border-border">
         
-        {/* Cinematic Background Image - Ultra-Bright, High-Exposure & Clear */}
+        {/* Cinematic Background Image - Ultra-Bright, High-Exposure & Clear from Website File */}
         <div className="absolute inset-0 z-0 select-none pointer-events-none">
           <img 
-            src="https://github.com/muzikmail2-arch/Git/blob/main/ChatGPT%20Image%20Jul%2018,%202026,%2006_59_52%20PM.png?raw=true" 
+            src="/images/hero-gym-facility.png" 
             alt="Alex Fitness Hub Elite Training Facility"
             loading="eager"
             decoding="async"
             {...({ fetchPriority: "high" } as any)}
-            className="w-full h-full object-cover object-center scale-100 filter brightness-125 contrast-110 saturate-105"
+            className="w-full h-full object-cover object-center scale-100 filter brightness-110 contrast-105"
             referrerPolicy="no-referrer"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "https://raw.githubusercontent.com/muzikmail2-arch/Git/main/ChatGPT%20Image%20Jul%2018%2C%202026%2C%2006_59_52%20PM.png";
+            }}
           />
           {/* Subtle light vignettes just to frame the layout gently while keeping everything bright and white-based */}
           <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-background/10 to-transparent" />
@@ -745,14 +748,15 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
             
             {/* Left side: Premium Image */}
             <div className="w-full md:w-1/3 h-52 sm:h-60 rounded-2xl overflow-hidden relative shadow-inner shrink-0 bg-slate-100 border border-slate-150">
-              <OptimizedImage 
-                src="https://github.com/muzikmail2-arch/Git/blob/main/ChatGPT%20Image%20Jul%2018,%202026,%2007_10_59%20PM.png?raw=true" 
+              <img 
+                src="/images/lifestyle-academy-stretch.png" 
                 alt="Lifestyle Fitness Academy Stretching & Mobility Coaching"
-                priority={true}
                 loading="eager"
-                fetchPriority="high"
-                aspectRatio="16/9"
+                decoding="async"
                 className="w-full h-full object-cover object-center filter brightness-105 contrast-105"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "https://raw.githubusercontent.com/muzikmail2-arch/Git/main/ChatGPT%20Image%20Jul%2018%2C%202026%2C%2007_10_59%20PM.png";
+                }}
               />
               <div className="absolute top-3 left-3 bg-red-600 text-white font-mono font-black text-[9px] uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
                 Coaching Course
@@ -825,11 +829,15 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
             
             {/* Left side: Premium Image */}
             <div className="w-full md:w-1/3 h-52 sm:h-60 rounded-2xl overflow-hidden relative shadow-inner shrink-0 bg-slate-900 border border-red-900/30">
-              <OptimizedImage 
-                src="https://github.com/muzikmail2-arch/Git/blob/main/ChatGPT%20Image%20Jul%2018,%202026,%2007_15_20%20PM.png?raw=true" 
+              <img 
+                src="/images/hero-athlete-shred.png" 
                 alt="Immortal 90-Day Challenge Athletic Training"
-                aspectRatio="16/9"
+                loading="eager"
+                decoding="async"
                 className="w-full h-full object-cover object-center filter brightness-110 contrast-110 saturate-100"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "https://raw.githubusercontent.com/muzikmail2-arch/Git/main/ChatGPT%20Image%20Jul%2018%2C%202026%2C%2007_15_20%20PM.png";
+                }}
               />
               <div className="absolute top-3 left-3 bg-amber-500 text-slate-950 font-mono font-black text-[9px] uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
                 PREMIUM FLAGSHIP

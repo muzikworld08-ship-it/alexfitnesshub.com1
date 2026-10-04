@@ -304,6 +304,7 @@ const OVERRIDES_FILE_PATH = path.join(process.cwd(), "src", "data", "custom_exer
 const DELETED_EXERCISES_FILE_PATH = path.join(process.cwd(), "src", "data", "custom_deleted_exercises.json");
 const CHALLENGES_FILE_PATH = path.join(process.cwd(), "src", "data", "custom_challenges.json");
 const PROGRAM_SCHEDULE_OVERRIDES_PATH = path.join(process.cwd(), "src", "data", "program_schedule_overrides.json");
+const STORE_DELETED_PRODUCTS_PATH = path.join(process.cwd(), "src", "data", "store_deleted_products.json");
 
 // Ensure the directory and base JSON files are created cleanly
 const overridesDir = path.dirname(OVERRIDES_FILE_PATH);
@@ -321,6 +322,9 @@ if (!fs.existsSync(CHALLENGES_FILE_PATH)) {
 }
 if (!fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
   fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify({}, null, 2), "utf-8");
+}
+if (!fs.existsSync(STORE_DELETED_PRODUCTS_PATH)) {
+  fs.writeFileSync(STORE_DELETED_PRODUCTS_PATH, JSON.stringify([], null, 2), "utf-8");
 }
 
 function loadProgramScheduleOverrides(): Record<string, any> {
@@ -1530,13 +1534,23 @@ app.post("/api/mail/subscribe", async (req: any, res: any) => {
 
 // 1. AI COACH PROFILE PROXY
 app.post("/api/gemini/coach", requirePremium, async (req, res) => {
-  const { goal, currentWeight, targetWeight, query, history = [], userEmail } = req.body;
+  const { goal, currentWeight, targetWeight, query, history = [], userEmail, includeWarmup } = req.body;
 
   try {
     const ai = getGeminiClient();
 
     if (!ai) {
       // Elegant rule-based fallback response if the key is missing during production/offline mode
+      const warmupSection = includeWarmup ? `
+#### ⏱️ 5-Minute Dynamic Warm-Up Sequence (Warm-Up Generator Active)
+*Prepare your neuromuscular system and lubricate joints before loading weight:*
+1. **0:00 - 1:00:** Arm Circles & Chest Expansions (30s forward, 30s backward)
+2. **1:00 - 2:00:** Standing Hip Circles & Leg Swings (Dynamic hip mobility)
+3. **2:00 - 3:00:** Slow Bodyweight Air Squats to Calf Raises (Glute & ankle prep)
+4. **3:00 - 4:00:** Inchworms with World's Greatest Stretch (Hamstrings & thoracic spine)
+5. **4:00 - 5:00:** Light High-Knee Skips & Shadow Jumping Jacks (Elevate core temperature)
+` : "";
+
       return res.json({
         success: true,
         text: `### 🌟 Fallback AI Fitness Coach Response (API Key Not Configured)
@@ -1544,7 +1558,7 @@ app.post("/api/gemini/coach", requirePremium, async (req, res) => {
 Hello! I am your **AlexFitnessHub AI Fitness Coach**. I see that you have a fitness goal of **${goal || "General Health"}**. 
 
 To help you succeed, here is a professional, personalized blueprint:
-
+${warmupSection}
 #### 🏃‍♂️ Training Recommendations
 - **Primary Style:** Focus on structured strength training integrated with cardio sessions.
 - **Chest & Shoulders:** Complete bench pressing and dumbbell flyes to expand target metrics.
@@ -1561,11 +1575,22 @@ To help you succeed, here is a professional, personalized blueprint:
     }
 
     // Build chat conversation context
+    const warmupInstruction = includeWarmup ? `
+### ⏱️ WARM-UP GENERATOR IS ACTIVATED:
+You MUST prepend a dedicated "5-Minute Dynamic Warm-Up Sequence" before any recommended workout routine.
+The warm-up must include 5 distinct, progressive 60-second movements:
+1. Minute 1 (0:00 - 1:00): Arm Circles & Horizontal Chest Expansions
+2. Minute 2 (1:00 - 2:00): Standing Hip Openers & Alternating Leg Swings
+3. Minute 3 (2:00 - 3:00): Bodyweight Air Squats to Calf Raises
+4. Minute 4 (3:00 - 4:00): Inchworms with World's Greatest Stretch
+5. Minute 5 (4:00 - 5:00): High-Knee Skips & Light Jumping Jacks
+Ensure this is clearly labeled with duration and movement execution before diving into working sets.` : "";
+
     const systemInstruction = `You are Alex, the virtual premium personal trainer and expert diet coach at "AlexFitnessHub".
 The user has a current weight of ${currentWeight || "unspecified"} kg and a target weight of ${targetWeight || "unspecified"} kg.
 Their primary goal is "${goal || "Fitness Maintenance"}".
 You provide highly engaging, clear, science-backed personal training, customized recovery instructions, customized food, water, fruit suggestions, and detailed daily calorie guidance.
-Always format your answers in highly structured, beautiful, and easy-to-read Markdown with headers, icons, clean spacing, and bold highlights. Keep your tone encouraging, professional, and strictly dedicated to fitness and diet.`;
+Always format your answers in highly structured, beautiful, and easy-to-read Markdown with headers, icons, clean spacing, and bold highlights. Keep your tone encouraging, professional, and strictly dedicated to fitness and diet.${warmupInstruction}`;
 
     const chatHistory = history.map((h: any) => ({
       role: h.role === "user" ? "user" : "model",
@@ -1591,12 +1616,22 @@ Always format your answers in highly structured, beautiful, and easy-to-read Mar
     logDetailedError("ai_provider_error", error, { goal, currentWeight, targetWeight, query, userEmail });
     
     // Dynamic rule-based fallback response if Gemini fails/429s/503s
+    const warmupSection = includeWarmup ? `
+#### ⏱️ 5-Minute Dynamic Warm-Up Sequence (Warm-Up Generator Active)
+*Prepare your neuromuscular system and lubricate joints before loading weight:*
+1. **0:00 - 1:00:** Arm Circles & Chest Expansions (30s forward, 30s backward)
+2. **1:00 - 2:00:** Standing Hip Circles & Leg Swings (Dynamic hip mobility)
+3. **2:00 - 3:00:** Slow Bodyweight Air Squats to Calf Raises (Glute & ankle prep)
+4. **3:00 - 4:00:** Inchworms with World's Greatest Stretch (Hamstrings & thoracic spine)
+5. **4:00 - 5:00:** Light High-Knee Skips & Shadow Jumping Jacks (Elevate core temperature)
+` : "";
+
     const fallbackText = `### 🌟 AI Fitness Coach Response (Service Busy Fallback)
 
 Hello! I am your **AlexFitnessHub AI Fitness Coach**. I see that you have a fitness goal of **${goal || "General Health"}**. 
 
 To help you succeed, here is a professional, personalized blueprint:
-
+${warmupSection}
 #### 🏃‍♂️ Training Recommendations
 - **Primary Style:** Focus on structured strength training integrated with cardio sessions.
 - **Chest & Shoulders:** Complete bench pressing and dumbbell flyes to expand target metrics.
@@ -4040,6 +4075,72 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
 });
 
 // ============================================================================
+// ADMIN STORE PRODUCTS PERMANENT DELETION ENDPOINTS
+// ============================================================================
+
+// GET all permanently deleted store product IDs
+app.get("/api/store/products/deleted-ids", (req, res) => {
+  try {
+    let deletedList: string[] = [];
+    if (fs.existsSync(STORE_DELETED_PRODUCTS_PATH)) {
+      const raw = fs.readFileSync(STORE_DELETED_PRODUCTS_PATH, "utf-8").trim();
+      if (raw) deletedList = JSON.parse(raw);
+    }
+    res.json({ success: true, deletedProductIds: deletedList });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, deletedProductIds: [] });
+  }
+});
+
+// POST permanently delete a store product
+app.post("/api/store/products/delete", requireAdmin, async (req: any, res) => {
+  const { productId } = req.body;
+  if (!productId) {
+    return res.status(400).json({ success: false, error: "productId is required." });
+  }
+
+  try {
+    let deletedList: string[] = [];
+    if (fs.existsSync(STORE_DELETED_PRODUCTS_PATH)) {
+      try {
+        const raw = fs.readFileSync(STORE_DELETED_PRODUCTS_PATH, "utf-8").trim();
+        if (raw) deletedList = JSON.parse(raw);
+      } catch (err) {}
+    }
+
+    if (!deletedList.includes(productId)) {
+      deletedList.push(productId);
+      fs.writeFileSync(STORE_DELETED_PRODUCTS_PATH, JSON.stringify(deletedList, null, 2), "utf-8");
+    }
+
+    // Mark as deleted in Firestore
+    try {
+      await setServerFirestoreDoc("deleted_products", productId, {
+        id: productId,
+        deletedAt: new Date().toISOString(),
+        deletedBy: req.user?.email || "admin",
+        source: "server_permanent_deletion"
+      }, true);
+    } catch (dbErr) {
+      console.warn(`[Firestore Store Delete Warning for ${productId}]:`, dbErr);
+    }
+
+    await logAdminActivityOnFirebase(
+      req.user?.email || "",
+      req.user?.uid || "",
+      "STORE_PRODUCT_DELETE",
+      `Admin permanently deleted store item ${productId}`,
+      { productId }
+    );
+
+    res.json({ success: true, message: `Store product ${productId} permanently deleted.`, deletedProductId: productId });
+  } catch (error: any) {
+    console.error("Failed to delete store product:", error);
+    res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
+// ============================================================================
 // ADMIN PROGRAMS & CHALLENGES MANAGEMENT ENDPOINTS
 // Allows editing all programs/challenges: delete/add workouts, sets, cardio days,
 // and auto-assigning similar replacements on deletion.
@@ -4276,6 +4377,50 @@ app.post("/api/admin/programs/purge-all-splits", requireAdmin, async (req: any, 
     });
   } catch (error: any) {
     console.error("Failed purging program splits:", error);
+    res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
+// POST reset and clean all program splits across every program in one click
+app.post("/api/admin/programs/reset-and-clean-all-programs", requireAdmin, async (req: any, res) => {
+  const { allOverrides, stats } = req.body;
+  if (!allOverrides || typeof allOverrides !== "object") {
+    return res.status(400).json({ success: false, error: "allOverrides dictionary is required." });
+  }
+
+  try {
+    let currentOverrides: Record<string, any> = {};
+    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      try {
+        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+        if (raw) currentOverrides = JSON.parse(raw);
+      } catch (err) {
+        console.error("Failed parsing program schedule overrides:", err);
+      }
+    }
+
+    const merged = { ...currentOverrides, ...allOverrides };
+    fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(merged, null, 2), "utf-8");
+
+    try {
+      await setServerFirestoreDoc("program_overrides", "all_programs_sanitized", {
+        overrides: merged,
+        stats,
+        updatedAt: new Date().toISOString(),
+        updatedBy: req.user?.email || "admin"
+      }, true);
+    } catch (fsErr) {
+      console.warn("Firestore sync warning on reset-and-clean-all-programs:", fsErr);
+    }
+
+    res.json({
+      success: true,
+      message: "All program workouts have been reset and auto-cleaned. Cross-contamination purged and daily routines capped at 10 workouts.",
+      overrides: merged,
+      stats
+    });
+  } catch (error: any) {
+    console.error("Failed resetting and cleaning all programs:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });
   }
 });

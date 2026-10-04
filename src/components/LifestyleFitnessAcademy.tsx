@@ -942,6 +942,17 @@ export default function LifestyleFitnessAcademy() {
       
       {/* 1. ACADEMY HERO HEADER */}
       <div className="relative rounded-3xl sm:rounded-[2.5rem] overflow-hidden bg-gradient-to-r from-red-600 to-amber-500 text-white p-5 sm:p-8 lg:p-12 shadow-xl mb-8 sm:mb-12 w-full max-w-full">
+        {/* Background Authentic Website File Hero Image */}
+        <div className="absolute inset-0 z-0 select-none pointer-events-none opacity-25 mix-blend-overlay">
+          <img 
+            src="/images/lifestyle-academy-stretch.png" 
+            alt="Lifestyle Fitness Academy Hero" 
+            className="w-full h-full object-cover object-center filter brightness-110"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "https://raw.githubusercontent.com/muzikmail2-arch/Git/main/ChatGPT%20Image%20Jul%2018%2C%202026%2C%2007_10_59%20PM.png";
+            }}
+          />
+        </div>
         <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-50" />
         <div className="relative z-10 max-w-2xl text-left space-y-3 sm:space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[11px] sm:text-xs font-black uppercase tracking-wider">

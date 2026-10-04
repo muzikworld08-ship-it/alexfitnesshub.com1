@@ -11,6 +11,27 @@ const PHOTOS_DIR = path.join(DATA_DIR, "pdf_photos");
 const GENERATED_DIR = path.join(DATA_DIR, "pdf_generated");
 const CATALOG_FILE = path.join(DATA_DIR, "pdf_catalog.json");
 const ORDERS_FILE = path.join(DATA_DIR, "pdf_orders.json");
+const DELETED_PDF_FILE = path.join(DATA_DIR, "pdf_deleted_ids.json");
+
+export function getDeletedPdfIds(): Set<string> {
+  ensurePdfDirectories();
+  if (fs.existsSync(DELETED_PDF_FILE)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(DELETED_PDF_FILE, "utf-8"));
+      if (Array.isArray(data)) return new Set(data);
+    } catch (e) {
+      console.warn("[PDF Deleted IDs] Error reading deleted IDs:", e);
+    }
+  }
+  return new Set();
+}
+
+export function recordDeletedPdfId(id: string) {
+  ensurePdfDirectories();
+  const set = getDeletedPdfIds();
+  set.add(id);
+  fs.writeFileSync(DELETED_PDF_FILE, JSON.stringify(Array.from(set), null, 2), "utf-8");
+}
 
 export function ensurePdfDirectories() {
   [DATA_DIR, MASTERS_DIR, PHOTOS_DIR, GENERATED_DIR].forEach((dir) => {
@@ -187,17 +208,24 @@ export const INITIAL_PDF_PRODUCTS: PrintablePdfProduct[] = [
 // Read/write catalog
 export function getPdfProducts(): PrintablePdfProduct[] {
   ensurePdfDirectories();
+  const deletedIds = getDeletedPdfIds();
   if (fs.existsSync(CATALOG_FILE)) {
     try {
-      const data = JSON.parse(fs.readFileSync(CATALOG_FILE, "utf-8"));
-      if (Array.isArray(data) && data.length > 0) return data;
+      const raw = fs.readFileSync(CATALOG_FILE, "utf-8").trim();
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (Array.isArray(data)) {
+          return data.filter((p) => !deletedIds.has(p.id));
+        }
+      }
     } catch (e) {
       console.warn("[PDF Catalog] Error reading JSON catalog:", e);
     }
   }
-  // Initialize with seed products
-  fs.writeFileSync(CATALOG_FILE, JSON.stringify(INITIAL_PDF_PRODUCTS, null, 2), "utf-8");
-  return INITIAL_PDF_PRODUCTS;
+  // Initialize with seed products excluding permanently deleted products
+  const initial = INITIAL_PDF_PRODUCTS.filter((p) => !deletedIds.has(p.id));
+  fs.writeFileSync(CATALOG_FILE, JSON.stringify(initial, null, 2), "utf-8");
+  return initial;
 }
 
 export function savePdfProducts(products: PrintablePdfProduct[]) {

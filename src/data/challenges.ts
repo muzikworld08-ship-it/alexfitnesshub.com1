@@ -211,15 +211,15 @@ export function getChallengeWorkouts(challenge: PremiumChallenge, exercisesList?
       });
 
       for (const ex of pool.slice(0, 4)) {
-        if (!seenIds.has(ex.id) && matched.length < 12) {
+        if (!seenIds.has(ex.id) && matched.length < 10) {
           seenIds.add(ex.id);
           matched.push(ex);
         }
       }
     }
 
-    // Ensure every program has exactly 12 workouts according to its categories
-    if (matched.length < 12) {
+    // Ensure program workouts are strictly capped at maximum 10 daily workouts
+    if (matched.length < 10) {
       const categoryMatches = exercises.filter(ex => 
         !seenIds.has(ex.id) && 
         (!isHomeChallenge || isHomeEligibleExercise(ex)) && (
@@ -228,24 +228,24 @@ export function getChallengeWorkouts(challenge: PremiumChallenge, exercisesList?
         )
       );
       for (const ex of categoryMatches) {
-        if (!seenIds.has(ex.id) && matched.length < 12) {
+        if (!seenIds.has(ex.id) && matched.length < 10) {
           seenIds.add(ex.id);
           matched.push(ex);
         }
       }
     }
 
-    // Fallback to general exercises to guarantee 12 workouts
-    if (matched.length < 12) {
+    // Fallback to general exercises to populate up to 10 workouts
+    if (matched.length < 10) {
       for (const ex of exercises) {
-        if (!seenIds.has(ex.id) && (!isHomeChallenge || isHomeEligibleExercise(ex)) && matched.length < 12) {
+        if (!seenIds.has(ex.id) && (!isHomeChallenge || isHomeEligibleExercise(ex)) && matched.length < 10) {
           seenIds.add(ex.id);
           matched.push(ex);
         }
       }
     }
 
-    rawWorkouts = matched.map((ex) => ({
+    rawWorkouts = matched.slice(0, 10).map((ex) => ({
       id: ex.id,
       name: ex.name,
       sets: ex.recommendedSets || "3-4",

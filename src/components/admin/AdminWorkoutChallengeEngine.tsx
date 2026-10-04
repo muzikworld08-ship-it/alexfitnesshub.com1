@@ -5,7 +5,7 @@ import {
   Plus, Save, Check, ExternalLink, HelpCircle, ArrowRightLeft,
   Activity, Flame, Clock, Compass, ShieldAlert, Sparkles,
   GripVertical, ChevronUp, ChevronDown, Repeat, Footprints,
-  Sliders, ArrowUpRight, Zap, Info
+  Sliders, ArrowUpRight, Zap, Info, RotateCcw
 } from "lucide-react";
 import { ProgramId, ChallengeExerciseItem, ValidationError } from "../../types/challengeEngine";
 import { 
@@ -16,7 +16,8 @@ import {
 import { 
   purgeMismatchedExercisesFromRoutine, 
   isExerciseBelongingToSplit, 
-  PROGRAM_SPLIT_DEFINITIONS 
+  PROGRAM_SPLIT_DEFINITIONS,
+  resetAndCleanAllProgramSplits 
 } from "../../utils/dynamicWorkoutEngine";
 import { getExerciseGifUrl, Exercise } from "../../data/exercises";
 import { ChallengeValidationService } from "../../services/challengeValidationService";
@@ -47,7 +48,7 @@ const IMMORTAL_7_DAY_CANONICAL: Record<number, { title: string; focus: string; m
 };
 
 export default function AdminWorkoutChallengeEngine() {
-  const { exercises: libraryExercises, allChallenges, user } = useApp();
+  const { exercises: libraryExercises, allChallenges, user, deleteWorkout } = useApp();
 
   // Selected Program & Mode
   const [selectedProgramId, setSelectedProgramId] = useState<string>("immortal_90");
@@ -493,7 +494,15 @@ export default function AdminWorkoutChallengeEngine() {
       const updated = activeExercises.filter((ex: ChallengeExerciseItem) => ex.id !== targetToDelete.id);
       await handleReorderExercises(updated);
 
-      setSaveSuccessMsg(`Deleted "${targetToDelete.exerciseName}" from this workout.`);
+      if (deleteWorkout) {
+        try {
+          await deleteWorkout(targetToDelete.id);
+        } catch (delErr) {
+          console.warn("deleteWorkout from library notice:", delErr);
+        }
+      }
+
+      setSaveSuccessMsg(`Permanently deleted "${targetToDelete.exerciseName}".`);
       setTimeout(() => setSaveSuccessMsg(null), 3000);
       setTargetToDelete(null);
     } catch (err: any) {
@@ -775,6 +784,48 @@ export default function AdminWorkoutChallengeEngine() {
     }
   };
 
+  // Universal Reset and Clean All Programs (One-Click)
+  const [isResettingAllPrograms, setIsResettingAllPrograms] = useState(false);
+
+  const handleResetAndCleanAllPrograms = async () => {
+    if (!window.confirm("One-Click Reset & Auto-Clean All Program Days?\n\nThis will scan every program (Immortal 90, Belly Fat Shred, 180-Day Home, Women Confidence, etc.) and reset every day:\n• On Back & Biceps days: any chest or leg exercises will disappear immediately.\n• On Chest & Triceps days: any back or leg exercises will disappear.\n• On Legs days: any chest or back exercises will disappear.\n• Every daily workout routine is capped strictly at maximum 10 workouts daily.\n\nProceed?")) {
+      return;
+    }
+
+    setIsResettingAllPrograms(true);
+    try {
+      const cleanRes = resetAndCleanAllProgramSplits(libraryExercises || [], serverOverrides || {});
+      setServerOverrides(cleanRes.updatedOverrides);
+      localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(cleanRes.updatedOverrides));
+      window.dispatchEvent(new CustomEvent("fit_schedule_overrides_updated"));
+
+      const token = await auth.currentUser?.getIdToken().catch(() => null);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      headers["x-admin-email"] = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
+
+      await fetch("/api/admin/programs/reset-and-clean-all-programs", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          allOverrides: cleanRes.updatedOverrides,
+          stats: cleanRes.stats
+        })
+      });
+
+      setSaveSuccessMsg(
+        `⚡ All programs reset and cleaned! ${cleanRes.stats.totalProgramsCleaned} programs updated, ${cleanRes.stats.totalMismatchesRemoved} mismatched exercises purged, and daily workouts capped at 10 max.`
+      );
+      setTimeout(() => setSaveSuccessMsg(null), 8000);
+      alert(`Success! All program workouts have been reset and auto-cleaned.\n\n• ${cleanRes.stats.totalProgramsCleaned} programs sanitized\n• ${cleanRes.stats.totalDaysReset} program days verified\n• ${cleanRes.stats.totalMismatchesRemoved} mismatched exercises purged\n• All daily routines capped at maximum 10 workouts daily.`);
+    } catch (err: any) {
+      console.error("Reset all error:", err);
+      alert("Error resetting and cleaning all programs: " + (err?.message || "Unknown error"));
+    } finally {
+      setIsResettingAllPrograms(false);
+    }
+  };
+
   // Available programs list
   const programOptions = useMemo(() => {
     const standard = [
@@ -828,8 +879,19 @@ export default function AdminWorkoutChallengeEngine() {
           <div className="flex items-center gap-3 shrink-0 flex-wrap">
             <button
               type="button"
+              onClick={handleResetAndCleanAllPrograms}
+              disabled={isResettingAllPrograms || isPurging}
+              className="px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-500 border border-amber-400 text-xs font-black text-white transition flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-600/30 disabled:opacity-50"
+              title="One-Click: resets and cleans every day across all programs, removing mismatched exercises (like chest/legs on back & biceps day) and capping at 10 workouts"
+            >
+              <RotateCcw className={`w-4 h-4 text-white ${isResettingAllPrograms ? "animate-spin" : ""}`} />
+              <span>{isResettingAllPrograms ? "Resetting All Programs..." : "Reset & Clean All Programs"}</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handlePurgeAllProgramSplits}
-              disabled={isPurging}
+              disabled={isPurging || isResettingAllPrograms}
               className="px-4 py-2.5 rounded-2xl bg-amber-950/60 border border-amber-500/50 hover:border-amber-400 text-xs font-bold text-amber-300 hover:text-white transition flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-950/50 disabled:opacity-50"
               title="Audit and purge mismatched exercises across all 7 days of this program cadence"
             >

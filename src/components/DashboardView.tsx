@@ -42,6 +42,7 @@ import ContinueProgramTracker from "./ContinueProgramTracker";
 import ConsistencyStreakCounter from "./ConsistencyStreakCounter";
 import DailyCalibrationDesk from "./DailyCalibrationDesk";
 import ProgressTrackerView from "./ProgressTrackerView";
+import AppleHealthSyncCard from "./AppleHealthSyncCard";
 
 interface DashboardProps {
   activeView?: string;
@@ -439,6 +440,9 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
 
           {/* Active Programs - Continue Where You Stopped Widget */}
           <ContinueProgramTracker onNavigate={setView} />
+
+          {/* Synchronized Apple Health & Web Health API Live Metric Card */}
+          <AppleHealthSyncCard onNavigate={setView} className="my-6" />
 
           {/* Persistent sub-navigation tabs */}
           <PersistentDashboardTabs 

@@ -150,8 +150,29 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [cart]);
 
-  // Synchronize permanently deleted product IDs from Firestore store_meta
+  // Synchronize permanently deleted product IDs from Firestore store_meta & server
   useEffect(() => {
+    // Fetch server deleted IDs
+    fetch("/api/store/products/deleted-ids")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.deletedProductIds) && data.deletedProductIds.length > 0) {
+          setPermanentlyDeletedIds((prev) => {
+            const merged = new Set([...prev, ...data.deletedProductIds]);
+            saveStoredDeletedIds(merged);
+            return merged;
+          });
+          setProducts((prev) => {
+            const filtered = prev.filter((p) => !data.deletedProductIds.includes(p.id));
+            try {
+              localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(filtered));
+            } catch (e) {}
+            return filtered;
+          });
+        }
+      })
+      .catch(() => {});
+
     let unsub: () => void = () => {};
     try {
       const metaRef = doc(db, "store_meta", "deleted_products");
@@ -599,6 +620,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }, { merge: true });
       } catch (metaErr) {
         console.warn("[Store] store_meta update warning:", metaErr);
+      }
+
+      // 7.5. Persist to server disk permanently
+      try {
+        const adminEmail = user?.email || localStorage.getItem("fit_user_email") || "alexfitnesshub@gmail.com";
+        const token = localStorage.getItem("fit_id_token");
+        await fetch("/api/store/products/delete", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-email": adminEmail,
+            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ productId })
+        });
+      } catch (serverErr) {
+        console.warn("[Store] Server permanent deletion warning:", serverErr);
       }
 
       // 8. Add audit log

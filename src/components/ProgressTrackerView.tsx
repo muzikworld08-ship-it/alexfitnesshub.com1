@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { checkAndTriggerSevenDayProgressReminder } from "../utils/pushNotificationService";
 import ProgressTrendGraph from "./ProgressTrendGraph";
+import AppleHealthSyncCard from "./AppleHealthSyncCard";
 
 interface CardioLog {
   id: string;
@@ -332,6 +333,9 @@ export default function ProgressTrackerView({ setView }: { setView?: (view: stri
           </div>
         </div>
       </div>
+
+      {/* Apple Health & Web Health API Live Sync Widget */}
+      <AppleHealthSyncCard className="mb-6" />
 
       {/* Navigation Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">

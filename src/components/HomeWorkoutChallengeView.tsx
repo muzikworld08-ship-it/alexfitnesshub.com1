@@ -7,8 +7,11 @@ import {
   AlertCircle, RefreshCw, BarChart3, Layers, Smile, Compass, Send, 
   CheckSquare, Plus, Minus, Info, Shield, Play, RotateCcw, Heart, 
   Camera, Upload, Eye, Check, X, ArrowRight, Share2, Crown, Coffee,
-  Target, AlertTriangle, Video, Image as ImageIcon
+  Target, AlertTriangle, Video, Image as ImageIcon, ArrowRightLeft
 } from "lucide-react";
+import UniversalExerciseSwapperModal from "./UniversalExerciseSwapperModal";
+import { Exercise } from "../data/exercises";
+import { detectWorkoutType } from "../utils/dynamicWorkoutEngine";
 import { motion, AnimatePresence } from "motion/react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db, isMockFirebase } from "../lib/firebase";
@@ -265,6 +268,43 @@ export default function HomeWorkoutChallengeView() {
   const currentWorkout: HomeDailyWorkout = useMemo(() => {
     return getHomeWorkoutForDay(selectedDayNumber);
   }, [selectedDayNumber]);
+
+  // Exercise Swapper State (when users lack equipment or want an alternative from the same category)
+  const [swappingExerciseItem, setSwappingExerciseItem] = useState<{ exercise: any; index: number } | null>(null);
+  const [userSwappedDrills, setUserSwappedDrills] = useState<Record<string, any>>(() => {
+    try {
+      const saved = localStorage.getItem("fit_home_user_swaps");
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const handleSwapHomeDrill = (newEx: Exercise) => {
+    if (!swappingExerciseItem) return;
+    const { index } = swappingExerciseItem;
+    const key = `${selectedDayNumber}_${index}`;
+    const raw = currentWorkout.exercises[index] || swappingExerciseItem.exercise;
+    const wType = detectWorkoutType(newEx.name, raw?.repsOrDuration || "");
+    const updated: HomeExercise = {
+      ...raw,
+      id: newEx.id,
+      name: newEx.name,
+      gifUrl: newEx.gifUrl || (newEx as any).customMediaUrl || raw.gifUrl,
+      workoutType: wType,
+      targetMuscles: newEx.muscleGroups || raw.targetMuscles,
+      beginnerModification: newEx.trainerTips || raw.beginnerModification
+    };
+    const nextSwaps = {
+      ...userSwappedDrills,
+      [key]: updated
+    };
+    setUserSwappedDrills(nextSwaps);
+    try {
+      localStorage.setItem("fit_home_user_swaps", JSON.stringify(nextSwaps));
+    } catch (e) {}
+    setSwappingExerciseItem(null);
+  };
 
   // Reset active exercise index when user switches day
   useEffect(() => {
@@ -1432,7 +1472,8 @@ export default function HomeWorkoutChallengeView() {
 
               {/* ALL WORKOUTS ARRANGED IN A STRAIGHT LINE */}
               <div className="flex flex-col space-y-8 max-w-4xl mx-auto w-full pt-2">
-                {currentWorkout.exercises.map((ex, exIdx) => {
+                {currentWorkout.exercises.map((rawEx, exIdx) => {
+                  const ex = userSwappedDrills[`${selectedDayNumber}_${exIdx}`] || rawEx;
                   const drillKey = `${selectedDayNumber}_${ex.id || ex.name}_${exIdx}`;
                   const isCompleted = !!completedDrills[drillKey];
                   const restSecs = parseRestSeconds(ex.restPeriod);
@@ -1488,6 +1529,11 @@ export default function HomeWorkoutChallengeView() {
                               <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white text-xs font-mono font-black">
                                 Drill #{String(exIdx + 1).padStart(2, "0")}
                               </span>
+                              {userSwappedDrills[`${selectedDayNumber}_${exIdx}`] && (
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold uppercase border border-emerald-300">
+                                  SWAPPED
+                                </span>
+                              )}
                               {currentSec && (
                                 <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-[10px] font-mono font-bold uppercase border border-red-200">
                                   {currentSec.title || currentSec.name}
@@ -1510,19 +1556,32 @@ export default function HomeWorkoutChallengeView() {
                             })()}
                           </div>
 
-                          {/* Completed Drill Toggle */}
-                          <button
-                            type="button"
-                            onClick={() => toggleDrillComplete(drillKey)}
-                            className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition cursor-pointer shrink-0 border ${
-                              isCompleted
-                                ? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
-                                : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
-                            }`}
-                          >
-                            <CheckCircle2 className={`w-4 h-4 ${isCompleted ? "text-white" : "text-slate-400"}`} />
-                            <span>{isCompleted ? "Completed ✓" : "Mark as Done"}</span>
-                          </button>
+                          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                            {/* Exercise Swapper Trigger */}
+                            <button
+                              type="button"
+                              onClick={() => setSwappingExerciseItem({ exercise: ex, index: exIdx })}
+                              className="px-3 py-2 rounded-2xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 flex items-center gap-1.5 transition cursor-pointer shrink-0 shadow-2xs"
+                              title="Swap this workout for another home workout in the same category if you lack equipment or need an alternative"
+                            >
+                              <ArrowRightLeft className="w-3.5 h-3.5 text-red-600" />
+                              <span>Swap Drill</span>
+                            </button>
+
+                            {/* Completed Drill Toggle */}
+                            <button
+                              type="button"
+                              onClick={() => toggleDrillComplete(drillKey)}
+                              className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition cursor-pointer shrink-0 border ${
+                                isCompleted
+                                  ? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
+                                  : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
+                              }`}
+                            >
+                              <CheckCircle2 className={`w-4 h-4 ${isCompleted ? "text-white" : "text-slate-400"}`} />
+                              <span>{isCompleted ? "Completed ✓" : "Mark as Done"}</span>
+                            </button>
+                          </div>
                         </div>
 
                         {/* Frameless GIF Display - Centered, Crisp, Seamless */}
@@ -2271,6 +2330,16 @@ export default function HomeWorkoutChallengeView() {
             setCelebrationModalData(null);
             setActiveTab("workout");
           }}
+        />
+      )}
+
+      {/* User Exercise Swapper Modal */}
+      {swappingExerciseItem && (
+        <UniversalExerciseSwapperModal
+          isOpen={!!swappingExerciseItem}
+          onClose={() => setSwappingExerciseItem(null)}
+          currentExercise={swappingExerciseItem.exercise}
+          onSelectSwap={handleSwapHomeDrill}
         />
       )}
 

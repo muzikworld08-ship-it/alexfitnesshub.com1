@@ -184,7 +184,7 @@ interface AppContextType {
   cancelSubscription: () => Promise<void>;
   
   // AI Coach Chat
-  sendCoachMessage: (message: string) => Promise<void>;
+  sendCoachMessage: (message: string, options?: { includeWarmup?: boolean }) => Promise<void>;
   clearCoachChat: () => void;
   
   // Community Forum & Testimonials
@@ -598,6 +598,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      let deletedSet = new Set<string>();
+      try {
+        const storedDel = localStorage.getItem("fit_deleted_exercises");
+        if (storedDel) {
+          const parsedDel = JSON.parse(storedDel);
+          if (Array.isArray(parsedDel)) {
+            parsedDel.forEach((d: string) => {
+              if (d) {
+                deletedSet.add(d);
+                deletedSet.add(d.toLowerCase().trim());
+              }
+            });
+          }
+        }
+      } catch {}
+
       const cached = localStorage.getItem("fit_exercises");
       if (cached) {
         const parsed = JSON.parse(cached);
@@ -605,6 +621,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // Strictly keep ONLY explicitly admin-added custom exercises that do NOT violate home equipment constraints
           const cleanList = parsed.filter((ex: any) => {
             if (!ex || !ex.name) return false;
+            const exName = (ex.name || "").toLowerCase().trim();
+            if (deletedSet.has(ex.id) || deletedSet.has(exName)) return false;
             if (ex.isCustom !== true) return false;
             if (isRestrictedHomeWorkout(ex).isViolating) return false;
             const media = (ex.customMediaUrl || ex.gifUrl || ex.imageUrl || "").toLowerCase();
@@ -3630,7 +3648,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
   // --- COACH AI ASSISTANT CHAT LINK ---
 
-  const sendCoachMessage = async (messageText: string) => {
+  const sendCoachMessage = async (messageText: string, options?: { includeWarmup?: boolean }) => {
     if (!user) return;
     
     // 1. Save user query node
@@ -3660,7 +3678,8 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
           targetWeight: user.height ? Number(user.height) - 105 : 75, // intelligent math
           query: messageText,
           history: chatMessages.slice(-8), // send last 8 turns of context
-          userEmail: user.email
+          userEmail: user.email,
+          includeWarmup: options?.includeWarmup ?? false
         })
       });
 
@@ -4788,12 +4807,22 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       let deletedList: string[] = stored ? JSON.parse(stored) : [];
       if (!deletedList.includes(exerciseId)) {
         deletedList.push(exerciseId);
-        localStorage.setItem("fit_deleted_exercises", JSON.stringify(deletedList));
       }
+      if (targetExercise?.name) {
+        const cleanName = targetExercise.name.toLowerCase().trim();
+        if (!deletedList.includes(cleanName)) {
+          deletedList.push(cleanName);
+        }
+      }
+      localStorage.setItem("fit_deleted_exercises", JSON.stringify(deletedList));
+
       const storedOverrides = localStorage.getItem("fit_custom_exercise_overrides");
       if (storedOverrides) {
         const overrides = JSON.parse(storedOverrides);
         delete overrides[exerciseId];
+        if (targetExercise?.name) {
+          delete overrides[targetExercise.name];
+        }
         localStorage.setItem("fit_custom_exercise_overrides", JSON.stringify(overrides));
       }
     } catch {}
@@ -4855,6 +4884,12 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         if (safeDocId) {
           await deleteDoc(doc(db, "exercises", safeDocId)).catch(() => {});
           await deleteDoc(doc(db, "generated_exercises", safeDocId)).catch(() => {});
+          await setDoc(doc(db, "deleted_exercises", safeDocId), {
+            id: exerciseId,
+            name: targetExercise?.name || exerciseId,
+            deletedAt: new Date().toISOString(),
+            deletedBy: user?.email || "admin"
+          }, { merge: true }).catch(() => {});
         }
       } catch (e) {}
     }

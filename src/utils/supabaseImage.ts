@@ -134,9 +134,9 @@ export function getSupabaseCdnUrl(
     return appendParams(fullRenderUrl);
   }
 
-  // 6. Local static assets (e.g. /assets/hero.jpg)
+  // 6. Local static assets (e.g. /assets/hero.jpg or /images/hero.png)
   if (trimmed.startsWith("/")) {
-    return appendParams(trimmed);
+    return trimmed;
   }
 
   // 7. Fallback for unrecognized external URLs

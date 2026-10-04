@@ -187,6 +187,26 @@ export default function CoachView() {
     document.body.removeChild(link);
   };
 
+  // Warm-up Generator Toggle State
+  const [warmupGeneratorEnabled, setWarmupGeneratorEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("afh_warmup_generator_enabled");
+      return stored !== null ? stored === "true" : true; // Default to ON as requested
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleWarmupGenerator = () => {
+    setWarmupGeneratorEnabled((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("afh_warmup_generator_enabled", String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
@@ -196,7 +216,12 @@ export default function CoachView() {
     setSubmitting(true);
     
     try {
-      await sendCoachMessage(draftText);
+      const isWorkoutRequest = /workout|routine|exercise|circuit|train|drill|hiit|reps|sets|split|chest|legs|back|abs/i.test(draftText);
+      let queryToSend = draftText;
+      if (warmupGeneratorEnabled && isWorkoutRequest && !draftText.toLowerCase().includes("warm-up") && !draftText.toLowerCase().includes("warmup")) {
+        queryToSend = `${draftText}\n\n[Warm-up Generator is Active: You MUST include a dedicated 5-Minute Dynamic Warm-Up Sequence (5 timed 60s progressive movements) before the workout routine]`;
+      }
+      await sendCoachMessage(queryToSend, { includeWarmup: warmupGeneratorEnabled });
     } catch (err: any) {
       console.error(err);
     } finally {
@@ -208,7 +233,12 @@ export default function CoachView() {
     if (submitting) return;
     setSubmitting(true);
     try {
-      await sendCoachMessage(prompt);
+      const isWorkoutRequest = /workout|routine|exercise|circuit|train|drill|hiit|reps|sets|split|chest|legs|back|abs/i.test(prompt);
+      let queryToSend = prompt;
+      if (warmupGeneratorEnabled && isWorkoutRequest && !prompt.toLowerCase().includes("warm-up") && !prompt.toLowerCase().includes("warmup")) {
+        queryToSend = `${prompt}\n\n[Warm-up Generator is Active: You MUST include a dedicated 5-Minute Dynamic Warm-Up Sequence (5 timed 60s progressive movements) before the workout routine]`;
+      }
+      await sendCoachMessage(queryToSend, { includeWarmup: warmupGeneratorEnabled });
     } catch (err) {
       console.error(err);
     } finally {
@@ -584,6 +614,50 @@ export default function CoachView() {
 
       {activeTab === "chat" && (
         <>
+          {/* WARM-UP GENERATOR CONTROL PANEL */}
+          <div className="bg-gradient-to-r from-red-50 via-amber-50 to-orange-50 border border-red-200/80 rounded-2xl p-4 sm:p-5 shadow-xs mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-left">
+            <div className="space-y-1 max-w-xl">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-red-600 text-white shadow-xs">
+                  <Flame className="w-4 h-4" />
+                </span>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">
+                  Warm-up Generator
+                </h3>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black uppercase tracking-wider ${
+                  warmupGeneratorEnabled ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700"
+                }`}>
+                  {warmupGeneratorEnabled ? "Active • 5-Min Dynamic Warm-Up" : "Disabled"}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                Automatically prepends a 5-minute dynamic warm-up sequence (Arm circles • Hip mobility • Air squats • Inchworms • Light skips) to any generated workout routine to prime neuromuscular pathways and prevent injury.
+              </p>
+            </div>
+
+            {/* Toggle switch */}
+            <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+              <span className="text-xs font-bold text-slate-700 font-sans">
+                {warmupGeneratorEnabled ? "Warm-up ON" : "Warm-up OFF"}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={warmupGeneratorEnabled}
+                onClick={toggleWarmupGenerator}
+                className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 ${
+                  warmupGeneratorEnabled ? "bg-red-600" : "bg-slate-300"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    warmupGeneratorEnabled ? "translate-x-7" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
           {chatMessages.length > 0 && (
             <div className="flex justify-end px-2 shrink-0 my-2">
               <button
@@ -697,6 +771,24 @@ export default function CoachView() {
           </div>
 
           {/* INPUT CONTROLLER BLOCK */}
+          <div className="flex items-center justify-between px-2 mb-1.5">
+            <button
+              type="button"
+              onClick={toggleWarmupGenerator}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono font-black uppercase tracking-wider transition-all cursor-pointer ${
+                warmupGeneratorEnabled
+                  ? "bg-red-50 text-red-600 border border-red-200"
+                  : "bg-slate-100 text-slate-500 border border-slate-200"
+              }`}
+            >
+              <Flame className={`w-3 h-3 ${warmupGeneratorEnabled ? "text-red-600 animate-pulse" : "text-slate-400"}`} />
+              <span>Warm-up Generator: {warmupGeneratorEnabled ? "ON (5-Min Sequence)" : "OFF"}</span>
+            </button>
+            <span className="text-[10px] text-slate-400 font-sans hidden sm:inline">
+              {warmupGeneratorEnabled ? "Any generated workout will include a 5-min dynamic warm-up sequence" : "Click to activate dynamic warm-up"}
+            </span>
+          </div>
+
           <form onSubmit={handleSend} className="p-3 rounded-2xl bg-white border border-slate-200 flex gap-2 shrink-0">
             <input
               type="text"

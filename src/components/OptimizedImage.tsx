@@ -28,7 +28,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = React.memo(({
   format = "webp",
   resize = "cover",
   srcSetWidths,
-  fallbackSrc = "https://play-lh.googleusercontent.com/XoTUjDrSSiP__paNk62ZavhUgAEzYv1QZuihPeR9Clj9UBiXAQgyrxuH7dWUkJk5ZkOOKtQL9d0Ao9jjc1I9GA",
+  fallbackSrc = "/images/hero-gym-facility.png",
   fallbackType,
   showSkeleton = true,
   aspectRatio,

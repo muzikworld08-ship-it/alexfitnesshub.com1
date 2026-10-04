@@ -18,7 +18,6 @@ import { bellyFatCardioCircuit } from "../data/homeWorkouts";
 import { resolveAuthenticExercise } from "../data/authoritativeExerciseMap";
 import HomeWorkoutPlayer from "./HomeWorkoutPlayer";
 import GlobalSkeletonLoader, { DashboardSkeleton } from "./SkeletonLoader";
-import bellyShredHeroImg from "../assets/images/belly_shred_hero_1784283617530.jpg";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
 import RestDayCard from "./RestDayCard";
 import CardioDayCard from "./CardioDayCard";
@@ -30,8 +29,12 @@ import {
   isBackExercise, 
   isBicepsExercise, 
   isLegExercise, 
-  isCoreExercise 
+  isCoreExercise,
+  isExerciseBelongingToSplit,
+  purgeMismatchedExercisesFromRoutine,
+  PROGRAM_SPLIT_DEFINITIONS
 } from "../utils/dynamicWorkoutEngine";
+import { isEmailAdmin } from "../context/AppContext";
 import { Exercise } from "../data/exercises";
 import { ChallengeExerciseItem } from "../types/challengeEngine";
 
@@ -378,6 +381,12 @@ const getWorkoutForWeekAndDay = (
 
   // Check admin overrides for this day/cycle
   const overrideExercises: ChallengeExerciseItem[] = override?.exercises;
+  const cycleDay = ((dayNum - 1) % 7) + 1;
+  const splitResolver = PROGRAM_SPLIT_DEFINITIONS["belly_fat_shred"];
+  const splitDef = splitResolver ? splitResolver(cycleDay) : null;
+  const targetMuscles = splitDef?.targetMuscles || ["Core", "Abs"];
+  const targetCategoryTitle = override?.category || override?.title || defaultTitle;
+
   let warmupDrills: string[] = [];
   let coreDrills: string[] = [];
   let hiitDrills: string[] = [];
@@ -396,6 +405,13 @@ const getWorkoutForWeekAndDay = (
     for (const ex of overrideExercises) {
       const name = ex.exerciseName || (ex as any).name || "";
       const cat = (ex.category || "").toLowerCase();
+
+      // Strict anti-cross-contamination check:
+      // If the exercise does NOT belong to this day's category/muscles (e.g. flat bench on back day, leg day, or cardio day), skip it!
+      if (!isExerciseBelongingToSplit(ex, targetMuscles, targetCategoryTitle)) {
+        continue;
+      }
+
       const presc = `${ex.sets || 3} sets x ${ex.reps || "12 reps"}`;
       const drillStr = `${name}: ${presc}`;
 
@@ -420,20 +436,12 @@ const getWorkoutForWeekAndDay = (
       return c.includes("hiit") || c.includes("cardio") || n.includes("climber") || n.includes("burpee") || n.includes("jump") || n.includes("jack");
     });
     
-    // Day-specific strength matches from admin library
+    // Day-specific strength matches from admin library strictly validated against split
     const strengthMatches = availableExercises.filter(e => {
       const c = (e.category || "").toLowerCase();
       const n = (e.name || "").toLowerCase();
-      if (dayNum === 2 || dayNum === 5) {
-        // Lower body focus
-        return isLegExercise(n, c);
-      } else if (dayNum === 4) {
-        // Upper body push-pull
-        return isChestExercise(n, c) || isBackExercise(n, c) || isBicepsExercise(n, c);
-      } else {
-        // Full body / compound
-        return !isCoreExercise(n, c) && (isLegExercise(n, c) || isChestExercise(n, c) || isBackExercise(n, c));
-      }
+      if (isCoreExercise(n, c)) return false;
+      return isExerciseBelongingToSplit(e, targetMuscles, targetCategoryTitle);
     });
 
     if (coreDrills.length < 3) {
@@ -745,6 +753,110 @@ export default function BellyFatShredView() {
       .catch(() => {});
     return () => window.removeEventListener("fit_schedule_overrides_updated", handleUpdate);
   }, []);
+
+  const isAdmin = Boolean(user?.role === "admin" || (user?.email && isEmailAdmin(user.email)));
+  const [isPurgingSplit, setIsPurgingSplit] = useState(false);
+  const [purgeSuccessMsg, setPurgeSuccessMsg] = useState<string | null>(null);
+
+  const handlePurgeMismatchedWorkouts = async () => {
+    if (!progress) return;
+    setIsPurgingSplit(true);
+    try {
+      const cycleDay = ((progress.currentDay - 1) % 7) + 1;
+      const splitResolver = PROGRAM_SPLIT_DEFINITIONS["belly_fat_shred"];
+      const splitDef = splitResolver 
+        ? splitResolver(cycleDay) 
+        : { categoryTitle: workoutInfo.title, targetMuscles: ["Core", "Abs"], isCardioOnly: false, cardioDistance: undefined };
+      
+      const daySeq = (progress.currentWeek - 1) * 7 + progress.currentDay;
+      const dayKey = String(daySeq);
+      const cycleKey = `cycle_${progress.currentDay}`;
+      const bellyOverrides = programScheduleOverrides["belly_fat_shred"] || {};
+      const currentOverride = bellyOverrides[dayKey] || bellyOverrides[cycleKey];
+
+      // Current items to audit
+      const currentItems: ChallengeExerciseItem[] = (currentOverride && Array.isArray(currentOverride.exercises) && currentOverride.exercises.length > 0)
+        ? currentOverride.exercises
+        : workoutInfo.exercisesList.map((name: string, idx: number) => ({
+            id: `bfs_${progress.currentDay}_${idx}`,
+            exerciseName: name,
+            category: splitDef.categoryTitle,
+            targetMuscle: splitDef.targetMuscles[0] || "Core",
+            sets: 3,
+            reps: "12 reps",
+            order: idx
+          }));
+
+      const result = purgeMismatchedExercisesFromRoutine(
+        currentItems,
+        splitDef.targetMuscles,
+        splitDef.categoryTitle,
+        centralizedExercises || [],
+        "belly_fat_shred",
+        progress.currentDay
+      );
+
+      const isCardioOnly = Boolean((splitDef as any)?.isCardioOnly);
+      const cardioDistance = (splitDef as any)?.cardioDistance || (progress.currentDay === 3 || progress.currentDay === 7 ? "5 to 10 KM" : undefined);
+
+      const updatedDayData = {
+        ...(currentOverride || {}),
+        title: splitDef.categoryTitle,
+        category: splitDef.categoryTitle,
+        focus: splitDef.categoryTitle,
+        isCardioOnly,
+        cardioDistance,
+        exercises: result.cleanedExercises,
+        updatedAt: new Date().toISOString()
+      };
+
+      const updatedAllBelly = {
+        ...bellyOverrides,
+        [dayKey]: updatedDayData,
+        [cycleKey]: updatedDayData
+      };
+
+      const newAllOverrides = {
+        ...programScheduleOverrides,
+        belly_fat_shred: updatedAllBelly
+      };
+
+      setProgramScheduleOverrides(newAllOverrides);
+      localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(newAllOverrides));
+      window.dispatchEvent(new Event("fit_schedule_overrides_updated"));
+
+      try {
+        await fetch("/api/admin/programs/save-day-override", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${(user as any)?.token || "admin"}`
+          },
+          body: JSON.stringify({
+            programId: "belly_fat_shred",
+            dayNumber: progress.currentDay,
+            dayData: updatedDayData,
+            user: { email: user?.email, role: user?.role }
+          })
+        });
+      } catch (err) {
+        console.warn("Server save error (cached locally):", err);
+      }
+
+      if (result.removedNames.length > 0) {
+        setPurgeSuccessMsg(`🧹 Purged ${result.removedNames.length} mismatched workout(s): ${result.removedNames.join(", ")}. Split reset to strictly contain only valid ${splitDef.categoryTitle} exercises!`);
+      } else {
+        setPurgeSuccessMsg(`✨ Zero mismatched workouts found! Every drill in this split 100% authentically belongs to ${splitDef.categoryTitle}.`);
+      }
+
+      setTimeout(() => setPurgeSuccessMsg(null), 6000);
+    } catch (err: any) {
+      console.error("Purge error:", err);
+      alert("Error purging workouts: " + (err?.message || String(err)));
+    } finally {
+      setIsPurgingSplit(false);
+    }
+  };
   const [logPhotoNote, setLogPhotoNote] = useState("");
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [currentDayTimer, setCurrentDayTimer] = useState<number | null>(null);
@@ -866,7 +978,7 @@ export default function BellyFatShredView() {
         { date: "2026-07-08", value: defaultWaist - 0.5 }
       ],
       progressPhotos: [
-        { date: "2026-07-01", url: "https://github.com/muzikmail2-arch/bb/blob/main/ChatGPT%20Image%20Jul%2017,%202026,%2011_49_31%20AM.png?raw=true", note: "Initial transformation baseline" }
+        { date: "2026-07-01", url: "/images/belly-fat-shred-hero.png", note: "Initial transformation baseline" }
       ],
       achievements: ["welcomed_to_shred"],
       streaks: {
@@ -1577,24 +1689,15 @@ export default function BellyFatShredView() {
   return (
     <div className={`min-h-screen py-6 sm:py-8 px-3 sm:px-6 lg:px-8 font-sans w-full max-w-full overflow-x-hidden ${isDark ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"}`}>
       
-      {/* Luxury Header Card */}
-      <div className={`max-w-7xl mx-auto mb-8 border rounded-3xl p-4 sm:p-8 shadow-xl relative overflow-hidden w-full max-w-full min-w-0 ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
-        {/* Cinematic Hero Image Background */}
-        <div className="absolute inset-0 z-0 select-none pointer-events-none">
-          <img
-            src={bellyShredHeroImg}
-            alt="Belly Shred Program Hero Background"
-            referrerPolicy="no-referrer"
-            className="w-full h-full object-cover opacity-100 object-center md:object-right filter brightness-125 contrast-110 saturate-105"
-          />
-        </div>
+      {/* Luxury Header Card with Unobstructed Official Hero Showcase */}
+      <div className={`max-w-7xl mx-auto mb-8 border rounded-3xl p-6 sm:p-8 lg:p-10 shadow-xl relative overflow-hidden w-full max-w-full min-w-0 ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
+        {/* Subtle Ambient Glow */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-red-600/10 rounded-full filter blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-80 h-80 bg-amber-500/10 rounded-full filter blur-[100px] pointer-events-none" />
 
-        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-          <Shield className="w-40 h-40 text-[#D32F2F] stroke-[1]" />
-        </div>
-        
-        <div className={`flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10 backdrop-blur-md p-6 rounded-2xl border shadow-lg ${isDark ? "bg-slate-900/90 border-slate-800" : "bg-white/95 border-slate-200"}`}>
-          <div className="space-y-3">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-8 relative z-10">
+          {/* Left: Program Branding and Controls */}
+          <div className="space-y-4 max-w-xl text-left">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono font-black text-[#D32F2F] tracking-widest uppercase bg-[#D32F2F]/10 border border-[#D32F2F]/20 px-3 py-1 rounded-full">
                 ★ PREMIUM COACHING MODULE
@@ -1603,28 +1706,46 @@ export default function BellyFatShredView() {
                 👑 ACTIVE
               </span>
             </div>
-            <h1 className={`text-3xl sm:text-4xl font-black tracking-tight uppercase font-display ${isDark ? "text-white" : "text-slate-950"}`}>
+            <h1 className={`text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase font-display leading-tight ${isDark ? "text-white" : "text-slate-950"}`}>
               5 Month <span className="text-[#D32F2F]">Belly Fat Shred</span>
             </h1>
-            <p className={`text-xs max-w-xl leading-relaxed font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}>
+            <p className={`text-xs sm:text-sm leading-relaxed font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}>
               An elite, scientifically-validated program combining progressive whole-body metabolic conditioning, 
-              hiit intervals, targeted core compression, post-meal thermal walks, and high-fidelity hydration tracking.
+              HIIT intervals, targeted core compression, post-meal thermal walks, and high-fidelity hydration tracking.
             </p>
+            
+            <div className="flex flex-wrap gap-3 pt-2">
+              <button 
+                onClick={() => setView("dashboard")} 
+                className={`px-5 py-2.5 border border-[#D32F2F] text-[#D32F2F] hover:bg-[#D32F2F] hover:text-white rounded-xl text-xs transition font-black uppercase tracking-wider cursor-pointer shadow-sm ${isDark ? "bg-slate-900" : "bg-white"}`}
+              >
+                Main Dashboard
+              </button>
+              <button 
+                onClick={handleRestartProgram} 
+                className={`px-5 py-2.5 border rounded-xl text-xs transition font-mono uppercase font-bold cursor-pointer ${isDark ? "bg-slate-800 text-slate-300 border-slate-700 hover:text-[#D32F2F]" : "bg-slate-100 text-slate-700 border-slate-200 hover:border-[#D32F2F] hover:text-[#D32F2F]"}`}
+              >
+                Restart Program
+              </button>
+            </div>
           </div>
-          
-          <div className="flex flex-wrap gap-3">
-            <button 
-              onClick={() => setView("dashboard")} 
-              className={`px-4 py-2 border border-[#D32F2F] text-[#D32F2F] hover:bg-[#D32F2F] hover:text-white rounded-xl text-xs transition font-bold cursor-pointer ${isDark ? "bg-slate-900" : "bg-white"}`}
-            >
-              Main Dashboard
-            </button>
-            <button 
-              onClick={handleRestartProgram} 
-              className={`px-4 py-2 border rounded-xl text-xs transition font-mono uppercase cursor-pointer ${isDark ? "bg-slate-800 text-slate-300 border-slate-700 hover:text-[#D32F2F]" : "bg-slate-50 text-slate-700 border-slate-200 hover:border-[#D32F2F] hover:text-[#D32F2F]"}`}
-            >
-              Restart Program
-            </button>
+
+          {/* Right: Unblocked, High-Definition Authentic Hero Image from Website File */}
+          <div className="w-full sm:w-auto lg:w-96 xl:w-[28rem] h-64 sm:h-72 lg:h-80 rounded-3xl overflow-hidden relative shadow-2xl border border-slate-200/80 shrink-0 group">
+            <img
+              src="/images/belly-fat-shred-hero.png"
+              alt="5 Month Belly Fat Shred Official Hero"
+              loading="eager"
+              decoding="async"
+              className="w-full h-full object-cover object-center scale-100 group-hover:scale-105 transition-transform duration-500 filter brightness-105 contrast-105"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "https://raw.githubusercontent.com/muzikmail2-arch/Git/main/ChatGPT%20Image%20Jul%2018%2C%202026%2C%2007_23_31%20PM.png";
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full text-[9px] font-mono font-black text-white border border-white/20 uppercase tracking-widest">
+              OFFICIAL BELLY FAT SHRED MASTER BLUEPRINT
+            </div>
           </div>
         </div>
 
@@ -2637,7 +2758,19 @@ export default function BellyFatShredView() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2.5 shrink-0">
+                <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={handlePurgeMismatchedWorkouts}
+                      disabled={isPurgingSplit}
+                      className="px-4 py-3 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-amber-600/20 transition cursor-pointer"
+                      title="Purge every workout that does not belong to this day's category (e.g. flat bench press on back day) and reset with authentic matching exercises"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>{isPurgingSplit ? "Purging Split..." : "Purge Mismatched Workouts"}</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setActiveTab("dashboard");
@@ -2652,6 +2785,14 @@ export default function BellyFatShredView() {
                   </button>
                 </div>
               </div>
+
+              {/* Notification Banner when Admin purges mismatched workouts */}
+              {purgeSuccessMsg && (
+                <div className="p-4 rounded-2xl bg-emerald-950/80 border border-emerald-500/50 text-emerald-200 text-xs font-bold flex items-center gap-3 shadow-lg">
+                  <Sparkles className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <span>{purgeSuccessMsg}</span>
+                </div>
+              )}
 
               {/* 5-Month Phase Navigator Tabs */}
               <div className="space-y-2 pt-2 border-t border-slate-200/80">
