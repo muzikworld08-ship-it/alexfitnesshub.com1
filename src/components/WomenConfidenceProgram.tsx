@@ -115,7 +115,7 @@ const DEFAULT_CONFIDENCE_STATE: WomenConfidenceProgressState = {
 };
 
 export default function WomenConfidenceProgram() {
-  const { user, programProgress, updateProgramProgress, recordProgramStopPoint, markProgramWorkoutComplete } = useApp();
+  const { user, programProgress, updateProgramProgress, recordProgramStopPoint, markProgramWorkoutComplete, exercises } = useApp();
   
   // Program tabs
   const [activeTab, setActiveTab] = useState<
@@ -268,8 +268,8 @@ export default function WomenConfidenceProgram() {
 
   // Compute Current Workout & Lifestyle based on selectedDayNumber and profile
   const currentWorkout: WomenDailyWorkout = useMemo(() => {
-    return getDailyWorkoutForDay(selectedDayNumber, progState.onboarding);
-  }, [selectedDayNumber, progState.onboarding]);
+    return getDailyWorkoutForDay(selectedDayNumber, progState.onboarding, exercises);
+  }, [selectedDayNumber, progState.onboarding, exercises]);
 
   const currentLifestyle: WomenDailyLifestyle = useMemo(() => {
     return getDailyLifestyleForDay(selectedDayNumber, progState.onboarding);

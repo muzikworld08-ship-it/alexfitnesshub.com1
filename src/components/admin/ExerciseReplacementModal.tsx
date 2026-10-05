@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from "react";
-import { Search, X, Dumbbell, Sparkles, Check, Filter, ArrowRightLeft, Flame } from "lucide-react";
+import { Search, X, Dumbbell, Sparkles, Check, Filter, ArrowRightLeft, Flame, Heart } from "lucide-react";
 import { Exercise, getExerciseGifUrl } from "../../data/exercises";
 import { ChallengeExerciseItem } from "../../types/challengeEngine";
 import { isHomeEligibleExercise } from "../../utils/dynamicWorkoutEngine";
+import { isWomenWorkoutEligibleExercise, isExplicitlyMarkedWomenWorkout } from "../../data/womenConfidenceProgramData";
 import UnifiedExerciseMedia from "../UnifiedExerciseMedia";
 
 interface ExerciseReplacementModalProps {
@@ -26,6 +27,18 @@ const CATEGORY_FILTERS = [
   "Full Body",
   "Gym Workouts",
   "Home Workouts"
+];
+
+const WOMEN_CATEGORY_FILTERS = [
+  "All",
+  "Glutes",
+  "Core",
+  "Shoulders",
+  "Arms",
+  "Legs",
+  "Back",
+  "Cardio",
+  "Full Body"
 ];
 
 export default function ExerciseReplacementModal({
@@ -56,6 +69,11 @@ export default function ExerciseReplacementModal({
     return Boolean((targetExercise?.programId || targetExercise?.programName || "").toLowerCase().includes("home"));
   }, [targetExercise]);
 
+  const isWomenProgram = useMemo(() => {
+    const pid = (targetExercise?.programId || targetExercise?.programName || "").toLowerCase();
+    return pid.includes("women") || pid.includes("female");
+  }, [targetExercise]);
+
   // Smart suggestions: exercises matching same muscles/category
   const smartMatches = useMemo(() => {
     if (!targetExercise) return [];
@@ -68,6 +86,9 @@ export default function ExerciseReplacementModal({
       // When replacing in home programs, strictly forbid gym/barbell/dumbbell gear
       if (isHomeProgram && !isHomeEligibleExercise(ex)) return false;
 
+      // When replacing in women programs, strictly forbid heavy male / cable fly exercises
+      if (isWomenProgram && !isWomenWorkoutEligibleExercise(ex)) return false;
+
       const exMuscles = (ex.muscleGroups || []).map(m => m.toLowerCase());
       const exCat = (ex.category || "").toLowerCase();
       const sharesMuscle = targetMuscles.some(tm => exMuscles.some(em => em.includes(tm) || tm.includes(em)));
@@ -79,7 +100,7 @@ export default function ExerciseReplacementModal({
       }
       return false;
     }).slice(0, 4);
-  }, [targetExercise, libraryExercises, targetMuscles, targetCategory, isHomeProgram]);
+  }, [targetExercise, libraryExercises, targetMuscles, targetCategory, isHomeProgram, isWomenProgram]);
 
   // Filtered pool
   const filteredExercises = useMemo(() => {
@@ -96,6 +117,9 @@ export default function ExerciseReplacementModal({
 
       // When replacing in home programs, strictly forbid gym/barbell/dumbbell gear
       if (isHomeProgram && !isHomeEligibleExercise(ex)) return false;
+
+      // When replacing in women programs, strictly forbid heavy male / cable fly exercises
+      if (isWomenProgram && !isWomenWorkoutEligibleExercise(ex)) return false;
 
       if (selectedCategory !== "All") {
         const cat = (ex.category || "").toLowerCase();
@@ -117,7 +141,7 @@ export default function ExerciseReplacementModal({
 
       return true;
     });
-  }, [libraryExercises, targetExercise, selectedCategory, searchQuery]);
+  }, [libraryExercises, targetExercise, selectedCategory, searchQuery, isHomeProgram, isWomenProgram]);
 
   if (!isOpen || !targetExercise) return null;
 
@@ -202,16 +226,25 @@ export default function ExerciseReplacementModal({
             )}
           </div>
 
+          {isWomenProgram && (
+            <div className="bg-rose-950/30 border border-rose-900/40 px-3.5 py-2 rounded-xl flex items-center gap-2 text-xs text-rose-300">
+              <Heart className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>
+                <strong>Women Confidence Program:</strong> Filtered strictly to female-specific exercises (no cable fly / heavy bodybuilding chest exercises).
+              </span>
+            </div>
+          )}
+
           {/* Category Chips */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            {CATEGORY_FILTERS.map(cat => (
+            {(isWomenProgram ? WOMEN_CATEGORY_FILTERS : CATEGORY_FILTERS).map(cat => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3 py-1 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer shrink-0 ${
                   selectedCategory === cat
-                    ? "bg-red-600 text-white shadow-xs"
+                    ? isWomenProgram ? "bg-rose-600 text-white shadow-xs" : "bg-red-600 text-white shadow-xs"
                     : "bg-neutral-800/80 text-neutral-400 hover:text-white hover:bg-neutral-800"
                 }`}
               >

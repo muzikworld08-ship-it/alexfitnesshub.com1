@@ -257,9 +257,10 @@ export const STRONG_MEN_EXERCISE_BLOCKLIST = [
  * Validates that an exercise is suitable for women's confidence/sculpting routines.
  * Strictly excludes heavy chest builders, cable flyes, and aggressive male strongman exercises.
  */
-export function isWomenWorkoutEligibleExercise(ex: Exercise | { name?: string; category?: string; muscleGroups?: string[] }): boolean {
+export function isWomenWorkoutEligibleExercise(ex: Exercise | { name?: string; category?: string; muscleGroups?: string[]; genderSuitability?: string }): boolean {
   if (!ex) return false;
-  const name = ((ex as any).name || "").toLowerCase().trim();
+  if ((ex as any).genderSuitability === "Men") return false;
+  const name = ((ex as any).name || (ex as any).exerciseName || "").toLowerCase().trim();
   const cat = ((ex as any).category || "").toLowerCase().trim();
   const desc = ((ex as any).description || "").toLowerCase().trim();
 
@@ -271,6 +272,19 @@ export function isWomenWorkoutEligibleExercise(ex: Exercise | { name?: string; c
   }
 
   return true;
+}
+
+/**
+ * Checks whether an exercise is explicitly designated as a women / female workout
+ * by admin configuration (genderSuitability === "Women", women categories assigned, or women program assignment).
+ */
+export function isExplicitlyMarkedWomenWorkout(ex: any): boolean {
+  if (!ex) return false;
+  if (ex.genderSuitability === "Women") return true;
+  if (Array.isArray(ex.womenCategories) && ex.womenCategories.length > 0) return true;
+  if (Array.isArray(ex.programAssignments) && ex.programAssignments.some((p: string) => p.toLowerCase().includes("women"))) return true;
+  if (typeof ex.category === "string" && ex.category.toLowerCase().includes("women")) return true;
+  return false;
 }
 
 // Comprehensive catalog of authentic women's exercises for 180 days of sculpted confidence
@@ -1615,6 +1629,45 @@ export function getDailyWorkoutForDay(
   // 3. Assemble exactly 10 exercises daily
   const finalExercisesList: WomenDailyExercise[] = [];
   const seenExerciseNames = new Set<string>();
+
+  // 0. Check admin schedule overrides specifically saved for Women Confidence in AdminWorkoutChallengeEngine
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      const stored = window.localStorage.getItem("fit_program_schedule_overrides");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const womenOverrides = parsed.women_confidence || parsed["women-confidence"] || {};
+        const cycleKey = `cycle_${dayInWeek}`;
+        const dayOverride = womenOverrides[String(safeDay)] || womenOverrides[cycleKey];
+        if (dayOverride && Array.isArray(dayOverride.exercises) && dayOverride.exercises.length > 0) {
+          for (const ovEx of dayOverride.exercises) {
+            if (finalExercisesList.length >= 10) break;
+            const exName = (ovEx.exerciseName || ovEx.name || "").trim();
+            const lower = exName.toLowerCase();
+            if (exName && !seenExerciseNames.has(lower) && isWomenWorkoutEligibleExercise(ovEx)) {
+              seenExerciseNames.add(lower);
+              finalExercisesList.push({
+                id: ovEx.id || `wc_ov_d${safeDay}_${finalExercisesList.length + 1}`,
+                name: exName,
+                muscleGroups: Array.isArray(ovEx.muscleGroup) ? ovEx.muscleGroup : [ovEx.muscleGroup || targetTargets[0] || "Full Body"],
+                sets: Number(ovEx.sets) || 3,
+                reps: String(ovEx.reps || "10-12 reps"),
+                restPeriod: ovEx.restTime || "45-60s",
+                equipment: Array.isArray(ovEx.equipment) ? ovEx.equipment.join(", ") : String(ovEx.equipment || "Bodyweight"),
+                difficulty: ovEx.difficulty || "Intermediate",
+                instructions: Array.isArray(ovEx.instructions) && ovEx.instructions.length > 0 ? ovEx.instructions : [`Perform ${exName} with strict posture and smooth control.`],
+                formTips: ovEx.coachingCues || ["Maintain tight core posture and elongated spine."],
+                beginnerModification: "Perform at bodyweight or reduce repetition range.",
+                advancedProgression: "Add tempo pause at peak contraction.",
+                gifUrl: ovEx.gifUrl || "",
+                targetMuscles: Array.isArray(ovEx.muscleGroup) ? ovEx.muscleGroup.join(", ") : String(ovEx.muscleGroup || "Full Body")
+              });
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {}
 
   // Add eligible matched exercises from custom library first (if any)
   for (const ex of matchedActive) {

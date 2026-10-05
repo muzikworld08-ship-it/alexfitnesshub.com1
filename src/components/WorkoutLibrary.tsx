@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useApp, isEmailAdmin } from "../context/AppContext";
 import { Exercise, PROGRAMS, Program, EXERCISES, getExerciseGifUrl } from "../data/exercises";
-import { WORKOUTS_DATABASE, WORKOUT_CATEGORIES_INFO, Workout, WorkoutExercise, getWorkoutMappedCategory, calculateWorkoutDuration } from "../data/workoutsData";
+import { WORKOUTS_DATABASE, WORKOUT_CATEGORIES_INFO, Workout, WorkoutExercise, getWorkoutMappedCategory, calculateWorkoutDuration, calculateProgramWorkoutDuration } from "../data/workoutsData";
 import YouTubePlayer from "./video/YouTubePlayer";
 import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
@@ -3257,6 +3257,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                       .map((cat) => {
                         const catExCount = getExercisesForWorkoutCategory(cat.id, exercises).length;
                         const catRoutinesCount = WORKOUTS_DATABASE.filter(w => getWorkoutMappedCategory(w) === cat.id).length;
+                        const progDuration = calculateProgramWorkoutDuration(cat.id, exercises);
 
                         return (
                           <motion.div
@@ -3295,9 +3296,15 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                                 <h3 className="text-xl font-bold uppercase tracking-tight">
                                   {cat.name}
                                 </h3>
-                                <p className="text-[11px] text-white/80 font-mono mt-0.5">
-                                  {catExCount} Exercises • {catRoutinesCount} Curated Routines
-                                </p>
+                                <div className="flex flex-wrap items-center gap-2 text-[11px] text-white/90 font-mono mt-1">
+                                  <span className="flex items-center gap-1 bg-black/60 px-2 py-0.5 rounded-full border border-white/10 text-amber-300 font-bold" title={progDuration.calculationSummary}>
+                                    <Clock className="w-3 h-3 text-amber-400" />
+                                    {progDuration.formatted} {cat.isProgram ? "/ session" : "est."}
+                                  </span>
+                                  <span className="text-white/75">
+                                    {catExCount} Moves • {progDuration.totalSets} Sets
+                                  </span>
+                                </div>
                               </div>
                             </div>
 
@@ -3306,11 +3313,13 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                                 {cat.desc}
                               </p>
                               <div className="flex items-center justify-between pt-2 border-t border-[#F0F0F0]">
-                                <span className="text-xs font-mono font-bold text-slate-500">
-                                  {catExCount} Total Moves
-                                </span>
+                                <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-slate-700" title={progDuration.calculationSummary}>
+                                  <Clock className="w-3.5 h-3.5 text-[#E53935]" />
+                                  <span>{progDuration.formatted}</span>
+                                  <span className="text-[10px] text-slate-400 font-normal">({progDuration.totalSets} sets)</span>
+                                </div>
                                 <span className="text-[13px] font-bold text-[#E53935] flex items-center gap-1 group-hover:translate-x-1.5 transition-transform">
-                                  View Category
+                                  {cat.isProgram ? "Open Program" : "View Category"}
                                   <ArrowRight className="w-4 h-4" />
                                 </span>
                               </div>
@@ -3400,6 +3409,23 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                             <p className="text-base text-[#707070] mt-1.5 leading-relaxed max-w-3xl">
                               {currentCat?.desc}
                             </p>
+                            {(() => {
+                              const catDur = calculateProgramWorkoutDuration(selectedWorkoutCategory || "", exercises);
+                              return (
+                                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3 text-xs font-mono">
+                                  <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-900 rounded-lg font-bold" title={catDur.calculationSummary}>
+                                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                    Expected Duration: {catDur.formatted} / workout session
+                                  </span>
+                                  <span className="px-3 py-1 bg-slate-100 border border-slate-200 text-slate-700 rounded-lg font-bold">
+                                    {catDur.totalSets} Total Working Sets
+                                  </span>
+                                  <span className="px-3 py-1 bg-slate-100 border border-slate-200 text-slate-600 rounded-lg">
+                                    {allCatExercises.length} Drills Available
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </div>
 
                           <div className="flex items-center gap-3">
@@ -4443,9 +4469,20 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             {/* Header */}
             <div className="p-6 bg-slate-950 border-b border-slate-850 flex items-center justify-between flex-shrink-0">
               <div>
-                <span className="text-[9px] font-mono font-bold uppercase text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
-                  {selectedProgram.category}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[9px] font-mono font-bold uppercase text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
+                    {selectedProgram.category}
+                  </span>
+                  {(() => {
+                    const dur = calculateProgramWorkoutDuration(selectedProgram.id, exercises);
+                    return (
+                      <span className="text-[9px] font-mono font-bold uppercase text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs" title={dur.calculationSummary}>
+                        <Clock className="w-3 h-3 text-amber-400" />
+                        {dur.formatted} / session ({dur.totalSets} sets)
+                      </span>
+                    );
+                  })()}
+                </div>
                 <h3 className="text-lg font-black text-white mt-1.5">{selectedProgram.name}</h3>
               </div>
               <button 

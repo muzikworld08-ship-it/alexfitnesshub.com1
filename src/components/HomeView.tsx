@@ -16,6 +16,7 @@ import { OptimizedImage } from "./OptimizedImage";
 import ContinueProgramTracker from "./ContinueProgramTracker";
 import MorningWorkoutBanner from "./MorningWorkoutBanner";
 import { PROGRAMS } from "../data/exercises";
+import { calculateProgramWorkoutDuration } from "../data/workoutsData";
 
 const workoutCategories = [
   {
@@ -294,7 +295,8 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
     addCommunityPost, 
     likePost, 
     commentOnPost,
-    getActiveEnrolledPrograms 
+    getActiveEnrolledPrograms,
+    exercises
   } = useApp();
 
   const activeJoinedPrograms = getActiveEnrolledPrograms().filter(p => 
@@ -2205,16 +2207,25 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 text-slate-500 font-mono text-[10px]">
-                        <span className="font-bold flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 text-[#D32F2F]" />
-                          {program.duration}
-                        </span>
-                        <span>•</span>
-                        <span className="font-bold uppercase text-slate-600">
-                          {program.difficulty}
-                        </span>
-                      </div>
+                      {(() => {
+                        const dur = calculateProgramWorkoutDuration(program.id, exercises);
+                        return (
+                          <div className="flex items-center gap-2 text-slate-500 font-mono text-[10px]" title={dur.calculationSummary}>
+                            <span className="font-bold flex items-center gap-1 text-slate-800">
+                              <Clock className="w-3.5 h-3.5 text-[#D32F2F]" />
+                              {dur.formatted}
+                            </span>
+                            <span>•</span>
+                            <span className="font-bold text-[#D32F2F]">
+                              {dur.totalSets} Sets
+                            </span>
+                            <span>•</span>
+                            <span className="font-bold uppercase text-slate-600">
+                              {program.difficulty}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Program Title */}

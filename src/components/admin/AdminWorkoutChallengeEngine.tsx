@@ -832,7 +832,7 @@ export default function AdminWorkoutChallengeEngine() {
       { id: "immortal_90", label: "Immortal 90 Day Challenge (90 Days - 7 Day Rolling Cadence)" },
       { id: "belly_fat_shred", label: "5-Month Belly Fat Shred System (140 Days - 20 Weeks)" },
       { id: "home_180", label: "180 Day Home Workout Challenge (180 Days)" },
-      { id: "women_confidence", label: "Women Confidence Program (30 Days)" },
+      { id: "women_confidence", label: "Women Confidence Program (180 Days)" },
       { id: "lean_muscle", label: "90 Day Lean Muscle Challenge (90 Days)" },
       { id: "fat_burning", label: "90 Day Fat Burning Challenge (90 Days)" },
       { id: "body_transformation", label: "90 Day Body Transformation (90 Days)" },
