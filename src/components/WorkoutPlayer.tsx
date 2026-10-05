@@ -23,7 +23,7 @@ import {
 import { Exercise } from "../data/exercises";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import { useWorkoutTimer } from "../context/WorkoutTimerContext";
-import { detectWorkoutType } from "../utils/dynamicWorkoutEngine";
+import { detectWorkoutType, getPreWorkoutStretchesForDay } from "../utils/dynamicWorkoutEngine";
 import UniversalExerciseSwapperModal from "./UniversalExerciseSwapperModal";
 
 interface WorkoutPlayerProps {
@@ -31,11 +31,48 @@ interface WorkoutPlayerProps {
   sessionTitle: string;
   onClose: () => void;
   onComplete: (caloriesBurned: number, durationMinutes: number) => void;
+  preWorkoutStretches?: Exercise[];
 }
 
-export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComplete }: WorkoutPlayerProps) {
+export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComplete, preWorkoutStretches }: WorkoutPlayerProps) {
   const workoutTimer = useWorkoutTimer();
-  const [workoutExercises, setWorkoutExercises] = useState<Exercise[]>(exercises.slice(0, 10));
+  const [workoutExercises, setWorkoutExercises] = useState<Exercise[]>(() => {
+    const list: Exercise[] = [];
+    const targetMuscles = exercises.flatMap(e => e.muscleGroups || [e.category]);
+    const stretches = getPreWorkoutStretchesForDay(targetMuscles, exercises, 2);
+    // 2 stretch workouts at the beginning of each workout
+    for (const st of stretches) {
+      if (!exercises.some(e => e.name.toLowerCase() === (st.name || "").toLowerCase())) {
+        list.push({
+          id: st.id || "stretch_prep",
+          name: `[Warm-up Stretch] ${st.name}`,
+          category: "Stretching & Mobility",
+          categories: ["Stretching & Mobility", "Mobility & Recovery"],
+          muscleGroups: st.muscleGroup || ["Mobility"],
+          difficulty: "Beginner",
+          instructions: st.instructions || ["Dynamic stretch warmup: execute with controlled tempo."],
+          equipment: st.equipment || ["Bodyweight"],
+          commonMistakes: [],
+          safetyTips: ["Never bounce into the stretch."],
+          alternativeExercises: [],
+          progressionVariations: [],
+          isPremium: false,
+          startingPosition: "",
+          movementExecution: "Slow, rhythmic diaphragmatic breathing.",
+          finishingPosition: "",
+          regressionVariations: [],
+          musclesWorked: st.muscleGroup || ["Mobility"],
+          gifUrl: st.gifUrl || "",
+          customMediaUrl: st.customMediaUrl || st.gifUrl || "",
+          duration: st.duration || "45s Continuous",
+          recommendedSets: "1",
+          recommendedReps: st.reps || "45s Hold"
+        });
+      }
+    }
+    list.push(...exercises.slice(0, 10));
+    return list;
+  });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
   const totalSets = 3; // Standard 3 sets per exercise

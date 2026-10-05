@@ -32,6 +32,7 @@ const CATEGORIES = [
   "Arms",
   "Core",
   "Cardio",
+  "Stretching & Mobility",
   "Full Body",
   "Gym Workouts",
   "Home Workouts",
@@ -42,11 +43,11 @@ const CATEGORIES = [
 const DIFFICULTIES = ["All", "Beginner", "Intermediate", "Advanced"];
 
 const MUSCLE_OPTIONS = [
-  "Chest", "Back", "Biceps", "Triceps", "Shoulders", "Quads", "Hamstrings", "Glutes", "Abs/Core", "Calves", "Full Body"
+  "Chest", "Back", "Biceps", "Triceps", "Shoulders", "Quads", "Hamstrings", "Glutes", "Abs/Core", "Calves", "Full Body", "Mobility", "Hip Flexors", "Spine"
 ];
 
 const EQUIPMENT_OPTIONS = [
-  "Dumbbells", "Barbell", "Cable", "Machine", "Resistance Bands", "Bodyweight", "Kettlebell", "Pull-up Bar", "None"
+  "Dumbbells", "Barbell", "Cable", "Machine", "Resistance Bands", "Bodyweight", "Kettlebell", "Pull-up Bar", "Mat", "None"
 ];
 
 const GOAL_OPTIONS = [
@@ -81,28 +82,18 @@ export default function AdminWorkoutEditor() {
   const [sortBy, setSortBy] = useState<"name" | "category" | "difficulty" | "customMedia">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
-  // Fast 1-Click Toggle for Women / Female Workout
-  const handleToggleWomenWorkout = async (ex: Exercise) => {
-    const isCurrentlyWomen = isExplicitlyMarkedWomenWorkout(ex);
-    
-    if (!isCurrentlyWomen) {
-      const probe = `${ex.name} ${ex.category}`.toLowerCase();
-      for (const blocked of STRONG_MEN_EXERCISE_BLOCKLIST) {
-        if (probe.includes(blocked)) {
-          alert(`Cannot set as Women / Female Workout:\n\n"${ex.name}" contains '${blocked}', which is restricted to male bodybuilding routines (such as cable flyes, heavy bench, etc.) and is not suitable for Women's Confidence.`);
-          return;
-        }
-      }
-    }
+  const [isUpdatingAudience, setIsUpdatingAudience] = useState(false);
 
-    const newSuitability = isCurrentlyWomen ? "Unisex" : "Women";
-    const newWomenCats = isCurrentlyWomen 
-      ? [] 
-      : (ex.womenCategories && ex.womenCategories.length > 0 ? ex.womenCategories : ["Full Body Tone", "Glute & Lower Body Shaping"]);
+  // Admin Audience Designation: Unisex, Men, or Women
+  const handleSetAudience = async (ex: Exercise, newSuitability: "Unisex" | "Men" | "Women") => {
+    const isWomen = newSuitability === "Women";
+    const newWomenCats = isWomen 
+      ? (ex.womenCategories && ex.womenCategories.length > 0 ? ex.womenCategories : ["Full Body Tone", "Glute & Lower Body Shaping"])
+      : [];
     const existingProgs = ex.programAssignments || [];
-    const newProgs = isCurrentlyWomen
-      ? existingProgs.filter(p => !p.toLowerCase().includes("women"))
-      : Array.from(new Set([...existingProgs, "Women Confidence Program (180 Days)"]));
+    const newProgs = isWomen
+      ? Array.from(new Set([...existingProgs, "Women Confidence Program (180 Days)"]))
+      : existingProgs.filter(p => !p.toLowerCase().includes("women"));
 
     try {
       await editExercise(ex.id, {
@@ -111,8 +102,39 @@ export default function AdminWorkoutEditor() {
         programAssignments: newProgs
       });
     } catch (e: any) {
-      console.error("Toggle women workout error:", e);
-      alert("Failed updating workout audience: " + (e?.message || "Unknown error"));
+      console.error("Set workout audience error:", e);
+    }
+  };
+
+  // One-click batch remove female tag from all workouts allowing admin to manage universally
+  const handleRemoveFemaleFromAll = async () => {
+    const femaleExercises = exercises.filter(
+      ex => ex.genderSuitability === "Women" || (Array.isArray(ex.womenCategories) && ex.womenCategories.length > 0)
+    );
+    if (femaleExercises.length === 0) {
+      alert("All workouts are already set to Unisex or Men. No female tags found.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Remove female classification from all ${femaleExercises.length} workouts and set them to Unisex? This allows universal workout scheduling and full admin customization.`
+    );
+    if (!confirmed) return;
+
+    setIsUpdatingAudience(true);
+    try {
+      for (const ex of femaleExercises) {
+        await editExercise(ex.id, {
+          genderSuitability: "Unisex",
+          womenCategories: [],
+          programAssignments: (ex.programAssignments || []).filter(p => !p.toLowerCase().includes("women"))
+        });
+      }
+      alert(`Success! Removed female tags from ${femaleExercises.length} workouts. All are now Unisex.`);
+    } catch (err: any) {
+      console.error("Batch update error:", err);
+      alert("Error updating workouts.");
+    } finally {
+      setIsUpdatingAudience(false);
     }
   };
 
@@ -496,6 +518,21 @@ export default function AdminWorkoutEditor() {
 
           <button
             type="button"
+            onClick={handleRemoveFemaleFromAll}
+            disabled={isUpdatingAudience || isPurgingHome || isResettingPrograms}
+            className="w-full md:w-auto bg-slate-800 hover:bg-slate-900 text-white border border-slate-700 font-sans font-black uppercase tracking-wider text-xs px-4 py-3 rounded-2xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
+            title="Set all workouts to Unisex and remove female-only tags allowing admin to manage all workouts universally"
+          >
+            {isUpdatingAudience ? (
+              <RefreshCw className="w-4 h-4 text-cyan-400 animate-spin" />
+            ) : (
+              <Users className="w-4 h-4 text-cyan-400" />
+            )}
+            <span>{isUpdatingAudience ? "Removing Female Tags..." : "Remove Female Tag From All"}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleResetAndCleanAllPrograms}
             disabled={isResettingPrograms || isPurgingHome}
             className="w-full md:w-auto bg-amber-600 hover:bg-amber-700 text-white font-sans font-black uppercase tracking-wider text-xs px-4 py-3 rounded-2xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
@@ -738,29 +775,24 @@ export default function AdminWorkoutEditor() {
                           </div>
                         </td>
 
-                        {/* Audience / 1-Click Female Toggle */}
+                        {/* Audience / Target Designation (Admin Editable) */}
                         <td className="py-3 px-4 min-w-[130px]">
-                          {isExplicitlyMarkedWomenWorkout(exercise) ? (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleWomenWorkout(exercise)}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-mono font-black uppercase hover:bg-rose-100 transition-colors cursor-pointer shadow-2xs"
-                              title="Click to toggle: currently designated as Women / Female Workout"
-                            >
-                              <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
-                              <span>Female</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleWomenWorkout(exercise)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-mono font-bold uppercase hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors cursor-pointer"
-                              title="Click to mark as Women / Female Workout"
-                            >
-                              <Plus className="w-2.5 h-2.5" />
-                              <span>Set Female</span>
-                            </button>
-                          )}
+                          <select
+                            value={exercise.genderSuitability || (isExplicitlyMarkedWomenWorkout(exercise) ? "Women" : "Unisex")}
+                            onChange={(e) => handleSetAudience(exercise, e.target.value as any)}
+                            className={`px-2.5 py-1 rounded-full border text-[10px] font-mono font-bold uppercase transition-colors cursor-pointer ${
+                              exercise.genderSuitability === "Women" || isExplicitlyMarkedWomenWorkout(exercise)
+                                ? "bg-rose-50 text-rose-700 border-rose-200"
+                                : exercise.genderSuitability === "Men"
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-slate-100 text-slate-700 border-slate-200"
+                            }`}
+                            title="Set workout target audience"
+                          >
+                            <option value="Unisex">👥 Unisex</option>
+                            <option value="Men">⚡ Men</option>
+                            <option value="Women">🌸 Women</option>
+                          </select>
                         </td>
 
                         {/* Category & Muscle */}
@@ -1020,27 +1052,22 @@ export default function AdminWorkoutEditor() {
                             ))}
                           </div>
 
-                          {isExplicitlyMarkedWomenWorkout(exercise) ? (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleWomenWorkout(exercise)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[9px] font-mono font-black uppercase hover:bg-rose-100 transition-colors cursor-pointer"
-                              title="Click to toggle: currently designated as Women / Female Workout"
-                            >
-                              <Heart className="w-2.5 h-2.5 fill-rose-500 text-rose-500" />
-                              <span>Female</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleWomenWorkout(exercise)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[9px] font-mono font-bold uppercase hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors cursor-pointer"
-                              title="Click to mark as Women / Female Workout"
-                            >
-                              <Plus className="w-2.5 h-2.5" />
-                              <span>Set Female</span>
-                            </button>
-                          )}
+                          <select
+                            value={exercise.genderSuitability || (isExplicitlyMarkedWomenWorkout(exercise) ? "Women" : "Unisex")}
+                            onChange={(e) => handleSetAudience(exercise, e.target.value as any)}
+                            className={`px-2 py-0.5 rounded-full border text-[9px] font-mono font-bold uppercase transition-colors cursor-pointer ${
+                              exercise.genderSuitability === "Women" || isExplicitlyMarkedWomenWorkout(exercise)
+                                ? "bg-rose-50 text-rose-700 border-rose-200"
+                                : exercise.genderSuitability === "Men"
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-slate-100 text-slate-700 border-slate-200"
+                            }`}
+                            title="Set workout target audience"
+                          >
+                            <option value="Unisex">👥 Unisex</option>
+                            <option value="Men">⚡ Men</option>
+                            <option value="Women">🌸 Women</option>
+                          </select>
                         </div>
                       </div>
                     )}

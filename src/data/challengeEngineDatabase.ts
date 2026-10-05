@@ -222,14 +222,32 @@ function getActiveExercisesFromStorage(): Exercise[] {
   return [];
 }
 
+function getUserProfileFromStorage(): any {
+  if (typeof window === "undefined" || !window.localStorage) return null;
+  try {
+    const raw = window.localStorage.getItem("fit_active_user");
+    if (raw) return JSON.parse(raw);
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && k.startsWith("fit_user_")) {
+        const uRaw = window.localStorage.getItem(k);
+        if (uRaw) return JSON.parse(uRaw);
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
 /**
  * Main dynamic challenge engine resolver.
- * Gathers exercises from the active exercise database and automatically maps them to the appropriate program day.
+ * Gathers exercises from the active exercise database, tunes them to user's onboarding credentials & goals,
+ * integrates abs preferences (dedicated day, cardio+abs, or leg day+abs), and includes 2 pre-workout stretch workouts with GIFs.
  */
 export function getWorkoutForProgramAndDay(
   programId: string,
   dayNumber: number,
-  customExercisesListOrTarget?: Exercise[] | string
+  customExercisesListOrTarget?: Exercise[] | string,
+  userProfile?: any
 ): DayExecutionPlan {
   const normId = normalizeProgramId(programId);
   const safeDay = Math.max(1, Number(dayNumber) || 1);
@@ -239,7 +257,9 @@ export function getWorkoutForProgramAndDay(
     ? customExercisesListOrTarget
     : getActiveExercisesFromStorage();
 
-  return buildDynamicDayPlan(normId, safeDay, activeExercises);
+  const effectiveProfile = userProfile || getUserProfileFromStorage();
+
+  return buildDynamicDayPlan(normId, safeDay, activeExercises, effectiveProfile);
 }
 
 export default getWorkoutForProgramAndDay;

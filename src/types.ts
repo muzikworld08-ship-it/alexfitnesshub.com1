@@ -34,6 +34,7 @@ export interface UserProfile {
   dietaryPreference?: string;
   availableDays?: number;
   trainingLocation?: "Home" | "Gym";
+  absWorkoutPreference?: "dedicated_day" | "cardio_abs" | "leg_day" | "smart_adaptive";
 
   // Detailed AI Coach Onboarding Fields
   availableEquipment?: string;

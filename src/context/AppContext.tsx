@@ -170,6 +170,7 @@ interface AppContextType {
   // Profile Update Functions
   updateProfileDetails: (details: { weight?: number; height?: number; gender?: string; fitnessGoals?: string }) => Promise<void>;
   completeOnboarding: (onboardingData: Partial<UserProfile>) => Promise<void>;
+  updateAbsWorkoutPreference: (pref: "dedicated_day" | "cardio_abs" | "leg_day" | "smart_adaptive") => Promise<void>;
   
   // Workout Interactions
   toggleSaveWorkout: (exerciseId: string) => Promise<void>;
@@ -4310,6 +4311,16 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     }
   };
 
+  const updateAbsWorkoutPreference = async (pref: "dedicated_day" | "cardio_abs" | "leg_day" | "smart_adaptive") => {
+    localStorage.setItem("fit_abs_preference", pref);
+    if (user) {
+      const updated: UserProfile = { ...user, absWorkoutPreference: pref };
+      setUser(updated);
+      localStorage.setItem(`fit_user_${updated.uid}`, JSON.stringify(updated));
+      await syncUserToStorageAndPlatform(updated).catch(e => console.warn(e));
+    }
+  };
+
   const updateWaterIntake = async (amountMl: number) => {
     if (!user) return;
     const today = new Date().toISOString().split("T")[0];
@@ -5037,6 +5048,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     
     updateProfileDetails,
     completeOnboarding,
+    updateAbsWorkoutPreference,
     toggleSaveWorkout,
     logWorkoutCompletion,
     addWeightLogAction,
@@ -5132,6 +5144,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     logout,
     updateProfileDetails,
     completeOnboarding,
+    updateAbsWorkoutPreference,
     toggleSaveWorkout,
     logWorkoutCompletion,
     addWeightLogAction,

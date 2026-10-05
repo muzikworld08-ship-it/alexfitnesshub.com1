@@ -1,5 +1,5 @@
 import { Exercise } from "./exercises";
-import { filterExercisesForSplit, isHomeEligibleExercise, detectWorkoutType } from "../utils/dynamicWorkoutEngine";
+import { filterExercisesForSplit, isHomeEligibleExercise, detectWorkoutType, getPreWorkoutStretchesForDay } from "../utils/dynamicWorkoutEngine";
 
 export interface HomeOnboardingProfile {
   gender: "Male" | "Female" | "Other";
@@ -55,6 +55,7 @@ export interface HomeDailyWorkout {
   exercises: HomeExercise[];
   sections: HomeWorkoutSection[];
   motivationalQuote: string;
+  preWorkoutStretches?: any[];
 }
 
 export interface HomeProgramPhase {
@@ -299,6 +300,8 @@ export function getHomeWorkoutForDay(
     "Strength does not come from what you can do; it comes from overcoming what you once thought you couldn't."
   ];
 
+  const preWorkoutStretches = getPreWorkoutStretchesForDay(targets, allActive, 2);
+
   return {
     dayNumber: safeDay,
     phaseNumber,
@@ -311,6 +314,7 @@ export function getHomeWorkoutForDay(
     estimatedMinutes: isRestDay ? 20 : is5KmCardioDay ? 50 : 35 + (phaseNumber * 3),
     exercises,
     sections,
+    preWorkoutStretches,
     motivationalQuote: quotes[(safeDay - 1) % quotes.length]
   };
 }

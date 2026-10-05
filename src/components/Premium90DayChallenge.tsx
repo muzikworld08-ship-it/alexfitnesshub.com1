@@ -13,7 +13,7 @@ import {
   Layers, X, ArrowRightLeft
 } from "lucide-react";
 import UniversalExerciseSwapperModal from "./UniversalExerciseSwapperModal";
-import { detectWorkoutType } from "../utils/dynamicWorkoutEngine";
+import { detectWorkoutType, getPreWorkoutStretchesForDay } from "../utils/dynamicWorkoutEngine";
 import { Exercise } from "../data/exercises";
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -594,7 +594,7 @@ export default function Premium90DayChallenge() {
 
     if (isImmortalVariant || hasProgramOverride) {
       const progToQuery = hasProgramOverride ? challengeId : "immortal_90";
-      const enginePlan = getWorkoutForProgramAndDay(progToQuery, dayNum);
+      const enginePlan = getWorkoutForProgramAndDay(progToQuery, dayNum, exercises, user);
       const isCardioDay = enginePlan.meta.isCardioOnly;
 
       const exercisesWithDetails = enginePlan.exercises.slice(0, 10).map((ex, idx) => {
@@ -644,6 +644,7 @@ export default function Premium90DayChallenge() {
         restTime: isCardioDay ? "Full Rest Post-Cardio" : restTime,
         intensityLabel: isCardioDay ? "Aerobic Zone 2 (Conversational Pace)" : intensityLabel,
         exercises: exercisesWithDetails,
+        preWorkoutStretches: (enginePlan as any).preWorkoutStretches || [],
         estTime: isCardioDay ? 55 : 75,
         estCalories: enginePlan.meta.estimatedCalories || 520,
         warmUp: isCardioDay ? [
@@ -713,6 +714,7 @@ export default function Premium90DayChallenge() {
         restTime: "Full Rest",
         intensityLabel: "Aerobic Zone 2 (Conversational Pace)",
         exercises: cardioDayExercises,
+        preWorkoutStretches: getPreWorkoutStretchesForDay(["Cardio", "Mobility"], exercises, 2),
         estTime: 50,
         estCalories: 510,
         warmUp: [
@@ -837,6 +839,7 @@ export default function Premium90DayChallenge() {
       restTime,
       intensityLabel,
       exercises: exercisesWithDetails,
+      preWorkoutStretches: getPreWorkoutStretchesForDay(focusWords, exercises, 2),
       estTime: totalEstTime,
       estCalories: totalEstCalories,
       warmUp: [
@@ -1988,6 +1991,70 @@ export default function Premium90DayChallenge() {
                                   ))}
                                 </div>
                               </div>
+
+                              {/* Pre-Workout Dynamic Stretch & Mobility: 2 Stretch Workouts with GIFs at the Beginning of Each Workout */}
+                              {todayWorkoutDetail.preWorkoutStretches && todayWorkoutDetail.preWorkoutStretches.length > 0 && (
+                                <div className="space-y-4 pt-4 border-t border-slate-100">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-8 h-8 rounded-xl bg-cyan-50 border border-cyan-200 flex items-center justify-center text-cyan-600">
+                                        <Activity className="w-4 h-4" />
+                                      </div>
+                                      <div>
+                                        <h4 className="font-black text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                                          <span>Pre-Workout Dynamic Stretch & Mobility</span>
+                                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 font-bold border border-cyan-300">
+                                            2 Stretch Workouts
+                                          </span>
+                                        </h4>
+                                        <p className="text-[11px] text-slate-500 font-medium">
+                                          Execute these 2 dynamic stretch drills before your main working sets to prime joints and prevent injury.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {todayWorkoutDetail.preWorkoutStretches.slice(0, 2).map((stretchEx: any, sIdx: number) => (
+                                      <div 
+                                        key={stretchEx.id || sIdx}
+                                        className="bg-white border-2 border-cyan-200/90 rounded-2xl p-4 space-y-3 shadow-xs relative overflow-hidden"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[9px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200">
+                                            Stretch 0{sIdx + 1} • {stretchEx.duration || "45s-60s"}
+                                          </span>
+                                          <span className="text-[9px] font-mono font-bold text-slate-400">
+                                            Target: {Array.isArray(stretchEx.targetMuscles) ? stretchEx.targetMuscles.join(", ") : stretchEx.targetMuscles || "Mobility"}
+                                          </span>
+                                        </div>
+
+                                        <h5 className="font-extrabold text-sm text-slate-900">
+                                          {stretchEx.exerciseName || stretchEx.name}
+                                        </h5>
+
+                                        {/* Full HD Animated Stretch Visual / GIF */}
+                                        <div className="relative w-full h-44 rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-200">
+                                          <WorkoutVisual
+                                            exerciseId={stretchEx.id}
+                                            exerciseName={stretchEx.exerciseName || stretchEx.name}
+                                            customMediaUrl={stretchEx.gifUrl || stretchEx.mediaUrl}
+                                            isCard={true}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        </div>
+
+                                        <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                          <span className="text-[9px] font-mono font-bold text-slate-400 uppercase">Movement Cues</span>
+                                          <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
+                                            {Array.isArray(stretchEx.instructions) ? stretchEx.instructions[0] : stretchEx.instructions || "Execute smoothly with slow diaphragmatic breathing. Never bounce."}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
 
                               {/* Main exercises list */}
                               <div className="space-y-6 pt-4 border-t border-slate-100">

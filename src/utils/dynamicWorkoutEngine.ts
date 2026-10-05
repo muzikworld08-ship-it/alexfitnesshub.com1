@@ -1,6 +1,7 @@
-import { Exercise } from "../data/exercises";
+import { Exercise, AUTHENTIC_STRETCH_EXERCISES } from "../data/exercises";
 import { ChallengeExerciseItem, DayWorkoutMeta, DayExecutionPlan } from "../types/challengeEngine";
 import { isWomenWorkoutEligibleExercise } from "../data/womenConfidenceProgramData";
+import { UserProfile } from "../types";
 
 /**
  * Checks whether an exercise is primarily a Chest movement.
@@ -518,6 +519,150 @@ export interface SplitDefinition {
   isCardioOnly?: boolean;
   isRestDay?: boolean;
   cardioDistance?: string;
+  absFocusApplied?: string;
+}
+
+/**
+ * Selects 2 authentic pre-workout stretch exercises matching the day's targeted muscle groups.
+ * Every daily workout begins with exactly 2 stretch workouts with full GIF animations.
+ */
+export function getPreWorkoutStretchesForDay(
+  targetMuscles: string[] = [],
+  availableExercises: Exercise[] = [],
+  count: number = 2
+): ChallengeExerciseItem[] {
+  const allStretches: Exercise[] = [];
+  const seenIds = new Set<string>();
+
+  // 1. Check active library for custom or admin-edited stretch exercises
+  if (Array.isArray(availableExercises)) {
+    for (const ex of availableExercises) {
+      if (!ex || !ex.id) continue;
+      const cat = (ex.category || "").toLowerCase();
+      const name = (ex.name || "").toLowerCase();
+      const isStretch = cat.includes("stretch") || cat.includes("mobility") || name.includes("stretch") || name.includes("mobility");
+      if (isStretch && !seenIds.has(ex.id)) {
+        seenIds.add(ex.id);
+        allStretches.push(ex);
+      }
+    }
+  }
+
+  // 2. Supplement with core authentic stretch library
+  for (const st of AUTHENTIC_STRETCH_EXERCISES) {
+    if (!seenIds.has(st.id)) {
+      seenIds.add(st.id);
+      allStretches.push(st);
+    }
+  }
+
+  // 3. Score stretches based on target muscles of the day
+  const targetsLower = targetMuscles.map(t => (t || "").toLowerCase());
+  const scored = allStretches.map(st => {
+    let score = 0;
+    const stName = (st.name || "").toLowerCase();
+    const stMuscles = (st.muscleGroups || []).map(m => m.toLowerCase());
+    const isFullBody = targetsLower.some(t => t.includes("full") || t.includes("cardio") || t.includes("recovery"));
+
+    for (const t of targetsLower) {
+      if (stMuscles.some(m => m.includes(t) || t.includes(m))) score += 4;
+      if (stName.includes(t)) score += 3;
+    }
+
+    if (isFullBody && (stName.includes("world") || stName.includes("cobra") || stName.includes("cat-cow"))) {
+      score += 5;
+    }
+
+    // Baseline score for quality
+    score += (st.gifUrl || st.customMediaUrl ? 2 : 0);
+    return { exercise: st, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+
+  const selected: Exercise[] = [];
+  for (const s of scored) {
+    if (selected.length >= count) break;
+    selected.push(s.exercise);
+  }
+
+  // If still fewer than requested count, fill from AUTHENTIC_STRETCH_EXERCISES
+  for (const fallback of AUTHENTIC_STRETCH_EXERCISES) {
+    if (selected.length >= count) break;
+    if (!selected.some(s => s.id === fallback.id)) {
+      selected.push(fallback);
+    }
+  }
+
+  return selected.map((st, idx) => ({
+    id: `preworkout_stretch_${idx + 1}_${st.id}`,
+    programId: "stretch" as any,
+    programName: "Pre-Workout Dynamic Stretch & Mobility",
+    dayNumber: 1,
+    category: "Stretching & Mobility",
+    muscleGroup: st.muscleGroups || ["Mobility", "Full Body"],
+    targetMuscles: st.muscleGroups || ["Mobility"],
+    exerciseName: st.name,
+    name: st.name,
+    equipment: st.equipment || ["Bodyweight"],
+    difficulty: st.difficulty || "Beginner",
+    sets: 1,
+    reps: st.recommendedReps || st.duration || "45s-60s hold",
+    duration: st.duration || "45s hold",
+    workoutType: "time",
+    isTimeBased: true,
+    isRepBased: false,
+    restTime: "15s transition",
+    gifUrl: st.customMediaUrl || st.gifUrl || "",
+    mediaUrl: st.customMediaUrl || st.gifUrl || "",
+    instructions: st.instructions && st.instructions.length > 0 ? st.instructions : [
+      `Assume starting position for ${st.name}.`,
+      "Engage steady diaphragmatic breathing.",
+      "Hold the stretch gently without bouncing; release tension on each exhalation."
+    ],
+    coachingCues: [
+      "Dynamic warm-up stretch: do not force beyond comfortable range of motion.",
+      "Maintain steady rhythmic breathing throughout the 45-60 second duration."
+    ],
+    isPreWorkoutStretch: true
+  }));
+}
+
+/**
+ * Resolves effective Abs workout preference:
+ * - "dedicated_day": specific day purely for abs & core
+ * - "cardio_abs": cardio and abs workout together
+ * - "leg_day": on leg days includes abs workout
+ * - "smart_adaptive": dynamically tuned to user's onboarding goal
+ */
+export function resolveEffectiveAbsPreference(
+  userProfile?: Partial<UserProfile> | null
+): "dedicated_day" | "cardio_abs" | "leg_day" | "smart_adaptive" {
+  // 1. Explicit preference from profile or localStorage
+  let pref = userProfile?.absWorkoutPreference;
+  if (!pref && typeof window !== "undefined" && window.localStorage) {
+    try {
+      pref = (window.localStorage.getItem("fit_abs_preference") as any) || null;
+    } catch {}
+  }
+
+  if (pref && pref !== "smart_adaptive") {
+    return pref;
+  }
+
+  // 2. Smart adaptive based on user onboarding goals
+  const goals = `${userProfile?.fitnessGoals || ""} ${userProfile?.workoutPreference || ""}`.toLowerCase();
+  if (goals.includes("weight") || goals.includes("fat") || goals.includes("shred") || goals.includes("slim") || goals.includes("belly")) {
+    return "cardio_abs";
+  }
+  if (goals.includes("muscle") || goals.includes("hypertrophy") || goals.includes("strength") || goals.includes("bulk") || goals.includes("power")) {
+    return "leg_day";
+  }
+  if (goals.includes("abs") || goals.includes("core") || goals.includes("six") || goals.includes("midsection") || goals.includes("waist")) {
+    return "dedicated_day";
+  }
+
+  return "smart_adaptive";
 }
 
 /**
@@ -623,33 +768,112 @@ export const PROGRAM_SPLIT_DEFINITIONS: Record<string, (cycleDay: number) => Spl
 
 /**
  * Universal dynamic workout resolver.
- * Gathers exercises that the admin has added to the active library and maps them to the appropriate program day.
+ * Gathers exercises from the active library, tunes them according to user's onboarding credentials,
+ * integrates user's abs workout preferences (dedicated abs day, cardio+abs, or leg day+abs),
+ * guarantees 2 pre-workout stretch workouts with GIFs at the beginning before daily workout drills,
+ * and respects gender suitability without forcing all workouts to female.
  */
 export function buildDynamicDayPlan(
   programId: string,
   dayNumber: number,
-  allExercises: Exercise[]
+  allExercises: Exercise[],
+  userProfile?: Partial<UserProfile> | null
 ): DayExecutionPlan {
   const safeDay = Math.max(1, Number(dayNumber) || 1);
   const cycleDay = ((safeDay - 1) % 7) + 1;
   const programKey = (programId || "immortal_90").toLowerCase().replace(/[^a-z0-9_]/g, "_");
 
   const splitResolver = PROGRAM_SPLIT_DEFINITIONS[programKey] || PROGRAM_SPLIT_DEFINITIONS["immortal_90"];
-  const splitDef = splitResolver(cycleDay);
+  let splitDef = { ...splitResolver(cycleDay) };
 
-  const isHomeProgram = programKey.includes("home") || programKey === "home_180";
-  const isWomenProgram = programKey.includes("women") || programKey === "women_confidence";
-  
-  let eligibleExercises = allExercises;
-  if (isWomenProgram) {
-    eligibleExercises = allExercises.filter(isWomenWorkoutEligibleExercise);
+  // 1. Resolve and apply user's Abs workout preference according to goal & onboarding credentials
+  const effectiveAbsPref = resolveEffectiveAbsPreference(userProfile);
+
+  if (effectiveAbsPref === "dedicated_day") {
+    // Option A: Specific dedicated day purely for Abs & Core Workout
+    if (cycleDay === 6) {
+      splitDef = {
+        categoryTitle: "Dedicated Core & Six-Pack Shred Day",
+        targetMuscles: ["Core", "Abs", "Obliques", "Transverse Abdominis"],
+        absFocusApplied: "dedicated_day"
+      };
+    }
+  } else if (effectiveAbsPref === "cardio_abs") {
+    // Option B: Cardio and Abs workout together
+    if (cycleDay === 3 || splitDef.isCardioOnly) {
+      splitDef = {
+        categoryTitle: "Cardio Endurance & Abdominal Core Burnout",
+        targetMuscles: ["Cardio", "Core", "Abs", "Running", "Walking"],
+        isCardioOnly: false,
+        cardioDistance: "5 to 10 KM + Core Burnout Circuit",
+        absFocusApplied: "cardio_abs"
+      };
+    }
+  } else if (effectiveAbsPref === "leg_day") {
+    // Option C: On Leg days, integrate Abs workout
+    const isLegDay = splitDef.targetMuscles.some(m => ["Legs", "Quadriceps", "Hamstrings", "Glutes", "Quads"].includes(m));
+    if (cycleDay === 4 || isLegDay) {
+      splitDef = {
+        categoryTitle: "Legs, Lower Body & Abdominal Core Finisher",
+        targetMuscles: ["Legs", "Quadriceps", "Hamstrings", "Glutes", "Core", "Abs"],
+        absFocusApplied: "leg_day"
+      };
+    }
   }
 
+  // 2. Gender suitability filtering: do NOT make all workouts female!
+  const isHomeProgram = programKey.includes("home") || programKey === "home_180";
+  const isWomenProgram = programKey.includes("women") || programKey === "women_confidence";
+  const userGender = (userProfile?.gender || "").toLowerCase().trim();
+
+  let eligibleExercises = allExercises;
+  if (isWomenProgram && userGender === "female") {
+    eligibleExercises = allExercises.filter(isWomenWorkoutEligibleExercise);
+  } else if (userGender === "male") {
+    // Male users should never have female-only exercises forced on them
+    eligibleExercises = allExercises.filter(ex => ex.genderSuitability !== "Women");
+  }
+
+  // 3. User Goal & Onboarding Experience tuning: sets, reps, rest
+  const userGoal = (userProfile?.fitnessGoals || "").toLowerCase();
+  const userExp = (userProfile?.workoutExperience || userProfile?.activityLevel || "").toLowerCase();
+
+  let setsMultiplier = 3;
+  let repScheme = "10-12 reps";
+  let restTime = "60s";
+
+  if (userGoal.includes("muscle") || userGoal.includes("strength") || userGoal.includes("hypertrophy")) {
+    setsMultiplier = 4;
+    repScheme = "8-12 reps";
+    restTime = "90s";
+  } else if (userGoal.includes("fat") || userGoal.includes("weight") || userGoal.includes("shred") || userGoal.includes("loss")) {
+    setsMultiplier = 3;
+    repScheme = "15-20 reps";
+    restTime = "45s";
+  } else if (userGoal.includes("tone") || userGoal.includes("sculpt") || userGoal.includes("six pack") || userGoal.includes("abs")) {
+    setsMultiplier = 3;
+    repScheme = "12-15 reps";
+    restTime = "50s";
+  }
+
+  if (userExp.includes("beginner")) {
+    setsMultiplier = Math.min(setsMultiplier, 3);
+    repScheme = "10-12 reps";
+    restTime = "60s";
+  } else if (userExp.includes("advanced")) {
+    setsMultiplier = Math.max(setsMultiplier, 4);
+  }
+
+  // 4. Match exercises to split
   const matchedExercises = filterExercisesForSplit(eligibleExercises, splitDef.targetMuscles, { requireHomeOnly: isHomeProgram });
+  
   // Enforce strict maximum of 10 workouts daily
   const challengeItems = matchedExercises.slice(0, 10).map((ex, idx) =>
-    exerciseToChallengeItem(ex, programId, safeDay, idx)
+    exerciseToChallengeItem(ex, programId, safeDay, idx, setsMultiplier, repScheme)
   );
+
+  // 5. Select 2 Pre-Workout Dynamic Stretch Workouts with GIFs at the very beginning of the workout
+  const preWorkoutStretches = getPreWorkoutStretchesForDay(splitDef.targetMuscles, allExercises, 2);
 
   const meta: DayWorkoutMeta = {
     dayNumber: safeDay,
@@ -658,21 +882,26 @@ export function buildDynamicDayPlan(
     category: splitDef.categoryTitle,
     targetMuscles: splitDef.targetMuscles,
     estimatedDuration: splitDef.isCardioOnly ? "50-70 mins" : splitDef.isRestDay ? "20 mins" : "45-60 mins",
-    estimatedCalories: splitDef.isCardioOnly ? 500 : splitDef.isRestDay ? 100 : 480,
+    estimatedCalories: splitDef.isCardioOnly ? 500 : splitDef.isRestDay ? 100 : (setsMultiplier >= 4 ? 540 : 460),
     isRestDay: !!splitDef.isRestDay,
     isCardioOnly: !!splitDef.isCardioOnly,
     cardioDistance: splitDef.cardioDistance,
+    preWorkoutStretches,
+    absPreferenceApplied: effectiveAbsPref,
+    goalTuned: userProfile?.fitnessGoals || "All-Around Athletic Conditioning",
     guidelines: [
       `Focus: ${splitDef.categoryTitle}.`,
+      "Execute the 2 pre-workout dynamic stretch drills before starting main working sets.",
       "Strict form and progressive overload on all working sets.",
       "Rest adequately between sets and follow the prescribed routine."
     ],
-    coachingNotes: `${splitDef.categoryTitle} - execute with intention and discipline.`
+    coachingNotes: `${splitDef.categoryTitle} - tuned to your goals. Execute with intention and discipline.`
   };
 
   return {
     meta,
-    exercises: challengeItems
+    exercises: challengeItems,
+    preWorkoutStretches
   };
 }
 
