@@ -20,6 +20,7 @@ import { sendEmail } from "../services/emailNotificationService";
 import WorkoutReminderCard from "./WorkoutReminderCard";
 import WorkoutVisual from "./WorkoutVisual";
 import { getPreWorkoutStretchesForDay } from "../utils/dynamicWorkoutEngine";
+import { SectionErrorBoundary } from "./ErrorBoundary";
 
 interface DailyPlanSchema {
   wakeUpTime: string;
@@ -176,17 +177,17 @@ export default function DailyPlanView() {
     const mode = intensityOverride || scaleDaysState;
 
     const buildClientFallbackPlan = (): DailyPlanSchema => {
-      const age = Number(user.age) || 25;
-      const weight = Number(user.weight) || 70;
-      const height = Number(user.height) || 170;
-      const gender = user.gender || "Unisex";
-      const goal = user.fitnessGoals || "Weight Loss";
-      const activity = user.activityLevel || "Moderately Active";
-      const preference = user.dietaryPreference || "Nigerian/African";
-      const restrictions = user.healthRestrictions || "None";
-      const wakeUp = user.wakeUpTime || "06:00 AM";
-      const bed = user.bedTime || "10:00 PM";
-      const exp = user.workoutExperience || "Beginner";
+      const age = Number(user?.age) || 25;
+      const weight = Number(user?.weight) || 70;
+      const height = Number(user?.height) || 170;
+      const gender = user?.gender || "Unisex";
+      const goal = user?.fitnessGoals || "Weight Loss";
+      const activity = user?.activityLevel || "Moderately Active";
+      const preference = user?.dietaryPreference || "Nigerian/African";
+      const restrictions = user?.healthRestrictions || "None";
+      const wakeUp = user?.wakeUpTime || "06:00 AM";
+      const bed = user?.bedTime || "10:00 PM";
+      const exp = user?.workoutExperience || "Beginner";
 
       let bmr = 10 * weight + 6.25 * height - 5 * age;
       if (gender.toLowerCase() === "male") bmr += 5;
@@ -260,7 +261,7 @@ export default function DailyPlanView() {
         dailyStepGoal: goal.includes("Loss") ? 10000 : 8000,
         recoveryActivities: "Foam rolling, gentle hip openers, and hamstring stretches.",
         weeklyGoal: `Hit ${calories} daily calories target and complete planned training days.`,
-        monthlyGoal: `Progress consistently toward target weight of ${user.targetWeight || 65} kg.`
+        monthlyGoal: `Progress consistently toward target weight of ${user?.targetWeight || 65} kg.`
       };
     };
 
@@ -372,7 +373,7 @@ export default function DailyPlanView() {
         // Log this set completion to general exercises stats
         logWorkoutCompletion(
           `ex_sub_${index}`,
-          plan?.workoutExercises[index].reps || 10,
+          plan?.workoutExercises?.[index]?.reps || 10,
           user?.weight ? Math.round(user.weight * 0.5) : 35,
           `Completed during daily dynamic plan checklist`
         );
@@ -443,7 +444,8 @@ export default function DailyPlanView() {
   const currentMacros = sumMacros();
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-6 sm:py-8 font-sans transition-all text-left w-full max-w-full overflow-x-hidden">
+    <SectionErrorBoundary fallbackTitle="My Daily Plan Engine">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-6 sm:py-8 font-sans transition-all text-left w-full max-w-full overflow-x-hidden">
       
       {/* Persistent sub-navigation tabs */}
       <PersistentDashboardTabs />
@@ -477,7 +479,7 @@ export default function DailyPlanView() {
         <div className="flex flex-wrap gap-2 items-center">
           <button
             onClick={() => triggerGoalNotification("Morning Motivation")}
-            className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50:bg-slate-950 font-mono text-[10px] font-bold text-slate-700 flex items-center gap-1.5 transition-all"
+            className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-mono text-[10px] font-bold text-slate-700 flex items-center gap-1.5 transition-all"
           >
             <Bell className="w-3.5 h-3.5 text-emerald-500" />
             TEST MORNING ALARM
@@ -486,7 +488,7 @@ export default function DailyPlanView() {
           <button
             onClick={() => fetchDailyPlan()}
             disabled={loading}
-            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200:bg-slate-700 font-mono text-[10px] font-bold text-slate-900 flex items-center gap-1.5 transition-all"
+            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 font-mono text-[10px] font-bold text-slate-900 flex items-center gap-1.5 transition-all"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
             REFRESH AI PLAN
@@ -527,7 +529,7 @@ export default function DailyPlanView() {
                   </span>
                 </div>
 
-                <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100:bg-slate-800">
+                <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
                   
                   {/* Wake up */}
                   <div className="flex gap-4 relative">
@@ -712,7 +714,7 @@ export default function DailyPlanView() {
                     <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
                     <div className="text-[11px] text-rose-950">
                       <span className="font-extrabold block">Health restrictions adaptation:</span>
-                      {plan?.injuryRestoration || `Bypassing biomechanical stresses that trigger your ${user.healthRestrictions}. Monitor strain levels carefully.`}
+                      {plan?.injuryRestoration || `Bypassing biomechanical stresses that trigger your ${user?.healthRestrictions || "health condition"}. Monitor strain levels carefully.`}
                     </div>
                   </div>
                 )}
@@ -1062,7 +1064,7 @@ export default function DailyPlanView() {
                   </span>
                   <span className="text-[10px] text-slate-500">Increase training load & nutritional targets.</span>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-emerald-555 shrink-0" />
+                <ArrowUpRight className="w-4 h-4 text-emerald-500 shrink-0" />
               </button>
             </div>
           </div>
@@ -1088,7 +1090,7 @@ export default function DailyPlanView() {
               />
               <button
                 type="submit"
-                className="px-4 bg-slate-900 hover:bg-slate-850:bg-slate-100 text-white font-mono font-black text-[10px] uppercase rounded-xl tracking-widest transition-all shadow"
+                className="px-4 bg-slate-900 hover:bg-slate-800 text-white font-mono font-black text-[10px] uppercase rounded-xl tracking-widest transition-all shadow"
               >
                 LOG WEIGHT
               </button>
@@ -1135,5 +1137,6 @@ export default function DailyPlanView() {
       </div>
 
     </div>
+    </SectionErrorBoundary>
   );
 }

@@ -691,7 +691,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
                     <span>PROGRESS</span>
                     <span>{progressPercent}% COMPLETE</span>
                   </div>
-                  <div className="w-full h-1.5 bg-slate-850 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                     <div 
                       className="bg-emerald-500 h-full transition-all duration-300"
                       style={{ width: `${progressPercent}%` }}

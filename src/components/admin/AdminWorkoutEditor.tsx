@@ -106,21 +106,21 @@ export default function AdminWorkoutEditor() {
     }
   };
 
+  const [audienceNotice, setAudienceNotice] = useState<string | null>(null);
+
   // One-click batch remove female tag from all workouts allowing admin to manage universally
   const handleRemoveFemaleFromAll = async () => {
     const femaleExercises = exercises.filter(
       ex => ex.genderSuitability === "Women" || (Array.isArray(ex.womenCategories) && ex.womenCategories.length > 0)
     );
     if (femaleExercises.length === 0) {
-      alert("All workouts are already set to Unisex or Men. No female tags found.");
+      setAudienceNotice("All workouts are already set to Unisex or Men. No female tags found.");
+      setTimeout(() => setAudienceNotice(null), 4000);
       return;
     }
-    const confirmed = window.confirm(
-      `Remove female classification from all ${femaleExercises.length} workouts and set them to Unisex? This allows universal workout scheduling and full admin customization.`
-    );
-    if (!confirmed) return;
 
     setIsUpdatingAudience(true);
+    setAudienceNotice(`Updating ${femaleExercises.length} workouts to Unisex...`);
     try {
       for (const ex of femaleExercises) {
         await editExercise(ex.id, {
@@ -129,12 +129,13 @@ export default function AdminWorkoutEditor() {
           programAssignments: (ex.programAssignments || []).filter(p => !p.toLowerCase().includes("women"))
         });
       }
-      alert(`Success! Removed female tags from ${femaleExercises.length} workouts. All are now Unisex.`);
+      setAudienceNotice(`Success! Removed female tags from ${femaleExercises.length} workouts. All are now Unisex.`);
     } catch (err: any) {
       console.error("Batch update error:", err);
-      alert("Error updating workouts.");
+      setAudienceNotice("Error updating workouts: " + (err?.message || "Internal error"));
     } finally {
       setIsUpdatingAudience(false);
+      setTimeout(() => setAudienceNotice(null), 6000);
     }
   };
 
@@ -551,6 +552,23 @@ export default function AdminWorkoutEditor() {
           </button>
         </div>
       </div>
+
+      {/* Audience Notice Banner */}
+      {audienceNotice && (
+        <div className="p-4 rounded-2xl bg-cyan-50 border border-cyan-200 text-cyan-900 text-xs font-bold flex items-center justify-between gap-3 animate-fade-in shadow-xs">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-cyan-600 shrink-0" />
+            <span>{audienceNotice}</span>
+          </div>
+          <button 
+            type="button" 
+            onClick={() => setAudienceNotice(null)} 
+            className="text-cyan-700 hover:text-cyan-950 text-xs px-2 py-0.5 rounded cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Filter and View Layout Controls */}
       <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-4">

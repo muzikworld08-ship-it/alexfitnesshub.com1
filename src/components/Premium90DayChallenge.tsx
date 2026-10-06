@@ -15,6 +15,7 @@ import {
 import UniversalExerciseSwapperModal from "./UniversalExerciseSwapperModal";
 import { detectWorkoutType, getPreWorkoutStretchesForDay } from "../utils/dynamicWorkoutEngine";
 import { Exercise } from "../data/exercises";
+import { SectionErrorBoundary } from "./ErrorBoundary";
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, Legend 
@@ -1180,7 +1181,8 @@ export default function Premium90DayChallenge() {
   })) || [];
 
   return (
-    <div id="premium_90_day_root" className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
+    <SectionErrorBoundary fallbackTitle="90-Day Challenge Engine">
+      <div id="premium_90_day_root" className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
       
       {/* Persistent navigation tabs across top dashboards */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
@@ -1243,7 +1245,7 @@ export default function Premium90DayChallenge() {
                 </button>
                 <a 
                   href="#sample_preview" 
-                  className="bg-slate-100 hover:bg-slate-200:bg-slate-700 text-slate-800 font-bold uppercase text-xs px-6 py-3.5 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-slate-200"
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold uppercase text-xs px-6 py-3.5 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-slate-200"
                 >
                   <Eye className="w-4 h-4" />
                   Sample Day 1 Preview
@@ -1432,10 +1434,10 @@ export default function Premium90DayChallenge() {
                 )}
 
                 <h4 className="font-extrabold text-sm uppercase text-slate-500">
-                  Day {previewDay} Exercises ({previewWorkoutDetail.exercises.length} Prescribed)
+                  Day {previewDay} Exercises ({previewWorkoutDetail?.exercises?.length || 0} Prescribed)
                 </h4>
                 <div className="divide-y divide-slate-100">
-                  {previewWorkoutDetail.exercises.map((ex, idx) => (
+                  {previewWorkoutDetail?.exercises?.map((ex, idx) => (
                     <div key={ex.id || idx} className="py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                       <div>
                         <h5 className="font-bold text-slate-900 text-sm">{ex.name}</h5>
@@ -1722,7 +1724,7 @@ export default function Premium90DayChallenge() {
                       } ${
                         isActive 
                           ? "bg-red-600 text-white shadow-sm" 
-                          : "text-slate-500 hover:text-slate-800:text-slate-200 hover:bg-slate-50:bg-slate-800/50"
+                          : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                       }`}
                     >
                       <Icon className="w-4 h-4 shrink-0" />
@@ -2028,7 +2030,7 @@ export default function Premium90DayChallenge() {
                                   Warm-up Routine (10-15 Minutes)
                                 </h4>
                                 <div className="flex flex-col space-y-3 w-full">
-                                  {todayWorkoutDetail.warmUp.map((wu, idx) => (
+                                  {todayWorkoutDetail?.warmUp?.map((wu, idx) => (
                                     <div key={idx} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl text-left space-y-1">
                                       <span className="text-[9px] text-cyan-500 font-mono font-bold uppercase">{wu.duration}</span>
                                       <h5 className="font-extrabold text-xs text-slate-900">{wu.name}</h5>
@@ -2106,11 +2108,11 @@ export default function Premium90DayChallenge() {
                               <div className="space-y-6 pt-4 border-t border-slate-100">
                                 <h4 className="font-black text-xs uppercase tracking-wider text-slate-400 flex items-center gap-2">
                                   <Dumbbell className="w-4 h-4 text-red-500" />
-                                  Core Exercises List ({todayWorkoutDetail.exercises.length} Exercises)
+                                  Core Exercises List ({todayWorkoutDetail?.exercises?.length || 0} Exercises)
                                 </h4>
 
                                 <div className="space-y-8">
-                                  {todayWorkoutDetail.exercises.map((rawEx, idx) => {
+                                  {todayWorkoutDetail?.exercises?.map((rawEx, idx) => {
                                     const ex = userSwappedExercises[`${activeDisplayDay}_${idx}`] || rawEx;
                                     const isTimeBased = detectWorkoutType(ex.name, ex.reps) === "time";
                                     return (
@@ -2201,7 +2203,7 @@ export default function Premium90DayChallenge() {
                                   Cool Down & Stretching (5-10 Minutes)
                                 </h4>
                                 <div className="flex flex-col space-y-3 w-full">
-                                  {todayWorkoutDetail.coolDown.map((cd, idx) => (
+                                  {todayWorkoutDetail?.coolDown?.map((cd, idx) => (
                                     <div key={idx} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl text-left space-y-1">
                                       <span className="text-[9px] text-indigo-500 font-mono font-bold uppercase">{cd.duration}</span>
                                       <h5 className="font-extrabold text-xs text-slate-900">{cd.name}</h5>
@@ -2707,7 +2709,7 @@ export default function Premium90DayChallenge() {
                       </button>
                       <button
                         onClick={() => alert("Downloading secure PDF Certificate of Completion...")}
-                        className="bg-slate-900 hover:bg-slate-850:bg-slate-700 text-white font-bold uppercase text-xs px-6 py-3.5 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-slate-250 cursor-pointer"
+                        className="bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase text-xs px-6 py-3.5 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-slate-250 cursor-pointer"
                       >
                         <Download className="w-4 h-4" />
                         Download PDF Plan
@@ -2894,5 +2896,6 @@ export default function Premium90DayChallenge() {
         />
       )}
     </div>
+    </SectionErrorBoundary>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { MessageSquare } from "lucide-react";
 import { auth } from "./lib/firebase";
-import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorBoundary, { SectionErrorBoundary } from "./components/ErrorBoundary";
 import { AppProvider, useApp, checkIsUserPremium } from "./context/AppContext";
 import { motion, AnimatePresence, type Variants } from "motion/react";
 import Navbar from "./components/Navbar";
@@ -597,7 +597,7 @@ function FitnessAppContent() {
 
       {/* Main Switchboard Route Mounting with Staggered Transitions */}
       <main className="pt-20 lg:pt-24 pb-16 min-h-screen w-full max-w-full flex flex-col justify-start overflow-x-hidden">
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           <motion.div
             key={currentView}
             variants={pageTransitionVariants}
@@ -607,6 +607,7 @@ function FitnessAppContent() {
             className="w-full max-w-full flex-grow flex flex-col min-w-0 overflow-x-hidden"
           >
             <React.Suspense fallback={renderSkeletonForView(currentView)}>
+              <SectionErrorBoundary fallbackTitle="Module Temporarily Unavailable">
               {currentView === "home" && (
                 <HomeView setView={handleSetView} onOpenAuth={() => handleSetView("login")} />
               )}
@@ -723,6 +724,7 @@ function FitnessAppContent() {
               {currentView === "admin" && (
                 <AdminDashboard />
               )}
+              </SectionErrorBoundary>
             </React.Suspense>
           </motion.div>
         </AnimatePresence>

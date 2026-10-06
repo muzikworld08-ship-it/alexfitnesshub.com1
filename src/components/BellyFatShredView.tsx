@@ -1201,7 +1201,7 @@ export default function BellyFatShredView() {
   const completionPercentage = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
 
   // Hydro limit
-  const waterTarget = user.gender?.toLowerCase() === "male" ? 4 : 3;
+  const waterTarget = user?.gender?.toLowerCase() === "male" ? 4 : 3;
   const hydrationPercentage = Math.min(100, Math.round((progress.waterIntake / waterTarget) * 100));
 
   // Run stats
@@ -1395,7 +1395,7 @@ export default function BellyFatShredView() {
   const handleRestartProgram = () => {
     if (window.confirm("WARNING: Are you absolutely certain you want to reset all your 5-Month Belly Fat Shred program logs, stats, and achievements? This cannot be undone.")) {
       const restarted: BellyFatShredProgress = {
-        userId: user.uid,
+        userId: user?.uid || "guest",
         currentWeek: 1,
         currentDay: 1,
         completedWorkouts: [],
@@ -1986,7 +1986,7 @@ export default function BellyFatShredView() {
                           setGuideTimerRunning(true);
                           setCompletedGuideDrills({});
                         }}
-                        className="py-3 px-5 border border-slate-300 hover:bg-slate-100:bg-slate-900 rounded-xl text-xs font-bold uppercase transition cursor-pointer"
+                        className="py-3 px-5 border border-slate-300 hover:bg-slate-100 rounded-xl text-xs font-bold uppercase transition cursor-pointer"
                       >
                         Replay Session
                       </button>
@@ -2055,7 +2055,7 @@ export default function BellyFatShredView() {
                         </span>
                         <button
                           onClick={() => setGuideTimerRunning(!guideTimerRunning)}
-                          className="p-1.5 hover:bg-slate-200:bg-slate-800 rounded-lg transition"
+                          className="p-1.5 hover:bg-slate-200 rounded-lg transition"
                           title={guideTimerRunning ? "Pause Timer" : "Start Timer"}
                         >
                           {guideTimerRunning ? (
@@ -3436,7 +3436,7 @@ export default function BellyFatShredView() {
                 </div>
 
                 {/* Right Action buttons */}
-                {user.subscriptionStatus === "premium" || user.role === "admin" ? (
+                {(user?.subscriptionStatus === "premium" || user?.role === "admin") ? (
                   <div className="flex flex-col gap-3 shrink-0">
                     <button
                       onClick={() => setIsPlayingHomeWorkout(true)}
@@ -3451,7 +3451,7 @@ export default function BellyFatShredView() {
                       className={`px-6 py-3 border rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
                         isCircuitFavorited 
                           ? "border-red-500 bg-red-500/10 text-red-500" 
-                          : "border-slate-300 text-slate-600 hover:bg-slate-100:bg-slate-900"
+                          : "border-slate-300 text-slate-600 hover:bg-slate-100"
                       }`}
                     >
                       <Heart className={`w-4 h-4 ${isCircuitFavorited ? "fill-current" : ""}`} />
@@ -3474,7 +3474,7 @@ export default function BellyFatShredView() {
             {/* Exercises Grid Container */}
             <div className="relative">
               {/* Premium Lock Overlay for Free Users */}
-              {user.subscriptionStatus !== "premium" && user.role !== "admin" && (
+              {user?.subscriptionStatus !== "premium" && user?.role !== "admin" && (
                 <div className="absolute inset-0 z-40 flex items-center justify-center p-6 bg-slate-950/40 backdrop-blur-md rounded-3xl">
                   <div className="bg-slate-900/95 border border-amber-500/30 rounded-3xl p-8 max-w-md text-center shadow-2xl relative overflow-hidden">
                     <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl"></div>
@@ -3505,7 +3505,7 @@ export default function BellyFatShredView() {
               )}
 
               {/* Grid content */}
-              <div className={`grid md:grid-cols-2 gap-6 ${user.subscriptionStatus !== "premium" && user.role !== "admin" ? "blur-md select-none pointer-events-none opacity-35" : ""}`}>
+              <div className={`grid md:grid-cols-2 gap-6 ${user?.subscriptionStatus !== "premium" && user?.role !== "admin" ? "blur-md select-none pointer-events-none opacity-35" : ""}`}>
                 {bellyFatCardioCircuit.exercises.length === 0 && (
                   <div className="col-span-full py-16 px-6 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50/50 dark:bg-slate-900/30">
                     <p className={`text-sm font-bold uppercase tracking-wider ${textPrimary}`}>No Pre-Existing Exercises Loaded</p>
@@ -3537,7 +3537,7 @@ export default function BellyFatShredView() {
                               className={`p-2 rounded-xl border transition ${
                                 isFav 
                                   ? "border-red-500/30 bg-red-500/10 text-red-500" 
-                                  : "border-slate-200 text-slate-400 hover:text-red-500 hover:bg-slate-100:bg-slate-900"
+                                  : "border-slate-200 text-slate-400 hover:text-red-500 hover:bg-slate-100"
                               }`}
                             >
                               <Heart className={`w-4 h-4 ${isFav ? "fill-current" : ""}`} />

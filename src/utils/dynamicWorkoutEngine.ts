@@ -1,4 +1,4 @@
-import { Exercise, AUTHENTIC_STRETCH_EXERCISES } from "../data/exercises";
+import { Exercise, EXERCISES, AUTHENTIC_STRETCH_EXERCISES } from "../data/exercises";
 import { ChallengeExerciseItem, DayWorkoutMeta, DayExecutionPlan } from "../types/challengeEngine";
 import { isWomenWorkoutEligibleExercise } from "../data/womenConfidenceProgramData";
 import { UserProfile } from "../types";
@@ -826,12 +826,13 @@ export function buildDynamicDayPlan(
   const isWomenProgram = programKey.includes("women") || programKey === "women_confidence";
   const userGender = (userProfile?.gender || "").toLowerCase().trim();
 
-  let eligibleExercises = allExercises;
+  const safeExercises = (Array.isArray(allExercises) && allExercises.length > 0) ? allExercises : EXERCISES;
+  let eligibleExercises = safeExercises;
   if (isWomenProgram && userGender === "female") {
-    eligibleExercises = allExercises.filter(isWomenWorkoutEligibleExercise);
+    eligibleExercises = safeExercises.filter(isWomenWorkoutEligibleExercise);
   } else if (userGender === "male") {
     // Male users should never have female-only exercises forced on them
-    eligibleExercises = allExercises.filter(ex => ex.genderSuitability !== "Women");
+    eligibleExercises = safeExercises.filter(ex => ex.genderSuitability !== "Women");
   }
 
   // 3. User Goal & Onboarding Experience tuning: sets, reps, rest
@@ -865,7 +866,10 @@ export function buildDynamicDayPlan(
   }
 
   // 4. Match exercises to split
-  const matchedExercises = filterExercisesForSplit(eligibleExercises, splitDef.targetMuscles, { requireHomeOnly: isHomeProgram });
+  let matchedExercises = filterExercisesForSplit(eligibleExercises, splitDef.targetMuscles, { requireHomeOnly: isHomeProgram });
+  if (matchedExercises.length === 0) {
+    matchedExercises = filterExercisesForSplit(EXERCISES, splitDef.targetMuscles, { requireHomeOnly: false });
+  }
   
   // Enforce strict maximum of 10 workouts daily
   const challengeItems = matchedExercises.slice(0, 10).map((ex, idx) =>
@@ -873,7 +877,7 @@ export function buildDynamicDayPlan(
   );
 
   // 5. Select 2 Pre-Workout Dynamic Stretch Workouts with GIFs at the very beginning of the workout
-  const preWorkoutStretches = getPreWorkoutStretchesForDay(splitDef.targetMuscles, allExercises, 2);
+  const preWorkoutStretches = getPreWorkoutStretchesForDay(splitDef.targetMuscles, safeExercises, 2);
 
   const meta: DayWorkoutMeta = {
     dayNumber: safeDay,

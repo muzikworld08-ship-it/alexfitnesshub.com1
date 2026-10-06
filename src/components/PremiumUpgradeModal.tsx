@@ -112,7 +112,7 @@ export default function PremiumUpgradeModal({
                 return (
                   <div 
                     key={idx}
-                    className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-3.5 hover:border-red-300:border-red-800 transition-all"
+                    className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-3.5 hover:border-red-300 transition-all"
                   >
                     <div className={`p-2.5 rounded-xl border shrink-0 ${b.color}`}>
                       <Icon className="w-4 h-4" />
@@ -136,7 +136,7 @@ export default function PremiumUpgradeModal({
           <div className="p-5 sm:p-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
             <button
               onClick={onClose}
-              className="w-full sm:w-auto px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 hover:text-slate-900:text-white transition-all cursor-pointer text-center"
+              className="w-full sm:w-auto px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 hover:text-slate-900 transition-all cursor-pointer text-center"
             >
               Maybe Later
             </button>

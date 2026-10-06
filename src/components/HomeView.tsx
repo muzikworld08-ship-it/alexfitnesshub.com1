@@ -2850,7 +2850,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                   className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-sans font-black text-[10px] uppercase tracking-wider transition-all duration-250 cursor-pointer border-0 ${
                     isActive 
                       ? "bg-white text-[#D32F2F] shadow-md" 
-                      : "text-slate-600 hover:text-slate-800:text-slate-200 bg-transparent"
+                      : "text-slate-600 hover:text-slate-800 bg-transparent"
                   }`}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
@@ -3306,7 +3306,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                         className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer flex items-center justify-between gap-4 ${
                           habit.done 
                             ? 'bg-emerald-500/5 border-emerald-500/20 text-slate-800' 
-                            : 'bg-slate-50 border-slate-150 text-slate-700 hover:bg-slate-100/50:bg-slate-900/50'
+                            : 'bg-slate-50 border-slate-150 text-slate-700 hover:bg-slate-100/50'
                         }`}
                       >
                         <div className="space-y-1">

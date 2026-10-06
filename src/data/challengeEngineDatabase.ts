@@ -1,5 +1,5 @@
 import { ProgramId, ProgramMetadata, ChallengeExerciseItem, DayWorkoutMeta, DayExecutionPlan } from "../types/challengeEngine";
-import { Exercise } from "./exercises";
+import { Exercise, EXERCISES } from "./exercises";
 import { buildDynamicDayPlan } from "../utils/dynamicWorkoutEngine";
 
 // Clean, empty legacy pools to eliminate all old exercises and third-party GIFs
@@ -211,15 +211,15 @@ export function normalizeProgramId(rawId: string = ""): ProgramId {
  * Retrieve active exercises from memory or local cache safely.
  */
 function getActiveExercisesFromStorage(): Exercise[] {
-  if (typeof window === "undefined" || !window.localStorage) return [];
+  if (typeof window === "undefined" || !window.localStorage) return EXERCISES;
   try {
     const raw = window.localStorage.getItem("fit_exercises");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch (e) {}
-  return [];
+  return EXERCISES;
 }
 
 function getUserProfileFromStorage(): any {
