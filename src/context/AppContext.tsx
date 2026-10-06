@@ -36,7 +36,7 @@ import {
   ProgramProgressItem
 } from "../types";
 import { calculateReadinessScore } from "../utils/readiness";
-import { EXERCISES, Exercise, getExerciseGifUrl } from "../data/exercises";
+import { EXERCISES, Exercise, getExerciseGifUrl, AUTHENTIC_STRETCH_EXERCISES } from "../data/exercises";
 import { PremiumChallenge, FLAGSHIP_CHALLENGES, getChallengeWorkouts } from "../data/challenges";
 import { isExerciseMatch } from "../utils/exerciseMatching";
 import { fetchAllExerciseMediaFromDatabase } from "../utils/mediaStorageService";
@@ -847,9 +847,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (storedExercises) {
       try {
         const parsed = JSON.parse(storedExercises) as Exercise[];
+        const baseExercisePool = [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES];
         if (Array.isArray(parsed) && parsed.length > 0) {
           const map = new Map<string, Exercise>();
-          EXERCISES.forEach(e => {
+          baseExercisePool.forEach(e => {
             if (deletedIdsSet.has(e.id)) return;
             let override = cachedOverrides[e.id];
             if (!override) {
@@ -886,7 +887,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     
     // Default base with cached overrides (excluding deleted)
-    const initialList = EXERCISES
+    const baseExercisePool = [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES];
+    const initialList = baseExercisePool
       .filter(e => !deletedIdsSet.has(e.id))
       .map(e => {
         let override = cachedOverrides[e.id];

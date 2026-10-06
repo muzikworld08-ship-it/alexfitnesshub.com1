@@ -589,9 +589,9 @@ export default function AdminWorkoutEditor() {
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
             >
               <option value="All">Audience: All ({exercises.length})</option>
-              <option value="Women">Audience: 🌸 Women / Female Only ({exercises.filter(isExplicitlyMarkedWomenWorkout).length})</option>
-              <option value="Unisex">Audience: 👥 Unisex ({exercises.filter(e => e.genderSuitability === "Unisex" || (!e.genderSuitability && !isExplicitlyMarkedWomenWorkout(e))).length})</option>
+              <option value="Unisex">Audience: 👥 Unisex ({exercises.filter(e => e.genderSuitability === "Unisex" || (!e.genderSuitability && e.genderSuitability !== "Women")).length})</option>
               <option value="Men">Audience: ⚡ Men ({exercises.filter(e => e.genderSuitability === "Men").length})</option>
+              <option value="Women">Audience: 🌸 Women ({exercises.filter(e => e.genderSuitability === "Women").length})</option>
             </select>
           </div>
 
@@ -778,10 +778,10 @@ export default function AdminWorkoutEditor() {
                         {/* Audience / Target Designation (Admin Editable) */}
                         <td className="py-3 px-4 min-w-[130px]">
                           <select
-                            value={exercise.genderSuitability || (isExplicitlyMarkedWomenWorkout(exercise) ? "Women" : "Unisex")}
+                            value={exercise.genderSuitability || "Unisex"}
                             onChange={(e) => handleSetAudience(exercise, e.target.value as any)}
                             className={`px-2.5 py-1 rounded-full border text-[10px] font-mono font-bold uppercase transition-colors cursor-pointer ${
-                              exercise.genderSuitability === "Women" || isExplicitlyMarkedWomenWorkout(exercise)
+                              exercise.genderSuitability === "Women"
                                 ? "bg-rose-50 text-rose-700 border-rose-200"
                                 : exercise.genderSuitability === "Men"
                                 ? "bg-amber-50 text-amber-700 border-amber-200"
@@ -793,6 +793,16 @@ export default function AdminWorkoutEditor() {
                             <option value="Men">⚡ Men</option>
                             <option value="Women">🌸 Women</option>
                           </select>
+                          {exercise.genderSuitability === "Women" && (
+                            <button
+                              type="button"
+                              onClick={() => handleSetAudience(exercise, "Unisex")}
+                              className="text-[9px] text-cyan-600 hover:text-cyan-800 underline block mt-1 font-medium cursor-pointer"
+                              title="Make this workout unisex"
+                            >
+                              Remove Female
+                            </button>
+                          )}
                         </td>
 
                         {/* Category & Muscle */}
@@ -1042,7 +1052,7 @@ export default function AdminWorkoutEditor() {
                           </div>
                         </div>
 
-                        {/* Target Muscles & Female Tag */}
+                        {/* Target Muscles & Audience Tag */}
                         <div className="mt-2.5 flex items-center justify-between gap-1 flex-wrap">
                           <div className="flex flex-wrap gap-1">
                             {exercise.muscleGroups?.slice(0, 2).map((m, i) => (
@@ -1052,22 +1062,34 @@ export default function AdminWorkoutEditor() {
                             ))}
                           </div>
 
-                          <select
-                            value={exercise.genderSuitability || (isExplicitlyMarkedWomenWorkout(exercise) ? "Women" : "Unisex")}
-                            onChange={(e) => handleSetAudience(exercise, e.target.value as any)}
-                            className={`px-2 py-0.5 rounded-full border text-[9px] font-mono font-bold uppercase transition-colors cursor-pointer ${
-                              exercise.genderSuitability === "Women" || isExplicitlyMarkedWomenWorkout(exercise)
-                                ? "bg-rose-50 text-rose-700 border-rose-200"
-                                : exercise.genderSuitability === "Men"
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                : "bg-slate-100 text-slate-700 border-slate-200"
-                            }`}
-                            title="Set workout target audience"
-                          >
-                            <option value="Unisex">👥 Unisex</option>
-                            <option value="Men">⚡ Men</option>
-                            <option value="Women">🌸 Women</option>
-                          </select>
+                          <div className="flex items-center gap-1">
+                            <select
+                              value={exercise.genderSuitability || "Unisex"}
+                              onChange={(e) => handleSetAudience(exercise, e.target.value as any)}
+                              className={`px-2 py-0.5 rounded-full border text-[9px] font-mono font-bold uppercase transition-colors cursor-pointer ${
+                                exercise.genderSuitability === "Women"
+                                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                                  : exercise.genderSuitability === "Men"
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : "bg-slate-100 text-slate-700 border-slate-200"
+                              }`}
+                              title="Set workout target audience"
+                            >
+                              <option value="Unisex">👥 Unisex</option>
+                              <option value="Men">⚡ Men</option>
+                              <option value="Women">🌸 Women</option>
+                            </select>
+                            {exercise.genderSuitability === "Women" && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetAudience(exercise, "Unisex")}
+                                className="text-[8px] text-cyan-600 hover:text-cyan-800 underline font-medium cursor-pointer"
+                                title="Remove female tag"
+                              >
+                                Unisex
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -1336,14 +1358,54 @@ export default function AdminWorkoutEditor() {
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-black uppercase text-slate-800">
-                    Workout Audience / Gender Suitability
+                    Workout Target Audience (Admin Controlled)
                   </label>
                   <span className="text-[10px] font-mono text-slate-500 font-bold">
-                    Designates women & female programs
+                    Defaults to Unisex / Universal
                   </span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditForm({
+                        ...editForm,
+                        genderSuitability: "Unisex",
+                        womenCategories: [],
+                        programAssignments: (editForm.programAssignments || []).filter(p => !p.toLowerCase().includes("women"))
+                      });
+                    }}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                      editForm.genderSuitability === "Unisex" || (!editForm.genderSuitability && (!editForm.womenCategories || editForm.womenCategories.length === 0))
+                        ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>👥 Unisex / All</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditForm({
+                        ...editForm,
+                        genderSuitability: "Men",
+                        womenCategories: [],
+                        programAssignments: (editForm.programAssignments || []).filter(p => !p.toLowerCase().includes("women"))
+                      });
+                    }}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                      editForm.genderSuitability === "Men"
+                        ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    <Flame className="w-3.5 h-3.5" />
+                    <span>⚡ Men Focused</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -1363,44 +1425,7 @@ export default function AdminWorkoutEditor() {
                     }`}
                   >
                     <Heart className="w-3.5 h-3.5" />
-                    <span>🌸 Women / Female</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditForm({
-                        ...editForm,
-                        genderSuitability: "Unisex"
-                      });
-                    }}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
-                      editForm.genderSuitability === "Unisex" || (!editForm.genderSuitability && (!editForm.womenCategories || editForm.womenCategories.length === 0))
-                        ? "bg-slate-900 text-white border-slate-900 shadow-xs"
-                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-                    }`}
-                  >
-                    <Users className="w-3.5 h-3.5" />
-                    <span>👥 Unisex / All</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditForm({
-                        ...editForm,
-                        genderSuitability: "Men",
-                        womenCategories: []
-                      });
-                    }}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
-                      editForm.genderSuitability === "Men"
-                        ? "bg-amber-600 text-white border-amber-600 shadow-xs"
-                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-                    }`}
-                  >
-                    <Flame className="w-3.5 h-3.5" />
-                    <span>⚡ Men Heavy</span>
+                    <span>🌸 Women Focused</span>
                   </button>
                 </div>
 
@@ -1836,14 +1861,54 @@ export default function AdminWorkoutEditor() {
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-black uppercase text-slate-800">
-                    Workout Target Audience / Gender Classification
+                    Workout Target Audience (Admin Controlled)
                   </label>
                   <span className="text-[10px] font-mono text-slate-500 font-bold">
-                    For Women's Confidence & Female Workouts
+                    Defaults to Unisex / Universal
                   </span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewWorkout({
+                        ...newWorkout,
+                        genderSuitability: "Unisex",
+                        womenCategories: [],
+                        programAssignments: (newWorkout.programAssignments || []).filter(p => !p.toLowerCase().includes("women"))
+                      });
+                    }}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                      newWorkout.genderSuitability === "Unisex" || (!newWorkout.genderSuitability && (!newWorkout.womenCategories || newWorkout.womenCategories.length === 0))
+                        ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>👥 Unisex / All</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewWorkout({
+                        ...newWorkout,
+                        genderSuitability: "Men",
+                        womenCategories: [],
+                        programAssignments: (newWorkout.programAssignments || []).filter(p => !p.toLowerCase().includes("women"))
+                      });
+                    }}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                      newWorkout.genderSuitability === "Men"
+                        ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    <Dumbbell className="w-3.5 h-3.5" />
+                    <span>💪 Men Focused</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -1863,44 +1928,7 @@ export default function AdminWorkoutEditor() {
                     }`}
                   >
                     <Heart className="w-3.5 h-3.5" />
-                    <span>🌸 Women / Female</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewWorkout({
-                        ...newWorkout,
-                        genderSuitability: "Unisex"
-                      });
-                    }}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
-                      newWorkout.genderSuitability === "Unisex" || (!newWorkout.genderSuitability && (!newWorkout.womenCategories || newWorkout.womenCategories.length === 0))
-                        ? "bg-slate-900 text-white border-slate-900 shadow-xs"
-                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-                    }`}
-                  >
-                    <Users className="w-3.5 h-3.5" />
-                    <span>👥 Unisex / All</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewWorkout({
-                        ...newWorkout,
-                        genderSuitability: "Men",
-                        womenCategories: []
-                      });
-                    }}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
-                      newWorkout.genderSuitability === "Men"
-                        ? "bg-amber-600 text-white border-amber-600 shadow-xs"
-                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-                    }`}
-                  >
-                    <Dumbbell className="w-3.5 h-3.5" />
-                    <span>💪 Men Only</span>
+                    <span>🌸 Women Focused</span>
                   </button>
                 </div>
               </div>

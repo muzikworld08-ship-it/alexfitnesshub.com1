@@ -10,7 +10,7 @@ import {
   Info, Medal, RefreshCw, Crown, Shield, Eye, Heart, Camera, 
   Download, Share2, Clipboard, ChevronDown, Check, AlertTriangle, 
   MessageSquare, UserCheck, ChevronLeft, Target, ArrowRight, ExternalLink,
-  Layers, X, ArrowRightLeft
+  Layers, X, ArrowRightLeft, Activity
 } from "lucide-react";
 import UniversalExerciseSwapperModal from "./UniversalExerciseSwapperModal";
 import { detectWorkoutType, getPreWorkoutStretchesForDay } from "../utils/dynamicWorkoutEngine";
@@ -1384,7 +1384,53 @@ export default function Premium90DayChallenge() {
                 />
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-5">
+                {/* 2 Pre-Workout Dynamic Stretches Before Daily Drills */}
+                {previewWorkoutDetail.preWorkoutStretches && previewWorkoutDetail.preWorkoutStretches.length > 0 && (
+                  <div className="p-4 rounded-2xl bg-cyan-50/70 border border-cyan-200/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-cyan-600" />
+                        <h5 className="font-black text-xs uppercase tracking-wider text-slate-900">
+                          Pre-Workout Dynamic Stretch & Mobility
+                        </h5>
+                      </div>
+                      <span className="text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-300">
+                        2 Stretches Before Workout
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {previewWorkoutDetail.preWorkoutStretches.slice(0, 2).map((st: any, idx: number) => (
+                        <div key={st.id || idx} className="bg-white border border-cyan-200 rounded-xl p-3 space-y-2 shadow-2xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-mono font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded border border-cyan-200 uppercase">
+                              Stretch 0{idx + 1} • {st.duration || "45s-60s"}
+                            </span>
+                            <span className="text-[9px] font-mono text-slate-400">
+                              {Array.isArray(st.targetMuscles) ? st.targetMuscles.slice(0, 2).join(", ") : st.targetMuscles || "Mobility"}
+                            </span>
+                          </div>
+                          <h6 className="font-bold text-xs text-slate-900 truncate">
+                            {st.exerciseName || st.name}
+                          </h6>
+                          <div className="w-full h-32 rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-100">
+                            <WorkoutVisual
+                              exerciseId={st.id}
+                              exerciseName={st.exerciseName || st.name}
+                              customMediaUrl={st.gifUrl || st.mediaUrl}
+                              isCard={true}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <p className="text-[10px] text-slate-500 line-clamp-2 leading-tight">
+                            {Array.isArray(st.instructions) ? st.instructions[0] : st.instructions || "Execute dynamic mobility flow."}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <h4 className="font-extrabold text-sm uppercase text-slate-500">
                   Day {previewDay} Exercises ({previewWorkoutDetail.exercises.length} Prescribed)
                 </h4>
