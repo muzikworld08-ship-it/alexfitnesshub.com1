@@ -429,20 +429,32 @@ const getWorkoutForWeekAndDay = (
 
   // If no override or sections need authentic exercises, dynamically pull and categorize from admin's library
   if (availableExercises && availableExercises.length > 0) {
-    const coreMatches = availableExercises.filter(e => isCoreExercise(e.name, e.category || ""));
+    // Check for exercises explicitly assigned to Belly Fat Shred by admin
+    const isAssignedToBelly = (e: Exercise) => {
+      const progs = Array.isArray(e.programAssignments) ? e.programAssignments.map(p => String(p).toLowerCase()) : [];
+      return progs.some(p => p.includes("belly") || p.includes("shred"));
+    };
+
+    const coreMatches = availableExercises.filter(e => isCoreExercise(e.name, e.category || "") || isAssignedToBelly(e));
+    // Sort explicitly assigned exercises to the front so they always appear
+    coreMatches.sort((a, b) => (isAssignedToBelly(b) ? 1 : 0) - (isAssignedToBelly(a) ? 1 : 0));
+
     const hiitMatches = availableExercises.filter(e => {
+      if (isAssignedToBelly(e)) return true;
       const c = (e.category || "").toLowerCase();
       const n = (e.name || "").toLowerCase();
       return c.includes("hiit") || c.includes("cardio") || n.includes("climber") || n.includes("burpee") || n.includes("jump") || n.includes("jack");
     });
+    hiitMatches.sort((a, b) => (isAssignedToBelly(b) ? 1 : 0) - (isAssignedToBelly(a) ? 1 : 0));
     
     // Day-specific strength matches from admin library strictly validated against split
     const strengthMatches = availableExercises.filter(e => {
       const c = (e.category || "").toLowerCase();
       const n = (e.name || "").toLowerCase();
-      if (isCoreExercise(n, c)) return false;
-      return isExerciseBelongingToSplit(e, targetMuscles, targetCategoryTitle);
+      if (isCoreExercise(n, c) && !isAssignedToBelly(e)) return false;
+      return isExerciseBelongingToSplit(e, targetMuscles, targetCategoryTitle) || isAssignedToBelly(e);
     });
+    strengthMatches.sort((a, b) => (isAssignedToBelly(b) ? 1 : 0) - (isAssignedToBelly(a) ? 1 : 0));
 
     if (coreDrills.length < 3) {
       const needed = 3 - coreDrills.length;

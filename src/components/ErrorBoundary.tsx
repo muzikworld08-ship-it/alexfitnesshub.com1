@@ -63,48 +63,19 @@ export class ErrorBoundary extends React.Component<Props, State> {
               </div>
               
               <div className="space-y-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-red-950/40 border border-red-500/20 text-red-400">
-                  <Activity className="w-3 h-3 text-[#D32F2F]" /> System Interruption
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-slate-800 border border-slate-700 text-slate-300">
+                  <Activity className="w-3 h-3 text-[#D32F2F]" /> Routine Recovery
                 </span>
                 <h1 className="text-2xl sm:text-3xl font-sans font-black uppercase tracking-tight text-white mt-1">
-                  Something <span className="text-[#D32F2F]">Went Wrong</span>
+                  Workout Temporarily Unavailable
                 </h1>
                 <p className="text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
-                  The training engine encountered an unexpected runtime exception. Don't worry—your athletic progress remains safe.
+                  Workout temporarily unavailable. Your progress is safe. Please try again.
                 </p>
               </div>
             </div>
 
-            {/* Collapsible Error Diagnosis Details */}
-            {this.state.error && (
-              <div className="border border-slate-800 bg-slate-950/60 rounded-2xl overflow-hidden transition-all duration-300">
-                <button
-                  onClick={() => this.setState((prev) => ({ showDetails: !prev }))}
-                  className="w-full flex items-center justify-between p-4 font-mono text-xs font-bold text-slate-400 hover:text-white transition-colors uppercase tracking-wider select-none"
-                >
-                  <span className="flex items-center gap-2">
-                    <ShieldAlert className="w-4 h-4 text-slate-500" />
-                    Diagnostics Report
-                  </span>
-                  <span className="text-[10px] bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-md">
-                    {this.state.showDetails ? "Hide" : "Show"}
-                  </span>
-                </button>
-
-                {this.state.showDetails && (
-                  <div className="p-4 pt-0 border-t border-slate-900 font-mono text-left text-xs text-red-400/90 space-y-3 overflow-auto max-h-60 leading-relaxed">
-                    <div className="font-bold text-slate-300 select-all p-2 rounded bg-slate-900/50">
-                      Exception: {this.state.error.toString()}
-                    </div>
-                    {this.state.errorInfo && (
-                      <pre className="text-[10px] text-slate-500 select-all overflow-x-auto whitespace-pre-wrap font-mono p-2 rounded bg-slate-950 border border-slate-900">
-                        {this.state.errorInfo.componentStack}
-                      </pre>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Technical errors are safely logged to console for admin/developer, not exposed to normal users */}
 
             {/* Quick Actions Panel */}
             <div className="grid sm:grid-cols-2 gap-4">
@@ -178,11 +149,11 @@ export class SectionErrorBoundary extends React.Component<SectionErrorBoundaryPr
             <AlertTriangle className="w-6 h-6" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
-              {this.props.fallbackTitle || "Training Module Temporarily Interrupted"}
+            <h3 className="text-base font-black text-slate-900 tracking-tight">
+              {this.props.fallbackTitle || "Workout Temporarily Unavailable"}
             </h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-              We encountered an issue loading this workout routine module. Your saved data, workouts, and athlete account are completely intact.
+              Workout temporarily unavailable. Your progress is safe. Please try again.
             </p>
           </div>
           <div className="flex items-center justify-center gap-3 pt-2">

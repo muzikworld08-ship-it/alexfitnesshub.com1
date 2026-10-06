@@ -767,6 +767,24 @@ export const PROGRAM_SPLIT_DEFINITIONS: Record<string, (cycleDay: number) => Spl
 };
 
 /**
+ * Checks whether an exercise is explicitly assigned to a program by the admin.
+ */
+export function isExerciseAssignedToProgram(ex: Exercise, programId: string): boolean {
+  if (!ex || !Array.isArray(ex.programAssignments) || ex.programAssignments.length === 0) return false;
+  const pId = (programId || "").toLowerCase();
+  return ex.programAssignments.some(p => {
+    const pl = String(p).toLowerCase();
+    if ((pId.includes("immortal") || pId === "90_day_immortal") && (pl.includes("immortal") || pl.includes("90 day"))) return true;
+    if ((pId.includes("belly") || pId.includes("shred")) && (pl.includes("belly") || pl.includes("shred"))) return true;
+    if ((pId.includes("home") || pId === "home_180" || pId.includes("180_day")) && (pl.includes("home") || pl.includes("180 day home"))) return true;
+    if (pId.includes("women") && pl.includes("women")) return true;
+    if (pId.includes("posture") && (pl.includes("posture") || pl.includes("vitality"))) return true;
+    if (pId.includes("lifestyle") && (pl.includes("lifestyle") || pl.includes("posture"))) return true;
+    return false;
+  });
+}
+
+/**
  * Universal dynamic workout resolver.
  * Gathers exercises from the active library, tunes them according to user's onboarding credentials,
  * integrates user's abs workout preferences (dedicated abs day, cardio+abs, or leg day+abs),
@@ -865,8 +883,33 @@ export function buildDynamicDayPlan(
     setsMultiplier = Math.max(setsMultiplier, 4);
   }
 
-  // 4. Match exercises to split
-  let matchedExercises = filterExercisesForSplit(eligibleExercises, splitDef.targetMuscles, { requireHomeOnly: isHomeProgram });
+  // 4. Match exercises to split, prioritizing exercises explicitly assigned by the admin to this program
+  const matchedSplitExercises = filterExercisesForSplit(eligibleExercises, splitDef.targetMuscles, { requireHomeOnly: isHomeProgram });
+
+  // Prioritize exercises that admin explicitly assigned to this program:
+  const explicitlyAssigned = eligibleExercises.filter(ex =>
+    isExerciseAssignedToProgram(ex, programId) && (matchesTargetCategories(ex, splitDef.targetMuscles) || (isHomeProgram ? isHomeEligibleExercise(ex) : true))
+  );
+
+  // Merge explicitly assigned exercises first, then remaining split matches without duplicates
+  const seenIds = new Set<string>();
+  const combinedExercises: Exercise[] = [];
+
+  for (const ex of explicitlyAssigned) {
+    if (!seenIds.has(ex.id)) {
+      seenIds.add(ex.id);
+      combinedExercises.push(ex);
+    }
+  }
+
+  for (const ex of matchedSplitExercises) {
+    if (!seenIds.has(ex.id)) {
+      seenIds.add(ex.id);
+      combinedExercises.push(ex);
+    }
+  }
+
+  let matchedExercises = combinedExercises;
   if (matchedExercises.length === 0) {
     matchedExercises = filterExercisesForSplit(EXERCISES, splitDef.targetMuscles, { requireHomeOnly: false });
   }

@@ -59,10 +59,11 @@ const WOMEN_CATEGORY_OPTIONS = [
 ];
 
 const PROGRAM_OPTIONS = [
-  "Women Confidence Program (180 Days)",
   "90 Days Immortal Challenge",
+  "Women Confidence Program (180 Days)",
   "5-Month Belly Fat Shred System",
   "180 Day Home Workout Challenge",
+  "Posture Correction Challenge",
   "Gym Workout Programs",
   "Women’s Workout Programs",
   "Home Workout Programs",
@@ -76,6 +77,7 @@ export default function AdminWorkoutEditor() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedDifficulty, setSelectedDifficulty] = useState("All");
+  const [selectedProgram, setSelectedProgram] = useState("All");
   const [premiumFilter, setPremiumFilter] = useState<"All" | "Premium" | "Free">("All");
   const [audienceFilter, setAudienceFilter] = useState<"All" | "Women" | "Unisex" | "Men">("All");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
@@ -302,7 +304,11 @@ export default function AdminWorkoutEditor() {
         (audienceFilter === "Unisex" && (ex.genderSuitability === "Unisex" || (!ex.genderSuitability && !isWomen))) ||
         (audienceFilter === "Men" && ex.genderSuitability === "Men");
 
-      return matchesSearch && matchesCat && matchesDiff && matchesPrem && matchesAudience;
+      const matchesProgram = selectedProgram === "All" || (
+        ex.programAssignments && ex.programAssignments.some(p => p.toLowerCase().includes(selectedProgram.toLowerCase()))
+      );
+
+      return matchesSearch && matchesCat && matchesDiff && matchesPrem && matchesAudience && matchesProgram;
     });
 
     return list.sort((a, b) => {
@@ -320,7 +326,7 @@ export default function AdminWorkoutEditor() {
       }
       return sortOrder === "asc" ? comparison : -comparison;
     });
-  }, [exercises, searchQuery, selectedCategory, selectedDifficulty, premiumFilter, audienceFilter, sortBy, sortOrder]);
+  }, [exercises, searchQuery, selectedCategory, selectedDifficulty, selectedProgram, premiumFilter, audienceFilter, sortBy, sortOrder]);
 
   // Open Edit Modal
   const handleOpenEdit = (ex: Exercise) => {
@@ -586,8 +592,22 @@ export default function AdminWorkoutEditor() {
             />
           </div>
 
+          {/* Program Assignment Filter */}
+          <div className="lg:col-span-2">
+            <select
+              value={selectedProgram}
+              onChange={(e) => setSelectedProgram(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
+            >
+              <option value="All">Program: All Programs</option>
+              {PROGRAM_OPTIONS.map(p => (
+                <option key={p} value={p}>Program: {p}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Category Filter */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-2">
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
@@ -614,14 +634,14 @@ export default function AdminWorkoutEditor() {
           </div>
 
           {/* Difficulty Filter */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-1">
             <select
               value={selectedDifficulty}
               onChange={(e) => setSelectedDifficulty(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
             >
               {DIFFICULTIES.map(diff => (
-                <option key={diff} value={diff}>Difficulty: {diff}</option>
+                <option key={diff} value={diff}>{diff}</option>
               ))}
             </select>
           </div>
@@ -633,9 +653,9 @@ export default function AdminWorkoutEditor() {
               onChange={(e) => setPremiumFilter(e.target.value as any)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
             >
-              <option value="All">Tier: All Workouts ({exercises.length})</option>
-              <option value="Premium">Tier: Premium Only ({exercises.filter(e => e.isPremium).length})</option>
-              <option value="Free">Tier: Free Workouts ({exercises.filter(e => !e.isPremium).length})</option>
+              <option value="All">Tier: All</option>
+              <option value="Premium">Tier: Premium ({exercises.filter(e => e.isPremium).length})</option>
+              <option value="Free">Tier: Free ({exercises.filter(e => !e.isPremium).length})</option>
             </select>
           </div>
 
@@ -823,14 +843,26 @@ export default function AdminWorkoutEditor() {
                           )}
                         </td>
 
-                        {/* Category & Muscle */}
-                        <td className="py-3 px-4 min-w-[150px]">
+                        {/* Category & Muscle & Program Assignments */}
+                        <td className="py-3 px-4 min-w-[160px]">
                           <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px]">
                             {exercise.category}
                           </span>
                           <div className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
                             {exercise.muscleGroups?.slice(0, 2).join(", ") || exercise.bodyPart || "Core"}
                           </div>
+                          {exercise.programAssignments && exercise.programAssignments.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {exercise.programAssignments.slice(0, 2).map((prog, pIdx) => (
+                                <span key={pIdx} className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-red-50 text-red-700 border border-red-200 truncate max-w-[140px]" title={prog}>
+                                  {prog}
+                                </span>
+                              ))}
+                              {exercise.programAssignments.length > 2 && (
+                                <span className="text-[9px] font-mono text-slate-400">+{exercise.programAssignments.length - 2}</span>
+                              )}
+                            </div>
+                          )}
                         </td>
 
                         {/* Prescription (Sets × Reps) */}
