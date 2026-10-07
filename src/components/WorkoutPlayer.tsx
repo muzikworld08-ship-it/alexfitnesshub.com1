@@ -48,7 +48,7 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
           name: `[Warm-up Stretch] ${st.name}`,
           category: "Stretching & Mobility",
           categories: ["Stretching & Mobility", "Mobility & Recovery"],
-          muscleGroups: st.muscleGroup || ["Mobility"],
+          muscleGroups: st.muscleGroups || (st as any).muscleGroup || ["Mobility"],
           difficulty: "Beginner",
           instructions: st.instructions || ["Dynamic stretch warmup: execute with controlled tempo."],
           equipment: st.equipment || ["Bodyweight"],
@@ -61,12 +61,12 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
           movementExecution: "Slow, rhythmic diaphragmatic breathing.",
           finishingPosition: "",
           regressionVariations: [],
-          musclesWorked: st.muscleGroup || ["Mobility"],
+          musclesWorked: st.muscleGroups || (st as any).muscleGroup || ["Mobility"],
           gifUrl: st.gifUrl || "",
           customMediaUrl: st.customMediaUrl || st.gifUrl || "",
           duration: st.duration || "45s Continuous",
           recommendedSets: "1",
-          recommendedReps: st.reps || "45s Hold"
+          recommendedReps: (st as any).reps || "45s Hold"
         });
       }
     }

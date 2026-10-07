@@ -4,7 +4,7 @@ import {
   Users, Sparkles, Dumbbell, ShieldCheck, UserCheck, Trash2, ArrowUpDown, Key, ToggleLeft, ToggleRight,
   Check, Copy, Link, Cpu, Globe, Activity, ChevronRight, AlertTriangle, Terminal, Settings, CreditCard, RefreshCw,
   Upload, Image as ImageIcon, Video, Search, Filter, Play, RotateCcw, CheckCircle2, Trophy, Layers, Edit3,
-  SlidersHorizontal, CheckSquare, Eye, ExternalLink, ShoppingBag, Calendar, FileText,
+  SlidersHorizontal, CheckSquare, Eye, ExternalLink, ShoppingBag, Calendar, FileText, MessageSquareQuote,
   LayoutDashboard, Menu, X, PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
 import { TestimonialAdminManager } from "./TestimonialAdminManager";
@@ -38,7 +38,7 @@ export default function AdminDashboard() {
   
   const [userQuery, setUserQuery] = useState("");
   const [exerciseQuery, setExerciseQuery] = useState("");
-  const [activeAdminTab, setActiveAdminTab] = useState<"overview" | "workouts" | "challenges" | "engine" | "media" | "directory" | "store" | "paystack" | "printable-pdfs">("overview");
+  const [activeAdminTab, setActiveAdminTab] = useState<"overview" | "workouts" | "challenges" | "engine" | "media" | "directory" | "store" | "paystack" | "printable-pdfs" | "testimonials">("overview");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -337,11 +337,12 @@ export default function AdminDashboard() {
     { id: "directory" as const, label: "Athletes Directory", icon: Users, badge: `${totalUsers}` },
     { id: "store" as const, label: "Store & Merch", icon: ShoppingBag },
     { id: "printable-pdfs" as const, label: "Printable PDFs", icon: FileText },
+    { id: "testimonials" as const, label: "Reviews & Popups", icon: MessageSquareQuote, badge: "Live Hub" },
     { id: "paystack" as const, label: "Paystack Gateway", icon: CreditCard, badge: paystackStatus?.isLive ? "Live" : "Active" },
   ];
 
   return (
-    <div id="admin_dashboard_root" className="w-full min-h-screen bg-slate-50 text-slate-900 flex overflow-x-hidden">
+    <div id="admin_dashboard_root" className="w-full min-h-screen bg-slate-50 text-slate-900 flex flex-col md:flex-row overflow-x-hidden">
       
       {/* =========================================================================
           DESKTOP FIXED/STABLE SIDEBAR (COLLAPSIBLE)
@@ -568,6 +569,13 @@ export default function AdminDashboard() {
           {activeAdminTab === "printable-pdfs" && (
             <div className="space-y-6 animate-fade-in">
               <AdminPdfManager />
+            </div>
+          )}
+
+          {/* VIEW: CUSTOMER REVIEWS & POPUP TESTIMONIALS */}
+          {activeAdminTab === "testimonials" && (
+            <div className="space-y-6 animate-fade-in">
+              <TestimonialAdminManager />
             </div>
           )}
 
@@ -1434,9 +1442,6 @@ export default function AdminDashboard() {
 
         </main>
       </div>
-
-      {/* Testimonials popup and scheduling management hub */}
-      <TestimonialAdminManager />
 
     </div>
   );

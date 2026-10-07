@@ -195,7 +195,7 @@ export const TestimonialAdminManager: React.FC = () => {
   });
 
   return (
-    <div id="testimonial-manager" className="bg-white p-6 rounded-3xl border border-slate-200 space-y-6">
+    <div id="testimonial-manager" className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 space-y-6 w-full max-w-full overflow-hidden">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
@@ -209,10 +209,10 @@ export const TestimonialAdminManager: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <button
             onClick={handleBulkReseed}
-            className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 text-xs font-semibold rounded-xl transition cursor-pointer"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 text-xs font-semibold rounded-xl transition cursor-pointer"
             title="Bulk reseed standard 30 reviews to the database"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -221,7 +221,7 @@ export const TestimonialAdminManager: React.FC = () => {
 
           <button
             onClick={handleOpenAdd}
-            className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-sm transition cursor-pointer"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-xs transition cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Add Testimonial
@@ -256,7 +256,7 @@ export const TestimonialAdminManager: React.FC = () => {
           />
         </div>
 
-        <div className="sm:col-span-4 flex justify-between sm:justify-end gap-4 text-xs font-mono font-bold text-slate-500">
+        <div className="sm:col-span-4 flex flex-wrap justify-between sm:justify-end gap-2 sm:gap-4 text-xs font-mono font-bold text-slate-500">
           <span>Total: {popupTestimonials.length}</span>
           <span>Enabled: {popupTestimonials.filter(t => t.status === "enabled").length}</span>
           <span>Disabled: {popupTestimonials.filter(t => t.status === "disabled").length}</span>

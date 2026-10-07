@@ -237,11 +237,14 @@ export function getWorkoutForProgramAndDay(
   programId: string,
   dayNumber: number,
   customExercisesListOrTarget?: Exercise[] | string,
-  track?: "men" | "women"
+  trackOrUser?: "men" | "women" | any
 ): DayExecutionPlan {
   const normId = normalizeProgramId(programId);
   const safeDay = Math.max(1, Number(dayNumber) || 1);
   const cycleDay = ((safeDay - 1) % 7) + 1;
+  const track = typeof trackOrUser === "string"
+    ? (trackOrUser.toLowerCase().includes("women") || trackOrUser.toLowerCase().includes("female") ? "women" : "men")
+    : (trackOrUser?.gender?.toLowerCase() === "female" ? "women" : undefined);
 
   // 1. Check admin schedule overrides in localStorage
   if (typeof window !== "undefined" && window.localStorage) {

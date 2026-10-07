@@ -13,7 +13,7 @@ interface AdminOverviewTabProps {
   allSystemUsers: UserProfile[];
   allChallenges: any[];
   paystackStatus: any;
-  onNavigateTab: (tab: "workouts" | "challenges" | "engine" | "media" | "directory" | "store" | "paystack" | "printable-pdfs", filterProgram?: string) => void;
+  onNavigateTab: (tab: "workouts" | "challenges" | "engine" | "media" | "directory" | "store" | "paystack" | "printable-pdfs" | "testimonials", filterProgram?: string) => void;
   onRefreshGateway: () => void;
 }
 

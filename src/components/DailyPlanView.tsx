@@ -741,24 +741,26 @@ export default function DailyPlanView() {
                       </p>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {dailyStretches.map((st, idx) => (
+                        {dailyStretches.map((st, idx) => {
+                          const item = st as any;
+                          return (
                           <div key={st.id || idx} className="bg-white border border-cyan-200 rounded-xl p-3 space-y-2 shadow-2xs">
                             <div className="flex items-center justify-between">
                               <span className="text-[9px] font-mono font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded border border-cyan-200 uppercase">
                                 Stretch 0{idx + 1} &bull; {st.duration || "45s-60s"}
                               </span>
                               <span className="text-[9px] font-mono text-slate-400">
-                                {Array.isArray(st.targetMuscles) ? st.targetMuscles.slice(0, 2).join(", ") : "Mobility"}
+                                {Array.isArray(st.muscleGroups) ? st.muscleGroups.slice(0, 2).join(", ") : Array.isArray(item.targetMuscles) ? item.targetMuscles.slice(0, 2).join(", ") : "Mobility"}
                               </span>
                             </div>
                             <h5 className="font-bold text-xs text-slate-900 truncate">
-                              {st.exerciseName || st.name}
+                              {item.exerciseName || st.name}
                             </h5>
                             <div className="w-full h-36 rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-100">
                               <WorkoutVisual
                                 exerciseId={st.id}
-                                exerciseName={st.exerciseName || st.name}
-                                customMediaUrl={st.gifUrl || st.mediaUrl}
+                                exerciseName={item.exerciseName || st.name}
+                                customMediaUrl={st.customMediaUrl || st.gifUrl || item.mediaUrl}
                                 isCard={true}
                                 className="w-full h-full object-cover"
                               />
@@ -767,7 +769,7 @@ export default function DailyPlanView() {
                               {Array.isArray(st.instructions) ? st.instructions[0] : st.instructions}
                             </p>
                           </div>
-                        ))}
+                        );})}
                       </div>
                     </div>
                   );

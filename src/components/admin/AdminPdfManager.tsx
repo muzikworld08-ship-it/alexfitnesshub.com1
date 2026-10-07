@@ -304,11 +304,11 @@ export const AdminPdfManager: React.FC = () => {
   }, [orders, orderSearch, orderStatusFilter]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full">
       {/* Top Banner & Stats */}
-      <div className="p-6 bg-white border border-slate-200 rounded-3xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
+      <div className="p-4 sm:p-6 bg-white border border-slate-200 rounded-3xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4 w-full">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 text-[10px] font-mono font-black uppercase px-2.5 py-1 rounded-full border border-red-200">
               <FileText className="w-3.5 h-3.5 text-red-600" />
               Digital Goods Control
@@ -325,17 +325,17 @@ export const AdminPdfManager: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 shrink-0 w-full sm:w-auto justify-between sm:justify-start">
           <button
             onClick={openAddModal}
-            className="py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-xs hover:shadow-md cursor-pointer flex items-center gap-1.5 shrink-0"
+            className="flex-1 sm:flex-initial py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-xs hover:shadow-md cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Add PDF Product</span>
           </button>
           <button
             onClick={loadData}
-            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors cursor-pointer"
+            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors cursor-pointer shrink-0"
             title="Refresh Data"
           >
             <RefreshCw className="w-4 h-4" />
@@ -344,42 +344,42 @@ export const AdminPdfManager: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
-        <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs">
-          <span className="text-[10px] font-mono uppercase font-bold text-slate-400 block">Total Revenue</span>
-          <p className="text-xl sm:text-2xl font-black text-emerald-600 mt-1">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full">
+        <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs min-w-0">
+          <span className="text-[10px] font-mono uppercase font-bold text-slate-400 block truncate">Total Revenue</span>
+          <p className="text-lg sm:text-2xl font-black text-emerald-600 mt-1 truncate">
             ₦{totalRevenue.toLocaleString()}
           </p>
-          <span className="text-[10px] text-slate-500 font-mono">From paid PDF orders</span>
+          <span className="text-[10px] text-slate-500 font-mono block truncate">From paid PDF orders</span>
         </div>
 
-        <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs">
-          <span className="text-[10px] font-mono uppercase font-bold text-slate-400 block">Active Products</span>
-          <p className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
+        <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs min-w-0">
+          <span className="text-[10px] font-mono uppercase font-bold text-slate-400 block truncate">Active Products</span>
+          <p className="text-lg sm:text-2xl font-black text-slate-900 mt-1 truncate">
             {products.filter((p) => p.isActive).length} / {products.length}
           </p>
-          <span className="text-[10px] text-slate-500 font-mono">Catalog editions</span>
+          <span className="text-[10px] text-slate-500 font-mono block truncate">Catalog editions</span>
         </div>
 
-        <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs">
-          <span className="text-[10px] font-mono uppercase font-bold text-slate-400 block">Paid Orders</span>
-          <p className="text-xl sm:text-2xl font-black text-blue-600 mt-1">
+        <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs min-w-0">
+          <span className="text-[10px] font-mono uppercase font-bold text-slate-400 block truncate">Paid Orders</span>
+          <p className="text-lg sm:text-2xl font-black text-blue-600 mt-1 truncate">
             {paidOrdersCount}
           </p>
-          <span className="text-[10px] text-slate-500 font-mono">Confirmed transactions</span>
+          <span className="text-[10px] text-slate-500 font-mono block truncate">Confirmed transactions</span>
         </div>
 
-        <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs">
-          <span className="text-[10px] font-mono uppercase font-bold text-slate-400 block">Total Downloads</span>
-          <p className="text-xl sm:text-2xl font-black text-purple-600 mt-1">
+        <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs min-w-0">
+          <span className="text-[10px] font-mono uppercase font-bold text-slate-400 block truncate">Total Downloads</span>
+          <p className="text-lg sm:text-2xl font-black text-purple-600 mt-1 truncate">
             {totalDownloads}
           </p>
-          <span className="text-[10px] text-slate-500 font-mono">Secure PDF requests</span>
+          <span className="text-[10px] text-slate-500 font-mono block truncate">Secure PDF requests</span>
         </div>
       </div>
 
       {/* Sub-tab Navigation */}
-      <div className="flex border-b border-slate-200 gap-6">
+      <div className="flex border-b border-slate-200 gap-4 sm:gap-6 overflow-x-auto scrollbar-none">
         <button
           onClick={() => setActiveSubTab("products")}
           className={`pb-3 text-xs font-black uppercase tracking-wider transition-all cursor-pointer border-b-2 flex items-center gap-2 ${

@@ -893,3 +893,30 @@ export function resetAndCleanAllProgramSplits(
     }
   };
 }
+
+/**
+ * Retrieve targeted dynamic warm-up / pre-workout mobility stretches for a workout day.
+ */
+export function getPreWorkoutStretchesForDay(
+  targets: string[] = [], 
+  exercises: Exercise[] = [], 
+  limit: number = 2
+): Exercise[] {
+  if (!exercises || exercises.length === 0) return [];
+  
+  const stretchingPool = exercises.filter(e => {
+    const cat = (e.category || "").toLowerCase();
+    const name = (e.name || "").toLowerCase();
+    return (
+      cat.includes("stretch") || 
+      cat.includes("warm") || 
+      cat.includes("mobility") || 
+      name.includes("stretch") || 
+      name.includes("mobility")
+    );
+  });
+
+  const matched = stretchingPool.filter(e => matchesTargetCategories(e, targets));
+  const pool = matched.length >= limit ? matched : (stretchingPool.length > 0 ? stretchingPool : exercises);
+  return pool.slice(0, limit);
+}
