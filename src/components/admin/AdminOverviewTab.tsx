@@ -5,7 +5,7 @@ import {
   Clock, Zap, CheckCircle, Database, Server, HardDrive, Play, Eye, SlidersHorizontal,
   Calendar, Layers, AlertCircle
 } from "lucide-react";
-import { UserProfile } from "../../context/AppContext";
+import { UserProfile } from "../../types";
 import { Exercise } from "../../data/exercises";
 
 interface AdminOverviewTabProps {
@@ -120,7 +120,7 @@ export default function AdminOverviewTab({
 
     const homeWorkouts = exercises.filter(e => {
       const p = (e.programAssignments || []).map(x => x.toLowerCase());
-      const loc = (e.location || "").toLowerCase();
+      const loc = ((e as any).location || e.locationSuitability || "").toLowerCase();
       return p.some(x => x.includes("home")) || loc === "home" || (e.equipment && e.equipment.includes("Bodyweight"));
     }).length || 72;
 

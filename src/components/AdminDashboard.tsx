@@ -439,12 +439,12 @@ export default function AdminDashboard() {
           MOBILE SLIDE-OVER DRAWER
           ========================================================================= */}
       {mobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex">
+        <div className="fixed inset-0 z-[70] md:hidden flex">
           <div 
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
             onClick={() => setMobileSidebarOpen(false)}
           />
-          <div className="relative w-72 max-w-[80vw] bg-white h-full shadow-2xl flex flex-col z-50">
+          <div className="relative w-72 max-w-[80vw] bg-white h-full shadow-2xl flex flex-col z-[70]">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-red-600" />
@@ -519,6 +519,17 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("fit-navigate-view", { detail: "home" }));
+              }}
+              className="p-2 sm:px-3 sm:py-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-xs font-bold text-slate-700 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              title="Return to Public Hub & Workouts"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+              <span className="hidden sm:inline">Public Hub</span>
+            </button>
+
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-slate-800 font-bold truncate max-w-[200px]">{user?.email || "alexfitnesshub@gmail.com"}</span>
@@ -537,7 +548,7 @@ export default function AdminDashboard() {
         </header>
 
         {/* RESPONSIVE MAIN BODY */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] w-full mx-auto">
 
           {/* VIEW: OVERVIEW CONTROL DESK */}
           {activeAdminTab === "overview" && (

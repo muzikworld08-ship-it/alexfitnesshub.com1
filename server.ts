@@ -4182,10 +4182,6 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
       }
     }
 
-    if (!allOverrides[programId]) {
-      allOverrides[programId] = {};
-    }
-
     const maxDays = Number(totalDays) || 90;
     const computedCycleDay = Number(cycleDay) || (((Number(dayNumber) - 1) % 7) + 1);
 
@@ -4195,28 +4191,41 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
       updatedBy: req.user?.email || "admin"
     };
 
-    if (dayNumber) {
-      allOverrides[programId][String(dayNumber)] = {
-        ...baseRecord,
-        dayNumber: Number(dayNumber)
-      };
+    const programKeysToUpdate = [programId];
+    if (req.body.targetProgramKey && req.body.targetProgramKey !== programId) {
+      programKeysToUpdate.push(req.body.targetProgramKey);
+    } else if (req.body.track) {
+      programKeysToUpdate.push(`${programId}_${req.body.track}`);
     }
 
-    // Always update cycle key so new/future days also adopt this 7-day template
-    if (computedCycleDay) {
-      allOverrides[programId][`cycle_${computedCycleDay}`] = {
-        ...baseRecord,
-        cycleDay: computedCycleDay
-      };
-    }
+    for (const progKey of programKeysToUpdate) {
+      if (!allOverrides[progKey]) {
+        allOverrides[progKey] = {};
+      }
 
-    // If applyToAllCycleWeeks is requested, replicate to all recurring days across the entire program (Days 1, 8, 15... up to maxDays)
-    if (applyToAllCycleWeeks && computedCycleDay) {
-      for (let d = computedCycleDay; d <= maxDays; d += 7) {
-        allOverrides[programId][String(d)] = {
+      if (dayNumber) {
+        allOverrides[progKey][String(dayNumber)] = {
           ...baseRecord,
-          dayNumber: d
+          dayNumber: Number(dayNumber)
         };
+      }
+
+      // Always update cycle key so new/future days also adopt this 7-day template
+      if (computedCycleDay) {
+        allOverrides[progKey][`cycle_${computedCycleDay}`] = {
+          ...baseRecord,
+          cycleDay: computedCycleDay
+        };
+      }
+
+      // If applyToAllCycleWeeks is requested, replicate to all recurring days across the entire program (Days 1, 8, 15... up to maxDays)
+      if (applyToAllCycleWeeks && computedCycleDay) {
+        for (let d = computedCycleDay; d <= maxDays; d += 7) {
+          allOverrides[progKey][String(d)] = {
+            ...baseRecord,
+            dayNumber: d
+          };
+        }
       }
     }
 

@@ -1,5 +1,5 @@
 import { ProgramId, ProgramMetadata, ChallengeExerciseItem, DayWorkoutMeta, DayExecutionPlan } from "../types/challengeEngine";
-import { Exercise, EXERCISES } from "./exercises";
+import { Exercise } from "./exercises";
 import { buildDynamicDayPlan } from "../utils/dynamicWorkoutEngine";
 
 // Clean, empty legacy pools to eliminate all old exercises and third-party GIFs
@@ -44,76 +44,80 @@ export const IMMORTAL_LEGS_SHOULDERS_ABS: ChallengeExerciseItem[] = [];
 export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
   immortal_90: {
     id: "immortal_90",
-    name: "Immortal 90 Day Challenge",
-    tagline: "The 7-Day Science-Based Muscle Split with Progressive Overload",
+    name: "90 Immortal Challenge",
+    tagline: "Target: Men • Continuous 7-Day Push/Pull/Legs/Upper/Athletic Split",
     totalDays: 90,
-    description: "The premier 90-day hypertrophy and athletic conditioning cycle. Built upon a strict 7-day rolling cadence alternating targeted muscle groups with dedicated 5-10 KM cardio pacing and rest.",
+    description: "Designed specifically for men. Strict 7-day cyclical split repeating continuously across all 90 days: Monday: Push (Chest, shoulders and triceps), Tuesday: Pull (Back, rear delts and biceps), Wednesday: Legs + Core (Quads, hamstrings, glutes, calves and abs), Thursday: Cardio + Mobility (Running, conditioning and mobility), Friday: Upper Body (Chest, back, shoulders and arms), Saturday: Athletic Conditioning + Core (Functional movements, conditioning and abdominal work), Sunday: Recovery.",
     accentColor: "from-amber-500 to-red-600",
-    badge: "Flagship 90 Days",
+    badge: "Immortal 90 Men",
     categories: [
-      "Chest and Triceps",
-      "Back and Biceps",
-      "Cardio and Mobility",
-      "Legs and Shoulders",
-      "Chest, Triceps and Forearms",
-      "Back, Biceps and Core",
-      "Rest and Recovery"
+      "Monday: Push",
+      "Tuesday: Pull",
+      "Wednesday: Legs + Core",
+      "Thursday: Cardio + Mobility",
+      "Friday: Upper Body",
+      "Saturday: Athletic Conditioning + Core",
+      "Sunday: Recovery"
     ],
     equipmentRequired: ["Barbell", "Dumbbells", "Cable Machine", "Bench", "Pull-up Bar"],
     coverImage: ""
   },
   home_180: {
     id: "home_180",
-    name: "180 Day Home Workout Challenge",
-    tagline: "Zero & Minimal Equipment Bodyweight & Calisthenics Mastery",
+    name: "180 Days Home Workout",
+    tagline: "Target: Men & Women • Separate Progressive Tracks",
     totalDays: 180,
-    description: "180 days of progressive home-compatible training. Features calisthenics, core armor, mobility flows, and cardiovascular conditioning that can be executed anywhere.",
+    description: "180 days of progressive home-compatible training with dedicated separate workout tracks for Men and Women. Zero and minimal equipment calisthenics, glute shaping, and core armor repeating continuously.",
     accentColor: "from-emerald-500 to-teal-700",
     badge: "180 Days Home",
     categories: [
-      "Upper body",
-      "Chest",
-      "Back",
-      "Legs",
-      "Core",
-      "Cardio",
-      "Full Body"
+      "Upper Body Push",
+      "Core & Abs",
+      "Lower Body & Legs",
+      "Cardio & Mobility",
+      "Upper Body Pull",
+      "Athletic Conditioning",
+      "Recovery"
     ],
-    equipmentRequired: ["Bodyweight", "Optional Resistance Bands", "Pull-up Bar"],
+    equipmentRequired: ["Bodyweight", "Optional Resistance Bands", "Pull-up Bar", "Mat"],
     coverImage: ""
   },
   belly_fat_shred: {
     id: "belly_fat_shred",
-    name: "5-Month Belly Fat Shred System",
-    tagline: "Visceral Fat Oxidation, Transverse Abdominis & Metabolic Conditioning",
+    name: "Belly Fat Shred",
+    tagline: "Target: Men & Women • Visceral Oxidation & Full Body Taper",
     totalDays: 140,
-    description: "20 weeks of visceral fat mobilization. Combines deep core vacuum contractions, high-velocity intervals, and compound density routines.",
+    description: "Target: Men and Women. Continuous 7-day repeating split: Monday: Full Body + Core, Tuesday: Cardio + Abs, Wednesday: Full Body Strength, Thursday: Cardio + Core, Friday: Full Body Conditioning, Saturday: Walking + Mobility, Sunday: Recovery.",
     accentColor: "from-rose-500 to-red-700",
     badge: "Belly Fat Shred",
     categories: [
-      "Core",
-      "Cardio",
-      "HIIT",
-      "Conditioning",
-      "Compound"
+      "Monday: Full Body + Core",
+      "Tuesday: Cardio + Abs",
+      "Wednesday: Full Body Strength",
+      "Thursday: Cardio + Core",
+      "Friday: Full Body Conditioning",
+      "Saturday: Walking + Mobility",
+      "Sunday: Recovery"
     ],
     equipmentRequired: ["Dumbbells", "Jump Rope", "Bodyweight", "Mat"],
     coverImage: ""
   },
   posture_vitality: {
     id: "posture_vitality",
-    name: "Reclaim Your Posture & Vitality",
-    tagline: "Sedentary Reversal, Spinal Decompression & Joint Longevity",
+    name: "Posture Correction Challenge",
+    tagline: "Target: Men & Women • Continuous 7-Day Spinal Alignment",
     totalDays: 60,
-    description: "60 days of posture correction and spinal renewal. Restores anterior shoulder rounding, hip flexor tightness, and posterior chain integrity.",
+    description: "Target: Men and Women. Continuous 7-day repeating split: Monday: Upper Back + Shoulder Mobility, Tuesday: Core Stability + Hip Mobility, Wednesday: Full Body Posture Training, Thursday: Recovery Mobility, Friday: Upper Back + Core, Saturday: Full Body Mobility + Stability, Sunday: Recovery.",
     accentColor: "from-cyan-500 to-blue-700",
-    badge: "Posture Vitality",
+    badge: "Posture Correction",
     categories: [
-      "Posture Correction",
-      "Chest Opening",
-      "Spinal Mobility",
-      "Glute Activation",
-      "Daily Movement"
+      "Monday: Upper Back + Shoulder Mobility",
+      "Tuesday: Core Stability + Hip Mobility",
+      "Wednesday: Full Body Posture Training",
+      "Thursday: Recovery Mobility",
+      "Friday: Upper Back + Core",
+      "Saturday: Full Body Mobility + Stability",
+      "Sunday: Recovery"
     ],
     equipmentRequired: ["Yoga Mat", "Foam Roller", "Resistance Band", "Bodyweight"],
     coverImage: ""
@@ -156,18 +160,20 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
   },
   women_confidence: {
     id: "women_confidence",
-    name: "Women Confidence Program",
-    tagline: "180-Day Glute Shaping, Lean Core & Athletic Poise",
+    name: "180 Women Confidence Challenge",
+    tagline: "Target: Women • Continuous 7-Day Glute Shaping & Athletic Poise",
     totalDays: 180,
-    description: "A tailored 180-day transformation focused on glute development, core tightening, posture, and empowered athletic confidence.",
+    description: "Target: Women. Continuous 7-day split repeating across 180 days: Monday: Glutes + Hamstrings, Tuesday: Upper Body + Core, Wednesday: Quads + Glutes, Thursday: Cardio + Core + Mobility, Friday: Glutes + Full Lower Body, Saturday: Full Body Conditioning, Sunday: Recovery.",
     accentColor: "from-pink-500 to-rose-600",
     badge: "Women Confidence",
     categories: [
-      "Glutes",
-      "Upper Body",
-      "Core",
-      "Full Body",
-      "Active Reset"
+      "Monday: Glutes + Hamstrings",
+      "Tuesday: Upper Body + Core",
+      "Wednesday: Quads + Glutes",
+      "Thursday: Cardio + Core + Mobility",
+      "Friday: Glutes + Full Lower Body",
+      "Saturday: Full Body Conditioning",
+      "Sunday: Recovery"
     ],
     equipmentRequired: ["Dumbbells", "Resistance Bands", "Yoga Mat"],
     coverImage: ""
@@ -211,55 +217,77 @@ export function normalizeProgramId(rawId: string = ""): ProgramId {
  * Retrieve active exercises from memory or local cache safely.
  */
 function getActiveExercisesFromStorage(): Exercise[] {
-  if (typeof window === "undefined" || !window.localStorage) return EXERCISES;
+  if (typeof window === "undefined" || !window.localStorage) return [];
   try {
     const raw = window.localStorage.getItem("fit_exercises");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch (e) {}
-  return EXERCISES;
-}
-
-function getUserProfileFromStorage(): any {
-  if (typeof window === "undefined" || !window.localStorage) return null;
-  try {
-    const raw = window.localStorage.getItem("fit_active_user");
-    if (raw) return JSON.parse(raw);
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const k = window.localStorage.key(i);
-      if (k && k.startsWith("fit_user_")) {
-        const uRaw = window.localStorage.getItem(k);
-        if (uRaw) return JSON.parse(uRaw);
-      }
-    }
-  } catch (e) {}
-  return null;
+  return [];
 }
 
 /**
  * Main dynamic challenge engine resolver.
- * Gathers exercises from the active exercise database, tunes them to user's onboarding credentials & goals,
- * integrates abs preferences (dedicated day, cardio+abs, or leg day+abs), and includes 2 pre-workout stretch workouts with GIFs.
+ * Checks admin schedule overrides first (manifesting any additions/deletions by admin).
+ * Falls back to dynamic assignment adhering to the restructured 7-day cyclical splits.
  */
 export function getWorkoutForProgramAndDay(
   programId: string,
   dayNumber: number,
   customExercisesListOrTarget?: Exercise[] | string,
-  userProfile?: any
+  track?: "men" | "women"
 ): DayExecutionPlan {
   const normId = normalizeProgramId(programId);
   const safeDay = Math.max(1, Number(dayNumber) || 1);
+  const cycleDay = ((safeDay - 1) % 7) + 1;
 
-  // If a live exercise list was provided by the calling component, use it; otherwise read from storage
+  // 1. Check admin schedule overrides in localStorage
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const stored = window.localStorage.getItem("fit_program_schedule_overrides");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const progOverrides = parsed[normId] || parsed[programId] || (track ? parsed[`${normId}_${track}`] : undefined);
+        if (progOverrides) {
+          const dayOverride = progOverrides[String(safeDay)] || progOverrides[`cycle_${cycleDay}`];
+          if (dayOverride && Array.isArray(dayOverride.exercises) && dayOverride.exercises.length > 0) {
+            return {
+              meta: {
+                dayNumber: safeDay,
+                programId: normId as any,
+                title: dayOverride.title || `Day ${safeDay}: ${dayOverride.category || "Targeted Split"}`,
+                category: dayOverride.category || "Targeted Split",
+                targetMuscles: dayOverride.targetMuscles || ["Full Body"],
+                estimatedDuration: dayOverride.estimatedDuration || "45-60 mins",
+                estimatedCalories: dayOverride.estimatedCalories || 480,
+                isRestDay: !!dayOverride.isRestDay,
+                isCardioOnly: !!dayOverride.isCardioOnly,
+                cardioDistance: dayOverride.cardioDistance,
+                guidelines: dayOverride.guidelines || [
+                  `Focus: ${dayOverride.category || "Workout Session"}.`,
+                  "Progressive overload and deliberate tempo on every set.",
+                  "Rest adequately between sets."
+                ],
+                coachingNotes: dayOverride.coachingNotes || `${dayOverride.category || "Workout"} - execute with strict form.`
+              },
+              exercises: dayOverride.exercises
+            };
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Error reading schedule overrides in getWorkoutForProgramAndDay:", e);
+    }
+  }
+
+  // 2. Dynamic generation adhering to new split
   const activeExercises = Array.isArray(customExercisesListOrTarget) && customExercisesListOrTarget.length > 0
     ? customExercisesListOrTarget
     : getActiveExercisesFromStorage();
 
-  const effectiveProfile = userProfile || getUserProfileFromStorage();
-
-  return buildDynamicDayPlan(normId, safeDay, activeExercises, effectiveProfile);
+  return buildDynamicDayPlan(normId, safeDay, activeExercises, track);
 }
 
 export default getWorkoutForProgramAndDay;

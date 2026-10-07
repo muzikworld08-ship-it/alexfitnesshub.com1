@@ -7,20 +7,20 @@ export interface Exercise {
   equipment: string[];
   category: string;
   categories: string[];
-  commonMistakes: string[];
-  safetyTips: string[];
-  alternativeExercises: string[];
-  progressionVariations: string[];
+  commonMistakes?: string[];
+  safetyTips?: string[];
+  alternativeExercises?: string[];
+  progressionVariations?: string[];
   isPremium: boolean;
   isCustom?: boolean;
   youtubeVideoId?: string;
   
   // Real Biomechanical coaching fields
-  startingPosition: string;
-  movementExecution: string;
-  finishingPosition: string;
-  regressionVariations: string[];
-  musclesWorked: string[];
+  startingPosition?: string;
+  movementExecution?: string;
+  finishingPosition?: string;
+  regressionVariations?: string[];
+  musclesWorked?: string[];
   gifUrl: string; // HD professional fitness loop / video url
   customMediaType?: "image" | "video";
   customMediaUrl?: string;
@@ -251,9 +251,11 @@ export function determineCategories(
   return Array.from(new Set(cats));
 }
 
-// Pristine clean default: No legacy hardcoded exercises.
-// All exercises are added by the Admin and dynamically persisted.
-export const EXERCISES: Exercise[] = [];
+import { CANONICAL_EXERCISES } from "./canonicalExercises";
+
+// Authentic Canonical Baseline Exercise Pool:
+// Admin modifications and additions in fit_exercises take precedence.
+export const EXERCISES: Exercise[] = CANONICAL_EXERCISES;
 
 export const PROGRAMS: Program[] = [
   {

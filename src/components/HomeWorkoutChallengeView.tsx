@@ -10,7 +10,6 @@ import {
   Target, AlertTriangle, Video, Image as ImageIcon, ArrowRightLeft
 } from "lucide-react";
 import UniversalExerciseSwapperModal from "./UniversalExerciseSwapperModal";
-import WorkoutVisual from "./WorkoutVisual";
 import { Exercise } from "../data/exercises";
 import { detectWorkoutType } from "../utils/dynamicWorkoutEngine";
 import { motion, AnimatePresence } from "motion/react";
@@ -82,7 +81,7 @@ const DEFAULT_CHALLENGE_STATE: HomeChallengeState = {
 };
 
 export default function HomeWorkoutChallengeView() {
-  const { user, setView } = useApp();
+  const { user, setView, exercises } = useApp();
   const isPremium = checkIsUserPremium(user);
   const isAdmin = user && (user.role === "admin" || (user.email && isEmailAdmin(user.email)));
 
@@ -265,10 +264,30 @@ export default function HomeWorkoutChallengeView() {
     setTimerSeconds(timerInitial);
   };
 
+  // Track selection state: Men Track vs Women Track
+  const [selectedTrack, setSelectedTrack] = useState<"Men" | "Women">(() => (
+    state.onboarding?.gender === "Female" ? "Women" : "Men"
+  ));
+
+  // Sync track when onboarding profile gender changes
+  useEffect(() => {
+    if (state.onboarding?.gender === "Female") {
+      setSelectedTrack("Women");
+    }
+  }, [state.onboarding?.gender]);
+
+  // Listen for admin schedule overrides updates
+  const [overrideTick, setOverrideTick] = useState(0);
+  useEffect(() => {
+    const handleOverridesUpdated = () => setOverrideTick(t => t + 1);
+    window.addEventListener("fit_program_schedule_overrides_updated", handleOverridesUpdated);
+    return () => window.removeEventListener("fit_program_schedule_overrides_updated", handleOverridesUpdated);
+  }, []);
+
   // Get current selected day workout
   const currentWorkout: HomeDailyWorkout = useMemo(() => {
-    return getHomeWorkoutForDay(selectedDayNumber);
-  }, [selectedDayNumber]);
+    return getHomeWorkoutForDay(selectedDayNumber, "Intermediate", state.onboarding, exercises, selectedTrack);
+  }, [selectedDayNumber, state.onboarding, exercises, selectedTrack, overrideTick]);
 
   // Exercise Swapper State (when users lack equipment or want an alternative from the same category)
   const [swappingExerciseItem, setSwappingExerciseItem] = useState<{ exercise: any; index: number } | null>(null);
@@ -1104,7 +1123,33 @@ export default function HomeWorkoutChallengeView() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Track Switcher: Men vs Women */}
+            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setSelectedTrack("Men")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer ${
+                  selectedTrack === "Men"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Men Track
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedTrack("Women")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer ${
+                  selectedTrack === "Women"
+                    ? "bg-rose-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Women Track
+              </button>
+            </div>
+
             {isAdmin && (
               <button
                 onClick={() => setActiveTab("admin")}
@@ -1470,69 +1515,6 @@ export default function HomeWorkoutChallengeView() {
                   </button>
                 </div>
               </div>
-
-              {/* Pre-Workout Dynamic Stretch & Mobility: 2 Stretch Workouts with GIFs */}
-              {currentWorkout.preWorkoutStretches && currentWorkout.preWorkoutStretches.length > 0 && (
-                <div className="max-w-4xl mx-auto w-full pt-2 pb-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                        <Activity className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="font-black text-xs uppercase tracking-wider text-slate-100 flex items-center gap-2">
-                          <span>Pre-Workout Dynamic Stretch & Mobility</span>
-                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 font-bold border border-cyan-800">
-                            2 Stretches Prescribed
-                          </span>
-                        </h4>
-                        <p className="text-[11px] text-slate-400 font-medium">
-                          Execute these 2 dynamic stretch workouts before starting daily drills to prime joints and prevent injury.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {currentWorkout.preWorkoutStretches.slice(0, 2).map((st: any, sIdx: number) => (
-                      <div 
-                        key={st.id || sIdx}
-                        className="bg-slate-900 border border-cyan-500/30 rounded-2xl p-4 space-y-3 shadow-lg relative overflow-hidden"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-[9px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-800">
-                            Stretch 0{sIdx + 1} • {st.duration || "45s-60s"}
-                          </span>
-                          <span className="text-[9px] font-mono font-bold text-slate-400">
-                            Target: {Array.isArray(st.targetMuscles) ? st.targetMuscles.join(", ") : st.targetMuscles || "Mobility"}
-                          </span>
-                        </div>
-
-                        <h5 className="font-extrabold text-sm text-white">
-                          {st.exerciseName || st.name}
-                        </h5>
-
-                        <div className="relative w-full h-44 rounded-xl overflow-hidden bg-black flex items-center justify-center border border-slate-800">
-                          <WorkoutVisual
-                            exerciseId={st.id}
-                            exerciseName={st.exerciseName || st.name}
-                            customMediaUrl={st.gifUrl || st.mediaUrl}
-                            isCard={true}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-
-                        <div className="space-y-1 bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
-                          <span className="text-[9px] font-mono font-bold text-slate-400 uppercase">Movement Cues</span>
-                          <p className="text-[11px] text-slate-300 font-medium leading-relaxed">
-                            {Array.isArray(st.instructions) ? st.instructions[0] : st.instructions || "Execute smoothly with deep diaphragmatic breathing. Never bounce."}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* ALL WORKOUTS ARRANGED IN A STRAIGHT LINE */}
               <div className="flex flex-col space-y-8 max-w-4xl mx-auto w-full pt-2">

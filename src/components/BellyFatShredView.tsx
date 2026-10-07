@@ -320,45 +320,49 @@ const getWorkoutForWeekAndDay = (
 
   // Customize based on week phase & day
   let defaultTitle = `Full-Body fat loss focus - Day ${dayNum}`;
-  if (dayNum === 1) defaultTitle = "HIIT Intervals & Midsection Stability";
-  else if (dayNum === 2) defaultTitle = "Core Armor & Lower Body Toning";
-  else if (dayNum === 3) defaultTitle = "Wednesday 5-10 KM Running or Walking & Complete Rest";
-  else if (dayNum === 4) defaultTitle = "Upper Body Push-Pull & Midsection Sculpt";
-  else if (dayNum === 5) defaultTitle = "Lower Body Shred & Isometric Core";
-  else if (dayNum === 6) defaultTitle = "Saturday Total Body Resistance & Functional Core";
-  else defaultTitle = "Sunday 5-10 KM Running or Walking & Complete Rest";
+  if (dayNum === 1) defaultTitle = "Monday: Full Body + Core";
+  else if (dayNum === 2) defaultTitle = "Tuesday: Cardio + Abs";
+  else if (dayNum === 3) defaultTitle = "Wednesday: Full Body Strength";
+  else if (dayNum === 4) defaultTitle = "Thursday: Cardio + Core";
+  else if (dayNum === 5) defaultTitle = "Friday: Full Body Conditioning";
+  else if (dayNum === 6) defaultTitle = "Saturday: Walking + Mobility";
+  else defaultTitle = "Sunday: Recovery";
 
   const title = override?.title || defaultTitle;
 
-  // Cardio & Rest Days (Wednesday Day 3 and Sunday Day 7)
-  if (dayNum === 3 || dayNum === 7) {
+  // Walking & Mobility Day (Saturday Day 6) and Recovery Day (Sunday Day 7)
+  if (dayNum === 6 || dayNum === 7) {
+    const isWalkingDay = dayNum === 6;
     return {
       phase,
       difficulty,
-      duration: "50-70 mins",
-      calBurn: "500-650 kcal",
+      duration: isWalkingDay ? "50-70 mins" : "25-35 mins",
+      calBurn: isWalkingDay ? "450-600 kcal" : "120-180 kcal",
       title,
       warmup: [
-        "Light joint rotations & dynamic spinal flexion — 3 mins",
-        "Dynamic ankle & hamstring mobility sweeps — 3 mins",
-        "Active diaphragmatic breathing & pelvic alignment — 2 mins"
+        "Light ankle & hip circles — 3 mins",
+        "Dynamic hamstring sweeps & torso rotations — 3 mins",
+        "Deep diaphragmatic ribcage expansion — 2 mins"
       ],
       core: [
-        "Dead Bug: 3 sets x 12 reps with controlled pelvic tilt",
+        "Standing core vacuum & pelvic neutral alignment: 3 sets x 30s",
         "Primal Cat-Cow Spinal Waves: 3 sets x 60s rhythmic decompression",
-        "Deep Diaphragmatic Box Breathing: 3 mins recovery focus"
+        "Child's pose deep breathing — 2 mins"
       ],
       hiit: [
-        "No HIIT Circuit Today: Scheduled purely for 5 to 10 KM aerobic running or walking.",
-        "Aerobic Focus: Maintain Zone 2 aerobic rhythm without high-impact intervals."
+        isWalkingDay 
+          ? "Aerobic Walking Assignment: 5 to 10 KM Brisk Walking outdoors or on treadmill."
+          : "Full Rest Protocol: Parasympathetic nervous system reset — no HIIT intervals today."
       ],
       strength: [
-        "Workout Removed: All strength exercises are removed on cardio days.",
-        "Post-Cardio Rest: Lie down or relax, hydrate, and let your body recover completely after your 5-10 KM running or walking session."
+        isWalkingDay
+          ? "Joint Mobility Focus: Thoracic rotations, deep squat hold, and 90/90 hip mobility."
+          : "Complete Muscular Recovery: Lie down, hydrate, and allow muscles to repair."
       ],
       fullBodyCircuit: [
-        "Aerobic Cardio Assignment: 5 to 10 KM Running or Walking (Outdoors or Treadmill).",
-        "Cardio-Only Protocol: Wednesday and Sunday are the ONLY cardio sessions on the entire program."
+        isWalkingDay 
+          ? "Saturday Protocol: Dedicated 5 to 10 KM Walking + Full Mobility flow."
+          : "Sunday Protocol: Parasympathetic Regeneration, foam rolling, and rest."
       ],
       cooldown: [
         "Cobra pose stretch — hold 30s x 2",
@@ -366,11 +370,13 @@ const getWorkoutForWeekAndDay = (
         "Child's pose deep breathing — 2 mins"
       ],
       modifications: {
-        beginner: "Walk 3 to 5 KM at a brisk steady pace (4.5 - 5.5 km/h) with zero jogging if needed.",
-        intermediate: "Jog-walk intervals: alternate 800m jogging with 200m brisk walk for 5 to 8 KM.",
-        advanced: "Steady continuous Zone 2 run for 8 to 10 KM at 6:00 - 6:30 min/km pace."
+        beginner: isWalkingDay ? "Brisk walk 3 to 5 KM at steady conversational pace." : "20 minutes gentle stretching and deep breathing.",
+        intermediate: isWalkingDay ? "Brisk walk 5 to 8 KM with posture engagement." : "30 minutes mobility flow.",
+        advanced: isWalkingDay ? "Fast-paced power walk 8 to 10 KM." : "Full restorative session."
       },
-      exercisesList: ["Dead Bug", "Cat-Cow Waves", "5-10 KM Aerobic Run/Walk", "Diaphragmatic Breathing"]
+      exercisesList: isWalkingDay 
+        ? ["5-10 KM Brisk Walk", "Cat-Cow Spinal Waves", "Thoracic Spine Reach", "Standing Core Vacuum"]
+        : ["Restorative Breathing", "Child's Pose", "Cat-Cow Waves", "Hamstring Stretch"]
     };
   }
 
@@ -429,32 +435,20 @@ const getWorkoutForWeekAndDay = (
 
   // If no override or sections need authentic exercises, dynamically pull and categorize from admin's library
   if (availableExercises && availableExercises.length > 0) {
-    // Check for exercises explicitly assigned to Belly Fat Shred by admin
-    const isAssignedToBelly = (e: Exercise) => {
-      const progs = Array.isArray(e.programAssignments) ? e.programAssignments.map(p => String(p).toLowerCase()) : [];
-      return progs.some(p => p.includes("belly") || p.includes("shred"));
-    };
-
-    const coreMatches = availableExercises.filter(e => isCoreExercise(e.name, e.category || "") || isAssignedToBelly(e));
-    // Sort explicitly assigned exercises to the front so they always appear
-    coreMatches.sort((a, b) => (isAssignedToBelly(b) ? 1 : 0) - (isAssignedToBelly(a) ? 1 : 0));
-
+    const coreMatches = availableExercises.filter(e => isCoreExercise(e.name, e.category || ""));
     const hiitMatches = availableExercises.filter(e => {
-      if (isAssignedToBelly(e)) return true;
       const c = (e.category || "").toLowerCase();
       const n = (e.name || "").toLowerCase();
       return c.includes("hiit") || c.includes("cardio") || n.includes("climber") || n.includes("burpee") || n.includes("jump") || n.includes("jack");
     });
-    hiitMatches.sort((a, b) => (isAssignedToBelly(b) ? 1 : 0) - (isAssignedToBelly(a) ? 1 : 0));
     
     // Day-specific strength matches from admin library strictly validated against split
     const strengthMatches = availableExercises.filter(e => {
       const c = (e.category || "").toLowerCase();
       const n = (e.name || "").toLowerCase();
-      if (isCoreExercise(n, c) && !isAssignedToBelly(e)) return false;
-      return isExerciseBelongingToSplit(e, targetMuscles, targetCategoryTitle) || isAssignedToBelly(e);
+      if (isCoreExercise(n, c)) return false;
+      return isExerciseBelongingToSplit(e, targetMuscles, targetCategoryTitle);
     });
-    strengthMatches.sort((a, b) => (isAssignedToBelly(b) ? 1 : 0) - (isAssignedToBelly(a) ? 1 : 0));
 
     if (coreDrills.length < 3) {
       const needed = 3 - coreDrills.length;
@@ -1213,7 +1207,7 @@ export default function BellyFatShredView() {
   const completionPercentage = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
 
   // Hydro limit
-  const waterTarget = user?.gender?.toLowerCase() === "male" ? 4 : 3;
+  const waterTarget = user.gender?.toLowerCase() === "male" ? 4 : 3;
   const hydrationPercentage = Math.min(100, Math.round((progress.waterIntake / waterTarget) * 100));
 
   // Run stats
@@ -1407,7 +1401,7 @@ export default function BellyFatShredView() {
   const handleRestartProgram = () => {
     if (window.confirm("WARNING: Are you absolutely certain you want to reset all your 5-Month Belly Fat Shred program logs, stats, and achievements? This cannot be undone.")) {
       const restarted: BellyFatShredProgress = {
-        userId: user?.uid || "guest",
+        userId: user.uid,
         currentWeek: 1,
         currentDay: 1,
         completedWorkouts: [],
@@ -1998,7 +1992,7 @@ export default function BellyFatShredView() {
                           setGuideTimerRunning(true);
                           setCompletedGuideDrills({});
                         }}
-                        className="py-3 px-5 border border-slate-300 hover:bg-slate-100 rounded-xl text-xs font-bold uppercase transition cursor-pointer"
+                        className="py-3 px-5 border border-slate-300 hover:bg-slate-100:bg-slate-900 rounded-xl text-xs font-bold uppercase transition cursor-pointer"
                       >
                         Replay Session
                       </button>
@@ -2067,7 +2061,7 @@ export default function BellyFatShredView() {
                         </span>
                         <button
                           onClick={() => setGuideTimerRunning(!guideTimerRunning)}
-                          className="p-1.5 hover:bg-slate-200 rounded-lg transition"
+                          className="p-1.5 hover:bg-slate-200:bg-slate-800 rounded-lg transition"
                           title={guideTimerRunning ? "Pause Timer" : "Start Timer"}
                         >
                           {guideTimerRunning ? (
@@ -3448,7 +3442,7 @@ export default function BellyFatShredView() {
                 </div>
 
                 {/* Right Action buttons */}
-                {(user?.subscriptionStatus === "premium" || user?.role === "admin") ? (
+                {user.subscriptionStatus === "premium" || user.role === "admin" ? (
                   <div className="flex flex-col gap-3 shrink-0">
                     <button
                       onClick={() => setIsPlayingHomeWorkout(true)}
@@ -3463,7 +3457,7 @@ export default function BellyFatShredView() {
                       className={`px-6 py-3 border rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
                         isCircuitFavorited 
                           ? "border-red-500 bg-red-500/10 text-red-500" 
-                          : "border-slate-300 text-slate-600 hover:bg-slate-100"
+                          : "border-slate-300 text-slate-600 hover:bg-slate-100:bg-slate-900"
                       }`}
                     >
                       <Heart className={`w-4 h-4 ${isCircuitFavorited ? "fill-current" : ""}`} />
@@ -3486,7 +3480,7 @@ export default function BellyFatShredView() {
             {/* Exercises Grid Container */}
             <div className="relative">
               {/* Premium Lock Overlay for Free Users */}
-              {user?.subscriptionStatus !== "premium" && user?.role !== "admin" && (
+              {user.subscriptionStatus !== "premium" && user.role !== "admin" && (
                 <div className="absolute inset-0 z-40 flex items-center justify-center p-6 bg-slate-950/40 backdrop-blur-md rounded-3xl">
                   <div className="bg-slate-900/95 border border-amber-500/30 rounded-3xl p-8 max-w-md text-center shadow-2xl relative overflow-hidden">
                     <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl"></div>
@@ -3517,7 +3511,7 @@ export default function BellyFatShredView() {
               )}
 
               {/* Grid content */}
-              <div className={`grid md:grid-cols-2 gap-6 ${user?.subscriptionStatus !== "premium" && user?.role !== "admin" ? "blur-md select-none pointer-events-none opacity-35" : ""}`}>
+              <div className={`grid md:grid-cols-2 gap-6 ${user.subscriptionStatus !== "premium" && user.role !== "admin" ? "blur-md select-none pointer-events-none opacity-35" : ""}`}>
                 {bellyFatCardioCircuit.exercises.length === 0 && (
                   <div className="col-span-full py-16 px-6 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50/50 dark:bg-slate-900/30">
                     <p className={`text-sm font-bold uppercase tracking-wider ${textPrimary}`}>No Pre-Existing Exercises Loaded</p>
@@ -3549,7 +3543,7 @@ export default function BellyFatShredView() {
                               className={`p-2 rounded-xl border transition ${
                                 isFav 
                                   ? "border-red-500/30 bg-red-500/10 text-red-500" 
-                                  : "border-slate-200 text-slate-400 hover:text-red-500 hover:bg-slate-100"
+                                  : "border-slate-200 text-slate-400 hover:text-red-500 hover:bg-slate-100:bg-slate-900"
                               }`}
                             >
                               <Heart className={`w-4 h-4 ${isFav ? "fill-current" : ""}`} />

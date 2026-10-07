@@ -1546,67 +1546,66 @@ export function getDailyWorkoutForDay(
 
   if (dayInWeek === 1) {
     dayType = "strength";
-    title += "Glute & Posterior Awakening";
-    subtitle = "Activate dormant hip stabilizers, wake up the posterior kinetic chain, and build foundational glute strength.";
-    focus = "Gluteal Max/Medius Activation, Hamstrings & Pelvic Alignment";
+    title += "Monday: Glutes + Hamstrings";
+    subtitle = "Target glutes, hamstrings, and the posterior kinetic chain with progressive volume and hip thrust variations.";
+    focus = "Glutes + Hamstrings";
     intensity = phaseNum <= 2 ? "Moderate" : "Challenging";
     estimatedMinutes = 35;
-    targetTargets = ["Glutes", "Hamstrings", "Legs", "Lower Body"];
+    targetTargets = ["Glutes", "Hamstrings", "Lower Body", "Hips"];
     primaryPoolKey = "glutes";
   } else if (dayInWeek === 2) {
     dayType = "strength";
-    title += "Upper Body Posture & Sculpt";
-    subtitle = "Open up tight shoulders, strengthen postural back muscles, and tone sleek arms (no bulky chest builders).";
-    focus = "Scapular Retraction, Shoulders, Posture Back & Arm Toning";
+    title += "Tuesday: Upper Body + Core";
+    subtitle = "Sculpt postural back fibers, sleek shoulders, toned arms, and compress the deep transverse core.";
+    focus = "Upper Body + Core";
     intensity = phaseNum <= 2 ? "Moderate" : "Challenging";
     estimatedMinutes = 30;
-    // Strictly NO "Chest" in targetTargets so cable flyes never match!
-    targetTargets = ["Upper Body", "Back", "Shoulders", "Arms", "Posture"];
+    targetTargets = ["Upper Body", "Back", "Shoulders", "Arms", "Core", "Abs"];
     primaryPoolKey = "upper_body_posture";
   } else if (dayInWeek === 3) {
-    dayType = "walking";
-    title += "Aerobic Step Walk & Core Activation";
-    subtitle = "Flush lactic acid, elevate aerobic metabolism, and complete 10 standing core and cadence drills.";
-    focus = "Zone 2 Low-Impact Cardio, Walking Cadence & Core Activation";
-    intensity = "Low";
-    estimatedMinutes = 40;
-    targetTargets = ["Cardio", "Walking", "Core", "Recovery"];
-    primaryPoolKey = "cardio_walking";
-  } else if (dayInWeek === 4) {
     dayType = "strength";
-    title += "Core & Waist Kinetic Compression";
-    subtitle = "Deep transverse abdominis tightening, pelvic stability, and waistline tapering.";
-    focus = "Deep Transverse Abdominis, Obliques & Spinal Bracing";
-    intensity = "Moderate";
-    estimatedMinutes = 30;
-    targetTargets = ["Core", "Abs", "Obliques"];
-    primaryPoolKey = "core_waist";
-  } else if (dayInWeek === 5) {
+    title += "Wednesday: Quads + Glutes";
+    subtitle = "Sculpt quadriceps definition and round out the glutes with goblet squats, walking lunges, and step-ups.";
+    focus = "Quads + Glutes";
+    intensity = phaseNum <= 2 ? "Moderate" : "Challenging";
+    estimatedMinutes = 35;
+    targetTargets = ["Quadriceps", "Glutes", "Legs", "Lower Body"];
+    primaryPoolKey = "glutes";
+  } else if (dayInWeek === 4) {
     dayType = "conditioning";
-    title += "Full Body Tone & Conditioning";
-    subtitle = "Compound movement waves synchronizing upper and lower body for metabolic calorie expenditure.";
-    focus = "Full Body Muscular Tone & Heart Rate Elevation";
+    title += "Thursday: Cardio + Core + Mobility";
+    subtitle = "Elevate caloric output with low-impact cardio flows, waist compression drills, and thoracic mobility.";
+    focus = "Cardio + Core + Mobility";
+    intensity = "Moderate";
+    estimatedMinutes = 35;
+    targetTargets = ["Cardio", "Core", "Abs", "Mobility", "Walking"];
+    primaryPoolKey = "cardio_walking";
+  } else if (dayInWeek === 5) {
+    dayType = "strength";
+    title += "Friday: Glutes + Full Lower Body";
+    subtitle = "Intense lower body sculpt targeting glute max, glute medius, hamstrings, quads, and calves.";
+    focus = "Glutes + Full Lower Body";
     intensity = phaseNum <= 2 ? "Moderate" : "High";
     estimatedMinutes = 40;
-    targetTargets = ["Full Body", "Glutes", "Upper Body", "Legs"];
-    primaryPoolKey = "full_body";
+    targetTargets = ["Glutes", "Hamstrings", "Quadriceps", "Calves", "Lower Body"];
+    primaryPoolKey = "glutes";
   } else if (dayInWeek === 6) {
-    dayType = "mobility";
-    title += "Restorative Hip Mobility & Posture Opening";
-    subtitle = "Decompress lumbar spine, open tight hip flexors, and release neck tension with 10 kinetic flows.";
-    focus = "Hip Flexor Length, Thoracic Mobility & Recovery";
-    intensity = "Low";
-    estimatedMinutes = 25;
-    targetTargets = ["Mobility", "Hips", "Recovery", "Stretching"];
-    primaryPoolKey = "mobility_stretch";
+    dayType = "conditioning";
+    title += "Saturday: Full Body Conditioning";
+    subtitle = "High-energy metabolic circuit combining multi-planar movements for full body tone and endurance.";
+    focus = "Full Body Conditioning";
+    intensity = "Challenging";
+    estimatedMinutes = 35;
+    targetTargets = ["Full Body", "Conditioning", "Cardio", "Tone"];
+    primaryPoolKey = "full_body";
   } else {
     dayType = "active_recovery";
-    title += "Sunday Active Recovery & Restorative Sculpt";
-    subtitle = "Complete your 5-10 KM running or walking target alongside 10 restorative decompression drills.";
-    focus = "5-10 KM Running or Walking & Full Kinetic Restoration";
+    title += "Sunday: Recovery";
+    subtitle = "Gentle parasympathetic decompression, full body stretches, and restorative recovery.";
+    focus = "Recovery";
     intensity = "Low";
-    estimatedMinutes = 45;
-    targetTargets = ["Cardio", "Recovery", "Mobility"];
+    estimatedMinutes = 30;
+    targetTargets = ["Recovery", "Mobility", "Stretching", "Rest"];
     primaryPoolKey = "recovery_rest";
   }
 
@@ -1640,14 +1639,14 @@ export function getDailyWorkoutForDay(
         const cycleKey = `cycle_${dayInWeek}`;
         const dayOverride = womenOverrides[String(safeDay)] || womenOverrides[cycleKey];
         if (dayOverride && Array.isArray(dayOverride.exercises) && dayOverride.exercises.length > 0) {
+          const overrideList: WomenDailyExercise[] = [];
           for (const ovEx of dayOverride.exercises) {
-            if (finalExercisesList.length >= 10) break;
             const exName = (ovEx.exerciseName || ovEx.name || "").trim();
             const lower = exName.toLowerCase();
             if (exName && !seenExerciseNames.has(lower) && isWomenWorkoutEligibleExercise(ovEx)) {
               seenExerciseNames.add(lower);
-              finalExercisesList.push({
-                id: ovEx.id || `wc_ov_d${safeDay}_${finalExercisesList.length + 1}`,
+              overrideList.push({
+                id: ovEx.id || `wc_ov_d${safeDay}_${overrideList.length + 1}`,
                 name: exName,
                 muscleGroups: Array.isArray(ovEx.muscleGroup) ? ovEx.muscleGroup : [ovEx.muscleGroup || targetTargets[0] || "Full Body"],
                 sets: Number(ovEx.sets) || 3,
@@ -1663,6 +1662,22 @@ export function getDailyWorkoutForDay(
                 targetMuscles: Array.isArray(ovEx.muscleGroup) ? ovEx.muscleGroup.join(", ") : String(ovEx.muscleGroup || "Full Body")
               });
             }
+          }
+
+          if (overrideList.length > 0) {
+            return {
+              dayNumber: safeDay,
+              phaseNumber: phaseNum,
+              dayType: dayOverride.isCardioOnly ? "conditioning" : dayType,
+              title: dayOverride.title || title,
+              subtitle: dayOverride.focus || subtitle,
+              focus: dayOverride.focus || focus,
+              estimatedMinutes: dayOverride.estimatedDuration || estimatedMinutes,
+              intensity,
+              calorieEstimate: 320 + safeDay * 2,
+              exercises: overrideList,
+              coachingCue: "Focus on deep mind-muscle connection and deliberate tempo on every single rep."
+            };
           }
         }
       }
@@ -1777,7 +1792,7 @@ export function getDailyWorkoutForDay(
     dayType,
     estimatedMinutes,
     intensity,
-    calorieEstimate: dayType === "active_recovery" ? 220 : dayType === "mobility" ? 240 : estimatedMinutes * 8,
+    calorieEstimate: (dayType as string) === "active_recovery" ? 220 : (dayType as string) === "mobility" ? 240 : estimatedMinutes * 8,
     exercises: guaranteed10Exercises,
     coachingCue
   };

@@ -741,7 +741,7 @@ export default function AdminWorkoutEditor() {
             <span>← Scroll horizontally to see full workout row</span>
             <span>Edit / Delete at far right →</span>
           </div>
-          <div className="overflow-x-auto max-h-[750px] scrollbar-thin">
+          <div className="overflow-x-auto overflow-y-auto max-h-[750px] scrollbar-thin">
             <table className="w-full min-w-[780px] text-left border-collapse text-xs">
               <thead className="bg-slate-50 text-[10px] uppercase font-mono tracking-wider text-slate-500 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
@@ -1190,7 +1190,7 @@ export default function AdminWorkoutEditor() {
           FULL EDIT MODAL
           ========================================================================= */}
       {editingExercise && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[80] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto text-left">
             
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">
@@ -1699,7 +1699,7 @@ export default function AdminWorkoutEditor() {
           ADD NEW WORKOUT MODAL
           ========================================================================= */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[80] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto text-left">
             
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">
@@ -2168,7 +2168,7 @@ export default function AdminWorkoutEditor() {
 
       {/* Purge Result Modal */}
       {purgeResult && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-xl w-full border border-slate-200 shadow-2xl p-6 sm:p-7 space-y-5 animate-scale-up">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
