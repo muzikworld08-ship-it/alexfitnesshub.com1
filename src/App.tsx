@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { MessageSquare } from "lucide-react";
 import { auth } from "./lib/firebase";
-import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorBoundary, { SectionErrorBoundary } from "./components/ErrorBoundary";
 import { AppProvider, useApp, checkIsUserPremium } from "./context/AppContext";
 import { motion, AnimatePresence, type Variants } from "motion/react";
 import Navbar from "./components/Navbar";
@@ -350,8 +350,13 @@ function FitnessAppContent() {
     };
 
     window.addEventListener("popstate", handlePopState);
+    const handleCustomNav = (e: any) => {
+      if (e.detail) setView(e.detail);
+    };
+    window.addEventListener("fit-navigate-view", handleCustomNav);
     return () => {
       window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("fit-navigate-view", handleCustomNav);
     };
   }, [setView]);
 
@@ -588,16 +593,18 @@ function FitnessAppContent() {
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground transition-colors duration-200">
       
-      {/* Dynamic Header Navbar navigation */}
-      <Navbar 
-        currentView={currentView} 
-        setView={handleSetView} 
-        onOpenAuth={() => handleSetView("login")} 
-      />
+      {/* Dynamic Header Navbar navigation (omitted on admin desk to prevent header collisions and overlapping panels) */}
+      {currentView !== "admin" && (
+        <Navbar 
+          currentView={currentView} 
+          setView={handleSetView} 
+          onOpenAuth={() => handleSetView("login")} 
+        />
+      )}
 
       {/* Main Switchboard Route Mounting with Staggered Transitions */}
-      <main className="pt-20 lg:pt-24 pb-16 min-h-screen w-full max-w-full flex flex-col justify-start overflow-x-hidden">
-        <AnimatePresence>
+      <main className={currentView === "admin" ? "min-h-screen w-full max-w-full flex flex-col justify-start overflow-x-hidden" : "pt-20 lg:pt-24 pb-16 min-h-screen w-full max-w-full flex flex-col justify-start overflow-x-hidden"}>
+        <AnimatePresence mode="wait">
           <motion.div
             key={currentView}
             variants={pageTransitionVariants}
@@ -607,6 +614,7 @@ function FitnessAppContent() {
             className="w-full max-w-full flex-grow flex flex-col min-w-0 overflow-x-hidden"
           >
             <React.Suspense fallback={renderSkeletonForView(currentView)}>
+              <SectionErrorBoundary fallbackTitle="Module Temporarily Unavailable">
               {currentView === "home" && (
                 <HomeView setView={handleSetView} onOpenAuth={() => handleSetView("login")} />
               )}
@@ -723,6 +731,7 @@ function FitnessAppContent() {
               {currentView === "admin" && (
                 <AdminDashboard />
               )}
+              </SectionErrorBoundary>
             </React.Suspense>
           </motion.div>
         </AnimatePresence>
@@ -736,8 +745,8 @@ function FitnessAppContent() {
         />
       </React.Suspense>
 
-      {/* Customer Reviews & Testimonial Popup */}
-      <TestimonialPopup />
+      {/* Customer Reviews & Testimonial Popup (Omitted on Admin page to prevent overlapping admin desks and modals) */}
+      {currentView !== "admin" && <TestimonialPopup />}
 
       {/* Official Merchandise & Store Modals (Fallback modal when not on dedicated product-detail page) */}
       {currentView !== "product-detail" && (
@@ -764,10 +773,8 @@ function FitnessAppContent() {
         onUpgrade={navigateToPricing} 
       />
 
-
-
-      {/* Persistent Floating Workout Rest Timer Overlay */}
-      <FloatingWorkoutTimerOverlay />
+      {/* Persistent Floating Workout Rest Timer Overlay (Omitted on Admin desk to prevent covering action buttons) */}
+      {currentView !== "admin" && <FloatingWorkoutTimerOverlay />}
 
       {/* Network Connectivity & PWA Offline Status Indicator */}
       <OfflineIndicator />

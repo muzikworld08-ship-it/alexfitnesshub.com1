@@ -36,7 +36,7 @@ import {
   ProgramProgressItem
 } from "../types";
 import { calculateReadinessScore } from "../utils/readiness";
-import { EXERCISES, Exercise, getExerciseGifUrl } from "../data/exercises";
+import { EXERCISES, Exercise, getExerciseGifUrl, AUTHENTIC_STRETCH_EXERCISES } from "../data/exercises";
 import { PremiumChallenge, FLAGSHIP_CHALLENGES, getChallengeWorkouts } from "../data/challenges";
 import { isExerciseMatch } from "../utils/exerciseMatching";
 import { fetchAllExerciseMediaFromDatabase } from "../utils/mediaStorageService";
@@ -170,6 +170,7 @@ interface AppContextType {
   // Profile Update Functions
   updateProfileDetails: (details: { weight?: number; height?: number; gender?: string; fitnessGoals?: string }) => Promise<void>;
   completeOnboarding: (onboardingData: Partial<UserProfile>) => Promise<void>;
+  updateAbsWorkoutPreference: (pref: "dedicated_day" | "cardio_abs" | "leg_day" | "smart_adaptive") => Promise<void>;
   
   // Workout Interactions
   toggleSaveWorkout: (exerciseId: string) => Promise<void>;
@@ -846,9 +847,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (storedExercises) {
       try {
         const parsed = JSON.parse(storedExercises) as Exercise[];
+        const baseExercisePool = [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES];
         if (Array.isArray(parsed) && parsed.length > 0) {
           const map = new Map<string, Exercise>();
-          EXERCISES.forEach(e => {
+          baseExercisePool.forEach(e => {
             if (deletedIdsSet.has(e.id)) return;
             let override = cachedOverrides[e.id];
             if (!override) {
@@ -885,7 +887,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     
     // Default base with cached overrides (excluding deleted)
-    const initialList = EXERCISES
+    const baseExercisePool = [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES];
+    const initialList = baseExercisePool
       .filter(e => !deletedIdsSet.has(e.id))
       .map(e => {
         let override = cachedOverrides[e.id];
@@ -4310,6 +4313,16 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     }
   };
 
+  const updateAbsWorkoutPreference = async (pref: "dedicated_day" | "cardio_abs" | "leg_day" | "smart_adaptive") => {
+    localStorage.setItem("fit_abs_preference", pref);
+    if (user) {
+      const updated: UserProfile = { ...user, absWorkoutPreference: pref };
+      setUser(updated);
+      localStorage.setItem(`fit_user_${updated.uid}`, JSON.stringify(updated));
+      await syncUserToStorageAndPlatform(updated).catch(e => console.warn(e));
+    }
+  };
+
   const updateWaterIntake = async (amountMl: number) => {
     if (!user) return;
     const today = new Date().toISOString().split("T")[0];
@@ -5037,6 +5050,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     
     updateProfileDetails,
     completeOnboarding,
+    updateAbsWorkoutPreference,
     toggleSaveWorkout,
     logWorkoutCompletion,
     addWeightLogAction,
@@ -5132,6 +5146,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     logout,
     updateProfileDetails,
     completeOnboarding,
+    updateAbsWorkoutPreference,
     toggleSaveWorkout,
     logWorkoutCompletion,
     addWeightLogAction,

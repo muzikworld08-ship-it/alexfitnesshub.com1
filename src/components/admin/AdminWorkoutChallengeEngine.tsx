@@ -36,15 +36,62 @@ interface CardioProtocolState {
   guidelines: string;
 }
 
-// 7-Day Canonical Immortal Standard Splits
-const IMMORTAL_7_DAY_CANONICAL: Record<number, { title: string; focus: string; muscles: string[]; isCardio: boolean; cardioKm?: string }> = {
-  1: { title: "Day 1: Chest and Triceps Hypertrophy", focus: "Chest and Triceps", muscles: ["Pectoralis Major", "Triceps Brachii", "Anterior Deltoids"], isCardio: false },
-  2: { title: "Day 2: Back and Biceps Pull Power", focus: "Back and Biceps", muscles: ["Latissimus Dorsi", "Biceps Brachii", "Rhomboids", "Rear Delts"], isCardio: false },
-  3: { title: "Day 3: Dedicated Cardio & Mobility Protocol", focus: "Cardio and Mobility", muscles: ["Cardiovascular System", "Legs", "Joints"], isCardio: true, cardioKm: "5.0 - 10.0 KM" },
-  4: { title: "Day 4: Legs and Shoulders Compound Force", focus: "Legs and Shoulders", muscles: ["Quadriceps", "Hamstrings", "Deltoids", "Calves"], isCardio: false },
-  5: { title: "Day 5: Chest, Triceps and Forearms Grip & Density", focus: "Chest, Triceps and Forearms", muscles: ["Chest", "Triceps", "Forearms", "Grip Strength"], isCardio: false },
-  6: { title: "Day 6: Back, Biceps and Core Structural Integrity", focus: "Back, Biceps and Core", muscles: ["Back", "Biceps", "Abdominals", "Obliques"], isCardio: false },
-  7: { title: "Day 7: Rest, Recovery & Aerobic Flush Cardio", focus: "Rest and Recovery", muscles: ["Cardiovascular Flush", "Full Body Recovery"], isCardio: true, cardioKm: "5.0 - 10.0 KM" }
+// Universal Canonical 7-Day Continuous Repeating Splits for Programs
+const PROGRAM_CANONICAL_SPLITS: Record<string, Record<number, { title: string; focus: string; muscles: string[]; isCardio: boolean; cardioKm?: string }>> = {
+  immortal_90: {
+    1: { title: "Monday: Push", focus: "Chest, shoulders and triceps", muscles: ["Chest", "Shoulders", "Triceps"], isCardio: false },
+    2: { title: "Tuesday: Pull", focus: "Back, rear delts and biceps", muscles: ["Back", "Rear Delts", "Biceps"], isCardio: false },
+    3: { title: "Wednesday: Legs + Core", focus: "Quads, hamstrings, glutes, calves and abs", muscles: ["Quadriceps", "Hamstrings", "Glutes", "Calves", "Core", "Abs"], isCardio: false },
+    4: { title: "Thursday: Cardio + Mobility", focus: "Running, conditioning and mobility", muscles: ["Cardiovascular System", "Running", "Conditioning", "Mobility"], isCardio: true, cardioKm: "5.0 - 10.0 KM" },
+    5: { title: "Friday: Upper Body", focus: "Chest, back, shoulders and arms", muscles: ["Chest", "Back", "Shoulders", "Arms", "Biceps", "Triceps"], isCardio: false },
+    6: { title: "Saturday: Athletic Conditioning + Core", focus: "Functional movements, conditioning and abdominal work", muscles: ["Functional Movements", "Conditioning", "Core", "Abs"], isCardio: false },
+    7: { title: "Sunday: Recovery", focus: "Recovery & System Reset", muscles: ["Recovery", "Mobility", "Stretching"], isCardio: false }
+  },
+  women_confidence: {
+    1: { title: "Monday: Glutes + Hamstrings", focus: "Glutes + Hamstrings", muscles: ["Glutes", "Hamstrings", "Posterior Chain"], isCardio: false },
+    2: { title: "Tuesday: Upper Body + Core", focus: "Upper Body + Core", muscles: ["Upper Body", "Back", "Shoulders", "Arms", "Core", "Abs"], isCardio: false },
+    3: { title: "Wednesday: Quads + Glutes", focus: "Quads + Glutes", muscles: ["Quadriceps", "Glutes", "Lower Body"], isCardio: false },
+    4: { title: "Thursday: Cardio + Core + Mobility", focus: "Cardio + Core + Mobility", muscles: ["Cardio", "Core", "Abs", "Mobility"], isCardio: true, cardioKm: "3.0 - 5.0 KM" },
+    5: { title: "Friday: Glutes + Full Lower Body", focus: "Glutes + Full Lower Body", muscles: ["Glutes", "Hamstrings", "Quadriceps", "Calves"], isCardio: false },
+    6: { title: "Saturday: Full Body Conditioning", focus: "Full Body Conditioning", muscles: ["Full Body", "Conditioning", "Cardio", "Tone"], isCardio: false },
+    7: { title: "Sunday: Recovery", focus: "Restorative Recovery", muscles: ["Recovery", "Mobility", "Stretching"], isCardio: false }
+  },
+  belly_fat_shred: {
+    1: { title: "Monday: Full Body + Core", focus: "Full Body + Core", muscles: ["Full Body", "Core", "Abs"], isCardio: false },
+    2: { title: "Tuesday: Cardio + Abs", focus: "Cardio + Abs", muscles: ["Cardio", "Abs", "Core", "HIIT"], isCardio: true, cardioKm: "Cardio Intervals" },
+    3: { title: "Wednesday: Full Body Strength", focus: "Full Body Strength", muscles: ["Full Body", "Chest", "Back", "Legs", "Strength"], isCardio: false },
+    4: { title: "Thursday: Cardio + Core", focus: "Cardio + Core", muscles: ["Cardio", "Transverse Core", "Abs"], isCardio: true, cardioKm: "Cardio Conditioning" },
+    5: { title: "Friday: Full Body Conditioning", focus: "Full Body Conditioning", muscles: ["Full Body", "Conditioning", "HIIT", "Cardio"], isCardio: false },
+    6: { title: "Saturday: Walking + Mobility", focus: "Walking + Mobility", muscles: ["Walking", "Cardio", "Mobility"], isCardio: true, cardioKm: "5.0 - 10.0 KM Brisk Walk" },
+    7: { title: "Sunday: Recovery", focus: "Recovery & System Reset", muscles: ["Recovery", "Mobility", "Active Reset"], isCardio: false }
+  },
+  home_180: {
+    1: { title: "Monday: Upper Body Push & Calisthenics", focus: "Chest, Shoulders & Triceps", muscles: ["Chest", "Shoulders", "Triceps", "Upper Body"], isCardio: false },
+    2: { title: "Tuesday: Core & Abs Shred", focus: "Core, Abs & Obliques", muscles: ["Core", "Abs", "Obliques"], isCardio: false },
+    3: { title: "Wednesday: Lower Body & Legs", focus: "Quads, Hamstrings & Calves", muscles: ["Legs", "Quadriceps", "Hamstrings", "Calves"], isCardio: false },
+    4: { title: "Thursday: Cardio + Mobility", focus: "Cardio & Joint Mobility", muscles: ["Cardio", "Running", "Mobility", "Conditioning"], isCardio: true, cardioKm: "5.0 - 10.0 KM" },
+    5: { title: "Friday: Upper Body Pull & Back", focus: "Back, Biceps & Posture", muscles: ["Back", "Biceps", "Upper Body"], isCardio: false },
+    6: { title: "Saturday: Athletic Full Body Conditioning", focus: "Functional Power & Stamina", muscles: ["Full Body", "Cardio", "Conditioning"], isCardio: false },
+    7: { title: "Sunday: Recovery", focus: "Regenerative Mobility & Rest", muscles: ["Recovery", "Mobility", "Stretching"], isCardio: false }
+  },
+  home_180_women: {
+    1: { title: "Monday: Glutes + Hamstrings", focus: "Glutes + Hamstrings", muscles: ["Glutes", "Hamstrings", "Lower Body"], isCardio: false },
+    2: { title: "Tuesday: Upper Body Tone + Core", focus: "Upper Body Tone + Core", muscles: ["Upper Body", "Back", "Shoulders", "Core", "Abs"], isCardio: false },
+    3: { title: "Wednesday: Quads + Glutes", focus: "Quads + Glutes", muscles: ["Quadriceps", "Glutes", "Lower Body"], isCardio: false },
+    4: { title: "Thursday: Cardio + Core + Mobility", focus: "Cardio + Core + Mobility", muscles: ["Cardio", "Core", "Abs", "Mobility", "Walking"], isCardio: true, cardioKm: "5.0 - 10.0 KM" },
+    5: { title: "Friday: Glutes + Full Lower Body", focus: "Glutes + Full Lower Body", muscles: ["Glutes", "Full Lower Body", "Hamstrings", "Quads", "Calves"], isCardio: false },
+    6: { title: "Saturday: Full Body Conditioning", focus: "Full Body Conditioning", muscles: ["Full Body", "Conditioning", "Cardio"], isCardio: false },
+    7: { title: "Sunday: Recovery", focus: "Regenerative Mobility & Rest", muscles: ["Recovery", "Mobility", "Stretching"], isCardio: false }
+  },
+  posture_vitality: {
+    1: { title: "Monday: Upper Back + Shoulder Mobility", focus: "Upper Back + Shoulder Mobility", muscles: ["Upper Back", "Shoulders", "Mobility", "Scapular", "Thoracic"], isCardio: false },
+    2: { title: "Tuesday: Core Stability + Hip Mobility", focus: "Core Stability + Hip Mobility", muscles: ["Core", "Hips", "Pelvic", "Abs", "Mobility"], isCardio: false },
+    3: { title: "Wednesday: Full Body Posture Training", focus: "Full Body Posture Training", muscles: ["Posture", "Spine", "Full Body", "Alignment", "Posterior Chain"], isCardio: false },
+    4: { title: "Thursday: Recovery Mobility", focus: "Recovery Mobility", muscles: ["Recovery", "Mobility", "Stretching", "Joints"], isCardio: false },
+    5: { title: "Friday: Upper Back + Core", focus: "Upper Back + Core", muscles: ["Upper Back", "Core", "Abs", "Scapular", "Spine"], isCardio: false },
+    6: { title: "Saturday: Full Body Mobility + Stability", focus: "Full Body Mobility + Stability", muscles: ["Full Body", "Mobility", "Stability", "Balance"], isCardio: false },
+    7: { title: "Sunday: Recovery", focus: "Restorative Recovery", muscles: ["Recovery", "Rest", "Mobility", "Breathing"], isCardio: false }
+  }
 };
 
 export default function AdminWorkoutChallengeEngine() {
@@ -52,6 +99,7 @@ export default function AdminWorkoutChallengeEngine() {
 
   // Selected Program & Mode
   const [selectedProgramId, setSelectedProgramId] = useState<string>("immortal_90");
+  const [adminTrack, setAdminTrack] = useState<"men" | "women">("men");
   const [viewMode, setViewMode] = useState<"cycle" | "day">("cycle");
   const [selectedCycleDay, setSelectedCycleDay] = useState<number>(1);
   const [selectedDayNumber, setSelectedDayNumber] = useState<number>(1);
@@ -161,15 +209,16 @@ export default function AdminWorkoutChallengeEngine() {
 
   // Base day plan from challenge engine
   const baseDayPlan = useMemo(() => {
-    return getWorkoutForProgramAndDay(selectedProgramId as ProgramId, effectiveDayNumber);
-  }, [selectedProgramId, effectiveDayNumber]);
+    return getWorkoutForProgramAndDay(selectedProgramId as ProgramId, effectiveDayNumber, undefined, adminTrack);
+  }, [selectedProgramId, effectiveDayNumber, adminTrack]);
 
   // Check if override exists for this day or cycle
   const currentDayOverride = useMemo(() => {
-    const progOverrides = serverOverrides[selectedProgramId] || serverOverrides[normalizeProgramId(selectedProgramId)] || {};
+    const normId = normalizeProgramId(selectedProgramId);
+    const progOverrides = serverOverrides[selectedProgramId] || serverOverrides[normId] || (adminTrack ? serverOverrides[`${normId}_${adminTrack}`] : {}) || {};
     const cycleKey = `cycle_${((effectiveDayNumber - 1) % 7) + 1}`;
     return progOverrides[String(effectiveDayNumber)] || progOverrides[cycleKey] || null;
-  }, [serverOverrides, selectedProgramId, effectiveDayNumber]);
+  }, [serverOverrides, selectedProgramId, effectiveDayNumber, adminTrack]);
 
   // Active exercises list
   const activeExercises = useMemo(() => {
@@ -223,16 +272,21 @@ export default function AdminWorkoutChallengeEngine() {
       guidelines: currentDayOverride?.coachingNotes || (baseDayPlan.meta as any).cardioGuidelines || "Maintain steady conversational aerobic rhythm. Strict rule: Zero weight training today."
     });
 
-    const canonical = IMMORTAL_7_DAY_CANONICAL[((effectiveDayNumber - 1) % 7) + 1];
+    const normKey = normalizeProgramId(selectedProgramId);
+    const cycleDay = ((effectiveDayNumber - 1) % 7) + 1;
+    const progSplits = PROGRAM_CANONICAL_SPLITS[normKey] || PROGRAM_CANONICAL_SPLITS.immortal_90;
+    const canonical = progSplits[cycleDay];
+
     setSplitTitle(currentDayOverride?.title || baseDayPlan.meta.title || canonical?.title || `Day ${effectiveDayNumber} Workout`);
     setSplitCategory(currentDayOverride?.category || currentDayOverride?.focus || baseDayPlan.meta.category || canonical?.focus || "Custom Split");
     setSplitMuscles(Array.isArray(baseDayPlan.meta.targetMuscles) ? baseDayPlan.meta.targetMuscles.join(", ") : canonical?.muscles?.join(", ") || "Target Muscles");
-  }, [selectedProgramId, effectiveDayNumber, currentDayOverride, baseDayPlan]);
+  }, [selectedProgramId, effectiveDayNumber, currentDayOverride, baseDayPlan, adminTrack]);
 
   // Broadcast and persist changes helper
   const broadcastOverridesUpdated = (updatedOverrides: Record<string, any>) => {
     localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(updatedOverrides));
     window.dispatchEvent(new CustomEvent("fit_schedule_overrides_updated", { detail: { programId: selectedProgramId } }));
+    window.dispatchEvent(new CustomEvent("fit_program_schedule_overrides_updated", { detail: { programId: selectedProgramId } }));
   };
 
   // Reorder Exercises Handler
@@ -298,11 +352,17 @@ export default function AdminWorkoutChallengeEngine() {
       const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
       headers["x-admin-email"] = adminEmail;
 
+      const targetProgKey = (selectedProgramId === "home_180" && adminTrack) 
+        ? `${selectedProgramId}_${adminTrack}` 
+        : selectedProgramId;
+
       const res = await fetch("/api/admin/programs/save-day-override", {
         method: "POST",
         headers,
         body: JSON.stringify({
           programId: selectedProgramId,
+          track: (selectedProgramId === "home_180" || selectedProgramId.includes("home")) ? adminTrack : undefined,
+          targetProgramKey: targetProgKey,
           dayNumber: effectiveDayNumber,
           cycleDay: ((effectiveDayNumber - 1) % 7) + 1,
           applyToAllCycleWeeks: applyToAllCycleWeeks || viewMode === "cycle",
@@ -329,12 +389,15 @@ export default function AdminWorkoutChallengeEngine() {
         };
         setServerOverrides(prev => {
           const next = { ...prev };
-          const pid = selectedProgramId;
-          if (!next[pid]) next[pid] = {};
-          next[pid][String(effectiveDayNumber)] = overrideData;
-          if (viewMode === "cycle" || applyToAllCycleWeeks) {
-            next[pid][`cycle_${((effectiveDayNumber - 1) % 7) + 1}`] = overrideData;
-          }
+          const pids = [selectedProgramId];
+          if (targetProgKey !== selectedProgramId) pids.push(targetProgKey);
+          pids.forEach(pid => {
+            if (!next[pid]) next[pid] = {};
+            next[pid][String(effectiveDayNumber)] = overrideData;
+            if (viewMode === "cycle" || applyToAllCycleWeeks) {
+              next[pid][`cycle_${((effectiveDayNumber - 1) % 7) + 1}`] = overrideData;
+            }
+          });
           broadcastOverridesUpdated(next);
           return next;
         });
@@ -601,11 +664,17 @@ export default function AdminWorkoutChallengeEngine() {
       const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
       headers["x-admin-email"] = adminEmail;
 
+      const targetProgKey = (selectedProgramId === "home_180" && adminTrack) 
+        ? `${selectedProgramId}_${adminTrack}` 
+        : selectedProgramId;
+
       const res = await fetch("/api/admin/programs/save-day-override", {
         method: "POST",
         headers,
         body: JSON.stringify({
           programId: selectedProgramId,
+          track: (selectedProgramId === "home_180" || selectedProgramId.includes("home")) ? adminTrack : undefined,
+          targetProgramKey: targetProgKey,
           dayNumber: effectiveDayNumber,
           cycleDay: ((effectiveDayNumber - 1) % 7) + 1,
           applyToAllCycleWeeks: applyToAllCycleWeeks || viewMode === "cycle",
@@ -619,12 +688,15 @@ export default function AdminWorkoutChallengeEngine() {
 
       setServerOverrides(prev => {
         const next = { ...prev };
-        const pid = selectedProgramId;
-        if (!next[pid]) next[pid] = {};
-        next[pid][String(effectiveDayNumber)] = data.savedOverride;
-        if (viewMode === "cycle" || applyToAllCycleWeeks) {
-          next[pid][`cycle_${((effectiveDayNumber - 1) % 7) + 1}`] = data.savedOverride;
-        }
+        const pids = [selectedProgramId];
+        if (targetProgKey !== selectedProgramId) pids.push(targetProgKey);
+        pids.forEach(pid => {
+          if (!next[pid]) next[pid] = {};
+          next[pid][String(effectiveDayNumber)] = data.savedOverride;
+          if (viewMode === "cycle" || applyToAllCycleWeeks) {
+            next[pid][`cycle_${((effectiveDayNumber - 1) % 7) + 1}`] = data.savedOverride;
+          }
+        });
         broadcastOverridesUpdated(next);
         return next;
       });
@@ -829,10 +901,11 @@ export default function AdminWorkoutChallengeEngine() {
   // Available programs list
   const programOptions = useMemo(() => {
     const standard = [
-      { id: "immortal_90", label: "Immortal 90 Day Challenge (90 Days - 7 Day Rolling Cadence)" },
-      { id: "belly_fat_shred", label: "5-Month Belly Fat Shred System (140 Days - 20 Weeks)" },
-      { id: "home_180", label: "180 Day Home Workout Challenge (180 Days)" },
-      { id: "women_confidence", label: "Women Confidence Program (180 Days)" },
+      { id: "immortal_90", label: "1. 90 Immortal Challenge (Target: Men • 90 Days)" },
+      { id: "women_confidence", label: "2. 180 Women Confidence Challenge (Target: Women • 180 Days)" },
+      { id: "belly_fat_shred", label: "3. Belly Fat Shred (Target: Men & Women • 140 Days)" },
+      { id: "home_180", label: "4. 180 Days Home Workout (Target: Men & Women • 180 Days)" },
+      { id: "posture_vitality", label: "5. Posture Correction Challenge (Target: Men & Women • 90 Days)" },
       { id: "lean_muscle", label: "90 Day Lean Muscle Challenge (90 Days)" },
       { id: "fat_burning", label: "90 Day Fat Burning Challenge (90 Days)" },
       { id: "body_transformation", label: "90 Day Body Transformation (90 Days)" },
@@ -840,7 +913,6 @@ export default function AdminWorkoutChallengeEngine() {
       { id: "strength_challenge", label: "90 Day Strength Challenge (90 Days)" },
       { id: "home_fitness", label: "90 Day Home Fitness Challenge (90 Days)" },
       { id: "six_pack_core", label: "90 Day Six Pack & Core Challenge (90 Days)" },
-      { id: "posture_vitality", label: "Reclaim Your Posture & Vitality (21 Days)" },
       { id: "cardio_calisthenics", label: "Cardio, Calisthenics & Military (30 Days)" },
       { id: "lifestyle_academy", label: "Alex Lifestyle Academy (60 Days)" }
     ];
@@ -1008,6 +1080,40 @@ export default function AdminWorkoutChallengeEngine() {
           </div>
         </div>
 
+        {/* Track Switcher for Programs with separate Tracks (e.g. 180 Days Home Workout) */}
+        {(selectedProgramId === "home_180" || selectedProgramId.includes("home")) && (
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-neutral-950 rounded-2xl border border-neutral-800">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-neutral-300">Workout Track:</span>
+              <span className="text-xs text-neutral-400">Separate progressive workouts for Men and Women</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAdminTrack("men")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  adminTrack === "men"
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 font-black"
+                    : "bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800"
+                }`}
+              >
+                <span>👨 Men Track (Push/Pull, Calisthenics & Power)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdminTrack("women")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  adminTrack === "women"
+                    ? "bg-rose-600 text-white shadow-md shadow-rose-600/30 font-black"
+                    : "bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800"
+                }`}
+              >
+                <span>👩 Women Track (Glutes, Tone, Core & Conditioning)</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 7-Day Cycle Cadence Bar */}
         {viewMode === "cycle" ? (
           <div className="space-y-3 pt-2 border-t border-neutral-800">
@@ -1024,9 +1130,12 @@ export default function AdminWorkoutChallengeEngine() {
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
               {[1, 2, 3, 4, 5, 6, 7].map(cycleDay => {
                 const isSelected = selectedCycleDay === cycleDay;
-                const canonical = IMMORTAL_7_DAY_CANONICAL[cycleDay];
+                const canonicalLookupKey = (selectedProgramId === "home_180" && adminTrack === "women")
+                  ? "home_180_women"
+                  : normalizeProgramId(selectedProgramId);
+                const canonical = (PROGRAM_CANONICAL_SPLITS[canonicalLookupKey] || PROGRAM_CANONICAL_SPLITS.immortal_90)[cycleDay];
                 const cycleKey = `cycle_${cycleDay}`;
-                const progOverrides = serverOverrides[selectedProgramId] || serverOverrides[normalizeProgramId(selectedProgramId)] || {};
+                const progOverrides = serverOverrides[selectedProgramId] || serverOverrides[normalizeProgramId(selectedProgramId)] || (adminTrack ? serverOverrides[`${normalizeProgramId(selectedProgramId)}_${adminTrack}`] : {}) || {};
                 const override = progOverrides[cycleKey] || progOverrides[String(cycleDay)];
                 
                 const isCardio = override?.isCardioOnly !== undefined ? override.isCardioOnly : canonical?.isCardio;

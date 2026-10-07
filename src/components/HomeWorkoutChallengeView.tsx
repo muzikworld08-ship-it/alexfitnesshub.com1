@@ -81,7 +81,7 @@ const DEFAULT_CHALLENGE_STATE: HomeChallengeState = {
 };
 
 export default function HomeWorkoutChallengeView() {
-  const { user, setView } = useApp();
+  const { user, setView, exercises } = useApp();
   const isPremium = checkIsUserPremium(user);
   const isAdmin = user && (user.role === "admin" || (user.email && isEmailAdmin(user.email)));
 
@@ -264,10 +264,30 @@ export default function HomeWorkoutChallengeView() {
     setTimerSeconds(timerInitial);
   };
 
+  // Track selection state: Men Track vs Women Track
+  const [selectedTrack, setSelectedTrack] = useState<"Men" | "Women">(() => (
+    state.onboarding?.gender === "Female" ? "Women" : "Men"
+  ));
+
+  // Sync track when onboarding profile gender changes
+  useEffect(() => {
+    if (state.onboarding?.gender === "Female") {
+      setSelectedTrack("Women");
+    }
+  }, [state.onboarding?.gender]);
+
+  // Listen for admin schedule overrides updates
+  const [overrideTick, setOverrideTick] = useState(0);
+  useEffect(() => {
+    const handleOverridesUpdated = () => setOverrideTick(t => t + 1);
+    window.addEventListener("fit_program_schedule_overrides_updated", handleOverridesUpdated);
+    return () => window.removeEventListener("fit_program_schedule_overrides_updated", handleOverridesUpdated);
+  }, []);
+
   // Get current selected day workout
   const currentWorkout: HomeDailyWorkout = useMemo(() => {
-    return getHomeWorkoutForDay(selectedDayNumber);
-  }, [selectedDayNumber]);
+    return getHomeWorkoutForDay(selectedDayNumber, "Intermediate", state.onboarding, exercises, selectedTrack);
+  }, [selectedDayNumber, state.onboarding, exercises, selectedTrack, overrideTick]);
 
   // Exercise Swapper State (when users lack equipment or want an alternative from the same category)
   const [swappingExerciseItem, setSwappingExerciseItem] = useState<{ exercise: any; index: number } | null>(null);
@@ -1103,7 +1123,33 @@ export default function HomeWorkoutChallengeView() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Track Switcher: Men vs Women */}
+            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setSelectedTrack("Men")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer ${
+                  selectedTrack === "Men"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Men Track
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedTrack("Women")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer ${
+                  selectedTrack === "Women"
+                    ? "bg-rose-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Women Track
+              </button>
+            </div>
+
             {isAdmin && (
               <button
                 onClick={() => setActiveTab("admin")}

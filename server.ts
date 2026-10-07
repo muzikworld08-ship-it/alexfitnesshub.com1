@@ -3,7 +3,6 @@ import path from "path";
 import fs from "fs";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
-import { createServer as createViteServer } from "vite";
 import crypto from "crypto";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, addDoc, writeBatch, deleteDoc } from "firebase/firestore";
@@ -129,6 +128,11 @@ const apiLimiter = rateLimit({
   message: { success: false, error: "Too many requests from this IP, please try again later." }
 });
 app.use("/api", apiLimiter);
+
+// Health check endpoints for deployment platforms (Render, Cloud Run, etc.)
+app.get(["/health", "/api/health"], (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
 const ASSETS_DIR = path.join(process.cwd(), "assets");
 if (!fs.existsSync(ASSETS_DIR)) {
@@ -297,7 +301,7 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Custom exercise overrides local file path
 const OVERRIDES_FILE_PATH = path.join(process.cwd(), "src", "data", "custom_exercise_overrides.json");
@@ -7061,6 +7065,7 @@ registerPrintablePdfRoutes(app, {
 // Serve frontend via Vite (development/production fallback configuration)
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa"

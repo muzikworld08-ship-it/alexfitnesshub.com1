@@ -199,16 +199,16 @@ export function isExerciseBelongingToSplit(
   const targetLower = targets.map(t => t.toLowerCase().trim());
   const titleLower = categoryTitle.toLowerCase().trim();
 
-  const allowsChest = targetLower.some(t => t.includes("chest") || t.includes("pec")) || titleLower.includes("chest");
-  const allowsBack = targetLower.some(t => t.includes("back") || t.includes("lat")) || titleLower.includes("back");
-  const allowsBiceps = targetLower.some(t => t.includes("bicep")) || titleLower.includes("bicep");
-  const allowsTriceps = targetLower.some(t => t.includes("tricep")) || titleLower.includes("tricep");
-  const allowsLegs = targetLower.some(t => t.includes("leg") || t.includes("quad") || t.includes("hamstring") || t.includes("glute") || t.includes("calf") || t.includes("lower body")) || titleLower.includes("leg");
-  const allowsCore = targetLower.some(t => t.includes("core") || t.includes("abs") || t.includes("abdom")) || titleLower.includes("core") || titleLower.includes("abs");
-  const allowsShoulders = targetLower.some(t => t.includes("shoulder") || t.includes("delt")) || titleLower.includes("shoulder");
-  const allowsForearms = targetLower.some(t => t.includes("forearm") || t.includes("grip")) || titleLower.includes("forearm");
-  const isFullBody = targetLower.some(t => t.includes("full body") || t.includes("functional")) || titleLower.includes("full body");
-  const isPureCardio = (targetLower.some(t => t.includes("cardio") || t.includes("running") || t.includes("walking")) || titleLower.includes("cardio")) && !allowsChest && !allowsBack && !allowsLegs;
+  const allowsChest = targetLower.some(t => t.includes("chest") || t.includes("pec")) || titleLower.includes("chest") || titleLower.includes("push") || titleLower.includes("upper body");
+  const allowsBack = targetLower.some(t => t.includes("back") || t.includes("lat") || t.includes("rhomboid") || t.includes("trap")) || titleLower.includes("back") || titleLower.includes("pull") || titleLower.includes("upper body");
+  const allowsBiceps = targetLower.some(t => t.includes("bicep")) || titleLower.includes("bicep") || titleLower.includes("pull") || titleLower.includes("upper body");
+  const allowsTriceps = targetLower.some(t => t.includes("tricep")) || titleLower.includes("tricep") || titleLower.includes("push") || titleLower.includes("upper body");
+  const allowsShoulders = targetLower.some(t => t.includes("shoulder") || t.includes("delt")) || titleLower.includes("shoulder") || titleLower.includes("push") || titleLower.includes("upper body") || titleLower.includes("pull");
+  const allowsLegs = targetLower.some(t => t.includes("leg") || t.includes("quad") || t.includes("hamstring") || t.includes("glute") || t.includes("calf") || t.includes("calves") || t.includes("lower body")) || titleLower.includes("leg") || titleLower.includes("glute") || titleLower.includes("quad") || titleLower.includes("hamstring");
+  const allowsCore = targetLower.some(t => t.includes("core") || t.includes("abs") || t.includes("abdom") || t.includes("oblique")) || titleLower.includes("core") || titleLower.includes("abs");
+  const allowsPosture = targetLower.some(t => t.includes("posture") || t.includes("spine") || t.includes("scapular") || t.includes("thoracic") || t.includes("mobility")) || titleLower.includes("posture") || titleLower.includes("mobility");
+  const isFullBody = targetLower.some(t => t.includes("full body") || t.includes("conditioning") || t.includes("strength") || t.includes("functional")) || titleLower.includes("full body") || titleLower.includes("conditioning");
+  const isPureCardio = (targetLower.some(t => t.includes("cardio") || t.includes("running") || t.includes("walking")) || titleLower.includes("cardio") || titleLower.includes("walking")) && !allowsChest && !allowsBack && !allowsLegs;
 
   const hasChest = isChestExercise(name, category, muscleGroups);
   const hasBack = isBackExercise(name, category, muscleGroups);
@@ -218,48 +218,60 @@ export function isExerciseBelongingToSplit(
   const hasShoulders = isShoulderExercise(name, category, muscleGroups);
   const hasCore = isCoreExercise(name, category, muscleGroups);
 
-  // Rule 1: Back and/or Biceps day MUST NOT contain Chest or Leg exercises (e.g. Flat Bench Press, Squats, Lunges)
-  if ((allowsBack || allowsBiceps) && !allowsChest && !allowsLegs) {
-    if (hasChest || hasLegs) return false;
-    // Allow Back, Biceps, Forearms, or Core if specified in title
-    if (hasBack || hasBiceps) return true;
-    if (allowsCore && hasCore) return true;
-    if (allowsForearms && (category.toLowerCase().includes("forearm") || name.toLowerCase().includes("wrist") || name.toLowerCase().includes("grip"))) return true;
-    return false;
+  // If split allows full body / functional conditioning
+  if (isFullBody) {
+    return true;
   }
 
-  // Rule 2: Chest and/or Triceps day MUST NOT contain Back or Leg exercises
-  if ((allowsChest || allowsTriceps) && !allowsBack && !allowsLegs) {
-    if (hasBack || hasLegs) return false;
-    if (hasChest || hasTriceps) return true;
-    if (allowsForearms && (category.toLowerCase().includes("forearm") || name.toLowerCase().includes("grip"))) return true;
-    return false;
-  }
-
-  // Rule 3: Pure Cardio days (Days 3 & 7) cannot have heavy barbell/dumbbell compound lifts
+  // Pure Cardio / Walking day: no heavy bench or barbell compound movements
   if (isPureCardio) {
-    if (hasChest || hasBack || (hasLegs && !name.toLowerCase().includes("walk") && !name.toLowerCase().includes("run") && !name.toLowerCase().includes("jump"))) {
+    if (hasChest || hasBack) return false;
+    if (hasLegs && !name.toLowerCase().includes("walk") && !name.toLowerCase().includes("run") && !name.toLowerCase().includes("jump") && !name.toLowerCase().includes("lunge")) {
       return false;
     }
+    return true;
   }
 
-  // Rule 4: Leg and Shoulder day MUST NOT contain Chest or Back movements (e.g. Flat Bench Press on Leg day)
+  // Push Day: Chest, Shoulders, Triceps (Strictly NO Back, NO Legs)
+  if (allowsChest && allowsShoulders && allowsTriceps && !allowsBack && !allowsLegs) {
+    if (hasBack || hasLegs) return false;
+    return hasChest || hasShoulders || hasTriceps;
+  }
+
+  // Pull Day: Back, Rear Delts, Biceps (Strictly NO Chest, NO Legs)
+  if (allowsBack && allowsBiceps && !allowsChest && !allowsLegs) {
+    if (hasChest || hasLegs) return false;
+    return hasBack || hasBiceps || hasShoulders;
+  }
+
+  // Legs + Core: Quads, Hamstrings, Glutes, Calves, Abs (Strictly NO Chest, NO Back)
+  if (allowsLegs && allowsCore && !allowsChest && !allowsBack) {
+    if (hasChest || hasBack) return false;
+    return hasLegs || hasCore;
+  }
+
+  // Upper Body: Chest, Back, Shoulders, Arms (Strictly NO Legs)
+  if (allowsChest && allowsBack && !allowsLegs) {
+    if (hasLegs) return false;
+    return hasChest || hasBack || hasShoulders || hasBiceps || hasTriceps;
+  }
+
+  // Glutes / Lower Body only: Strictly NO Chest or Back
   if (allowsLegs && !allowsChest && !allowsBack) {
     if (hasChest || hasBack) return false;
-    if (hasLegs || hasShoulders || (allowsCore && hasCore)) return true;
-    return false;
+    return hasLegs || (allowsCore && hasCore);
   }
 
-  // Rule 5: Chest, Triceps and Forearms day
-  if (allowsChest && allowsTriceps && !allowsBack) {
-    if (hasBack || hasLegs) return false;
-    return hasChest || hasTriceps || allowsForearms;
+  // Upper Body + Core only: Strictly NO Legs
+  if ((allowsChest || allowsBack || allowsShoulders) && allowsCore && !allowsLegs) {
+    if (hasLegs) return false;
+    return hasChest || hasBack || hasShoulders || hasBiceps || hasTriceps || hasCore;
   }
 
-  // Rule 6: Back, Biceps and Core day
-  if (allowsBack && allowsBiceps && allowsCore && !allowsChest && !allowsLegs) {
-    if (hasChest || hasLegs) return false;
-    return hasBack || hasBiceps || hasCore;
+  // Posture & Mobility: Allow Upper Back, Scapulars, Core, Mobility
+  if (allowsPosture) {
+    if (hasLegs && !name.toLowerCase().includes("hip") && !name.toLowerCase().includes("squat hold") && !name.toLowerCase().includes("bridge")) return false;
+    return true;
   }
 
   // Fallback to intelligent categorization
@@ -521,102 +533,149 @@ export interface SplitDefinition {
 }
 
 /**
- * 7-Day Rolling Split Definitions for programs.
+ * 7-Day Continuous Repeating Split Definitions for programs.
+ * Accurately implements the newly restructured split cadence for:
+ * 1. 90 Immortal Challenge (Target: Men)
+ * 2. 180 Women Confidence Challenge (Target: Women)
+ * 3. Belly Fat Shred (Target: Men & Women)
+ * 4. 180 Days Home Workout (Target: Men & Women with separate tracks)
+ * 5. Posture Correction Challenge (Target: Men & Women)
  */
-export const PROGRAM_SPLIT_DEFINITIONS: Record<string, (cycleDay: number) => SplitDefinition> = {
+export const PROGRAM_SPLIT_DEFINITIONS: Record<string, (cycleDay: number, track?: string) => SplitDefinition> = {
   immortal_90: (cycleDay: number) => {
     switch (cycleDay) {
       case 1:
-        return { categoryTitle: "Chest and Triceps", targetMuscles: ["Chest", "Triceps", "Upper Body"] };
+        return { categoryTitle: "Monday: Push", targetMuscles: ["Chest", "Shoulders", "Triceps"] };
       case 2:
-        return { categoryTitle: "Back and Biceps", targetMuscles: ["Back", "Biceps", "Lats", "Traps", "Forearms"] };
+        return { categoryTitle: "Tuesday: Pull", targetMuscles: ["Back", "Rear Delts", "Biceps"] };
       case 3:
-        return { categoryTitle: "Cardio and Mobility", targetMuscles: ["Cardio", "Mobility", "Running", "Walking"], isCardioOnly: true, cardioDistance: "5 to 10 KM" };
+        return { categoryTitle: "Wednesday: Legs + Core", targetMuscles: ["Quadriceps", "Hamstrings", "Glutes", "Calves", "Core", "Abs"] };
       case 4:
-        return { categoryTitle: "Legs and Shoulders", targetMuscles: ["Legs", "Quadriceps", "Hamstrings", "Glutes", "Calves", "Shoulders"] };
+        return { categoryTitle: "Thursday: Cardio + Mobility", targetMuscles: ["Cardio", "Running", "Conditioning", "Mobility"], isCardioOnly: true, cardioDistance: "5 to 10 KM" };
       case 5:
-        return { categoryTitle: "Chest, Triceps and Forearms", targetMuscles: ["Chest", "Triceps", "Forearms", "Upper Body"] };
+        return { categoryTitle: "Friday: Upper Body", targetMuscles: ["Chest", "Back", "Shoulders", "Arms", "Biceps", "Triceps"] };
       case 6:
-        return { categoryTitle: "Back, Biceps and Core", targetMuscles: ["Back", "Biceps", "Core", "Abs"] };
+        return { categoryTitle: "Saturday: Athletic Conditioning + Core", targetMuscles: ["Functional", "Conditioning", "Core", "Abs", "Cardio"] };
       case 7:
       default:
-        return { categoryTitle: "Rest and Recovery", targetMuscles: ["Recovery", "Mobility"], isRestDay: true, cardioDistance: "5 to 10 KM Optional" };
-    }
-  },
-  belly_fat_shred: (cycleDay: number) => {
-    switch (cycleDay) {
-      case 1:
-        return { categoryTitle: "HIIT Intervals & Midsection Stability", targetMuscles: ["Core", "Abs", "HIIT", "Cardio"] };
-      case 2:
-        return { categoryTitle: "Core Armor & Lower Body Toning", targetMuscles: ["Core", "Abs", "Legs", "Glutes"] };
-      case 3:
-        return { categoryTitle: "Wednesday 5-10 KM Running or Walking", targetMuscles: ["Cardio", "Running", "Walking"], isCardioOnly: true, cardioDistance: "5 to 10 KM" };
-      case 4:
-        return { categoryTitle: "Upper Body Push-Pull & Midsection Sculpt", targetMuscles: ["Chest", "Back", "Shoulders", "Core", "Abs"] };
-      case 5:
-        return { categoryTitle: "Lower Body Shred & Isometric Core", targetMuscles: ["Legs", "Glutes", "Core", "Abs"] };
-      case 6:
-        return { categoryTitle: "Saturday Total Body Resistance & Functional Core", targetMuscles: ["Full Body", "Core", "Chest", "Legs"] };
-      case 7:
-      default:
-        return { categoryTitle: "Sunday 5-10 KM Running or Walking & Rest", targetMuscles: ["Cardio", "Recovery"], isRestDay: true, cardioDistance: "5 to 10 KM" };
+        return { categoryTitle: "Sunday: Recovery", targetMuscles: ["Recovery", "Mobility", "Stretching"], isRestDay: true };
     }
   },
   women_confidence: (cycleDay: number) => {
     switch (cycleDay) {
       case 1:
-        return { categoryTitle: "Glute & Posterior Awakening", targetMuscles: ["Glutes", "Hamstrings", "Lower Body", "Hips"] };
+        return { categoryTitle: "Monday: Glutes + Hamstrings", targetMuscles: ["Glutes", "Hamstrings", "Lower Body", "Hips"] };
       case 2:
-        return { categoryTitle: "Upper Body Posture & Sculpt", targetMuscles: ["Upper Body", "Back", "Shoulders", "Arms", "Posture"] };
+        return { categoryTitle: "Tuesday: Upper Body + Core", targetMuscles: ["Upper Body", "Back", "Shoulders", "Arms", "Core", "Abs"] };
       case 3:
-        return { categoryTitle: "Aerobic Step Walk & Active Reset", targetMuscles: ["Cardio", "Walking", "Core"], isCardioOnly: true, cardioDistance: "3 to 5 KM" };
+        return { categoryTitle: "Wednesday: Quads + Glutes", targetMuscles: ["Quadriceps", "Glutes", "Legs", "Lower Body"] };
       case 4:
-        return { categoryTitle: "Core & Waist Kinetic Compression", targetMuscles: ["Core", "Abs", "Obliques"] };
+        return { categoryTitle: "Thursday: Cardio + Core + Mobility", targetMuscles: ["Cardio", "Core", "Abs", "Mobility", "Walking"] };
       case 5:
-        return { categoryTitle: "Full Body Tone & Metabolic Flush", targetMuscles: ["Full Body", "Glutes", "Upper Body"] };
+        return { categoryTitle: "Friday: Glutes + Full Lower Body", targetMuscles: ["Glutes", "Hamstrings", "Quadriceps", "Calves", "Lower Body"] };
       case 6:
-        return { categoryTitle: "Deep Pelvic Mobility & Glute Sculpt", targetMuscles: ["Glutes", "Hips", "Mobility"] };
+        return { categoryTitle: "Saturday: Full Body Conditioning", targetMuscles: ["Full Body", "Conditioning", "Cardio", "Tone"] };
       case 7:
       default:
-        return { categoryTitle: "Restorative Regeneration & Rest", targetMuscles: ["Recovery", "Mobility", "Posture"], isRestDay: true };
+        return { categoryTitle: "Sunday: Recovery", targetMuscles: ["Recovery", "Mobility", "Stretching", "Rest"], isRestDay: true };
     }
   },
-  home_180: (cycleDay: number) => {
+  belly_fat_shred: (cycleDay: number) => {
     switch (cycleDay) {
       case 1:
-        return { categoryTitle: "Upper Body Calisthenics & Chest", targetMuscles: ["Chest", "Upper Body", "Arms", "Home Workouts"] };
+        return { categoryTitle: "Monday: Full Body + Core", targetMuscles: ["Full Body", "Core", "Abs", "Chest", "Legs"] };
       case 2:
-        return { categoryTitle: "Lower Body Quad & Glute Armor", targetMuscles: ["Legs", "Glutes", "Quads", "Hamstrings"] };
+        return { categoryTitle: "Tuesday: Cardio + Abs", targetMuscles: ["Cardio", "HIIT", "Abs", "Core", "Running"] };
       case 3:
-        return { categoryTitle: "Midweek 5-10 KM Aerobic Cardio", targetMuscles: ["Cardio", "Running", "Walking"], isCardioOnly: true, cardioDistance: "5 to 10 KM" };
+        return { categoryTitle: "Wednesday: Full Body Strength", targetMuscles: ["Full Body", "Back", "Chest", "Legs", "Strength"] };
       case 4:
-        return { categoryTitle: "Posterior Chain & Back Strength", targetMuscles: ["Back", "Biceps", "Core"] };
+        return { categoryTitle: "Thursday: Cardio + Core", targetMuscles: ["Cardio", "Core", "Abs", "Transverse Abdominis"] };
       case 5:
-        return { categoryTitle: "Core Pillar Compression & Abs", targetMuscles: ["Core", "Abs", "Obliques"] };
+        return { categoryTitle: "Friday: Full Body Conditioning", targetMuscles: ["Full Body", "Conditioning", "HIIT", "Cardio"] };
       case 6:
-        return { categoryTitle: "Full Body Functional Conditioning", targetMuscles: ["Full Body", "Cardio", "Legs", "Chest"] };
+        return { categoryTitle: "Saturday: Walking + Mobility", targetMuscles: ["Walking", "Cardio", "Mobility", "Joints"], isCardioOnly: true, cardioDistance: "5 to 10 KM Brisk Walk" };
       case 7:
       default:
-        return { categoryTitle: "Sunday Active Recovery & Rest", targetMuscles: ["Recovery", "Mobility"], isRestDay: true };
+        return { categoryTitle: "Sunday: Recovery", targetMuscles: ["Recovery", "Mobility", "Active Reset"], isRestDay: true };
+    }
+  },
+  home_180: (cycleDay: number, track?: string) => {
+    const isWomenTrack = (track || "").toLowerCase() === "women" || (track || "").toLowerCase() === "female";
+    if (isWomenTrack) {
+      switch (cycleDay) {
+        case 1:
+          return { categoryTitle: "Monday: Glutes + Hamstrings", targetMuscles: ["Glutes", "Hamstrings", "Lower Body"] };
+        case 2:
+          return { categoryTitle: "Tuesday: Upper Body Tone + Core", targetMuscles: ["Upper Body", "Back", "Shoulders", "Core", "Abs"] };
+        case 3:
+          return { categoryTitle: "Wednesday: Quads + Glutes", targetMuscles: ["Quadriceps", "Glutes", "Lower Body"] };
+        case 4:
+          return { categoryTitle: "Thursday: Cardio + Core + Mobility", targetMuscles: ["Cardio", "Core", "Abs", "Mobility", "Walking"] };
+        case 5:
+          return { categoryTitle: "Friday: Glutes + Full Lower Body", targetMuscles: ["Glutes", "Full Lower Body", "Hamstrings", "Quads", "Calves"] };
+        case 6:
+          return { categoryTitle: "Saturday: Full Body Conditioning", targetMuscles: ["Full Body", "Conditioning", "Cardio"] };
+        case 7:
+        default:
+          return { categoryTitle: "Sunday: Recovery", targetMuscles: ["Recovery", "Mobility", "Stretching"], isRestDay: true };
+      }
+    } else {
+      // Men Track (Default)
+      switch (cycleDay) {
+        case 1:
+          return { categoryTitle: "Monday: Upper Body Push & Calisthenics", targetMuscles: ["Chest", "Shoulders", "Triceps", "Upper Body"] };
+        case 2:
+          return { categoryTitle: "Tuesday: Core & Abs Shred", targetMuscles: ["Core", "Abs", "Obliques"] };
+        case 3:
+          return { categoryTitle: "Wednesday: Lower Body & Legs", targetMuscles: ["Legs", "Quadriceps", "Hamstrings", "Calves"] };
+        case 4:
+          return { categoryTitle: "Thursday: Cardio + Mobility", targetMuscles: ["Cardio", "Running", "Mobility", "Conditioning"] };
+        case 5:
+          return { categoryTitle: "Friday: Upper Body Pull & Back", targetMuscles: ["Back", "Biceps", "Upper Body"] };
+        case 6:
+          return { categoryTitle: "Saturday: Athletic Full Body Conditioning", targetMuscles: ["Full Body", "Cardio", "Conditioning"] };
+        case 7:
+        default:
+          return { categoryTitle: "Sunday: Recovery", targetMuscles: ["Recovery", "Mobility", "Stretching"], isRestDay: true };
+      }
+    }
+  },
+  posture_vitality: (cycleDay: number) => {
+    switch (cycleDay) {
+      case 1:
+        return { categoryTitle: "Monday: Upper Back + Shoulder Mobility", targetMuscles: ["Upper Back", "Shoulders", "Mobility", "Scapular", "Thoracic"] };
+      case 2:
+        return { categoryTitle: "Tuesday: Core Stability + Hip Mobility", targetMuscles: ["Core", "Hips", "Pelvic", "Abs", "Mobility"] };
+      case 3:
+        return { categoryTitle: "Wednesday: Full Body Posture Training", targetMuscles: ["Posture", "Spine", "Full Body", "Alignment", "Posterior Chain"] };
+      case 4:
+        return { categoryTitle: "Thursday: Recovery Mobility", targetMuscles: ["Recovery", "Mobility", "Stretching", "Joints"], isRestDay: true };
+      case 5:
+        return { categoryTitle: "Friday: Upper Back + Core", targetMuscles: ["Upper Back", "Core", "Abs", "Scapular", "Spine"] };
+      case 6:
+        return { categoryTitle: "Saturday: Full Body Mobility + Stability", targetMuscles: ["Full Body", "Mobility", "Stability", "Balance"] };
+      case 7:
+      default:
+        return { categoryTitle: "Sunday: Recovery", targetMuscles: ["Recovery", "Rest", "Mobility", "Breathing"], isRestDay: true };
     }
   },
   lifestyle_academy: (cycleDay: number) => {
     switch (cycleDay) {
       case 1:
-        return { categoryTitle: "Posture Alignment & Posterior Chain", targetMuscles: ["Upper Back", "Shoulders", "Mobility"] };
+        return { categoryTitle: "Monday: Posture Alignment & Posterior Chain", targetMuscles: ["Upper Back", "Shoulders", "Mobility"] };
       case 2:
-        return { categoryTitle: "Hip Flexor Decompression & Sedentary Reset", targetMuscles: ["Hips", "Glutes", "Mobility"] };
+        return { categoryTitle: "Tuesday: Hip Flexor Decompression & Reset", targetMuscles: ["Hips", "Glutes", "Mobility"] };
       case 3:
-        return { categoryTitle: "Aerobic Circulation & Brisk Walking", targetMuscles: ["Cardio", "Walking"], isCardioOnly: true, cardioDistance: "5 to 10 KM" };
+        return { categoryTitle: "Wednesday: Aerobic Circulation & Brisk Walking", targetMuscles: ["Cardio", "Walking"], isCardioOnly: true, cardioDistance: "5 to 10 KM" };
       case 4:
-        return { categoryTitle: "Chest Opening & Anterior Mobility", targetMuscles: ["Chest", "Shoulders", "Mobility"] };
+        return { categoryTitle: "Thursday: Chest Opening & Anterior Mobility", targetMuscles: ["Chest", "Shoulders", "Mobility"] };
       case 5:
-        return { categoryTitle: "Spinal Decompression & Core Stability", targetMuscles: ["Core", "Spine", "Abs"] };
+        return { categoryTitle: "Friday: Spinal Decompression & Core Stability", targetMuscles: ["Core", "Spine", "Abs"] };
       case 6:
-        return { categoryTitle: "Glute Activation & Kinetic Chain", targetMuscles: ["Glutes", "Legs", "Hamstrings"] };
+        return { categoryTitle: "Saturday: Glute Activation & Kinetic Chain", targetMuscles: ["Glutes", "Legs", "Hamstrings"] };
       case 7:
       default:
-        return { categoryTitle: "Restorative Mobility & Parasympathetic Rest", targetMuscles: ["Recovery", "Mobility"], isRestDay: true };
+        return { categoryTitle: "Sunday: Restorative Mobility & Rest", targetMuscles: ["Recovery", "Mobility"], isRestDay: true };
     }
   }
 };
@@ -628,17 +687,18 @@ export const PROGRAM_SPLIT_DEFINITIONS: Record<string, (cycleDay: number) => Spl
 export function buildDynamicDayPlan(
   programId: string,
   dayNumber: number,
-  allExercises: Exercise[]
+  allExercises: Exercise[],
+  track?: string
 ): DayExecutionPlan {
   const safeDay = Math.max(1, Number(dayNumber) || 1);
   const cycleDay = ((safeDay - 1) % 7) + 1;
   const programKey = (programId || "immortal_90").toLowerCase().replace(/[^a-z0-9_]/g, "_");
 
   const splitResolver = PROGRAM_SPLIT_DEFINITIONS[programKey] || PROGRAM_SPLIT_DEFINITIONS["immortal_90"];
-  const splitDef = splitResolver(cycleDay);
+  const splitDef = splitResolver(cycleDay, track);
 
   const isHomeProgram = programKey.includes("home") || programKey === "home_180";
-  const isWomenProgram = programKey.includes("women") || programKey === "women_confidence";
+  const isWomenProgram = programKey.includes("women") || programKey === "women_confidence" || track === "women";
   
   let eligibleExercises = allExercises;
   if (isWomenProgram) {
@@ -833,3 +893,158 @@ export function resetAndCleanAllProgramSplits(
     }
   };
 }
+
+export interface PreWorkoutStretch {
+  name: string;
+  duration: string;
+  durationOrReps: string;
+  desc: string;
+  instructions: string;
+  target?: string;
+  gifUrl?: string;
+}
+
+export type PreWorkoutStretchItem = PreWorkoutStretch;
+
+/**
+ * Returns tailored pre-workout mobility and dynamic warm-up stretches for a given day or workout split.
+ * Provides rich descriptions, duration cues, and muscle-specific activation drills.
+ */
+export function getPreWorkoutStretchesForDay(
+  dayNumOrType: number | string = 1,
+  programOrSplit?: string
+): PreWorkoutStretch[] {
+  let dayNum = 1;
+  let typeHint = "";
+
+  if (typeof dayNumOrType === "number") {
+    dayNum = dayNumOrType;
+  } else if (typeof dayNumOrType === "string") {
+    const parsed = parseInt(dayNumOrType, 10);
+    if (!isNaN(parsed)) {
+      dayNum = parsed;
+    } else {
+      typeHint = dayNumOrType.toLowerCase();
+    }
+  }
+
+  if (programOrSplit && typeof programOrSplit === "string") {
+    typeHint += " " + programOrSplit.toLowerCase();
+  }
+
+  const cycleDay = ((dayNum - 1) % 7) + 1;
+
+  // Split-informed stretches based on standard 7-day cadence or split hint
+  const isPush = typeHint.includes("push") || typeHint.includes("chest") || typeHint.includes("shoulder") || cycleDay === 1;
+  const isPull = typeHint.includes("pull") || typeHint.includes("back") || typeHint.includes("bicep") || cycleDay === 2;
+  const isLegs = typeHint.includes("leg") || typeHint.includes("lower") || typeHint.includes("quad") || typeHint.includes("glute") || cycleDay === 3;
+  const isCardioRest = typeHint.includes("cardio") || typeHint.includes("rest") || cycleDay === 7;
+
+  if (isLegs || cycleDay === 6) {
+    return [
+      {
+        name: "World's Greatest Stretch & Hip Opener",
+        duration: "3 Mins",
+        durationOrReps: "3 Mins",
+        desc: "Deep lunge with thoracic twist to open hips, glutes, and thoracic spine.",
+        instructions: "Step into a deep runner's lunge, drop inside elbow towards instep, then rotate arm up toward the ceiling. Alternate sides.",
+        target: "Hips, Glutes & Hamstrings"
+      },
+      {
+        name: "Deep Squat Pry & Ankle Mobilization",
+        duration: "2 Mins",
+        durationOrReps: "2 Mins",
+        desc: "Deep bodyweight squat hold gently pushing knees outward to lubricate joints.",
+        instructions: "Descend into full squat depth, keep chest elevated, use elbows to pry knees outward while gently shifting weight side to side.",
+        target: "Ankles, Adductors & Pelvic Floor"
+      },
+      {
+        name: "Dynamic Leg Swings (Front/Back & Lateral)",
+        duration: "2 Mins",
+        durationOrReps: "20 reps per side",
+        desc: "Rhythmic swings to lengthen hamstrings and hip flexors under dynamic control.",
+        instructions: "Hold a wall or support and swing one leg smoothly back and forth, then laterally across your torso.",
+        target: "Hamstrings & Hip Flexors"
+      }
+    ];
+  }
+
+  if (isPull || cycleDay === 5) {
+    return [
+      {
+        name: "Cat-Cow & Thoracic Rotations",
+        duration: "3 Mins",
+        durationOrReps: "3 Mins",
+        desc: "Quadruped spinal waves to decompress vertebrae and activate latissimus dorsi.",
+        instructions: "Start on all fours. Arch back upwards exhaling, then dip belly downwards inhaling. Add hand-behind-head thoracic twists.",
+        target: "Spine, Lats & Upper Back"
+      },
+      {
+        name: "Scapular Wall Slides & Retractions",
+        duration: "2 Mins",
+        durationOrReps: "15 Reps",
+        desc: "Shoulder blade gliding to activate rhomboids and mid-traps before pulling work.",
+        instructions: "Press lower back and elbows against wall, slide arms overhead smoothly without arching lower spine.",
+        target: "Rhomboids & Mid-Traps"
+      },
+      {
+        name: "Dead Hang & Lat Lengthening",
+        duration: "2 Mins",
+        durationOrReps: "3 x 30s Holds",
+        desc: "Passive to active dead hang to decompress shoulders and lengthen back chain.",
+        instructions: "Hang from pull-up bar with relaxed shoulders, engage scapulae for 5s, relax, and repeat.",
+        target: "Latissimus Dorsi & Grip"
+      }
+    ];
+  }
+
+  if (isCardioRest) {
+    return [
+      {
+        name: "Ankle, Hip & Knee Joint Mobilizations",
+        duration: "3 Mins",
+        durationOrReps: "3 Mins",
+        desc: "Smooth rotational joint lubrication before aerobic running, walking or recovery.",
+        instructions: "Perform gentle ankle circles, standing hip openers, and knee sweeps to prepare lower kinetic chain.",
+        target: "Joint Fluid & Connective Tissue"
+      },
+      {
+        name: "Inchworm Walkouts to Dynamic Cobra",
+        duration: "3 Mins",
+        durationOrReps: "10 Walkouts",
+        desc: "Full posterior chain elongation and gentle abdominal fascia release.",
+        instructions: "Hinge forward from hips, touch floor, walk hands out to high plank, gently lower hips for cobra, walk hands back.",
+        target: "Posterior Chain & Core"
+      }
+    ];
+  }
+
+  // Default: Push / Upper Body / Day 1, 4
+  return [
+    {
+      name: "Dynamic Arm Swings & Rotational Openers",
+      duration: "2 Mins",
+      durationOrReps: "2 Mins",
+      desc: "Wide axial arm circles to lubricate shoulder capsules and pectoral attachments.",
+      instructions: "Perform slow, controlled arm circles forward and backward, alternating with chest hugs.",
+      target: "Shoulders & Pectorals"
+    },
+    {
+      name: "Band Pull-Aparts / Scapular Wall Slides",
+      duration: "2 Mins",
+      durationOrReps: "15-20 Reps",
+      desc: "Prime rotator cuffs and rear deltoids to stabilize pressing motions.",
+      instructions: "Keep arms extended at shoulder height, pull band or retract scapulae firmly to pinch shoulder blades together.",
+      target: "Rotator Cuff & Upper Back"
+    },
+    {
+      name: "Wrist Extensor & Flexor Mobilization",
+      duration: "2 Mins",
+      durationOrReps: "2 Mins",
+      desc: "Prepares wrists for barbell, dumbbell, or push-up load bearing.",
+      instructions: "Place palms down on floor in quadruped, gently rock forward, sideways, and reverse palm direction.",
+      target: "Wrists & Forearms"
+    }
+  ];
+}
+

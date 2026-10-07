@@ -13,7 +13,7 @@ import {
   Layers, X, ArrowRightLeft
 } from "lucide-react";
 import UniversalExerciseSwapperModal from "./UniversalExerciseSwapperModal";
-import { detectWorkoutType } from "../utils/dynamicWorkoutEngine";
+import { detectWorkoutType, getPreWorkoutStretchesForDay } from "../utils/dynamicWorkoutEngine";
 import { Exercise } from "../data/exercises";
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -839,11 +839,7 @@ export default function Premium90DayChallenge() {
       exercises: exercisesWithDetails,
       estTime: totalEstTime,
       estCalories: totalEstCalories,
-      warmUp: [
-        { name: "Dynamic Warm-up Jumps", duration: "3 Mins", desc: "Light impact baseline dynamic hopping." },
-        { name: "Dynamic Rotational Swings", duration: "3 Mins", desc: "Full range axial mobility pivots." },
-        { name: "Active Stretch Squats", duration: "4 Mins", desc: "Deep eccentric bodyweight hold pivots." }
-      ],
+      warmUp: getPreWorkoutStretchesForDay(dayNum, focusLabel),
       coolDown: [
         { name: "Systemic Decompression Breathing", duration: "4 Mins", desc: "Deep diaphragmatic nasal inhalation cycles." },
         { name: "Full Posterior Muscle Release Stretch", duration: "4 Mins", desc: "Static hamstring and back lengthening holds." }

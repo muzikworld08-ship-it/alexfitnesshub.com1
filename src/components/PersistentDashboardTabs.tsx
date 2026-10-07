@@ -49,7 +49,7 @@ export default function PersistentDashboardTabs({
             className={`flex-1 shrink-0 min-w-[100px] flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-4 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer select-none border-0 ${
               tab.isActive
                 ? "bg-[#D32F2F] text-white shadow-md scale-[1.01]"
-                : "bg-white/85 text-slate-700 hover:bg-slate-50:bg-slate-900 hover:text-slate-900:text-white"
+                : "bg-white/85 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
             }`}
           >
             <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${tab.isActive ? "text-white" : "text-slate-400"}`} />

@@ -225,7 +225,7 @@ export default function AddWorkoutModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[80] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150">
       <div 
         className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl text-neutral-100 overflow-hidden"
         role="dialog"
@@ -255,7 +255,7 @@ export default function AddWorkoutModal({
                 </div>
                 <p className="text-xs text-neutral-400 mt-0.5">
                   {isWomenProgram 
-                    ? `Assign an authentic female-focused movement to Day ${dayNumber} (No cable fly / heavy strongman movements).`
+                    ? `Assign a movement to Day ${dayNumber} (No heavy strongman/powerlifting movements).`
                     : `Append a workout to Day ${dayNumber} of ${programId}. You can drag and drop it into any position.`}
                 </p>
               </div>
@@ -306,7 +306,7 @@ export default function AddWorkoutModal({
               <div className="bg-rose-950/30 border-b border-rose-900/40 px-5 py-2.5 flex items-center gap-2 text-xs text-rose-300">
                 <Sparkles className="w-4 h-4 text-rose-400 shrink-0" />
                 <span>
-                  <strong>Women Confidence Curated Filter:</strong> Heavy chest bodybuilding exercises (like cable fly, heavy bench press) are excluded. Showing authentic female sculpting & posture drills.
+                  <strong>Curated Filter:</strong> Heavy chest bodybuilding exercises (like cable fly, heavy bench press) are excluded. Showing toning, posture & mobility drills.
                 </span>
               </div>
             )}
@@ -346,11 +346,10 @@ export default function AddWorkoutModal({
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2.5">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredExercises.map(ex => {
-                  const isFemale = isExplicitlyMarkedWomenWorkout(ex) || isWomenProgram;
                   return (
                     <div
                       key={ex.id}
-                      className={`bg-neutral-950/70 border ${isFemale ? "border-rose-900/30 hover:border-rose-700/60" : "border-neutral-800 hover:border-neutral-700"} rounded-2xl p-3 flex flex-col justify-between gap-3 group transition`}
+                      className="bg-neutral-950/70 border border-neutral-800 hover:border-neutral-700 rounded-2xl p-3 flex flex-col justify-between gap-3 group transition"
                     >
                       <div className="flex items-start gap-3">
                         <div className="w-14 h-14 rounded-xl bg-neutral-900 border border-neutral-800 overflow-hidden shrink-0">
@@ -361,7 +360,7 @@ export default function AddWorkoutModal({
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <h4 className="text-xs sm:text-sm font-black text-white truncate group-hover:text-rose-400 transition">
+                            <h4 className="text-xs sm:text-sm font-black text-white truncate group-hover:text-red-400 transition">
                               {ex.name}
                             </h4>
                           </div>
@@ -369,11 +368,6 @@ export default function AddWorkoutModal({
                             <p className="text-[11px] text-neutral-400 truncate">
                               {ex.category}
                             </p>
-                            {isFemale && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-950/70 text-rose-300 border border-rose-800/50">
-                                🌸 Female
-                              </span>
-                            )}
                           </div>
                           <div className="flex flex-wrap gap-1 mt-1.5">
                             {(ex.muscleGroups || []).slice(0, 2).map(m => (
@@ -416,7 +410,31 @@ export default function AddWorkoutModal({
               <label className="text-xs font-bold text-neutral-300 block">
                 Target Audience & Program Alignment
               </label>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTargetAudience("Unisex")}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                    targetAudience === "Unisex"
+                      ? "bg-neutral-800 text-white border-neutral-700 shadow-xs"
+                      : "bg-neutral-900 text-neutral-400 border-neutral-800 hover:text-white"
+                  }`}
+                >
+                  <Dumbbell className="w-3.5 h-3.5" />
+                  <span>👥 Unisex / All</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetAudience("Men")}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                    targetAudience === "Men"
+                      ? "bg-amber-600 text-white border-amber-500 shadow-xs"
+                      : "bg-neutral-900 text-neutral-400 border-neutral-800 hover:text-white"
+                  }`}
+                >
+                  <Dumbbell className="w-3.5 h-3.5" />
+                  <span>⚡ Men / Heavy</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -426,26 +444,14 @@ export default function AddWorkoutModal({
                       setCustomMuscleGroup("Glutes, Hamstrings");
                     }
                   }}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                  className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
                     targetAudience === "Women"
                       ? "bg-rose-600 text-white border-rose-500 shadow-xs"
                       : "bg-neutral-900 text-neutral-400 border-neutral-800 hover:text-white"
                   }`}
                 >
                   <Heart className="w-3.5 h-3.5" />
-                  <span>🌸 Women / Female Workout</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTargetAudience("Unisex")}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
-                    targetAudience === "Unisex"
-                      ? "bg-neutral-800 text-white border-neutral-700 shadow-xs"
-                      : "bg-neutral-900 text-neutral-400 border-neutral-800 hover:text-white"
-                  }`}
-                >
-                  <Dumbbell className="w-3.5 h-3.5" />
-                  <span>👥 Unisex / General Athlete</span>
+                  <span>🌸 Women</span>
                 </button>
               </div>
 
