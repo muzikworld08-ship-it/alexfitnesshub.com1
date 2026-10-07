@@ -31,48 +31,11 @@ interface WorkoutPlayerProps {
   sessionTitle: string;
   onClose: () => void;
   onComplete: (caloriesBurned: number, durationMinutes: number) => void;
-  preWorkoutStretches?: Exercise[];
 }
 
-export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComplete, preWorkoutStretches }: WorkoutPlayerProps) {
+export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComplete }: WorkoutPlayerProps) {
   const workoutTimer = useWorkoutTimer();
-  const [workoutExercises, setWorkoutExercises] = useState<Exercise[]>(() => {
-    const list: Exercise[] = [];
-    const targetMuscles = exercises.flatMap(e => e.muscleGroups || [e.category]);
-    const stretches = getPreWorkoutStretchesForDay(targetMuscles, exercises, 2);
-    // 2 stretch workouts at the beginning of each workout
-    for (const st of stretches) {
-      if (!exercises.some(e => e.name.toLowerCase() === (st.name || "").toLowerCase())) {
-        list.push({
-          id: st.id || "stretch_prep",
-          name: `[Warm-up Stretch] ${st.name}`,
-          category: "Stretching & Mobility",
-          categories: ["Stretching & Mobility", "Mobility & Recovery"],
-          muscleGroups: st.muscleGroup || ["Mobility"],
-          difficulty: "Beginner",
-          instructions: st.instructions || ["Dynamic stretch warmup: execute with controlled tempo."],
-          equipment: st.equipment || ["Bodyweight"],
-          commonMistakes: [],
-          safetyTips: ["Never bounce into the stretch."],
-          alternativeExercises: [],
-          progressionVariations: [],
-          isPremium: false,
-          startingPosition: "",
-          movementExecution: "Slow, rhythmic diaphragmatic breathing.",
-          finishingPosition: "",
-          regressionVariations: [],
-          musclesWorked: st.muscleGroup || ["Mobility"],
-          gifUrl: st.gifUrl || "",
-          customMediaUrl: st.customMediaUrl || st.gifUrl || "",
-          duration: st.duration || "45s Continuous",
-          recommendedSets: "1",
-          recommendedReps: st.reps || "45s Hold"
-        });
-      }
-    }
-    list.push(...exercises.slice(0, 10));
-    return list;
-  });
+  const [workoutExercises, setWorkoutExercises] = useState<Exercise[]>(exercises.slice(0, 10));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
   const totalSets = 3; // Standard 3 sets per exercise
@@ -91,6 +54,10 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
 
   // Exercise Swapper State
   const [isSwapperOpen, setIsSwapperOpen] = useState(false);
+  const [showStretchesModal, setShowStretchesModal] = useState(false);
+  const preWorkoutStretches = useMemo(() => {
+    return getPreWorkoutStretchesForDay(1, sessionTitle);
+  }, [sessionTitle]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -505,12 +472,35 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
               </div>
             ) : null}
 
-            <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="px-6 py-2.5 bg-[#C0392B] hover:bg-[#A82E22] text-white text-xs font-bold uppercase rounded-xl tracking-wider shadow active:scale-95 duration-150 transition-all font-mono"
-            >
-              {isPlaying ? "Pause Setup" : "Start Setup Countdown"}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <button
+                onClick={() => setIsPlaying(!isPlaying)}
+                className="px-6 py-2.5 bg-[#C0392B] hover:bg-[#A82E22] text-white text-xs font-bold uppercase rounded-xl tracking-wider shadow active:scale-95 duration-150 transition-all font-mono"
+              >
+                {isPlaying ? "Pause Setup" : "Start Setup Countdown"}
+              </button>
+              <button
+                onClick={() => setShowStretchesModal(!showStretchesModal)}
+                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold uppercase rounded-xl tracking-wider transition-all font-mono"
+              >
+                {showStretchesModal ? "Hide Warm-up" : `Pre-Workout Stretches (${preWorkoutStretches.length})`}
+              </button>
+            </div>
+
+            {showStretchesModal && (
+              <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl text-left space-y-2 mt-3">
+                <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider block">Recommended Dynamic Mobility Drills</span>
+                {preWorkoutStretches.map((s, idx) => (
+                  <div key={idx} className="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80">
+                    <div className="flex justify-between items-center text-xs font-bold text-white">
+                      <span>{s.name}</span>
+                      <span className="text-[10px] text-emerald-400 font-mono">{s.duration}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">{s.instructions || s.desc}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
