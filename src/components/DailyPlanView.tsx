@@ -18,7 +18,9 @@ import {
 } from "../utils/programWaitManager";
 import { sendEmail } from "../services/emailNotificationService";
 import WorkoutReminderCard from "./WorkoutReminderCard";
+import WorkoutVisual from "./WorkoutVisual";
 import { getPreWorkoutStretchesForDay } from "../utils/dynamicWorkoutEngine";
+import { SectionErrorBoundary } from "./ErrorBoundary";
 
 interface DailyPlanSchema {
   wakeUpTime: string;
@@ -67,7 +69,7 @@ interface LoggedMeal {
 }
 
 export default function DailyPlanView() {
-  const { user, activityLogs, logWorkoutCompletion, updateWaterIntake, addWeightLogAction } = useApp();
+  const { user, exercises, activityLogs, logWorkoutCompletion, updateWaterIntake, addWeightLogAction } = useApp();
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<DailyPlanSchema | null>(null);
   const [method, setMethod] = useState("");
@@ -175,21 +177,22 @@ export default function DailyPlanView() {
     const mode = intensityOverride || scaleDaysState;
 
     const buildClientFallbackPlan = (): DailyPlanSchema => {
-      const age = Number(user.age) || 25;
-      const weight = Number(user.weight) || 70;
-      const height = Number(user.height) || 170;
-      const gender = user.gender || "Female";
-      const goal = user.fitnessGoals || "Weight Loss";
-      const activity = user.activityLevel || "Moderately Active";
-      const preference = user.dietaryPreference || "Nigerian/African";
-      const restrictions = user.healthRestrictions || "None";
-      const wakeUp = user.wakeUpTime || "06:00 AM";
-      const bed = user.bedTime || "10:00 PM";
-      const exp = user.workoutExperience || "Beginner";
+      const age = Number(user?.age) || 25;
+      const weight = Number(user?.weight) || 70;
+      const height = Number(user?.height) || 170;
+      const gender = user?.gender || "Unisex";
+      const goal = user?.fitnessGoals || "Weight Loss";
+      const activity = user?.activityLevel || "Moderately Active";
+      const preference = user?.dietaryPreference || "Nigerian/African";
+      const restrictions = user?.healthRestrictions || "None";
+      const wakeUp = user?.wakeUpTime || "06:00 AM";
+      const bed = user?.bedTime || "10:00 PM";
+      const exp = user?.workoutExperience || "Beginner";
 
       let bmr = 10 * weight + 6.25 * height - 5 * age;
-      if (gender === "Male") bmr += 5;
-      else bmr -= 161;
+      if (gender.toLowerCase() === "male") bmr += 5;
+      else if (gender.toLowerCase() === "female") bmr -= 161;
+      else bmr -= 78;
 
       let multiplier = 1.375;
       if (activity.toLowerCase().includes("sedentary")) multiplier = 1.2;
@@ -258,7 +261,7 @@ export default function DailyPlanView() {
         dailyStepGoal: goal.includes("Loss") ? 10000 : 8000,
         recoveryActivities: "Foam rolling, gentle hip openers, and hamstring stretches.",
         weeklyGoal: `Hit ${calories} daily calories target and complete planned training days.`,
-        monthlyGoal: `Progress consistently toward target weight of ${user.targetWeight || 65} kg.`
+        monthlyGoal: `Progress consistently toward target weight of ${user?.targetWeight || 65} kg.`
       };
     };
 
@@ -370,7 +373,7 @@ export default function DailyPlanView() {
         // Log this set completion to general exercises stats
         logWorkoutCompletion(
           `ex_sub_${index}`,
-          plan?.workoutExercises[index].reps || 10,
+          plan?.workoutExercises?.[index]?.reps || 10,
           user?.weight ? Math.round(user.weight * 0.5) : 35,
           `Completed during daily dynamic plan checklist`
         );
@@ -441,7 +444,8 @@ export default function DailyPlanView() {
   const currentMacros = sumMacros();
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-6 sm:py-8 font-sans transition-all text-left w-full max-w-full overflow-x-hidden">
+    <SectionErrorBoundary fallbackTitle="My Daily Plan Engine">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-6 sm:py-8 font-sans transition-all text-left w-full max-w-full overflow-x-hidden">
       
       {/* Persistent sub-navigation tabs */}
       <PersistentDashboardTabs />
@@ -475,7 +479,7 @@ export default function DailyPlanView() {
         <div className="flex flex-wrap gap-2 items-center">
           <button
             onClick={() => triggerGoalNotification("Morning Motivation")}
-            className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50:bg-slate-950 font-mono text-[10px] font-bold text-slate-700 flex items-center gap-1.5 transition-all"
+            className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-mono text-[10px] font-bold text-slate-700 flex items-center gap-1.5 transition-all"
           >
             <Bell className="w-3.5 h-3.5 text-emerald-500" />
             TEST MORNING ALARM
@@ -484,7 +488,7 @@ export default function DailyPlanView() {
           <button
             onClick={() => fetchDailyPlan()}
             disabled={loading}
-            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200:bg-slate-700 font-mono text-[10px] font-bold text-slate-900 flex items-center gap-1.5 transition-all"
+            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 font-mono text-[10px] font-bold text-slate-900 flex items-center gap-1.5 transition-all"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
             REFRESH AI PLAN
@@ -525,7 +529,7 @@ export default function DailyPlanView() {
                   </span>
                 </div>
 
-                <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100:bg-slate-800">
+                <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
                   
                   {/* Wake up */}
                   <div className="flex gap-4 relative">
@@ -710,38 +714,63 @@ export default function DailyPlanView() {
                     <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
                     <div className="text-[11px] text-rose-950">
                       <span className="font-extrabold block">Health restrictions adaptation:</span>
-                      {plan?.injuryRestoration || `Bypassing biomechanical stresses that trigger your ${user.healthRestrictions}. Monitor strain levels carefully.`}
+                      {plan?.injuryRestoration || `Bypassing biomechanical stresses that trigger your ${user?.healthRestrictions || "health condition"}. Monitor strain levels carefully.`}
                     </div>
                   </div>
                 )}
 
-                {/* Pre-Workout Warmup Stretches */}
+                {/* Pre-Workout Dynamic Stretch & Mobility (2 Stretch Workouts with GIFs) */}
                 {(() => {
-                  const stretches = getPreWorkoutStretchesForDay(1, plan?.workoutRecommendation || "Daily Workout");
-                  return stretches && stretches.length > 0 ? (
-                    <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-mono font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
-                          <Activity className="w-3.5 h-3.5 text-amber-800" />
-                          Pre-Workout Dynamic Warm-up & Stretches
-                        </span>
-                        <span className="text-[9px] font-bold text-amber-800 bg-amber-500/20 px-2 py-0.5 rounded-full">
-                          {stretches.length} Drills
+                  const targetList = plan?.workoutExercises?.map(e => e.name) || ["Core", "Full Body"];
+                  const dailyStretches = getPreWorkoutStretchesForDay(targetList, exercises, 2);
+                  return (
+                    <div className="mb-6 p-4 rounded-2xl bg-cyan-50/60 border border-cyan-200/80 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-cyan-600" />
+                          <h4 className="font-black text-xs uppercase tracking-wider text-slate-900">
+                            Pre-Workout Dynamic Stretch & Mobility
+                          </h4>
+                        </div>
+                        <span className="text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-300">
+                          2 Stretches Before Daily Drills
                         </span>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {stretches.map((s, idx) => (
-                          <div key={idx} className="p-2 bg-white/70 rounded-lg border border-amber-500/10">
-                            <div className="flex justify-between items-center text-[11px] font-bold text-slate-800">
-                              <span className="truncate">{s.name}</span>
-                              <span className="text-[9px] font-mono text-emerald-600 shrink-0 ml-1">{s.duration}</span>
+                      <p className="text-[11px] text-slate-600 font-medium">
+                        Complete these 2 dynamic stretch workouts before starting today's prescribed drills to prepare joints and prime target muscle groups.
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {dailyStretches.map((st, idx) => (
+                          <div key={st.id || idx} className="bg-white border border-cyan-200 rounded-xl p-3 space-y-2 shadow-2xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-mono font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded border border-cyan-200 uppercase">
+                                Stretch 0{idx + 1} &bull; {st.duration || "45s-60s"}
+                              </span>
+                              <span className="text-[9px] font-mono text-slate-400">
+                                {Array.isArray(st.targetMuscles) ? st.targetMuscles.slice(0, 2).join(", ") : "Mobility"}
+                              </span>
                             </div>
-                            <p className="text-[10px] text-slate-500 mt-0.5 leading-snug line-clamp-2">{s.instructions || s.desc}</p>
+                            <h5 className="font-bold text-xs text-slate-900 truncate">
+                              {st.exerciseName || st.name}
+                            </h5>
+                            <div className="w-full h-36 rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-100">
+                              <WorkoutVisual
+                                exerciseId={st.id}
+                                exerciseName={st.exerciseName || st.name}
+                                customMediaUrl={st.gifUrl || st.mediaUrl}
+                                isCard={true}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <p className="text-[10px] text-slate-500 line-clamp-2 leading-tight">
+                              {Array.isArray(st.instructions) ? st.instructions[0] : st.instructions}
+                            </p>
                           </div>
                         ))}
                       </div>
                     </div>
-                  ) : null;
+                  );
                 })()}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
@@ -1035,7 +1064,7 @@ export default function DailyPlanView() {
                   </span>
                   <span className="text-[10px] text-slate-500">Increase training load & nutritional targets.</span>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-emerald-555 shrink-0" />
+                <ArrowUpRight className="w-4 h-4 text-emerald-500 shrink-0" />
               </button>
             </div>
           </div>
@@ -1061,7 +1090,7 @@ export default function DailyPlanView() {
               />
               <button
                 type="submit"
-                className="px-4 bg-slate-900 hover:bg-slate-850:bg-slate-100 text-white font-mono font-black text-[10px] uppercase rounded-xl tracking-widest transition-all shadow"
+                className="px-4 bg-slate-900 hover:bg-slate-800 text-white font-mono font-black text-[10px] uppercase rounded-xl tracking-widest transition-all shadow"
               >
                 LOG WEIGHT
               </button>
@@ -1108,5 +1137,6 @@ export default function DailyPlanView() {
       </div>
 
     </div>
+    </SectionErrorBoundary>
   );
 }
