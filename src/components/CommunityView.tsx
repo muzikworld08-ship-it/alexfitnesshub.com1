@@ -225,7 +225,7 @@ export default function CommunityView() {
                   className={`w-auto lg:w-full text-left px-3 py-2 text-xs rounded-xl transition font-mono ${
                     filter === cat
                       ? "bg-[#1E3A8A]/10 text-[#1E3A8A] font-bold border border-transparent"
-                      : "text-slate-500 hover:bg-slate-50"
+                      : "text-slate-500 hover:bg-slate-50:bg-slate-900"
                   }`}
                 >
                   {cat}

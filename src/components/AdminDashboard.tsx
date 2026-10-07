@@ -4,12 +4,10 @@ import {
   Users, Sparkles, Dumbbell, ShieldCheck, UserCheck, Trash2, ArrowUpDown, Key, ToggleLeft, ToggleRight,
   Check, Copy, Link, Cpu, Globe, Activity, ChevronRight, AlertTriangle, Terminal, Settings, CreditCard, RefreshCw,
   Upload, Image as ImageIcon, Video, Search, Filter, Play, RotateCcw, CheckCircle2, Trophy, Layers, Edit3,
-  SlidersHorizontal, CheckSquare, Eye, ExternalLink, ShoppingBag, Calendar, FileText,
-  LayoutDashboard, Menu, X, PanelLeftClose, PanelLeftOpen
+  SlidersHorizontal, CheckSquare, Eye, ExternalLink, ShoppingBag, Calendar, FileText
 } from "lucide-react";
 import { TestimonialAdminManager } from "./TestimonialAdminManager";
 import AdminAssetManager from "./AdminAssetManager";
-import AdminOverviewTab from "./admin/AdminOverviewTab";
 import AdminWorkoutEditor from "./admin/AdminWorkoutEditor";
 import AdminChallengeManager from "./admin/AdminChallengeManager";
 import AdminWorkoutChallengeEngine from "./admin/AdminWorkoutChallengeEngine";
@@ -38,9 +36,7 @@ export default function AdminDashboard() {
   
   const [userQuery, setUserQuery] = useState("");
   const [exerciseQuery, setExerciseQuery] = useState("");
-  const [activeAdminTab, setActiveAdminTab] = useState<"overview" | "workouts" | "challenges" | "engine" | "media" | "directory" | "store" | "paystack" | "printable-pdfs">("overview");
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [activeAdminTab, setActiveAdminTab] = useState<"workouts" | "challenges" | "engine" | "media" | "directory" | "store" | "paystack" | "printable-pdfs">("workouts");
 
   // Media Manager Filters & Local Inputs
   const [mediaSearch, setMediaSearch] = useState("");
@@ -328,248 +324,210 @@ export default function AdminDashboard() {
     });
   }, [exercises, exerciseQuery]);
 
-  const navigationTabs = [
-    { id: "overview" as const, label: "Overview", icon: LayoutDashboard, badge: "Control Center" },
-    { id: "workouts" as const, label: "Workouts & Catalog", icon: Dumbbell, badge: `${exercises.length}` },
-    { id: "engine" as const, label: "7-Day Split Engine", icon: Calendar, badge: "Dynamic" },
-    { id: "challenges" as const, label: "Flagship Challenges", icon: Trophy, badge: `${allChallenges?.length || 7}` },
-    { id: "media" as const, label: "Media & GIFs Hub", icon: Video, badge: `${mediaCoveragePercent}%` },
-    { id: "directory" as const, label: "Athletes Directory", icon: Users, badge: `${totalUsers}` },
-    { id: "store" as const, label: "Store & Merch", icon: ShoppingBag },
-    { id: "printable-pdfs" as const, label: "Printable PDFs", icon: FileText },
-    { id: "paystack" as const, label: "Paystack Gateway", icon: CreditCard, badge: paystackStatus?.isLive ? "Live" : "Active" },
-  ];
-
   return (
-    <div id="admin_dashboard_root" className="w-full min-h-screen bg-slate-50 text-slate-900 flex overflow-x-hidden">
+    <div id="admin_dashboard_root" className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6 sm:space-y-8 bg-slate-50 min-h-screen text-slate-900 overflow-x-hidden">
       
-      {/* =========================================================================
-          DESKTOP FIXED/STABLE SIDEBAR (COLLAPSIBLE)
-          ========================================================================= */}
-      <aside 
-        className={`hidden md:flex flex-col bg-white border-r border-slate-200 transition-all duration-300 z-30 shrink-0 sticky top-0 h-screen overflow-y-auto ${
-          isSidebarCollapsed ? "w-20" : "w-64"
-        }`}
-      >
-        {/* Brand Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="h-10 w-10 rounded-2xl bg-red-600 text-white flex items-center justify-center font-black shrink-0 shadow-xs">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            {!isSidebarCollapsed && (
-              <div className="min-w-0">
-                <h2 className="font-black text-sm text-slate-900 tracking-tight truncate font-sans">
-                  AlexFitnessHub
-                </h2>
-                <span className="text-[10px] font-mono font-bold uppercase text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-100">
-                  Admin Control Desk
-                </span>
-              </div>
-            )}
+      {/* Admin Title Panel - Athlete Performance Desk Header Style */}
+      <div className="p-5 sm:p-8 rounded-3xl bg-white border border-slate-200 text-slate-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+        <div>
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 text-[10px] font-mono font-black uppercase px-2.5 py-1 rounded-full border border-red-200">
+              <ShieldCheck className="w-3.5 h-3.5 text-red-600" />
+              Executive Admin Control
+            </span>
+            <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+              Live Gateway Active
+            </span>
           </div>
+          <h1 className="text-xl sm:text-3xl font-black tracking-tight font-sans text-slate-900">
+            AlexFitnessHub Administrative Operations
+          </h1>
+          <p className="text-xs text-slate-500 max-w-2xl mt-1 leading-relaxed font-medium">
+            Centralized management console for workout prescriptions, challenge programs, athlete subscriptions, and media library coverage.
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-100 text-slate-800 border border-slate-200 rounded-2xl text-xs font-mono font-bold shrink-0 max-w-full truncate">
+          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <span className="text-slate-900 truncate">{user?.email || "alexfitnesshub@gmail.com"}</span>
+        </div>
+      </div>
+
+      {/* CORE STATS GRID - 5 Column Layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-5 w-full">
+        
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">Total Workouts</span>
+            <h3 className="text-2xl font-black text-slate-900">{exercises.length}</h3>
+            <span className="text-[10px] text-slate-500 font-mono">Catalog database</span>
+          </div>
+          <div className="h-11 w-11 rounded-2xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center shrink-0">
+            <Dumbbell className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">GIFs Uploaded</span>
+            <h3 className="text-2xl font-black text-emerald-600">{totalCustomMedia}</h3>
+            <span className="text-[10px] text-emerald-600 font-mono font-bold">{mediaCoveragePercent}% catalog synced</span>
+          </div>
+          <div className="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+            <ImageIcon className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="p-5 rounded-3xl bg-white border border-amber-200/80 bg-amber-50/30 shadow-xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] text-amber-700 uppercase font-mono font-bold tracking-wider block">GIFs To Upload</span>
+            <h3 className="text-2xl font-black text-amber-600">{remainingGifsToUpload}</h3>
+            <span className="text-[10px] text-amber-700/80 font-mono">Pending admin GIF</span>
+          </div>
+          <div className="h-11 w-11 rounded-2xl bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
+            <Upload className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">Active Athletes</span>
+            <h3 className="text-2xl font-black text-blue-600">{totalUsers}</h3>
+            <span className="text-[10px] text-slate-500 font-mono">Registered accounts</span>
+          </div>
+          <div className="h-11 w-11 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+            <Users className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">Premium Members</span>
+            <h3 className="text-2xl font-black text-purple-600">{premiumCount}</h3>
+            <span className="text-[10px] text-slate-500 font-mono">Verified members</span>
+          </div>
+          <div className="h-11 w-11 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
+            <Sparkles className="w-5 h-5" />
+          </div>
+        </div>
+
+      </div>
+
+      {/* TAB NAVIGATION SELECTOR - Responsive Touch-Friendly Horizontal Pill Strip */}
+      <div className="w-full min-w-0 bg-slate-200/90 p-1.5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div 
+          className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 pb-1 -mb-1 touch-pan-x" 
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          <button
+            onClick={() => setActiveAdminTab("workouts")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "workouts"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Dumbbell className="w-4 h-4 text-red-600 shrink-0" />
+            <span>Workouts & Reps ({exercises.length})</span>
+          </button>
 
           <button
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-            title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => setActiveAdminTab("challenges")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "challenges"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
           >
-            {isSidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
+            <span>Challenges ({allChallenges?.length || 7})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab("engine")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "engine"
+                ? "bg-red-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Calendar className="w-4 h-4 text-red-500 shrink-0" />
+            <span>Workout & 7-Day Split Customizer</span>
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab("media")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "media"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Video className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Media Hub</span>
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab("directory")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "directory"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Users className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>Athletes ({totalUsers})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab("store")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "store"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <ShoppingBag className="w-4 h-4 text-red-600 shrink-0" />
+            <span>Store & Merch</span>
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab("printable-pdfs")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "printable-pdfs"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <FileText className="w-4 h-4 text-red-600 shrink-0" />
+            <span>Printable PDFs</span>
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab("paystack")}
+            className={`py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+              activeAdminTab === "paystack"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <CreditCard className="w-4 h-4 text-indigo-600 shrink-0" />
+            <span>Paystack Setup</span>
           </button>
         </div>
 
-        {/* Navigation Items List */}
-        <nav className="p-3 space-y-1.5 flex-1">
-          {navigationTabs.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeAdminTab === item.id;
-
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveAdminTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-left group ${
-                  isActive
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                } ${isSidebarCollapsed ? "justify-center px-2" : ""}`}
-                title={item.label}
-              >
-                <Icon className={`w-4 h-4 shrink-0 transition-colors ${
-                  isActive ? "text-red-500" : "text-slate-400 group-hover:text-slate-600"
-                }`} />
-                
-                {!isSidebarCollapsed && (
-                  <span className="flex-1 truncate tracking-tight">{item.label}</span>
-                )}
-
-                {!isSidebarCollapsed && item.badge && (
-                  <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
-                    isActive 
-                      ? "bg-slate-800 text-slate-300" 
-                      : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
-                  }`}>
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Sidebar Footer Status Card */}
-        <div className="p-3 border-t border-slate-100">
-          {!isSidebarCollapsed ? (
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5 text-[10px]">
-              <div className="flex items-center gap-1.5 text-emerald-700 font-mono font-bold">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Live Gateway Active
-              </div>
-              <p className="text-slate-500 truncate font-mono text-[9px]">{user?.email || "alexfitnesshub@gmail.com"}</p>
-            </div>
-          ) : (
-            <div className="flex justify-center" title="Live Gateway Active">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            </div>
-          )}
+        <div className="sm:hidden text-[10px] text-slate-500 font-mono flex items-center justify-between px-2 pt-1">
+          <span>← Swipe horizontally to view all management tabs</span>
+          <span>7 Modules →</span>
         </div>
-      </aside>
+      </div>
 
-      {/* =========================================================================
-          MOBILE SLIDE-OVER DRAWER
-          ========================================================================= */}
-      {mobileSidebarOpen && (
-        <div className="fixed inset-0 z-[70] md:hidden flex">
-          <div 
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
-            onClick={() => setMobileSidebarOpen(false)}
-          />
-          <div className="relative w-72 max-w-[80vw] bg-white h-full shadow-2xl flex flex-col z-[70]">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-red-600" />
-                <span className="font-black text-sm text-slate-900">Admin Control</span>
-              </div>
-              <button
-                onClick={() => setMobileSidebarOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <nav className="p-3 space-y-1.5 flex-1 overflow-y-auto">
-              {navigationTabs.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeAdminTab === item.id;
-
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setActiveAdminTab(item.id);
-                      setMobileSidebarOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                      isActive ? "bg-slate-900 text-white shadow-xs" : "text-slate-600 hover:bg-slate-100"
-                    }`}
-                  >
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-red-500" : "text-slate-400"}`} />
-                    <span className="flex-1 truncate">{item.label}</span>
-                    {item.badge && (
-                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                        {item.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
+      {/* VIEW: PRINTABLE PDFS MANAGER */}
+      {activeAdminTab === "printable-pdfs" && (
+        <div className="space-y-6 animate-fade-in">
+          <AdminPdfManager />
         </div>
       )}
-
-      {/* =========================================================================
-          MAIN CONTENT AREA (WITH TOP NAVIGATION HEADER)
-          ========================================================================= */}
-      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
-        
-        {/* TOP BAR HEADER */}
-        <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setMobileSidebarOpen(true)}
-              className="md:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-
-            <div>
-              <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase font-bold text-slate-400">
-                <span>Admin Operations</span>
-                <span>/</span>
-                <span className="text-red-600 capitalize">
-                  {navigationTabs.find(t => t.id === activeAdminTab)?.label}
-                </span>
-              </div>
-              <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                {navigationTabs.find(t => t.id === activeAdminTab)?.label} Desk
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent("fit-navigate-view", { detail: "home" }));
-              }}
-              className="p-2 sm:px-3 sm:py-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-xs font-bold text-slate-700 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-              title="Return to Public Hub & Workouts"
-            >
-              <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
-              <span className="hidden sm:inline">Public Hub</span>
-            </button>
-
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-slate-800 font-bold truncate max-w-[200px]">{user?.email || "alexfitnesshub@gmail.com"}</span>
-            </div>
-
-            <button
-              onClick={fetchPaystackStatus}
-              disabled={loadingStatus}
-              className="p-2 sm:px-3 sm:py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-              title="Refresh telemetry and gateway"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loadingStatus ? "animate-spin text-red-600" : ""}`} />
-              <span className="hidden sm:inline">Sync</span>
-            </button>
-          </div>
-        </header>
-
-        {/* RESPONSIVE MAIN BODY */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] w-full mx-auto">
-
-          {/* VIEW: OVERVIEW CONTROL DESK */}
-          {activeAdminTab === "overview" && (
-            <AdminOverviewTab
-              exercises={exercises}
-              allSystemUsers={allSystemUsers}
-              allChallenges={allChallenges}
-              paystackStatus={paystackStatus}
-              onNavigateTab={(tab, filterProgram) => {
-                setActiveAdminTab(tab);
-              }}
-              onRefreshGateway={fetchPaystackStatus}
-            />
-          )}
-
-          {/* VIEW: PRINTABLE PDFS MANAGER */}
-          {activeAdminTab === "printable-pdfs" && (
-            <div className="space-y-6 animate-fade-in">
-              <AdminPdfManager />
-            </div>
-          )}
 
       {/* VIEW 0: STORE & FITNESS WEAR MANAGEMENT */}
       {activeAdminTab === "store" && (
@@ -1431,9 +1389,6 @@ export default function AdminDashboard() {
 
         </div>
       )}
-
-        </main>
-      </div>
 
       {/* Testimonials popup and scheduling management hub */}
       <TestimonialAdminManager />

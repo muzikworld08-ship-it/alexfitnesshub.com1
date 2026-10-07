@@ -352,7 +352,7 @@ export default function AdminChallengeManager() {
 
       {/* CREATE / EDIT CHALLENGE MODAL */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-[80] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-3xl w-full p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
             
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">

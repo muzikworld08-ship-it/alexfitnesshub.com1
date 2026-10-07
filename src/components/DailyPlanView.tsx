@@ -18,7 +18,6 @@ import {
 } from "../utils/programWaitManager";
 import { sendEmail } from "../services/emailNotificationService";
 import WorkoutReminderCard from "./WorkoutReminderCard";
-import { getPreWorkoutStretchesForDay } from "../utils/dynamicWorkoutEngine";
 
 interface DailyPlanSchema {
   wakeUpTime: string;
@@ -714,35 +713,6 @@ export default function DailyPlanView() {
                     </div>
                   </div>
                 )}
-
-                {/* Pre-Workout Warmup Stretches */}
-                {(() => {
-                  const stretches = getPreWorkoutStretchesForDay(1, plan?.workoutRecommendation || "Daily Workout");
-                  return stretches && stretches.length > 0 ? (
-                    <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-mono font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
-                          <Activity className="w-3.5 h-3.5 text-amber-800" />
-                          Pre-Workout Dynamic Warm-up & Stretches
-                        </span>
-                        <span className="text-[9px] font-bold text-amber-800 bg-amber-500/20 px-2 py-0.5 rounded-full">
-                          {stretches.length} Drills
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {stretches.map((s, idx) => (
-                          <div key={idx} className="p-2 bg-white/70 rounded-lg border border-amber-500/10">
-                            <div className="flex justify-between items-center text-[11px] font-bold text-slate-800">
-                              <span className="truncate">{s.name}</span>
-                              <span className="text-[9px] font-mono text-emerald-600 shrink-0 ml-1">{s.duration}</span>
-                            </div>
-                            <p className="text-[10px] text-slate-500 mt-0.5 leading-snug line-clamp-2">{s.instructions || s.desc}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null;
-                })()}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
                   {plan?.workoutExercises ? (

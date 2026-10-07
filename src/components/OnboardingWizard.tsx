@@ -34,7 +34,6 @@ export default function OnboardingWizard() {
   const [countryRegion, setCountryRegion] = useState("Nigeria");
   const [availableDays, setAvailableDays] = useState(4);
   const [trainingLocation, setTrainingLocation] = useState<"Home" | "Gym">("Gym");
-  const [absWorkoutPreference, setAbsWorkoutPreference] = useState<"dedicated_day" | "cardio_abs" | "leg_day" | "smart_adaptive">("smart_adaptive");
 
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -132,8 +131,7 @@ export default function OnboardingWizard() {
         bedTime,
         countryRegion,
         availableDays,
-        trainingLocation,
-        absWorkoutPreference
+        trainingLocation
       });
       setView("dashboard");
     } catch (err) {
@@ -347,7 +345,7 @@ export default function OnboardingWizard() {
                     className={`p-2.5 text-left rounded-xl border transition-all text-xs ${
                       fitnessGoals === item.tag
                         ? "border-emerald-500 bg-emerald-500/10 text-emerald-800 font-extrabold"
-                        : "border-slate-150 bg-slate-50 text-slate-700 hover:bg-slate-100"
+                        : "border-slate-150 bg-slate-50 text-slate-700 hover:bg-slate-100:bg-slate-900"
                     }`}
                   >
                     <div className="font-bold">{item.label}</div>
@@ -585,72 +583,6 @@ export default function OnboardingWizard() {
                     placeholder="None, Knee pain, Shoulder injury, Asthma, lower back pain..."
                   />
                 </div>
-
-                {/* Abdominal & Core Training Strategy */}
-                <div className="pt-2 border-t border-slate-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <Target className="w-3.5 h-3.5 text-emerald-600" />
-                      Abdominal & Core Workout Strategy
-                    </label>
-                    <span className="text-[9px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                      Personalized Schedule
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {[
-                      {
-                        id: "dedicated_day",
-                        label: "Specific Abs Day",
-                        desc: "Dedicated weekly day focused purely on six-pack & core compression",
-                        tag: "Isolated Day"
-                      },
-                      {
-                        id: "cardio_abs",
-                        label: "Cardio & Abs Together",
-                        desc: "Cardio stamina & high-density abdominal circuit in the same workout",
-                        tag: "Cardio Combo"
-                      },
-                      {
-                        id: "leg_day",
-                        label: "Leg Days + Abs Finisher",
-                        desc: "On leg days, complete core stabilization & abs drills as a post-leg finisher",
-                        tag: "Legs + Abs"
-                      },
-                      {
-                        id: "smart_adaptive",
-                        label: "Smart Adaptive (Auto)",
-                        desc: "Dynamically adjusted according to your primary goal & body biometrics",
-                        tag: "Recommended"
-                      }
-                    ].map(opt => {
-                      const isSelected = absWorkoutPreference === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => setAbsWorkoutPreference(opt.id as any)}
-                          className={`p-2.5 text-left rounded-xl border transition-all text-xs cursor-pointer flex flex-col justify-between ${
-                            isSelected
-                              ? "border-emerald-500 bg-emerald-500/10 text-emerald-900 shadow-2xs font-extrabold ring-1 ring-emerald-500"
-                              : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="font-bold text-[11px]">{opt.label}</span>
-                            <span className={`text-[8px] font-mono px-1.5 py-0.5 rounded-md ${
-                              isSelected ? "bg-emerald-600 text-white font-bold" : "bg-slate-200 text-slate-600 font-semibold"
-                            }`}>
-                              {opt.tag}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-slate-500 leading-snug">{opt.desc}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
             </div>
           )}
@@ -830,7 +762,7 @@ export default function OnboardingWizard() {
               id="onboarding_btn_back"
               onClick={handleBack}
               disabled={saving}
-              className="py-3 px-5 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-1.5 transition-all"
+              className="py-3 px-5 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50:bg-slate-950 text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-1.5 transition-all"
             >
               <ChevronLeft className="w-4 h-4" />
               BACK
@@ -841,7 +773,7 @@ export default function OnboardingWizard() {
             <button
               id="onboarding_btn_next"
               onClick={handleNext}
-              className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black font-mono uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all shadow"
+              className="flex-1 py-3 bg-slate-900 hover:bg-slate-800:bg-slate-100 text-white rounded-xl text-xs font-black font-mono uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all shadow"
             >
               CONTINUE
               <ChevronRight className="w-4 h-4" />

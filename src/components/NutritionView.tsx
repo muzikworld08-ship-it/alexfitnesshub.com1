@@ -497,7 +497,7 @@ export default function NutritionView() {
               {/* Upload image slot */}
               <div>
                 <label className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Or Snap / Upload Food Image</label>
-                <div className="relative border border-dashed border-slate-200 rounded-xl p-4 text-center bg-slate-50/50 hover:bg-slate-50 transition duration-150">
+                <div className="relative border border-dashed border-slate-200 rounded-xl p-4 text-center bg-slate-50/50 hover:bg-slate-50:bg-slate-900 transition duration-150">
                   <input
                     type="file"
                     accept="image/*"
@@ -619,7 +619,7 @@ export default function NutritionView() {
                     className={`py-2 px-1 rounded-xl text-[10px] font-bold tracking-wider uppercase border transition-all cursor-pointer ${
                       selectedGoal === item.key
                         ? "bg-[#C0392B] border-[#C0392B] text-white shadow-md shadow-[#C0392B]/10"
-                        : "border-slate-200 text-slate-500 hover:text-slate-900"
+                        : "border-slate-200 text-slate-500 hover:text-slate-900:text-white"
                     }`}
                   >
                     {item.label}
@@ -834,7 +834,7 @@ export default function NutritionView() {
                   className={`px-3 py-1.5 rounded-lg text-[10px] font-mono uppercase font-black tracking-wider transition-all ${
                     activeCategory === tab
                       ? "bg-white text-emerald-500 shadow"
-                      : "text-slate-500 hover:text-slate-900"
+                      : "text-slate-500 hover:text-slate-900:text-white"
                   }`}
                 >
                   {tab}
@@ -853,7 +853,7 @@ export default function NutritionView() {
                   className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
                     isSelected 
                       ? "border-emerald-500 bg-emerald-500/5 shadow-md shadow-emerald-900/5" 
-                      : "border-slate-200 hover:border-slate-300 bg-slate-50/50"
+                      : "border-slate-200 hover:border-slate-350:border-slate-700 bg-slate-50/50"
                   }`}
                 >
                   <div>
@@ -907,7 +907,7 @@ export default function NutritionView() {
                     className={`w-full mt-4 py-2 rounded-xl text-[10px] font-bold font-mono uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
                       isSelected
                         ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm"
-                        : "bg-slate-900 hover:bg-slate-800 text-white shadow"
+                        : "bg-slate-900 hover:bg-slate-800:bg-slate-150 text-white shadow"
                     }`}
                   >
                     {isSelected ? (

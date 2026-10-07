@@ -1017,7 +1017,7 @@ export default function LifestyleFitnessAcademy() {
                 </button>
                 <button
                   onClick={() => setShowSubscriptionAlert(null)}
-                  className="w-full py-3 hover:bg-slate-100 text-slate-600 rounded-xl font-bold text-xs uppercase tracking-wider transition"
+                  className="w-full py-3 hover:bg-slate-100:bg-slate-800 text-slate-600 rounded-xl font-bold text-xs uppercase tracking-wider transition"
                 >
                   Maybe Later
                 </button>
@@ -1051,8 +1051,8 @@ export default function LifestyleFitnessAcademy() {
                 <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">DAILY WATER TARGET</span>
                 <span className="text-lg font-black text-slate-900">{waterCount} Cups / 8 Cups</span>
                 <div className="flex gap-2 mt-1">
-                  <button onClick={() => handleWaterClick(1)} className="px-2.5 py-1 bg-sky-50 hover:bg-sky-100 text-sky-600 rounded-lg text-[10px] font-black uppercase transition">+</button>
-                  <button onClick={() => handleWaterClick(-1)} className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-lg text-[10px] font-black uppercase transition">-</button>
+                  <button onClick={() => handleWaterClick(1)} className="px-2.5 py-1 bg-sky-50 hover:bg-sky-100:bg-sky-900/60 text-sky-600 rounded-lg text-[10px] font-black uppercase transition">+</button>
+                  <button onClick={() => handleWaterClick(-1)} className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100:bg-slate-700 text-slate-500 rounded-lg text-[10px] font-black uppercase transition">-</button>
                 </div>
               </div>
             </div>
@@ -1079,7 +1079,7 @@ export default function LifestyleFitnessAcademy() {
                   <div
                     key={challenge.id}
                     onClick={() => handleChallengeClick(challenge)}
-                    className="group relative rounded-3xl border border-slate-200 bg-white hover:border-red-300 p-6 flex flex-col justify-between cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 text-left"
+                    className="group relative rounded-3xl border border-slate-200 bg-white hover:border-red-300:border-red-950 p-6 flex flex-col justify-between cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 text-left"
                   >
                     <div className="space-y-4">
                       {/* Icon Banner */}
@@ -1137,7 +1137,7 @@ export default function LifestyleFitnessAcademy() {
           {/* Back button */}
           <button 
             onClick={() => setActiveChallengeId(null)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-black uppercase tracking-wider transition cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200:bg-slate-700 text-slate-800 rounded-xl text-xs font-black uppercase tracking-wider transition cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
             Back to Academy Home
@@ -1177,7 +1177,7 @@ export default function LifestyleFitnessAcademy() {
               className={`px-3 sm:px-5 py-2.5 sm:py-3 text-[11px] sm:text-xs font-black uppercase tracking-wider border-b-2 transition whitespace-nowrap cursor-pointer shrink-0 ${
                 activeTab === "education" 
                   ? "border-[#D32F2F] text-[#D32F2F]" 
-                  : "border-transparent text-slate-500 hover:text-slate-800"
+                  : "border-transparent text-slate-500 hover:text-slate-800:text-slate-300"
               }`}
             >
               1. Scientific Core {isScienceCompleted ? "✓" : ""}
@@ -1190,7 +1190,7 @@ export default function LifestyleFitnessAcademy() {
                 className={`px-3 sm:px-5 py-2.5 sm:py-3 text-[11px] sm:text-xs font-black uppercase tracking-wider border-b-2 transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
                   activeTab === "stretching" 
                     ? "border-[#D32F2F] text-[#D32F2F]" 
-                    : "border-transparent text-slate-500 hover:text-slate-800"
+                    : "border-transparent text-slate-500 hover:text-slate-800:text-slate-300"
                 }`}
               >
                 2. Stretching Routine {isStretchingCompleted ? "✓" : ""}
@@ -1204,7 +1204,7 @@ export default function LifestyleFitnessAcademy() {
                 className={`px-3 sm:px-5 py-2.5 sm:py-3 text-[11px] sm:text-xs font-black uppercase tracking-wider border-b-2 transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
                   activeTab === "workout" 
                     ? "border-[#D32F2F] text-[#D32F2F]" 
-                    : "border-transparent text-slate-500 hover:text-slate-800"
+                    : "border-transparent text-slate-500 hover:text-slate-800:text-slate-300"
                 }`}
               >
                 3. Weekly Workout {isWorkoutCompleted ? "✓" : ""}
@@ -1218,7 +1218,7 @@ export default function LifestyleFitnessAcademy() {
                 className={`px-3 sm:px-5 py-2.5 sm:py-3 text-[11px] sm:text-xs font-black uppercase tracking-wider border-b-2 transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer shrink-0 ${
                   activeTab === "habits" 
                     ? "border-[#D32F2F] text-[#D32F2F]" 
-                    : "border-transparent text-slate-500 hover:text-slate-800"
+                    : "border-transparent text-slate-500 hover:text-slate-800:text-slate-300"
                 }`}
               >
                 4. Daily Action Plan
@@ -1332,7 +1332,7 @@ export default function LifestyleFitnessAcademy() {
                       className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition ${
                         progress[`c${activeChallenge.id}_stretching_complete`]
                           ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
-                          : "bg-slate-100 hover:bg-slate-200 text-slate-800"
+                          : "bg-slate-100 hover:bg-slate-200:bg-slate-700 text-slate-800"
                       }`}
                     >
                       {progress[`c${activeChallenge.id}_stretching_complete`] ? "Stretching Done ✓" : "Mark as Done"}
@@ -1441,7 +1441,7 @@ export default function LifestyleFitnessAcademy() {
                       className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition ${
                         progress[`c${activeChallenge.id}_workout_complete`]
                           ? "bg-emerald-500 text-white shadow-md"
-                          : "bg-slate-100 hover:bg-slate-200 text-slate-800"
+                          : "bg-slate-100 hover:bg-slate-200:bg-slate-700 text-slate-800"
                       }`}
                     >
                       {progress[`c${activeChallenge.id}_workout_complete`] ? "Weekly Workout Done ✓" : "Mark Workout Done"}
@@ -1547,7 +1547,7 @@ export default function LifestyleFitnessAcademy() {
                       className={`p-5 rounded-2xl border cursor-pointer transition-all ${
                         progress[`c${activeChallenge.id}_habit_walk_after_meals`]
                           ? "bg-emerald-500/10 border-emerald-500 text-slate-900"
-                          : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800"
+                          : "bg-slate-50 hover:bg-slate-100:bg-slate-700 border-slate-200 text-slate-800"
                       }`}
                     >
                       <div className="flex justify-between items-start">
@@ -1570,7 +1570,7 @@ export default function LifestyleFitnessAcademy() {
                       className={`p-5 rounded-2xl border cursor-pointer transition-all ${
                         progress[`c${activeChallenge.id}_habit_hydration`]
                           ? "bg-emerald-500/10 border-emerald-500 text-slate-900"
-                          : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800"
+                          : "bg-slate-50 hover:bg-slate-100:bg-slate-700 border-slate-200 text-slate-800"
                       }`}
                     >
                       <div className="flex justify-between items-start">
@@ -1593,7 +1593,7 @@ export default function LifestyleFitnessAcademy() {
                       className={`p-5 rounded-2xl border cursor-pointer transition-all ${
                         progress[`c${activeChallenge.id}_habit_sleep`]
                           ? "bg-emerald-500/10 border-emerald-500 text-slate-900"
-                          : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800"
+                          : "bg-slate-50 hover:bg-slate-100:bg-slate-700 border-slate-200 text-slate-800"
                       }`}
                     >
                       <div className="flex justify-between items-start">
@@ -1616,7 +1616,7 @@ export default function LifestyleFitnessAcademy() {
                       className={`p-5 rounded-2xl border cursor-pointer transition-all ${
                         progress[`c${activeChallenge.id}_habit_movement_reminder`]
                           ? "bg-emerald-500/10 border-emerald-500 text-slate-900"
-                          : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800"
+                          : "bg-slate-50 hover:bg-slate-100:bg-slate-700 border-slate-200 text-slate-800"
                       }`}
                     >
                       <div className="flex justify-between items-start">

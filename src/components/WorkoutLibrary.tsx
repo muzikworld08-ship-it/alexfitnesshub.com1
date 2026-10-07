@@ -1479,7 +1479,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
           <button 
             type="button"
             onClick={() => setSelectedExerciseId(null)}
-            className="group flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-mono font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
+            className="group flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200:bg-slate-800 text-slate-700 text-xs font-mono font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             Back to Workout Library
@@ -1595,7 +1595,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                       setIsWorkoutSessionActive(false);
                       setSessionTime(0);
                     }}
-                    className="w-full py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-500 rounded-xl text-[10px] font-mono font-bold uppercase tracking-widest transition-all cursor-pointer"
+                    className="w-full py-2 bg-slate-100 hover:bg-slate-200:bg-slate-850 border border-slate-200 text-slate-500 rounded-xl text-[10px] font-mono font-bold uppercase tracking-widest transition-all cursor-pointer"
                   >
                     Reset Session Timer
                   </button>
@@ -1649,7 +1649,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                           type="number"
                           value={loggedReps}
                           onChange={(e) => setLoggedReps(e.target.value)}
-                          className="w-full text-xs p-3 bg-slate-50 border border-slate-200 text-slate-950 rounded-xl focus:outline-none focus:border-blue-500"
+                          className="w-full text-xs p-3 bg-slate-50 border border-slate-201 text-slate-950 rounded-xl focus:outline-none focus:border-blue-500:border-emerald-500"
                         />
                       </div>
                       <div>
@@ -1658,7 +1658,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                           type="number"
                           value={loggedWeight}
                           onChange={(e) => setLoggedWeight(e.target.value)}
-                          className="w-full text-xs p-3 bg-slate-50 border border-slate-200 text-slate-950 rounded-xl focus:outline-none focus:border-blue-500"
+                          className="w-full text-xs p-3 bg-slate-50 border border-slate-201 text-slate-950 rounded-xl focus:outline-none focus:border-blue-500:border-emerald-500"
                         />
                       </div>
                       <div className="sm:col-span-2">
@@ -1668,7 +1668,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                           placeholder="Felt excellent contraction. Joint movement felt completely stable."
                           value={loggedNotes}
                           onChange={(e) => setLoggedNotes(e.target.value)}
-                          className="w-full text-xs p-3 bg-slate-50 border border-slate-200 text-slate-950 rounded-xl focus:outline-none focus:border-blue-500"
+                          className="w-full text-xs p-3 bg-slate-50 border border-slate-201 text-slate-950 rounded-xl focus:outline-none focus:border-blue-500:border-emerald-500"
                         />
                       </div>
                       <button
@@ -2399,7 +2399,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
           className={`flex-1 min-w-[130px] py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer select-none ${
             activeBrowseTab === "bodyparts"
               ? "bg-[#C0392B] text-white shadow-md font-extrabold"
-              : "text-slate-500 hover:text-[#C0392B] hover:bg-red-500/5"
+              : "text-slate-500 hover:text-[#C0392B] hover:bg-red-500/5:bg-red-500/10"
           }`}
         >
           <Dumbbell className="w-4 h-4" />
@@ -2415,7 +2415,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
           className={`flex-1 min-w-[130px] py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer select-none ${
             activeBrowseTab === "cardio"
               ? "bg-[#C0392B] text-white shadow-md font-extrabold"
-              : "text-slate-500 hover:text-[#C0392B] hover:bg-red-500/5"
+              : "text-slate-500 hover:text-[#C0392B] hover:bg-red-500/5:bg-red-500/10"
           }`}
         >
           <Activity className="w-4 h-4" />
@@ -2431,7 +2431,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
           className={`flex-1 min-w-[130px] py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer select-none ${
             activeBrowseTab === "mobility"
               ? "bg-[#C0392B] text-white shadow-md font-extrabold"
-              : "text-slate-500 hover:text-[#C0392B] hover:bg-red-500/5"
+              : "text-slate-500 hover:text-[#C0392B] hover:bg-red-500/5:bg-red-500/10"
           }`}
         >
           <Compass className="w-4 h-4" />
@@ -2447,7 +2447,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
           className={`flex-1 min-w-[130px] py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer select-none ${
             activeBrowseTab === "programs"
               ? "bg-[#C0392B] text-white shadow-md font-extrabold"
-              : "text-slate-500 hover:text-[#C0392B] hover:bg-red-500/5"
+              : "text-slate-500 hover:text-[#C0392B] hover:bg-red-500/5:bg-red-500/10"
           }`}
         >
           <Award className="w-4 h-4" />
@@ -2463,7 +2463,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
           className={`flex-1 min-w-[130px] py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer select-none ${
             activeBrowseTab === "all"
               ? "bg-[#C0392B] text-white shadow-md font-extrabold"
-              : "text-slate-500 hover:text-[#C0392B] hover:bg-red-500/5"
+              : "text-slate-500 hover:text-[#C0392B] hover:bg-red-500/5:bg-red-500/10"
           }`}
         >
           <SlidersHorizontal className="w-4 h-4" />
@@ -4531,7 +4531,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                                     alert(`To practice ${exName}, browse the Exercises lists. Keep form strict!`);
                                   }
                                 }}
-                                className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white font-sans text-[11px] rounded border border-slate-800 transition flex items-center gap-1 group"
+                                className="px-3 py-1 bg-slate-900 hover:bg-slate-850 text-white font-sans text-[11px] rounded border border-slate-800 transition flex items-center gap-1 group"
                               >
                                 <Play className="w-2.5 h-2.5 text-emerald-400 group-hover:scale-110" />
                                 {exName}
@@ -4894,7 +4894,7 @@ function CustomPerformanceUpload({
           className={`flex flex-col items-center justify-center p-6 border border-dashed rounded-lg text-center cursor-pointer transition ${
             dragActive 
               ? "border-emerald-500 bg-emerald-500/51" 
-              : "border-slate-300 hover:border-slate-400 bg-white/50"
+              : "border-slate-300 hover:border-slate-450:border-slate-700 bg-white/50"
           }`}
           onClick={() => document.getElementById(`file-upload-input-${exercise.id}`)?.click()}
         >

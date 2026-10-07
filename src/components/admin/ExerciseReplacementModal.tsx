@@ -118,6 +118,9 @@ export default function ExerciseReplacementModal({
       // When replacing in home programs, strictly forbid gym/barbell/dumbbell gear
       if (isHomeProgram && !isHomeEligibleExercise(ex)) return false;
 
+      // When replacing in women programs, strictly forbid heavy male / cable fly exercises
+      if (isWomenProgram && !isWomenWorkoutEligibleExercise(ex)) return false;
+
       if (selectedCategory !== "All") {
         const cat = (ex.category || "").toLowerCase();
         const cats = (ex.categories || []).map(c => c.toLowerCase());
@@ -143,7 +146,7 @@ export default function ExerciseReplacementModal({
   if (!isOpen || !targetExercise) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150">
       <div 
         className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl text-neutral-100 overflow-hidden"
         role="dialog"
@@ -222,6 +225,15 @@ export default function ExerciseReplacementModal({
               </button>
             )}
           </div>
+
+          {isWomenProgram && (
+            <div className="bg-rose-950/30 border border-rose-900/40 px-3.5 py-2 rounded-xl flex items-center gap-2 text-xs text-rose-300">
+              <Heart className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>
+                <strong>Women Confidence Program:</strong> Filtered strictly to female-specific exercises (no cable fly / heavy bodybuilding chest exercises).
+              </span>
+            </div>
+          )}
 
           {/* Category Chips */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">

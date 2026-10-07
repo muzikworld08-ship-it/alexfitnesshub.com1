@@ -303,7 +303,7 @@ export default function DailyNotificationController() {
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                  className="p-1 rounded-full hover:bg-slate-100:bg-slate-900 text-slate-400 hover:text-slate-600 transition cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -360,7 +360,7 @@ export default function DailyNotificationController() {
                   {notificationsEnabled && permission === "granted" ? (
                     <button
                       onClick={disableNotifications}
-                      className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-[10px] font-mono font-bold text-slate-600 flex items-center gap-1 transition-colors cursor-pointer"
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50:bg-slate-900 text-[10px] font-mono font-bold text-slate-600 flex items-center gap-1 transition-colors cursor-pointer"
                     >
                       <BellOff className="w-3.5 h-3.5" /> Disable Reminders
                     </button>
@@ -375,7 +375,7 @@ export default function DailyNotificationController() {
 
                   <button
                     onClick={handleTestNotification}
-                    className="px-3 py-1.5 rounded-lg border border-dashed border-slate-200 hover:bg-slate-50 text-[10px] font-mono font-bold text-slate-700 transition-colors cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg border border-dashed border-slate-200 hover:bg-slate-50:bg-slate-900 text-[10px] font-mono font-bold text-slate-700 transition-colors cursor-pointer"
                   >
                     🚀 Trigger Test
                   </button>

@@ -100,7 +100,7 @@ export default function FloatingWorkoutTimerOverlay() {
             exit={{ opacity: 0, scale: 0.85, y: 15 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
             onClick={() => setMinimized(false)}
-            className="group flex items-center gap-2.5 px-3.5 py-2 rounded-full bg-slate-900/95 hover:bg-slate-800 text-white shadow-2xl border border-slate-700/80 backdrop-blur-md cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-98 ring-1 ring-white/10"
+            className="group flex items-center gap-2.5 px-3.5 py-2 rounded-full bg-slate-900/95 hover:bg-slate-850 text-white shadow-2xl border border-slate-700/80 backdrop-blur-md cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-98 ring-1 ring-white/10"
             title="Click to expand workout rest timer"
           >
             {/* Pulsing state dot */}

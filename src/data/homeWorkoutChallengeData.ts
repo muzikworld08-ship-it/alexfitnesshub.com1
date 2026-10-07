@@ -196,16 +196,11 @@ function getActiveExercisesFromStorage(): Exercise[] {
 /**
  * Dynamically resolves the daily workout for 180-Day Home Workout Challenge from active Admin-added exercises.
  */
-/**
- * Dynamically resolves the daily workout for 180-Day Home Workout Challenge from active Admin-added exercises.
- * Supports separate tracks for Men and Women, repeating continuously for 180 days.
- */
 export function getHomeWorkoutForDay(
   day: number,
   level: "Beginner" | "Intermediate" | "Advanced" = "Intermediate",
   profile?: HomeOnboardingProfile | null,
-  activeExercisesList?: Exercise[],
-  trackOverride?: "Men" | "Women"
+  activeExercisesList?: Exercise[]
 ): HomeDailyWorkout {
   const safeDay = Math.max(1, Number(day) || 1);
   const phaseNumber = (safeDay <= 30 ? 1 : safeDay <= 75 ? 2 : safeDay <= 130 ? 3 : 4) as 1 | 2 | 3 | 4;
@@ -214,134 +209,40 @@ export function getHomeWorkoutForDay(
 
   const dayInWeek = ((safeDay - 1) % 7) + 1;
   const isRestDay = dayInWeek === 7;
-  const is5KmCardioDay = dayInWeek === 4;
-
-  const activeTrack: "Men" | "Women" = trackOverride 
-    ? trackOverride 
-    : (profile?.gender === "Female" ? "Women" : "Men");
+  const is5KmCardioDay = dayInWeek === 3;
 
   let title = `Day ${safeDay}: `;
   let focus = "";
   let targets: string[] = [];
 
-  if (activeTrack === "Women") {
-    if (dayInWeek === 1) {
-      title += "Monday: Glutes + Hamstrings";
-      focus = "Glutes + Hamstrings";
-      targets = ["Glutes", "Hamstrings", "Lower Body"];
-    } else if (dayInWeek === 2) {
-      title += "Tuesday: Upper Body Tone + Core";
-      focus = "Upper Body Tone + Core";
-      targets = ["Upper Body", "Back", "Shoulders", "Core", "Abs"];
-    } else if (dayInWeek === 3) {
-      title += "Wednesday: Quads + Glutes";
-      focus = "Quads + Glutes";
-      targets = ["Quadriceps", "Glutes", "Lower Body"];
-    } else if (dayInWeek === 4) {
-      title += "Thursday: Cardio + Core + Mobility";
-      focus = "Cardio + Core + Mobility";
-      targets = ["Cardio", "Core", "Abs", "Mobility", "Walking"];
-    } else if (dayInWeek === 5) {
-      title += "Friday: Glutes + Full Lower Body";
-      focus = "Glutes + Full Lower Body";
-      targets = ["Glutes", "Full Lower Body", "Hamstrings", "Quads", "Calves"];
-    } else if (dayInWeek === 6) {
-      title += "Saturday: Full Body Conditioning";
-      focus = "Full Body Conditioning";
-      targets = ["Full Body", "Conditioning", "Cardio"];
-    } else {
-      title += "Sunday: Recovery";
-      focus = "Recovery";
-      targets = ["Recovery", "Mobility", "Stretching"];
-    }
+  if (isRestDay) {
+    title += "Rest, CNS Recovery & Regenerative Mobility";
+    focus = "Parasympathetic Nervous Reset & Joint Decompression";
+    targets = ["Recovery", "Mobility", "Stretching"];
+  } else if (is5KmCardioDay) {
+    title += "Midweek 5-10 KM Aerobic Conditioning";
+    focus = "Aerobic Threshold, Cardiovascular Stamina & Active Calorie Flush";
+    targets = ["Cardio", "Running", "Walking"];
+  } else if (dayInWeek === 1) {
+    title += "Upper Body Push & Scapular Stability";
+    focus = "Chest, Shoulders, Triceps & Anterior Core";
+    targets = ["Chest", "Upper Body", "Shoulders", "Triceps", "Home Workouts"];
+  } else if (dayInWeek === 2) {
+    title += "Core Armor & Spinal Bracing";
+    focus = "Transverse Abdominis, Obliques & Deep Core";
+    targets = ["Core", "Abs", "Obliques"];
+  } else if (dayInWeek === 4) {
+    title += "Posterior Chain & Back Strength";
+    focus = "Upper Back, Lats, Rhomboids & Biceps";
+    targets = ["Back", "Biceps", "Arms", "Upper Body"];
+  } else if (dayInWeek === 5) {
+    title += "Lower Body Power & Kinetic Stamina";
+    focus = "Quadriceps, Glutes, Hamstrings & Calves";
+    targets = ["Legs", "Glutes", "Quads", "Hamstrings"];
   } else {
-    // Men Track (Default)
-    if (dayInWeek === 1) {
-      title += "Monday: Upper Body Push & Calisthenics";
-      focus = "Upper Body Push & Calisthenics";
-      targets = ["Chest", "Upper Body", "Shoulders", "Triceps", "Home Workouts"];
-    } else if (dayInWeek === 2) {
-      title += "Tuesday: Core & Abs Shred";
-      focus = "Core & Abs Shred";
-      targets = ["Core", "Abs", "Obliques"];
-    } else if (dayInWeek === 3) {
-      title += "Wednesday: Lower Body & Legs";
-      focus = "Lower Body & Legs";
-      targets = ["Legs", "Quadriceps", "Hamstrings", "Calves"];
-    } else if (dayInWeek === 4) {
-      title += "Thursday: Cardio + Mobility";
-      focus = "Cardio + Mobility";
-      targets = ["Cardio", "Running", "Mobility", "Conditioning"];
-    } else if (dayInWeek === 5) {
-      title += "Friday: Upper Body Pull & Back";
-      focus = "Upper Body Pull & Back";
-      targets = ["Back", "Biceps", "Upper Body"];
-    } else if (dayInWeek === 6) {
-      title += "Saturday: Athletic Full Body Conditioning";
-      focus = "Athletic Full Body Conditioning";
-      targets = ["Full Body", "Cardio", "Conditioning"];
-    } else {
-      title += "Sunday: Recovery";
-      focus = "Recovery";
-      targets = ["Recovery", "Mobility", "Stretching"];
-    }
-  }
-
-  // Check admin overrides from local storage
-  if (typeof window !== "undefined" && window.localStorage) {
-    try {
-      const stored = window.localStorage.getItem("fit_program_schedule_overrides");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const trackKey = (activeTrack || "").toLowerCase().includes("women") ? "women" : "men";
-        const homeOverrides = parsed[`home_180_${trackKey}`] || parsed.home_180 || parsed["180_day_home"] || {};
-        const cycleKey = `cycle_${dayInWeek}`;
-        const dayOverride = homeOverrides[String(safeDay)] || homeOverrides[cycleKey];
-        if (dayOverride && Array.isArray(dayOverride.exercises) && dayOverride.exercises.length > 0) {
-          const exercisesFromOverride: HomeExercise[] = dayOverride.exercises.map((ovEx: any, idx: number) => ({
-            id: ovEx.id || `home_ov_d${safeDay}_${idx + 1}`,
-            name: ovEx.exerciseName || ovEx.name,
-            targetMuscles: Array.isArray(ovEx.muscleGroup) ? ovEx.muscleGroup : [ovEx.muscleGroup || targets[0] || "Full Body"],
-            difficulty: ovEx.difficulty || level,
-            workoutType: detectWorkoutType(ovEx.exerciseName || ovEx.name, ovEx.reps),
-            instructions: Array.isArray(ovEx.instructions) ? ovEx.instructions : [`Execute ${ovEx.exerciseName || ovEx.name} with strict form.`],
-            sets: `${ovEx.sets || 3} Sets`,
-            repsOrDuration: String(ovEx.reps || "10-12 reps"),
-            restPeriod: ovEx.restTime || "45-60s",
-            beginnerModification: "Perform at reduced intensity or with chair assistance.",
-            advancedProgression: "Add tempo pause at peak contraction.",
-            coachingCues: ovEx.coachingCues || ["Maintain posture and continuous breathing."],
-            gifUrl: ovEx.gifUrl || "",
-            equipment: "Zero Equipment (Bodyweight)"
-          }));
-
-          return {
-            dayNumber: safeDay,
-            phaseNumber,
-            phaseName,
-            title: dayOverride.title || title,
-            focus: dayOverride.focus || focus,
-            isRestDay: !!dayOverride.isRestDay,
-            is5KmCardioDay: !!dayOverride.isCardioOnly,
-            cardioTypeRecommended: dayOverride.isCardioOnly ? "5 to 10 KM Run or Walk" : undefined,
-            estimatedDuration: dayOverride.estimatedDuration || (dayOverride.isRestDay ? 20 : 45),
-            estimatedMinutes: dayOverride.isRestDay ? 20 : 45,
-            exercises: exercisesFromOverride,
-            sections: [
-              {
-                id: `sec_${safeDay}_1`,
-                title: dayOverride.focus || focus,
-                description: `Customized routine for Day ${safeDay}.`,
-                exerciseIndices: exercisesFromOverride.map((_, i) => i)
-              }
-            ],
-            motivationalQuote: "Consistency creates momentum. Show up today with intention."
-          } as any;
-        }
-      }
-    } catch (e) {
-      console.warn("Home workout overrides read warning:", e);
-    }
+    title += "Full Body Functional Agility";
+    focus = "Full Body Calisthenics, Power & Coordination";
+    targets = ["Full Body", "Cardio", "Chest", "Legs"];
   }
 
   const allActive = Array.isArray(activeExercisesList) && activeExercisesList.length > 0

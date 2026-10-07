@@ -335,7 +335,7 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
                         className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left border cursor-pointer transition-all duration-150 ${
                           isActive
                             ? "bg-[#D32F2F] text-white border-[#D32F2F] shadow-md scale-[1.01]"
-                            : "bg-white border-slate-100 hover:border-slate-200 text-slate-700"
+                            : "bg-white border-slate-100 hover:border-slate-200:border-slate-850 text-slate-700"
                         }`}
                       >
                         <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
@@ -1317,7 +1317,7 @@ function WeeklyReportsView({ reports, onGenerate }: { reports: any[]; onGenerate
                 {/* Header Row */}
                 <div 
                   onClick={() => setExpandedId(isExpanded ? null : report.id)}
-                  className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
+                  className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50:bg-slate-900/40 transition-colors"
                 >
                   <div className="space-y-1">
                     <h3 className="text-sm font-extrabold text-slate-850 font-sans leading-snug pr-4">

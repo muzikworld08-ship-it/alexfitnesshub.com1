@@ -105,7 +105,7 @@ export function NewsletterSubscription() {
                 disabled={status === "submitting"}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="px-4 py-2 bg-[#C0392B] hover:bg-[#B71C1C] disabled:bg-slate-300 disabled:text-slate-500 text-white font-sans font-black text-xs uppercase tracking-wider rounded-xl transition duration-150 inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-red-950/10 border-0"
+                className="px-4 py-2 bg-[#C0392B] hover:bg-[#B71C1C] disabled:bg-slate-300:bg-slate-800 disabled:text-slate-500 text-white font-sans font-black text-xs uppercase tracking-wider rounded-xl transition duration-150 inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-red-950/10 border-0"
               >
                 {status === "submitting" ? (
                   <>

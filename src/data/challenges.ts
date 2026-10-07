@@ -23,8 +23,8 @@ export interface PremiumChallenge {
 export const FLAGSHIP_CHALLENGES: PremiumChallenge[] = [
   {
     id: "immortal_90",
-    title: "90 Immortal Challenge",
-    description: "Target: Men. Strict 7-day cyclical split repeating continuously across all 90 days: Monday: Push (Chest, shoulders and triceps), Tuesday: Pull (Back, rear delts and biceps), Wednesday: Legs + Core (Quads, hamstrings, glutes, calves and abs), Thursday: Cardio + Mobility (Running, conditioning and mobility), Friday: Upper Body (Chest, back, shoulders and arms), Saturday: Athletic Conditioning + Core (Functional movements, conditioning and abdominal work), Sunday: Recovery.",
+    title: "Immortal 90 Day Challenge",
+    description: "The premier 90-day physical mastery challenge. Strict 7-day rolling cadence cycling Day 1: Chest and Triceps, Day 2: Back and Biceps, Day 3: Cardio and Mobility, Day 4: Legs and Shoulders, Day 5: Chest, Triceps and Forearms, Day 6: Back, Biceps and Core, and Day 7: Rest and Recovery (with dedicated 5-10 KM cardio). Includes daily 30-minute evening walk.",
     category: "Hypertrophy & Conditioning",
     goal: "Transform full-body power, muscular density, aerobic endurance, and unbreakable physical discipline.",
     image: getExerciseGifUrl("Barbell Bench Press", "Gym Workouts"),
@@ -32,58 +32,6 @@ export const FLAGSHIP_CHALLENGES: PremiumChallenge[] = [
     badgeName: "Immortal 90 Champion",
     badgeColor: "from-red-600 to-amber-600",
     durationDays: 90,
-    isPremium: true
-  },
-  {
-    id: "women_confidence",
-    title: "180 Women Confidence Challenge",
-    description: "Target: Women. Tailored 180-day transformation repeating continuously: Monday: Glutes + Hamstrings, Tuesday: Upper Body + Core, Wednesday: Quads + Glutes, Thursday: Cardio + Core + Mobility, Friday: Glutes + Full Lower Body, Saturday: Full Body Conditioning, Sunday: Recovery.",
-    category: "Glute Shaping & Core",
-    goal: "Empower feminine athletic confidence, glute shape, waist definition, and elegant posture.",
-    image: getExerciseGifUrl("Barbell Hip Thrust", "Gym Workouts"),
-    badgeId: "badge_women_confidence",
-    badgeName: "Confidence Queen",
-    badgeColor: "from-pink-500 to-rose-600",
-    durationDays: 180,
-    isPremium: true
-  },
-  {
-    id: "belly_fat_shred",
-    title: "Belly Fat Shred",
-    description: "Target: Men and Women. Visceral fat mobilization and core tapering repeating continuously: Monday: Full Body + Core, Tuesday: Cardio + Abs, Wednesday: Full Body Strength, Thursday: Cardio + Core, Friday: Full Body Conditioning, Saturday: Walking + Mobility, Sunday: Recovery.",
-    category: "Conditioning & Fat Loss",
-    goal: "Melt stubborn belly fat, tighten the waistline, and elevate cardiovascular conditioning.",
-    image: getExerciseGifUrl("Plank", "Core"),
-    badgeId: "badge_belly_shred",
-    badgeName: "Visceral Shred Master",
-    badgeColor: "from-rose-500 to-red-600",
-    durationDays: 140,
-    isPremium: true
-  },
-  {
-    id: "home_180",
-    title: "180 Days Home Workout",
-    description: "Target: Men and Women (with separate workout tracks where appropriate). Zero and minimal equipment calisthenics, core armor, and functional conditioning repeating continuously across 180 days.",
-    category: "Home Calisthenics",
-    goal: "Master home bodyweight training, lean muscle preservation, and functional agility.",
-    image: getExerciseGifUrl("Standard Push Ups", "Home Workouts"),
-    badgeId: "badge_home_180",
-    badgeName: "180 Day Sovereign Titan",
-    badgeColor: "from-emerald-500 to-teal-600",
-    durationDays: 180,
-    isPremium: true
-  },
-  {
-    id: "posture_vitality",
-    title: "Posture Correction Challenge",
-    description: "Target: Men and Women. Continuous 7-day cyclical split: Monday: Upper Back + Shoulder Mobility, Tuesday: Core Stability + Hip Mobility, Wednesday: Full Body Posture Training, Thursday: Recovery Mobility, Friday: Upper Back + Core, Saturday: Full Body Mobility + Stability, Sunday: Recovery.",
-    category: "Posture & Joint Longevity",
-    goal: "Reverse slouching, anterior shoulder rounding, and lower back tightness with clinical mobility.",
-    image: getExerciseGifUrl("Face Pull", "Gym Workouts"),
-    badgeId: "badge_posture_master",
-    badgeName: "Postural Radiance",
-    badgeColor: "from-cyan-500 to-blue-600",
-    durationDays: 60,
     isPremium: true
   },
   {
@@ -183,49 +131,13 @@ export const PREMIUM_CHALLENGES = FLAGSHIP_CHALLENGES;
 
 export const CHALLENGE_SPLITS: Record<string, string[]> = {
   immortal_90: [
-    "Push (Chest, Shoulders & Triceps)",
-    "Pull (Back, Rear Delts & Biceps)",
-    "Legs + Core (Quads, Hamstrings, Glutes, Calves & Abs)",
-    "Cardio + Mobility",
-    "Upper Body (Chest, Back, Shoulders & Arms)",
-    "Athletic Conditioning + Core",
-    "Recovery"
-  ],
-  women_confidence: [
-    "Glutes + Hamstrings",
-    "Upper Body + Core",
-    "Quads + Glutes",
-    "Cardio + Core + Mobility",
-    "Glutes + Full Lower Body",
-    "Full Body Conditioning",
-    "Recovery"
-  ],
-  belly_fat_shred: [
-    "Full Body + Core",
-    "Cardio + Abs",
-    "Full Body Strength",
-    "Cardio + Core",
-    "Full Body Conditioning",
-    "Walking + Mobility",
-    "Recovery"
-  ],
-  home_180: [
-    "Upper Body Push & Calisthenics",
-    "Core & Abs Shred",
-    "Lower Body & Legs",
-    "Cardio + Mobility",
-    "Upper Body Pull & Back",
-    "Athletic Full Body Conditioning",
-    "Recovery"
-  ],
-  posture_vitality: [
-    "Upper Back + Shoulder Mobility",
-    "Core Stability + Hip Mobility",
-    "Full Body Posture Training",
-    "Recovery Mobility",
-    "Upper Back + Core",
-    "Full Body Mobility + Stability",
-    "Recovery"
+    "Chest and Triceps",
+    "Back and Biceps",
+    "Cardio and Mobility",
+    "Legs and Shoulders",
+    "Chest, Triceps and Forearms",
+    "Back, Biceps and Core",
+    "Rest and Recovery"
   ],
   lean_muscle: [
     "Chest and Triceps",

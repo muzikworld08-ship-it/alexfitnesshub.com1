@@ -320,49 +320,45 @@ const getWorkoutForWeekAndDay = (
 
   // Customize based on week phase & day
   let defaultTitle = `Full-Body fat loss focus - Day ${dayNum}`;
-  if (dayNum === 1) defaultTitle = "Monday: Full Body + Core";
-  else if (dayNum === 2) defaultTitle = "Tuesday: Cardio + Abs";
-  else if (dayNum === 3) defaultTitle = "Wednesday: Full Body Strength";
-  else if (dayNum === 4) defaultTitle = "Thursday: Cardio + Core";
-  else if (dayNum === 5) defaultTitle = "Friday: Full Body Conditioning";
-  else if (dayNum === 6) defaultTitle = "Saturday: Walking + Mobility";
-  else defaultTitle = "Sunday: Recovery";
+  if (dayNum === 1) defaultTitle = "HIIT Intervals & Midsection Stability";
+  else if (dayNum === 2) defaultTitle = "Core Armor & Lower Body Toning";
+  else if (dayNum === 3) defaultTitle = "Wednesday 5-10 KM Running or Walking & Complete Rest";
+  else if (dayNum === 4) defaultTitle = "Upper Body Push-Pull & Midsection Sculpt";
+  else if (dayNum === 5) defaultTitle = "Lower Body Shred & Isometric Core";
+  else if (dayNum === 6) defaultTitle = "Saturday Total Body Resistance & Functional Core";
+  else defaultTitle = "Sunday 5-10 KM Running or Walking & Complete Rest";
 
   const title = override?.title || defaultTitle;
 
-  // Walking & Mobility Day (Saturday Day 6) and Recovery Day (Sunday Day 7)
-  if (dayNum === 6 || dayNum === 7) {
-    const isWalkingDay = dayNum === 6;
+  // Cardio & Rest Days (Wednesday Day 3 and Sunday Day 7)
+  if (dayNum === 3 || dayNum === 7) {
     return {
       phase,
       difficulty,
-      duration: isWalkingDay ? "50-70 mins" : "25-35 mins",
-      calBurn: isWalkingDay ? "450-600 kcal" : "120-180 kcal",
+      duration: "50-70 mins",
+      calBurn: "500-650 kcal",
       title,
       warmup: [
-        "Light ankle & hip circles — 3 mins",
-        "Dynamic hamstring sweeps & torso rotations — 3 mins",
-        "Deep diaphragmatic ribcage expansion — 2 mins"
+        "Light joint rotations & dynamic spinal flexion — 3 mins",
+        "Dynamic ankle & hamstring mobility sweeps — 3 mins",
+        "Active diaphragmatic breathing & pelvic alignment — 2 mins"
       ],
       core: [
-        "Standing core vacuum & pelvic neutral alignment: 3 sets x 30s",
+        "Dead Bug: 3 sets x 12 reps with controlled pelvic tilt",
         "Primal Cat-Cow Spinal Waves: 3 sets x 60s rhythmic decompression",
-        "Child's pose deep breathing — 2 mins"
+        "Deep Diaphragmatic Box Breathing: 3 mins recovery focus"
       ],
       hiit: [
-        isWalkingDay 
-          ? "Aerobic Walking Assignment: 5 to 10 KM Brisk Walking outdoors or on treadmill."
-          : "Full Rest Protocol: Parasympathetic nervous system reset — no HIIT intervals today."
+        "No HIIT Circuit Today: Scheduled purely for 5 to 10 KM aerobic running or walking.",
+        "Aerobic Focus: Maintain Zone 2 aerobic rhythm without high-impact intervals."
       ],
       strength: [
-        isWalkingDay
-          ? "Joint Mobility Focus: Thoracic rotations, deep squat hold, and 90/90 hip mobility."
-          : "Complete Muscular Recovery: Lie down, hydrate, and allow muscles to repair."
+        "Workout Removed: All strength exercises are removed on cardio days.",
+        "Post-Cardio Rest: Lie down or relax, hydrate, and let your body recover completely after your 5-10 KM running or walking session."
       ],
       fullBodyCircuit: [
-        isWalkingDay 
-          ? "Saturday Protocol: Dedicated 5 to 10 KM Walking + Full Mobility flow."
-          : "Sunday Protocol: Parasympathetic Regeneration, foam rolling, and rest."
+        "Aerobic Cardio Assignment: 5 to 10 KM Running or Walking (Outdoors or Treadmill).",
+        "Cardio-Only Protocol: Wednesday and Sunday are the ONLY cardio sessions on the entire program."
       ],
       cooldown: [
         "Cobra pose stretch — hold 30s x 2",
@@ -370,13 +366,11 @@ const getWorkoutForWeekAndDay = (
         "Child's pose deep breathing — 2 mins"
       ],
       modifications: {
-        beginner: isWalkingDay ? "Brisk walk 3 to 5 KM at steady conversational pace." : "20 minutes gentle stretching and deep breathing.",
-        intermediate: isWalkingDay ? "Brisk walk 5 to 8 KM with posture engagement." : "30 minutes mobility flow.",
-        advanced: isWalkingDay ? "Fast-paced power walk 8 to 10 KM." : "Full restorative session."
+        beginner: "Walk 3 to 5 KM at a brisk steady pace (4.5 - 5.5 km/h) with zero jogging if needed.",
+        intermediate: "Jog-walk intervals: alternate 800m jogging with 200m brisk walk for 5 to 8 KM.",
+        advanced: "Steady continuous Zone 2 run for 8 to 10 KM at 6:00 - 6:30 min/km pace."
       },
-      exercisesList: isWalkingDay 
-        ? ["5-10 KM Brisk Walk", "Cat-Cow Spinal Waves", "Thoracic Spine Reach", "Standing Core Vacuum"]
-        : ["Restorative Breathing", "Child's Pose", "Cat-Cow Waves", "Hamstring Stretch"]
+      exercisesList: ["Dead Bug", "Cat-Cow Waves", "5-10 KM Aerobic Run/Walk", "Diaphragmatic Breathing"]
     };
   }
 
