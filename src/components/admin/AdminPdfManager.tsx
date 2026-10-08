@@ -166,6 +166,7 @@ export const AdminPdfManager: React.FC = () => {
       };
 
       await printablePdfService.saveProduct(payload);
+      window.dispatchEvent(new CustomEvent("fit-pdf-catalog-changed"));
       setMessage({ text: "Product saved successfully!", isError: false });
       setIsModalOpen(false);
       await loadData();
@@ -181,6 +182,7 @@ export const AdminPdfManager: React.FC = () => {
     setActionLoading(true);
     try {
       await printablePdfService.deleteProduct(productToDelete.id);
+      window.dispatchEvent(new CustomEvent("fit-pdf-catalog-changed"));
       setMessage({ text: `Product "${productToDelete.title}" deleted.`, isError: false });
       setProductToDelete(null);
       await loadData();
@@ -197,6 +199,7 @@ export const AdminPdfManager: React.FC = () => {
         ...product,
         isActive: !product.isActive,
       });
+      window.dispatchEvent(new CustomEvent("fit-pdf-catalog-changed"));
       await loadData();
     } catch (err: any) {
       alert(err.message || "Failed to toggle status.");

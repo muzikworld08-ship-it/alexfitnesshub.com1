@@ -11,8 +11,6 @@ import { TestimonialAdminManager } from "./TestimonialAdminManager";
 import AdminAssetManager from "./AdminAssetManager";
 import AdminOverviewTab from "./admin/AdminOverviewTab";
 import AdminWorkoutEditor from "./admin/AdminWorkoutEditor";
-import AdminChallengeManager from "./admin/AdminChallengeManager";
-import AdminWorkoutChallengeEngine from "./admin/AdminWorkoutChallengeEngine";
 import { AdminStoreManager } from "./admin/AdminStoreManager";
 import { AdminPdfManager } from "./admin/AdminPdfManager";
 import { db } from "../lib/firebase";
@@ -38,7 +36,7 @@ export default function AdminDashboard() {
   
   const [userQuery, setUserQuery] = useState("");
   const [exerciseQuery, setExerciseQuery] = useState("");
-  const [activeAdminTab, setActiveAdminTab] = useState<"overview" | "workouts" | "challenges" | "engine" | "media" | "directory" | "store" | "paystack" | "printable-pdfs" | "testimonials">("overview");
+  const [activeAdminTab, setActiveAdminTab] = useState<"overview" | "workouts" | "media" | "directory" | "store" | "paystack" | "printable-pdfs" | "testimonials">("overview");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -331,8 +329,6 @@ export default function AdminDashboard() {
   const navigationTabs = [
     { id: "overview" as const, label: "Overview", icon: LayoutDashboard, badge: "Control Center" },
     { id: "workouts" as const, label: "Workouts & Catalog", icon: Dumbbell, badge: `${exercises.length}` },
-    { id: "engine" as const, label: "7-Day Split Engine", icon: Calendar, badge: "Dynamic" },
-    { id: "challenges" as const, label: "Flagship Challenges", icon: Trophy, badge: `${allChallenges?.length || 7}` },
     { id: "media" as const, label: "Media & GIFs Hub", icon: Video, badge: `${mediaCoveragePercent}%` },
     { id: "directory" as const, label: "Athletes Directory", icon: Users, badge: `${totalUsers}` },
     { id: "store" as const, label: "Store & Merch", icon: ShoppingBag },
@@ -590,20 +586,6 @@ export default function AdminDashboard() {
       {activeAdminTab === "workouts" && (
         <div className="space-y-6 animate-fade-in">
           <AdminWorkoutEditor />
-        </div>
-      )}
-
-      {/* VIEW 2: CHALLENGES MANAGER */}
-      {activeAdminTab === "challenges" && (
-        <div className="space-y-6 animate-fade-in">
-          <AdminChallengeManager />
-        </div>
-      )}
-
-      {/* VIEW 2.5: CHALLENGE ENGINE V2 & VALIDATION ARCHITECT */}
-      {activeAdminTab === "engine" && (
-        <div className="space-y-6 animate-fade-in">
-          <AdminWorkoutChallengeEngine />
         </div>
       )}
 

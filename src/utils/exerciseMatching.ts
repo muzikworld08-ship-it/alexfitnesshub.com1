@@ -1,4 +1,4 @@
-// Known exercise aliases and program mappings
+// Known exercise aliases: strictly spelling/formatting variations only. Never alias one exercise into a different exercise!
 const EXERCISE_ALIASES: Record<string, string> = {
   "facepull": "face pulls",
   "facepulls": "face pulls",
@@ -8,13 +8,6 @@ const EXERCISE_ALIASES: Record<string, string> = {
   "cable face pull": "face pulls",
   "cable face pulls": "face pulls",
   "cable face pull with external rotation": "cable face pull with external rotation",
-  "face pulls band pull aparts": "face pulls",
-  "face pulls / band pull aparts": "face pulls",
-  "cable rear delt row with rope": "face pulls",
-  "cable standing rear delt row with rope": "face pulls",
-  "cable standing rear delt row (with rope)": "face pulls",
-  "cable rear delt row": "face pulls",
-  "band pull aparts": "face pulls",
   "frog pumps": "frog pump glute burner",
   "frog pump": "frog pump glute burner",
   "frog pumps feet soles together": "frog pump glute burner",
@@ -29,16 +22,10 @@ const EXERCISE_ALIASES: Record<string, string> = {
   "clamshells": "banded clamshells with abduction",
   "3-second eccentric tempo push-ups": "push-ups",
   "tempo push-ups": "push-ups",
-  "explosive squat jumps": "jump squats",
-  "plyometric split jump lunges": "jump squats",
-  "prone superman holds": "prone superman holds",
-  "dumbbell pullover": "single-arm lat prayer (cable pullover)",
-  "lying leg curls": "leg curl",
-  "sumo deadlift": "deadlift",
-  "dumbbell step-ups": "step ups with knee drive",
-  "bodyweight chair / sofa dips": "dips",
-  "chair dips": "dips",
-  "sofa dips": "dips",
+  "push up": "push-ups",
+  "push ups": "push-ups",
+  "pushup": "push-ups",
+  "pushups": "push-ups",
   "pull up": "pull-ups",
   "pull ups": "pull-ups",
   "pullup": "pull-ups",
@@ -65,7 +52,7 @@ function cleanExerciseString(str: string): string {
 
 /**
  * Utility for robust exercise matching across names and IDs.
- * Handles singular/plural variations, program aliases, and prefix differences.
+ * Handles singular/plural variations and clean spelling differences without cross-exercise collisions.
  */
 export function isExerciseMatch(
   targetIdOrName?: string | null,
@@ -78,12 +65,12 @@ export function isExerciseMatch(
 
   if (targetRaw === candidateRaw) return true;
 
-  // Direct alias check
+  // Direct alias check (strict equality only - NEVER substring .includes)
   const aliasTarget = EXERCISE_ALIASES[targetRaw];
-  if (aliasTarget && (aliasTarget === candidateRaw || candidateRaw.includes(aliasTarget))) return true;
+  if (aliasTarget && aliasTarget === candidateRaw) return true;
 
   const aliasCand = EXERCISE_ALIASES[candidateRaw];
-  if (aliasCand && (aliasCand === targetRaw || targetRaw.includes(aliasCand))) return true;
+  if (aliasCand && aliasCand === targetRaw) return true;
 
   const cleanTarget = cleanExerciseString(targetRaw);
   const cleanCandidate = cleanExerciseString(candidateRaw);
@@ -106,26 +93,73 @@ export function isExerciseMatch(
   // Singular / Plural variation (e.g. "pushup" vs "pushups" or "facepull" vs "facepulls")
   if (normTarget + "s" === normCandidate || normTarget === normCandidate + "s") return true;
 
-  // Substring inclusion with word boundaries, avoiding generic word over-matching (e.g. "press" matching all presses)
-  const genericShortWords = new Set(["press", "pull", "squat", "lunge", "curl", "row", "plank", "dip", "raise", "fly", "push"]);
-  if (!genericShortWords.has(normTarget) && !genericShortWords.has(normCandidate)) {
-    if (
-      (cleanTarget.length >= 8 && cleanCandidate.includes(cleanTarget)) ||
-      (cleanCandidate.length >= 8 && cleanTarget.includes(cleanCandidate)) ||
-      (normTarget.length >= 8 && normCandidate.includes(normTarget)) ||
-      (normCandidate.length >= 8 && normTarget.includes(normCandidate))
-    ) {
-      return true;
-    }
+  // No loose substring or partial matching: exercises must strictly match their authentic identity
+  return false;
+}
+
+/**
+ * Checks if two exercise names fundamentally conflict in their biomechanical category
+ * (e.g. Chest/Bench vs Leg/Squat). Prevents cross-contamination where a squat gets a bench press GIF.
+ */
+export function areExercisesConflicting(nameA?: string | null, nameB?: string | null): boolean {
+  if (!nameA || !nameB) return false;
+  const a = nameA.toLowerCase().trim();
+  const b = nameB.toLowerCase().trim();
+  if (a === b) return false;
+
+  const isSquatOrLegA = /\b(squat|squats|lunge|lunges|quad|quads|hamstring|leg\s*press|calf|calves)\b/i.test(a);
+  const isSquatOrLegB = /\b(squat|squats|lunge|lunges|quad|quads|hamstring|leg\s*press|calf|calves)\b/i.test(b);
+
+  const isBenchOrChestA = /\b(bench|bench\s*press|chest|chest\s*press|pushup|pushups|push-up|push-ups|pec\s*fly|chest\s*dip)\b/i.test(a);
+  const isBenchOrChestB = /\b(bench|bench\s*press|chest|chest\s*press|pushup|pushups|push-up|push-ups|pec\s*fly|chest\s*dip)\b/i.test(b);
+
+  const isBackOrPullA = /\b(deadlift|deadlifts|pullup|pullups|pull-up|pull-ups|lat\s*pulldown|row|rows|bent\s*over\s*row)\b/i.test(a);
+  const isBackOrPullB = /\b(deadlift|deadlifts|pullup|pullups|pull-up|pull-ups|lat\s*pulldown|row|rows|bent\s*over\s*row)\b/i.test(b);
+
+  const isShoulderA = /\b(military\s*press|shoulder\s*press|overhead\s*press|lateral\s*raise|front\s*raise)\b/i.test(a);
+  const isShoulderB = /\b(military\s*press|shoulder\s*press|overhead\s*press|lateral\s*raise|front\s*raise)\b/i.test(b);
+
+  // Cross-category collisions are strictly forbidden
+  if (isSquatOrLegA && isBenchOrChestB) return true;
+  if (isBenchOrChestA && isSquatOrLegB) return true;
+
+  if (isSquatOrLegA && isBackOrPullB && !a.includes("deadlift") && !b.includes("deadlift")) return true;
+  if (isBackOrPullA && isSquatOrLegB && !a.includes("deadlift") && !b.includes("deadlift")) return true;
+
+  if (isBenchOrChestA && isBackOrPullB) return true;
+  if (isBackOrPullA && isBenchOrChestB) return true;
+
+  if (isSquatOrLegA && isShoulderB) return true;
+  if (isShoulderA && isSquatOrLegB) return true;
+
+  return false;
+}
+
+/**
+ * Validates that a media/GIF URL doesn't belong to a conflicting exercise.
+ * e.g. prevents a URL with "BARBELL-BENCH-PRESS.gif" from being attached to a "Back Squat".
+ */
+export function isMediaUrlConflictingWithExercise(exerciseName: string, mediaUrl?: string | null): boolean {
+  if (!exerciseName || !mediaUrl) return false;
+  const name = exerciseName.toLowerCase().trim();
+  const url = mediaUrl.toLowerCase().trim();
+
+  const isSquat = /\b(squat|squats)\b/i.test(name);
+  if (isSquat && (url.includes("bench-press") || url.includes("bench_press") || url.includes("bench") || url.includes("pec-deck") || url.includes("push-up"))) {
+    return true;
+  }
+
+  const isBench = /\b(bench|bench\s*press)\b/i.test(name);
+  if (isBench && (url.includes("squat") || url.includes("lunge") || url.includes("leg-press") || url.includes("deadlift"))) {
+    return true;
   }
 
   return false;
 }
 
-const matchingExerciseCache = new Map<string, any>();
-
 /**
- * Finds the exact or best matching exercise from an array of exercises.
+ * Finds the exact matching exercise from an array of exercises.
+ * Strictly avoids cross-exercise collisions so an exercise never mutates into a different name or GIF.
  */
 export function findMatchingExercise<T extends { id: string; name: string }>(
   exercises: T[],
@@ -134,90 +168,58 @@ export function findMatchingExercise<T extends { id: string; name: string }>(
 ): T | undefined {
   if (!exercises || exercises.length === 0) return undefined;
 
-  const cacheKey = `${exerciseId || ""}:::${exerciseName || ""}:::${exercises.length}`;
-  if (matchingExerciseCache.has(cacheKey)) {
-    return matchingExerciseCache.get(cacheKey);
-  }
+  const cleanName = exerciseName?.trim();
+  const cleanId = exerciseId?.trim();
 
-  // 1. Direct ID exact match
-  if (exerciseId) {
-    const trimmedId = exerciseId.toLowerCase().trim();
-    const directId = exercises.find(ex => ex.id.toLowerCase() === trimmedId);
-    if (directId) {
-      matchingExerciseCache.set(cacheKey, directId);
-      return directId;
-    }
-  }
-
-  // 2. Direct Name exact match
-  if (exerciseName) {
-    const trimmedName = exerciseName.toLowerCase().trim();
-    const directName = exercises.find(ex => ex.name.toLowerCase() === trimmedName);
+  // 1. Direct Name exact match (Highest Priority: human exercise name is ground truth)
+  if (cleanName) {
+    const directName = exercises.find(ex => ex.name.toLowerCase().trim() === cleanName.toLowerCase());
     if (directName) {
-      matchingExerciseCache.set(cacheKey, directName);
       return directName;
     }
-  }
 
-  // 3. Check alias resolution first
-  const aliasResolved = EXERCISE_ALIASES[exerciseName?.toLowerCase().trim() || ""] ||
-                        EXERCISE_ALIASES[exerciseId?.toLowerCase().trim() || ""];
-  if (aliasResolved) {
-    const aliasMatch = exercises.find(ex => 
-      ex.name.toLowerCase().includes(aliasResolved) || 
-      ex.id.toLowerCase().includes(aliasResolved) ||
-      isExerciseMatch(aliasResolved, ex.name)
-    );
-    if (aliasMatch) {
-      matchingExerciseCache.set(cacheKey, aliasMatch);
-      return aliasMatch;
+    const matchByName = exercises.find(ex => isExerciseMatch(cleanName, ex.name));
+    if (matchByName && !areExercisesConflicting(cleanName, matchByName.name)) {
+      return matchByName;
     }
   }
 
-  // 4. Normalized ID / Name match using isExerciseMatch
-  for (const ex of exercises) {
-    if (exerciseId && (isExerciseMatch(exerciseId, ex.id) || isExerciseMatch(exerciseId, ex.name))) {
-      matchingExerciseCache.set(cacheKey, ex);
-      return ex;
-    }
-    if (exerciseName && (isExerciseMatch(exerciseName, ex.name) || isExerciseMatch(exerciseName, ex.id))) {
-      matchingExerciseCache.set(cacheKey, ex);
-      return ex;
+  // 2. Direct ID match - BUT ONLY if it does not conflict with cleanName!
+  if (cleanId) {
+    const trimmedId = cleanId.toLowerCase();
+    const directId = exercises.find(ex => ex.id.toLowerCase() === trimmedId);
+    if (directId) {
+      // If exerciseName was provided, NEVER return an exercise with a conflicting name!
+      if (!cleanName || (!areExercisesConflicting(cleanName, directId.name) && isExerciseMatch(cleanName, directId.name))) {
+        return directId;
+      }
     }
   }
 
-  // 5. Stemmed token overlap match (handles "Frog Pump" matching "Frog Pump Glute Burner")
-  if (exerciseName) {
-    const stemWord = (w: string) => w.replace(/(s|es|ing|ed)$/, "");
-    const targetWords = cleanExerciseString(exerciseName)
-      .split(/\s+/)
-      .filter(w => w.length > 2)
-      .map(stemWord);
-
-    if (targetWords.length > 0) {
-      let bestMatch: T | undefined = undefined;
-      let highestOverlap = 0;
-
-      for (const ex of exercises) {
-        const candWords = cleanExerciseString(ex.name)
-          .split(/\s+/)
-          .filter(w => w.length > 2)
-          .map(stemWord);
-
-        const overlap = targetWords.filter(w => candWords.includes(w)).length;
-        if (overlap > highestOverlap && overlap >= Math.min(2, targetWords.length)) {
-          highestOverlap = overlap;
-          bestMatch = ex;
+  // 3. Normalized ID match with non-conflicting constraint
+  if (cleanId) {
+    for (const ex of exercises) {
+      if (isExerciseMatch(cleanId, ex.id)) {
+        if (!cleanName || (!areExercisesConflicting(cleanName, ex.name) && isExerciseMatch(cleanName, ex.name))) {
+          return ex;
         }
       }
+    }
+  }
 
-      if (bestMatch) {
-        matchingExerciseCache.set(cacheKey, bestMatch);
-        return bestMatch;
+  // 4. Check explicit alias resolution for name
+  if (cleanName) {
+    const aliasResolved = EXERCISE_ALIASES[cleanName.toLowerCase()] || EXERCISE_ALIASES[cleanId?.toLowerCase() || ""];
+    if (aliasResolved) {
+      const aliasMatch = exercises.find(ex => 
+        ex.name.toLowerCase().trim() === aliasResolved ||
+        isExerciseMatch(aliasResolved, ex.name)
+      );
+      if (aliasMatch && !areExercisesConflicting(cleanName, aliasMatch.name)) {
+        return aliasMatch;
       }
     }
   }
 
-  matchingExerciseCache.set(cacheKey, undefined);
   return undefined;
 }

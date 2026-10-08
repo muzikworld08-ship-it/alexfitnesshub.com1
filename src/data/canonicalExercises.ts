@@ -932,7 +932,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "20 total strides",
     restTime: "45s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lunges.gif",
+    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Walking-Lunge.gif",
     programAssignments: ["180 Day Home Workout Challenge", "90 Days Immortal Challenge", "Women Confidence Program (180 Days)", "5-Month Belly Fat Shred System"]
   },
   {
@@ -1014,7 +1014,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "20-25 reps",
     restTime: "30s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Calf-Raise.gif",
+    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Calf-Raise.gif",
     programAssignments: ["180 Day Home Workout Challenge", "90 Days Immortal Challenge"]
   },
   {

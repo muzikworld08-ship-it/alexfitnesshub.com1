@@ -839,7 +839,20 @@ export default function Premium90DayChallenge() {
       exercises: exercisesWithDetails,
       estTime: totalEstTime,
       estCalories: totalEstCalories,
-      warmUp: getPreWorkoutStretchesForDay(dayNum, focusLabel),
+      warmUp: (() => {
+        const dynamicStretches = getPreWorkoutStretchesForDay([focusLabel], exercises, 2);
+        if (dynamicStretches && dynamicStretches.length > 0) {
+          return dynamicStretches.map(s => ({
+            name: s.name,
+            duration: "3-4 Mins",
+            desc: s.instructions?.[0] || s.description || "Dynamic joint mobility and activation."
+          }));
+        }
+        return [
+          { name: "Dynamic Joint Mobility Warm-Up", duration: "4 Mins", desc: `Lubricate target joints specifically for ${focusLabel}.` },
+          { name: "Progressive Activation Sets", duration: "3 Mins", desc: "Neuromuscular readiness drills and targeted blood flow." }
+        ];
+      })(),
       coolDown: [
         { name: "Systemic Decompression Breathing", duration: "4 Mins", desc: "Deep diaphragmatic nasal inhalation cycles." },
         { name: "Full Posterior Muscle Release Stretch", duration: "4 Mins", desc: "Static hamstring and back lengthening holds." }

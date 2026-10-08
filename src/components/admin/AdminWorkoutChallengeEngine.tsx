@@ -1618,13 +1618,8 @@ export default function AdminWorkoutChallengeEngine() {
           programName: selectedProgramId
         } : null}
         isLoading={isDeleting}
-        onConfirm={handleAutoReplace}
+        onConfirm={handleDeleteOnly}
         onDeleteOnly={handleDeleteOnly}
-        onChooseReplacement={() => {
-          const target = targetToDelete;
-          setTargetToDelete(null);
-          setTargetToReplace(target);
-        }}
         onCancel={() => setTargetToDelete(null)}
       />
     </div>

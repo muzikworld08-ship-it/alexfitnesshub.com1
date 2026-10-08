@@ -11,7 +11,8 @@ import {
   generatePersonalizedPdf, 
   generateMasterPdfFallback,
   ensurePdfDirectories,
-  recordDeletedPdfId
+  recordDeletedPdfId,
+  getDeletedPdfIds
 } from "./printablePdfEngine";
 import { PrintablePdfProduct, PrintablePdfOrder } from "../types/printablePdf";
 
@@ -35,11 +36,22 @@ export function registerPrintablePdfRoutes(
   app.get("/api/printable-pdfs", (req: Request, res: Response) => {
     try {
       const all = getPdfProducts();
-      const active = all.filter((p) => p.isActive !== false);
-      res.json({ success: true, products: active });
+      const deletedIds = getDeletedPdfIds();
+      const active = all.filter((p) => p.isActive !== false && !deletedIds.has(p.id));
+      res.json({ success: true, products: active, deletedIds: Array.from(deletedIds) });
     } catch (err: any) {
       console.error("[PDF Routes] Error fetching products:", err);
       res.status(500).json({ success: false, error: "Failed to fetch products" });
+    }
+  });
+
+  // 1.5. GET /api/printable-pdfs/deleted-ids - List all deleted PDF IDs
+  app.get("/api/printable-pdfs/deleted-ids", (req: Request, res: Response) => {
+    try {
+      const deletedIds = getDeletedPdfIds();
+      res.json({ success: true, deletedIds: Array.from(deletedIds) });
+    } catch (err: any) {
+      res.status(500).json({ success: false, deletedIds: [] });
     }
   });
 

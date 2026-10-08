@@ -52,7 +52,8 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
   const displayEquipment = exercise?.equipment || [];
   const displayDifficulty = exercise?.difficulty || "Beginner";
 
-  const targetName = exercise?.name || exerciseName || category || "";
+  // Priority: explicit exerciseName passed as prop ALWAYS takes priority
+  const targetName = exerciseName || exercise?.name || category || "";
 
   // Guaranteed authentic matching GIF resolved through authoritative dataset mapping
   const authentic = React.useMemo(() => {

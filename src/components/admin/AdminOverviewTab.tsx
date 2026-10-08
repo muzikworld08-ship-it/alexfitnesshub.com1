@@ -13,7 +13,7 @@ interface AdminOverviewTabProps {
   allSystemUsers: UserProfile[];
   allChallenges: any[];
   paystackStatus: any;
-  onNavigateTab: (tab: "workouts" | "challenges" | "engine" | "media" | "directory" | "store" | "paystack" | "printable-pdfs" | "testimonials", filterProgram?: string) => void;
+  onNavigateTab: (tab: "workouts" | "media" | "directory" | "store" | "paystack" | "printable-pdfs" | "testimonials", filterProgram?: string) => void;
   onRefreshGateway: () => void;
 }
 
@@ -412,11 +412,11 @@ export default function AdminOverviewTab({
           </div>
 
           <button
-            onClick={() => onNavigateTab("engine")}
+            onClick={() => onNavigateTab("workouts")}
             className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold font-sans uppercase tracking-wider flex items-center gap-2 cursor-pointer transition shrink-0 shadow-xs"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>Open 7-Day Split Engine</span>
+            <span>Manage Workouts Catalog</span>
           </button>
         </div>
 
@@ -490,7 +490,7 @@ export default function AdminOverviewTab({
 
                   <td className="py-4 px-4 text-right">
                     <button
-                      onClick={() => onNavigateTab("engine", prog.splitTag)}
+                      onClick={() => onNavigateTab("workouts")}
                       className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-extrabold font-sans uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ml-auto shadow-2xs hover:shadow-xs"
                       title={`Quick manage ${prog.name}`}
                     >

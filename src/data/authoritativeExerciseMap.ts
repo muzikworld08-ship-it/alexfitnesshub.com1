@@ -1,3 +1,10 @@
+import { CANONICAL_EXERCISES } from "./canonicalExercises";
+import { 
+  isExerciseMatch, 
+  areExercisesConflicting, 
+  isMediaUrlConflictingWithExercise 
+} from "../utils/exerciseMatching";
+
 export interface RawExerciseItem {
   name: string;
   target: string;
@@ -32,7 +39,8 @@ export function toAccurateTitleCase(str: string): string {
 
 /**
  * Resolves exercise info cleanly based on the exercise's actual configured name and media.
- * Checks active Admin-added exercises in storage so any new exercise/GIF is immediately reflected.
+ * Checks authoritative Canonical Exercises and Admin-added exercises in storage.
+ * Strictly guarantees that no exercise ever receives a conflicting GIF (e.g. bench press for back squat).
  */
 export function resolveAuthenticExercise(
   name: string,
@@ -43,24 +51,55 @@ export function resolveAuthenticExercise(
   let mediaUrl = fallbackGifUrl || "";
   let targetCat = category || "General";
 
+  // 1. Check Canonical Exercises database for exact authentic GIF match
+  const canonicalMatch = CANONICAL_EXERCISES.find(e => 
+    e.name.toLowerCase().trim() === cleanName.toLowerCase() ||
+    isExerciseMatch(cleanName, e.name)
+  );
+
+  if (canonicalMatch) {
+    if (canonicalMatch.gifUrl) {
+      mediaUrl = canonicalMatch.gifUrl;
+    }
+    if (canonicalMatch.category) {
+      targetCat = canonicalMatch.category;
+    }
+  }
+
+  // 2. If fallbackGifUrl was provided, only keep it if it does NOT conflict with cleanName
+  if (fallbackGifUrl && isMediaUrlConflictingWithExercise(cleanName, fallbackGifUrl)) {
+    // Discard conflicting media (e.g. bench press GIF for back squat)
+    mediaUrl = canonicalMatch?.gifUrl || "";
+  }
+
+  // 3. Check active Admin-added exercises in localStorage
   if (typeof window !== "undefined" && window.localStorage) {
     try {
       const stored = window.localStorage.getItem("fit_exercises");
       if (stored) {
         const list = JSON.parse(stored);
         if (Array.isArray(list)) {
-          const lower = cleanName.toLowerCase();
           const match = list.find((e: any) => {
-            const eName = (e.name || "").toLowerCase().trim();
-            return eName === lower || (eName.length > 2 && lower.includes(eName)) || (lower.length > 2 && eName.includes(lower));
+            if (!e.name) return false;
+            // Never match an exercise with a conflicting name
+            if (areExercisesConflicting(cleanName, e.name)) return false;
+            return isExerciseMatch(cleanName, e.name);
           });
           if (match) {
-            mediaUrl = match.customMediaUrl || match.gifUrl || match.imageUrl || mediaUrl;
+            const candidateMedia = match.customMediaUrl || match.gifUrl || match.imageUrl;
+            if (candidateMedia && !isMediaUrlConflictingWithExercise(cleanName, candidateMedia)) {
+              mediaUrl = candidateMedia;
+            }
             if (match.category) targetCat = match.category;
           }
         }
       }
     } catch {}
+  }
+
+  // 4. Final safety check: if mediaUrl still conflicts with cleanName, fallback to canonical
+  if (mediaUrl && isMediaUrlConflictingWithExercise(cleanName, mediaUrl)) {
+    mediaUrl = canonicalMatch?.gifUrl || "";
   }
 
   return {

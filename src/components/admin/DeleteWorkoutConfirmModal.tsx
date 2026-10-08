@@ -119,74 +119,36 @@ export default function DeleteWorkoutConfirmModal({
           </div>
         </div>
 
-        {/* Informative Guard Note & Selection Options */}
-        <div className="space-y-2.5 pt-1">
-          {onChooseReplacement && (
+        {/* Deletion Warning & Action Buttons */}
+        <div className="space-y-3 pt-1">
+          <div className="p-3.5 rounded-2xl bg-red-950/20 border border-red-900/40 text-left">
+            <p className="text-xs text-neutral-300 font-medium">
+              Are you sure you want to permanently delete <strong className="text-white font-bold">{target.name}</strong>?
+            </p>
+            <p className="text-[11px] text-neutral-400 mt-1">
+              This will permanently remove this exercise and its demonstration GIF from this workout routine.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2">
             <button
               type="button"
               disabled={isLoading}
-              onClick={onChooseReplacement}
-              className="w-full p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 hover:border-amber-500/60 hover:bg-amber-500/20 text-left transition flex items-center justify-between group cursor-pointer"
+              onClick={onCancel}
+              className="px-4 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-xs transition cursor-pointer disabled:opacity-50"
             >
-              <div>
-                <p className="text-xs font-black text-amber-300 group-hover:text-amber-200">
-                  Select Specific Replacement Exercise
-                </p>
-                <p className="text-[11px] text-neutral-400 mt-0.5">
-                  Browse the exercise library to swap in a specific drill
-                </p>
-              </div>
-              <span className="text-xs font-bold text-amber-400 ml-2 shrink-0">Browse Library →</span>
+              Cancel
             </button>
-          )}
-
-          <button
-            type="button"
-            disabled={isLoading}
-            onClick={onConfirm}
-            className="w-full p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/60 text-left transition flex items-center justify-between group cursor-pointer"
-          >
-            <div>
-              <p className="text-xs font-black text-white group-hover:text-red-400">
-                Auto-Replace with Library Counterpart
-              </p>
-              <p className="text-[11px] text-neutral-400 mt-0.5">
-                Automatically assign a verified biomechanical counterpart from library
-              </p>
-            </div>
-            <span className="text-xs font-bold text-red-400 ml-2 shrink-0">Auto-Swap</span>
-          </button>
-
-          {onDeleteOnly && (
             <button
               type="button"
               disabled={isLoading}
-              onClick={onDeleteOnly}
-              className="w-full p-3.5 rounded-2xl bg-red-950/20 border border-red-900/40 hover:border-red-600/60 hover:bg-red-950/40 text-left transition flex items-center justify-between group cursor-pointer"
+              onClick={onDeleteOnly || onConfirm}
+              className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-red-950/40 disabled:opacity-50"
             >
-              <div>
-                <p className="text-xs font-black text-red-400 group-hover:text-red-300">
-                  Delete Permanently (No Replacement)
-                </p>
-                <p className="text-[11px] text-neutral-400 mt-0.5">
-                  Remove this exercise completely from the routine without adding a substitute
-                </p>
-              </div>
-              <Trash2 className="w-4 h-4 text-red-500 ml-2 shrink-0" />
+              <Trash2 className="w-4 h-4 text-white" />
+              <span>{isLoading ? "Deleting..." : "Delete Permanently"}</span>
             </button>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <button
-            type="button"
-            disabled={isLoading}
-            onClick={onCancel}
-            className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-xs transition cursor-pointer disabled:opacity-50"
-          >
-            Cancel
-          </button>
+          </div>
         </div>
       </div>
     </div>

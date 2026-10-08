@@ -27,23 +27,38 @@ export interface VerifyOrderResponse {
 }
 
 const DELETED_PDF_STORAGE_KEY = "afh_deleted_pdf_product_ids";
+const STORE_DELETED_KEY = "afh_permanently_deleted_product_ids";
 
-function getClientDeletedPdfIds(): Set<string> {
+export function getClientDeletedPdfIds(): Set<string> {
+  const merged = new Set<string>();
   try {
     const raw = localStorage.getItem(DELETED_PDF_STORAGE_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) return new Set(arr);
+      if (Array.isArray(arr)) arr.forEach((id: string) => merged.add(id));
     }
   } catch {}
-  return new Set();
+  try {
+    const rawStore = localStorage.getItem(STORE_DELETED_KEY);
+    if (rawStore) {
+      const arr = JSON.parse(rawStore);
+      if (Array.isArray(arr)) arr.forEach((id: string) => merged.add(id));
+    }
+  } catch {}
+  return merged;
 }
 
-function recordClientDeletedPdfId(id: string) {
+export function recordClientDeletedPdfId(id: string) {
   try {
     const set = getClientDeletedPdfIds();
     set.add(id);
-    localStorage.setItem(DELETED_PDF_STORAGE_KEY, JSON.stringify(Array.from(set)));
+    const arr = Array.from(set);
+    localStorage.setItem(DELETED_PDF_STORAGE_KEY, JSON.stringify(arr));
+    localStorage.setItem(STORE_DELETED_KEY, JSON.stringify(arr));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("fit-pdf-catalog-changed"));
+      window.dispatchEvent(new CustomEvent("fit-store-products-changed"));
+    }
   } catch {}
 }
 
@@ -54,9 +69,7 @@ class PrintablePdfService {
     };
     try {
       const email = localStorage.getItem("fit_user_email") || localStorage.getItem("fit_saved_email") || "alexfitnesshub@gmail.com";
-      if (email) {
-        headers["x-admin-email"] = email;
-      }
+      headers["x-admin-email"] = email || "alexfitnesshub@gmail.com";
       const token = localStorage.getItem("fit_id_token");
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
@@ -70,8 +83,16 @@ class PrintablePdfService {
       const res = await fetch("/api/printable-pdfs");
       if (!res.ok) throw new Error("Failed to load PDF products");
       const data = await res.json();
+      
+      // If server returned deleted IDs, merge into client storage
+      if (Array.isArray(data.deletedIds)) {
+        data.deletedIds.forEach((id: string) => {
+          if (id) recordClientDeletedPdfId(id);
+        });
+      }
+
       const deletedIds = getClientDeletedPdfIds();
-      return (data.products || []).filter((p: PrintablePdfProduct) => !deletedIds.has(p.id));
+      return (data.products || []).filter((p: PrintablePdfProduct) => !deletedIds.has(p.id) && !(p as any).isDeleted);
     } catch (err) {
       console.warn("[PrintablePdfService] getProducts error:", err);
       return [];

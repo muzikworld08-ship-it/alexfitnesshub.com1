@@ -764,10 +764,10 @@ function RoutinesAndSetsView() {
       name: "Push / Pull / Legs Split",
       desc: "Optimized 3-day frequency split targeting specific muscle groups with maximum recovery.",
       exercises: [
-        { id: "1", name: "Incline Barbell Bench Press", sets: [{ id: "s1", weight: 80, reps: 8, type: "Standard", done: false }] },
-        { id: "2", name: "Seated Dumbbell Shoulder Press", sets: [{ id: "s2", weight: 24, reps: 10, type: "Standard", done: false }] },
-        { id: "3", name: "Dumbbell Lateral Raises", sets: [{ id: "s3", weight: 12, reps: 15, type: "Superset", done: false }] },
-        { id: "4", name: "Cable Chest Flyes", sets: [{ id: "s4", weight: 25, reps: 12, type: "Drop Set", done: false }] }
+        { id: "ppl_incline_bench", name: "Incline Barbell Bench Press", sets: [{ id: "s1", weight: 80, reps: 8, type: "Standard", done: false }] },
+        { id: "ppl_shoulder_press", name: "Seated Dumbbell Shoulder Press", sets: [{ id: "s2", weight: 24, reps: 10, type: "Standard", done: false }] },
+        { id: "ppl_lateral_raise", name: "Dumbbell Lateral Raises", sets: [{ id: "s3", weight: 12, reps: 15, type: "Superset", done: false }] },
+        { id: "ppl_cable_fly", name: "Cable Chest Flyes", sets: [{ id: "s4", weight: 25, reps: 12, type: "Drop Set", done: false }] }
       ]
     },
     {
@@ -775,10 +775,10 @@ function RoutinesAndSetsView() {
       name: "Arnold Hypertrophy Split",
       desc: "High volume aesthetic split pairing antagonistic muscle groups for massive pumps.",
       exercises: [
-        { id: "1", name: "Weighted Chest Dips", sets: [{ id: "s1", weight: 20, reps: 8, type: "Standard", done: false }] },
-        { id: "2", name: "Weighted Pull-Ups", sets: [{ id: "s2", weight: 15, reps: 8, type: "Standard", done: false }] },
-        { id: "3", name: "Incline Dumbbell Press", sets: [{ id: "s3", weight: 32, reps: 10, type: "Standard", done: false }] },
-        { id: "4", name: "Barbell Rows", sets: [{ id: "s4", weight: 70, reps: 10, type: "Standard", done: false }] }
+        { id: "arnold_chest_dips", name: "Weighted Chest Dips", sets: [{ id: "s1", weight: 20, reps: 8, type: "Standard", done: false }] },
+        { id: "arnold_weighted_pullups", name: "Weighted Pull-Ups", sets: [{ id: "s2", weight: 15, reps: 8, type: "Standard", done: false }] },
+        { id: "arnold_incline_press", name: "Incline Dumbbell Press", sets: [{ id: "s3", weight: 32, reps: 10, type: "Standard", done: false }] },
+        { id: "arnold_barbell_rows", name: "Barbell Rows", sets: [{ id: "s4", weight: 70, reps: 10, type: "Standard", done: false }] }
       ]
     },
     {
@@ -786,9 +786,9 @@ function RoutinesAndSetsView() {
       name: "5x5 Athletic Power Lift",
       desc: "Focused barbell strength program centering central nervous system efficiency.",
       exercises: [
-        { id: "1", name: "Barbell Back Squats", sets: [{ id: "s1", weight: 120, reps: 5, type: "Standard", done: false }] },
-        { id: "2", name: "Barbell Flat Bench Press", sets: [{ id: "s2", weight: 95, reps: 5, type: "Standard", done: false }] },
-        { id: "3", name: "Conventional Barbell Deadlifts", sets: [{ id: "s3", weight: 140, reps: 5, type: "Standard", done: false }] }
+        { id: "strength_back_squats", name: "Barbell Back Squats", sets: [{ id: "s1", weight: 120, reps: 5, type: "Standard", done: false }] },
+        { id: "strength_bench_press", name: "Barbell Flat Bench Press", sets: [{ id: "s2", weight: 95, reps: 5, type: "Standard", done: false }] },
+        { id: "strength_deadlifts", name: "Conventional Barbell Deadlifts", sets: [{ id: "s3", weight: 140, reps: 5, type: "Standard", done: false }] }
       ]
     }
   ];

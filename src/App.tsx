@@ -663,11 +663,8 @@ function FitnessAppContent() {
               {currentView === "women-confidence" && (
                 <WomenConfidenceProgram />
               )}
-              {["home-workout-challenge", "180-day-challenge", "home-challenge"].includes(currentView) && (
+              {["home-workout-challenge", "180-day-challenge", "home-challenge", "challenges", "challenge-engine", "workout-engine"].includes(currentView) && (
                 <HomeWorkoutChallengeView />
-              )}
-              {["challenges", "challenge-engine", "workout-engine"].includes(currentView) && (
-                <FitnessChallenges />
               )}
               {currentView === "lifestyle-academy" && (
                 <LifestyleFitnessAcademy />

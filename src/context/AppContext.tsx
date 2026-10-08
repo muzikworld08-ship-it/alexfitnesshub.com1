@@ -851,15 +851,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (Array.isArray(parsed) && parsed.length > 0) {
           const map = new Map<string, Exercise>();
           baseExercisePool.forEach(e => {
-            if (deletedIdsSet.has(e.id)) return;
-            let override = cachedOverrides[e.id];
-            if (!override) {
-              const matchedKey = Object.keys(cachedOverrides).find(k => isExerciseMatch(k, e.id) || isExerciseMatch(k, e.name));
-              if (matchedKey) override = cachedOverrides[matchedKey];
-            }
+            if (deletedIdsSet.has(e.id) || deletedIdsSet.has(e.name?.toLowerCase().trim())) return;
+            const override = cachedOverrides[e.id] || cachedOverrides[e.name?.toLowerCase().trim()];
             map.set(e.id, {
               ...e,
-              ...(override || {})
+              ...(override?.customMediaUrl ? { customMediaUrl: override.customMediaUrl, customMediaType: override.customMediaType || "image" } : {}),
+              ...(override?.id === e.id && override?.isCustom && override?.name ? { name: override.name } : {})
             });
           });
           
@@ -889,17 +886,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Default base with cached overrides (excluding deleted)
     const baseExercisePool = [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES];
     const initialList = baseExercisePool
-      .filter(e => !deletedIdsSet.has(e.id))
+      .filter(e => !deletedIdsSet.has(e.id) && !deletedIdsSet.has(e.name?.toLowerCase().trim()))
       .map(e => {
-        let override = cachedOverrides[e.id];
-        if (!override) {
-          const matchedKey = Object.keys(cachedOverrides).find(k => isExerciseMatch(k, e.id) || isExerciseMatch(k, e.name));
-          if (matchedKey) override = cachedOverrides[matchedKey];
-        }
+        const override = cachedOverrides[e.id] || cachedOverrides[e.name?.toLowerCase().trim()];
         if (override) {
           return {
             ...e,
-            ...override
+            ...(override.customMediaUrl ? { customMediaUrl: override.customMediaUrl, customMediaType: override.customMediaType || "image" } : {}),
+            ...(override.id === e.id && override.isCustom && override.name ? { name: override.name } : {})
           };
         }
         return e;
@@ -1035,31 +1029,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         } catch {}
 
         setExercisesState(prev => {
-          const baseList = [...EXERCISES].filter(e => !activeDeletedIds.has(e.id));
+          const baseList = [...EXERCISES].filter(e => !activeDeletedIds.has(e.id) && !activeDeletedIds.has(e.name?.toLowerCase().trim()));
           const mapped = baseList.map(ex => {
-            let override = mergedOverrides[ex.id];
-            if (!override) {
-              const matchedKey = Object.keys(mergedOverrides).find(k => 
-                isExerciseMatch(k, ex.id) || isExerciseMatch(k, ex.name)
-              );
-              if (matchedKey) {
-                override = mergedOverrides[matchedKey];
-              }
-            }
-            
-            // Retain any existing custom edits already present in state
-            const prevMatch = prev.find(p => p.id === ex.id || isExerciseMatch(p.name, ex.name));
+            const override = mergedOverrides[ex.id] || mergedOverrides[ex.name?.toLowerCase().trim()];
+            const prevMatch = prev.find(p => p.id === ex.id);
 
             let finalEx: Exercise = { ...ex };
-            if (prevMatch) {
-              finalEx = { ...finalEx, ...prevMatch };
+            if (prevMatch && prevMatch.id === ex.id) {
+              finalEx = {
+                ...finalEx,
+                customMediaUrl: prevMatch.customMediaUrl || finalEx.customMediaUrl,
+                customMediaType: prevMatch.customMediaType || finalEx.customMediaType,
+                ...(prevMatch.isCustom && prevMatch.name ? { name: prevMatch.name } : {})
+              };
             }
             if (override) {
               finalEx = { 
                 ...finalEx, 
-                ...override,
                 customMediaUrl: override.customMediaUrl || finalEx.customMediaUrl,
-                customMediaType: override.customMediaType || finalEx.customMediaType
+                customMediaType: override.customMediaType || finalEx.customMediaType,
+                ...(override.id === ex.id && override.isCustom && override.name ? { name: override.name } : {})
               };
             }
 

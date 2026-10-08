@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import { useStore } from "../context/StoreContext";
 import { Product } from "../types";
@@ -17,6 +17,8 @@ import ContinueProgramTracker from "./ContinueProgramTracker";
 import MorningWorkoutBanner from "./MorningWorkoutBanner";
 import { PROGRAMS } from "../data/exercises";
 import { calculateProgramWorkoutDuration } from "../data/workoutsData";
+import { printablePdfService, getClientDeletedPdfIds } from "../services/printablePdfService";
+import { PrintablePdfProduct } from "../types/printablePdf";
 
 const workoutCategories = [
   {
@@ -307,6 +309,48 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
   const [storeFlipState, setStoreFlipState] = useState<Record<string, boolean>>({});
   const [homeStoreSizes, setHomeStoreSizes] = useState<Record<string, string>>({});
   const [homeStoreAdded, setHomeStoreAdded] = useState<Record<string, boolean>>({});
+
+  // Dynamic Printable PDFs State - Automatically updates & removes permanently deleted products
+  const [homePdfProducts, setHomePdfProducts] = useState<PrintablePdfProduct[]>([]);
+  const [isLoadingPdfs, setIsLoadingPdfs] = useState(true);
+
+  const loadHomePdfs = useCallback(async () => {
+    try {
+      const list = await printablePdfService.getProducts();
+      const deletedIds = getClientDeletedPdfIds();
+      setHomePdfProducts(list.filter(p => p.isActive !== false && !(p as any).isDeleted && !deletedIds.has(p.id)));
+    } catch {
+      setHomePdfProducts([]);
+    } finally {
+      setIsLoadingPdfs(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHomePdfs();
+    const handleStorageChange = () => {
+      loadHomePdfs();
+    };
+    window.addEventListener("fit-pdf-catalog-changed", loadHomePdfs);
+    window.addEventListener("fit-store-products-changed", loadHomePdfs);
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("fit-pdf-catalog-changed", loadHomePdfs);
+      window.removeEventListener("fit-store-products-changed", loadHomePdfs);
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [loadHomePdfs]);
+
+  // Strictly filter out any deleted products or deleted PDFs from display on Home page
+  const visibleHomeProducts = useMemo(() => {
+    const deletedIds = getClientDeletedPdfIds();
+    return (products || []).filter(p => !(p as any).isDeleted && !deletedIds.has(p.id));
+  }, [products]);
+
+  const visibleHomePdfProducts = useMemo(() => {
+    const deletedIds = getClientDeletedPdfIds();
+    return (homePdfProducts || []).filter(p => p.isActive !== false && !(p as any).isDeleted && !deletedIds.has(p.id));
+  }, [homePdfProducts]);
 
   const handleSelectProduct = (product: Product) => {
     setSelectedProductForDetail(product);
@@ -691,10 +735,10 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       {/* MORNING / SCHEDULED WORKOUT NOTIFICATION BANNER - DELIVERS TO USER EMAIL */}
       <MorningWorkoutBanner 
         onNavigateToProgram={(progId) => {
-          if (progId === "90_day_immortal") setView("challenges");
-          else if (progId === "belly_fat_shred") setView("belly-fat-shred");
+          if (progId === "belly_fat_shred") setView("belly-fat-shred");
           else if (progId === "lifestyle_academy") setView("lifestyle-academy");
-          else setView("challenges");
+          else if (progId === "women_confidence_180") setView("women-confidence");
+          else setView("home-workout-challenge");
         }} 
       />
 
@@ -891,7 +935,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                     return;
                   }
                   if (user.subscriptionStatus === "premium" || user.role === "admin") {
-                    setView("challenges");
+                    setView("home-workout-challenge");
                   } else {
                     setView("pricing");
                   }
@@ -970,7 +1014,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
 
           {/* Showcase Cards Grid (Top 4 Flagship Items) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-            {products.slice(0, 4).map((product) => {
+            {visibleHomeProducts.slice(0, 4).map((product) => {
               const isFlipped = storeFlipState[product.id];
               const displayImage = (isFlipped && product.backImage) ? product.backImage : product.frontImage;
               const discountPercent = product.originalPrice && product.originalPrice > product.price
@@ -1214,99 +1258,72 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
           </div>
 
           {/* Showcase Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {[
-              {
-                id: "afh-journal-weight-loss",
-                title: "Weight Loss Journal",
-                desc: "Daily transformation tracker & caloric deficit logsheet.",
-                price: 5500,
-                pages: 68,
-                cover: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=900&auto=format&fit=crop&q=80",
-                personalized: true
-              },
-              {
-                id: "afh-planner-gym-energy",
-                title: "Gym Energy Meal Planner",
-                desc: "Pre-workout fueling protocols & localized meal timetables.",
-                price: 4500,
-                pages: 52,
-                cover: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=900&auto=format&fit=crop&q=80",
-                personalized: false
-              },
-              {
-                id: "afh-tracker-workout-pro",
-                title: "Workout Tracker",
-                desc: "Sets, reps, progressive overload tables & 1RM calculator.",
-                price: 3900,
-                pages: 60,
-                cover: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=900&auto=format&fit=crop&q=80",
-                personalized: true
-              },
-              {
-                id: "afh-guide-stamina-nutrition",
-                title: "Stamina Nutrition Guide",
-                desc: "Endurance dietary blueprints & electrolyte matrix.",
-                price: 4800,
-                pages: 46,
-                cover: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=900&auto=format&fit=crop&q=80",
-                personalized: false
-              }
-            ].map((item) => (
-              <div
-                key={item.id}
-                onClick={() => setView("printable-pdfs")}
-                className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col group"
-              >
-                <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
-                  <img
-                    src={item.cover}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-104 transition-transform duration-300"
-                  />
-                  <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
-                    {item.personalized && (
-                      <span className="bg-slate-950/90 text-amber-300 border border-amber-400/40 text-[9px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-xs shadow-xs">
-                        <Sparkles className="w-2.5 h-2.5" />
-                        Personalized
+          {isLoadingPdfs ? (
+            <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 text-xs font-mono text-slate-500">
+              Loading active printable PDF workbooks...
+            </div>
+          ) : visibleHomePdfProducts.length === 0 ? (
+            <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 text-xs font-mono text-slate-500">
+              No printable PDFs currently published. Check back soon for new editions!
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              {visibleHomePdfProducts.slice(0, 4).map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => setView("printable-pdfs")}
+                  className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col group"
+                >
+                  <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
+                    <img
+                      src={item.coverImage || "https://images.unsplash.com/photo-1544717305-2782549b5136?w=900&auto=format&fit=crop&q=80"}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-104 transition-transform duration-300"
+                    />
+                    <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
+                      {item.requiresPersonalization && (
+                        <span className="bg-slate-950/90 text-amber-300 border border-amber-400/40 text-[9px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-xs shadow-xs">
+                          <Sparkles className="w-2.5 h-2.5" />
+                          Personalized
+                        </span>
+                      )}
+                    </div>
+                    <div className="absolute top-2.5 right-2.5 bg-slate-900/80 text-white text-[10px] font-mono font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
+                      {item.pageCount || 50} Pgs
+                    </div>
+                  </div>
+
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900 group-hover:text-red-600 transition-colors">
+                        {item.title}
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                        {item.shortDescription || item.fullDescription}
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-sm font-black text-slate-900 font-sans">
+                        ₦{(item.priceNGN || 4500).toLocaleString()}
                       </span>
-                    )}
-                  </div>
-                  <div className="absolute top-2.5 right-2.5 bg-slate-900/80 text-white text-[10px] font-mono font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
-                    {item.pages} Pgs
-                  </div>
-                </div>
-
-                <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900 group-hover:text-red-600 transition-colors">
-                      {item.title}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                      {item.desc}
-                    </p>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-sm font-black text-slate-900 font-sans">
-                      ₦{item.price.toLocaleString()}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setView("printable-pdfs");
-                      }}
-                      className="py-1.5 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase transition-colors flex items-center gap-1"
-                    >
-                      <span>View PDF</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setView("printable-pdfs");
+                        }}
+                        className="py-1.5 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase transition-colors flex items-center gap-1"
+                      >
+                        <span>View PDF</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
         </div>
       </section>
