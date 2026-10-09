@@ -7,8 +7,9 @@ import {
   Sparkles, Image as ImageIcon, Save, RefreshCw, AlertCircle, 
   CheckCircle2, Layers, Flame, ArrowUpDown, ChevronRight, Eye,
   LayoutGrid, Table as TableIcon, CheckSquare, ShieldCheck, Video,
-  SlidersHorizontal, Upload, ExternalLink, RotateCcw, Heart, Users
+  SlidersHorizontal, Upload, ExternalLink, RotateCcw, Heart, Users, Repeat
 } from "lucide-react";
+import AdminWorkoutChallengeEngine from "./AdminWorkoutChallengeEngine";
 import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../../utils/mediaStorageService";
 import { AssetManifestService } from "../../services/AssetManifestService";
 import { purgeRestrictedHomeWorkouts, PurgeRestrictedHomeResult } from "../../utils/adminWorkoutCleaner";
@@ -83,6 +84,7 @@ export default function AdminWorkoutEditor() {
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [sortBy, setSortBy] = useState<"name" | "category" | "difficulty" | "customMedia">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [adminWorkoutSubTab, setAdminWorkoutSubTab] = useState<"catalog" | "schedules">("catalog");
 
   const [isUpdatingAudience, setIsUpdatingAudience] = useState(false);
 
@@ -584,8 +586,53 @@ export default function AdminWorkoutEditor() {
         </div>
       )}
 
-      {/* Filter and View Layout Controls */}
-      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-4">
+      {/* Sub-Desk Navigation Switcher */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setAdminWorkoutSubTab("catalog")}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+            adminWorkoutSubTab === "catalog"
+              ? "bg-slate-900 text-white shadow-xs"
+              : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+          }`}
+        >
+          <Dumbbell className="w-4 h-4 text-red-500" />
+          <span>Exercise Catalog & Prescriptions</span>
+          <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-mono font-bold">
+            {exercises.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setAdminWorkoutSubTab("schedules")}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+            adminWorkoutSubTab === "schedules"
+              ? "bg-slate-900 text-white shadow-xs"
+              : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+          }`}
+        >
+          <Repeat className="w-4 h-4 text-amber-500" />
+          <span>Program Schedules & Vertical Split Architect</span>
+          <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-mono font-bold">
+            All Programs
+          </span>
+        </button>
+      </div>
+
+      {/* VIEW: PROGRAM SCHEDULES & VERTICAL SPLIT ARCHITECT */}
+      {adminWorkoutSubTab === "schedules" && (
+        <div className="animate-fade-in">
+          <AdminWorkoutChallengeEngine />
+        </div>
+      )}
+
+      {/* VIEW: EXERCISE CATALOG & PRESCRIPTION CONTROLS */}
+      {adminWorkoutSubTab === "catalog" && (
+        <>
+          {/* Filter and View Layout Controls */}
+          <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
           
           {/* Search Box */}
@@ -1192,6 +1239,8 @@ export default function AdminWorkoutEditor() {
             );
           })}
         </div>
+      )}
+      </>
       )}
 
       {/* =========================================================================

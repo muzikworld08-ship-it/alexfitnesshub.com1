@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { PrintablePdfProduct, PrintablePdfOrder, PersonalizationConfig } from "../../types/printablePdf";
 import { printablePdfService } from "../../services/printablePdfService";
+import { db } from "../../lib/firebase";
+import { collection, doc, onSnapshot } from "firebase/firestore";
 
 export const AdminPdfManager: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<"products" | "orders">("products");
@@ -73,6 +75,44 @@ export const AdminPdfManager: React.FC = () => {
 
   useEffect(() => {
     loadData();
+
+    // Listen to local catalog change events
+    const handleCatalogChanged = () => {
+      loadData();
+    };
+    window.addEventListener("fit-pdf-catalog-changed", handleCatalogChanged);
+
+    // Real-time Firestore sync across devices (mobile <-> desktop)
+    let unsubProducts: () => void = () => {};
+    let unsubDeleted: () => void = () => {};
+
+    if (db) {
+      try {
+        unsubProducts = onSnapshot(collection(db, "printable_pdf_products"), (snap) => {
+          if (!snap.empty) {
+            loadData();
+          }
+        }, (err) => {
+          console.warn("[Admin PDF] Real-time products sync notice:", err);
+        });
+
+        unsubDeleted = onSnapshot(doc(db, "app_settings", "deleted_pdf_products"), (snap) => {
+          if (snap.exists()) {
+            loadData();
+          }
+        }, (err) => {
+          console.warn("[Admin PDF] Real-time deleted products sync notice:", err);
+        });
+      } catch (e) {
+        console.warn("[Admin PDF] Real-time listener init notice:", e);
+      }
+    }
+
+    return () => {
+      window.removeEventListener("fit-pdf-catalog-changed", handleCatalogChanged);
+      unsubProducts();
+      unsubDeleted();
+    };
   }, []);
 
   const openAddModal = () => {

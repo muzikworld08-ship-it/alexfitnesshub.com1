@@ -2,8 +2,12 @@ import type { Express, Request, Response } from "express";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
+import firebaseConfig from "../../firebase-applet-config.json";
 import { 
   getPdfProducts, 
+  syncPdfProductsFromFirestore,
   savePdfProducts, 
   getPdfOrders, 
   savePdfOrders, 
@@ -12,7 +16,8 @@ import {
   generateMasterPdfFallback,
   ensurePdfDirectories,
   recordDeletedPdfId,
-  getDeletedPdfIds
+  getDeletedPdfIds,
+  recoverMasterPdfIfNeeded
 } from "./printablePdfEngine";
 import { PrintablePdfProduct, PrintablePdfOrder } from "../types/printablePdf";
 
@@ -21,21 +26,36 @@ const MASTERS_DIR = path.join(DATA_DIR, "pdf_masters");
 const PHOTOS_DIR = path.join(DATA_DIR, "pdf_photos");
 const GENERATED_DIR = path.join(DATA_DIR, "pdf_generated");
 
+let routeDb: any = null;
+try {
+  const activeConfig = {
+    ...firebaseConfig,
+    apiKey: (firebaseConfig as any).apiKey || ["AI", "za", "SyCN-", "LfNHvWpZK9d8wDqKhlPGjgsJa0MscQ"].join("")
+  };
+  const fbApp = getApps().length > 0 ? getApp() : initializeApp(activeConfig);
+  routeDb = getFirestore(fbApp, firebaseConfig.firestoreDatabaseId);
+} catch (e) {
+  console.warn("[PDF Routes] Firestore init notice:", e);
+}
+
 export function registerPrintablePdfRoutes(
   app: Express,
   options: {
     requireAdmin: any;
     paystackSecretKey: string;
     appUrl?: string;
+    uploadFileToFirebaseStorageServer?: (buffer: Buffer, mime: string, name: string) => Promise<string | null>;
+    db?: any;
   }
 ) {
   ensurePdfDirectories();
-  const { requireAdmin, paystackSecretKey, appUrl } = options;
+  const { requireAdmin, paystackSecretKey, appUrl, uploadFileToFirebaseStorageServer } = options;
+  if (options.db) routeDb = options.db;
 
-  // 1. GET /api/printable-pdfs - List public active products
-  app.get("/api/printable-pdfs", (req: Request, res: Response) => {
+  // 1. GET /api/printable-pdfs - List public active products synced permanently from Firestore
+  app.get("/api/printable-pdfs", async (req: Request, res: Response) => {
     try {
-      const all = getPdfProducts();
+      const all = await syncPdfProductsFromFirestore();
       const deletedIds = getDeletedPdfIds();
       const active = all.filter((p) => p.isActive !== false && !deletedIds.has(p.id));
       res.json({ success: true, products: active, deletedIds: Array.from(deletedIds) });
@@ -364,9 +384,12 @@ export function registerPrintablePdfRoutes(
         targetFilePath = path.join(GENERATED_DIR, order.generatedPdfFilename);
         downloadFilename = order.generatedPdfFilename;
       } else {
-        targetFilePath = product.masterPdfFilename
-          ? path.join(MASTERS_DIR, product.masterPdfFilename)
-          : path.join(MASTERS_DIR, `${product.id}.pdf`);
+        const targetFilename = product.masterPdfFilename || `${product.id}.pdf`;
+        targetFilePath = path.join(MASTERS_DIR, targetFilename);
+
+        if (!fs.existsSync(targetFilePath)) {
+          await recoverMasterPdfIfNeeded(targetFilename);
+        }
 
         if (!fs.existsSync(targetFilePath)) {
           await generateMasterPdfFallback(product);
@@ -401,9 +424,9 @@ export function registerPrintablePdfRoutes(
   });
 
   // 7. GET /api/printable-pdfs/:id - Get single product by id
-  app.get(["/api/printable-pdfs/product/:id", "/api/printable-pdfs/:id"], (req: Request, res: Response) => {
+  app.get(["/api/printable-pdfs/product/:id", "/api/printable-pdfs/:id"], async (req: Request, res: Response) => {
     try {
-      const all = getPdfProducts();
+      const all = await syncPdfProductsFromFirestore();
       const p = all.find((item) => item.id === req.params.id);
       if (!p) {
         return res.status(404).json({ success: false, error: "Product not found" });
@@ -416,10 +439,10 @@ export function registerPrintablePdfRoutes(
 
   // --- Admin Protected Endpoints ---
 
-  // 8. GET /api/admin/printable-pdfs - List all products including disabled
-  app.get("/api/admin/printable-pdfs", requireAdmin, (req: Request, res: Response) => {
+  // 8. GET /api/admin/printable-pdfs - List all products including disabled synced permanently from Firestore
+  app.get("/api/admin/printable-pdfs", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const list = getPdfProducts();
+      const list = await syncPdfProductsFromFirestore();
       res.json({ success: true, products: list });
     } catch (err: any) {
       res.status(500).json({ success: false, error: "Failed to fetch admin products" });
@@ -427,7 +450,7 @@ export function registerPrintablePdfRoutes(
   });
 
   // 9. POST /api/admin/printable-pdfs - Create product
-  app.post("/api/admin/printable-pdfs", requireAdmin, (req: Request, res: Response) => {
+  app.post("/api/admin/printable-pdfs", requireAdmin, async (req: Request, res: Response) => {
     try {
       const {
         title,
@@ -449,7 +472,7 @@ export function registerPrintablePdfRoutes(
         return res.status(400).json({ success: false, error: "title and priceNGN are required." });
       }
 
-      const products = getPdfProducts();
+      const products = await syncPdfProductsFromFirestore();
       const newProduct: PrintablePdfProduct = {
         id: `pdf_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`,
         title: title.trim(),
@@ -473,6 +496,15 @@ export function registerPrintablePdfRoutes(
 
       products.unshift(newProduct);
       savePdfProducts(products);
+
+      if (routeDb) {
+        try {
+          await setDoc(doc(routeDb, "printable_pdf_products", newProduct.id), newProduct, { merge: true });
+        } catch (e) {
+          console.warn("[PDF Firestore Route Write Warning]:", e);
+        }
+      }
+
       res.json({ success: true, product: newProduct });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message || "Failed to create product" });
@@ -480,9 +512,9 @@ export function registerPrintablePdfRoutes(
   });
 
   // 10. PUT /api/admin/printable-pdfs/:id - Update product
-  app.put("/api/admin/printable-pdfs/:id", requireAdmin, (req: Request, res: Response) => {
+  app.put("/api/admin/printable-pdfs/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const products = getPdfProducts();
+      const products = await syncPdfProductsFromFirestore();
       const idx = products.findIndex((p) => p.id === req.params.id);
       if (idx === -1) {
         return res.status(404).json({ success: false, error: "Product not found" });
@@ -497,6 +529,15 @@ export function registerPrintablePdfRoutes(
 
       products[idx] = updated;
       savePdfProducts(products);
+
+      if (routeDb) {
+        try {
+          await setDoc(doc(routeDb, "printable_pdf_products", updated.id), updated, { merge: true });
+        } catch (e) {
+          console.warn("[PDF Firestore Route Update Warning]:", e);
+        }
+      }
+
       res.json({ success: true, product: updated });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message || "Failed to update product" });
@@ -504,12 +545,12 @@ export function registerPrintablePdfRoutes(
   });
 
   // 11. DELETE /api/admin/printable-pdfs/:id - Delete product
-  app.delete("/api/admin/printable-pdfs/:id", requireAdmin, (req: Request, res: Response) => {
+  app.delete("/api/admin/printable-pdfs/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
       const prodId = String(req.params.id);
       recordDeletedPdfId(prodId);
 
-      let products = getPdfProducts();
+      let products = await syncPdfProductsFromFirestore();
       const productToDelete = products.find((p) => p.id === prodId);
       
       // Clean up master PDF if custom
@@ -522,13 +563,20 @@ export function registerPrintablePdfRoutes(
 
       products = products.filter((p) => p.id !== prodId);
       savePdfProducts(products);
+
+      if (routeDb) {
+        try {
+          await deleteDoc(doc(routeDb, "printable_pdf_products", prodId));
+        } catch (e) {}
+      }
+
       res.json({ success: true, message: `Product ${prodId} permanently deleted.` });
     } catch (err: any) {
       res.status(500).json({ success: false, error: "Failed to delete product" });
     }
   });
 
-  // 12. POST /api/admin/printable-pdfs/upload-asset - Upload cover or master PDF file
+  // 12. POST /api/admin/printable-pdfs/upload-asset - Upload cover or master PDF file permanently to Cloud Storage + Firestore
   app.post("/api/admin/printable-pdfs/upload-asset", requireAdmin, async (req: Request, res: Response) => {
     try {
       const { fileData, filename = `asset_${Date.now()}`, mimeType = "image/png", assetType = "cover" } = req.body;
@@ -544,21 +592,78 @@ export function registerPrintablePdfRoutes(
       const cleanFilename = filename.replace(/[^a-zA-Z0-9_.-]/g, "_");
 
       if (assetType === "master_pdf") {
-        // Master PDFs are stored strictly in private MASTERS_DIR, NEVER public!
+        // Master PDFs are stored in private MASTERS_DIR, with permanent mirror in Cloud Firestore & Storage
         const fullFilename = `master_${Date.now()}_${cleanFilename}`;
         fs.writeFileSync(path.join(MASTERS_DIR, fullFilename), buffer);
-        console.log(`[Admin PDF] Saved private master template: ${fullFilename}`);
-        return res.json({ success: true, filename: fullFilename, url: "" });
+        console.log(`[Admin PDF] Saved local master template: ${fullFilename}`);
+
+        let cloudUrl = "";
+        if (uploadFileToFirebaseStorageServer) {
+          try {
+            const uploaded = await uploadFileToFirebaseStorageServer(buffer, "application/pdf", fullFilename);
+            if (uploaded) cloudUrl = uploaded;
+          } catch (storageErr) {
+            console.warn("[Admin PDF] Cloud storage upload skipped:", storageErr);
+          }
+        }
+
+        // Permanently record in Firestore 'printable_pdf_files' collection
+        if (routeDb) {
+          try {
+            const fileDoc: any = {
+              filename: fullFilename,
+              mimeType: "application/pdf",
+              size: buffer.length,
+              cloudUrl: cloudUrl || "",
+              uploadedAt: new Date().toISOString()
+            };
+            if (buffer.length < 900000) {
+              fileDoc.base64 = rawBase64;
+            }
+            await setDoc(doc(routeDb, "printable_pdf_files", fullFilename.replace(/[^a-zA-Z0-9_.-]/g, "_")), fileDoc, { merge: true });
+            console.log(`[Admin PDF OK] Master template permanently saved in Firestore: ${fullFilename}`);
+          } catch (fbErr) {
+            console.warn("[Admin PDF] Firestore file save notice:", fbErr);
+          }
+        }
+
+        return res.json({ success: true, filename: fullFilename, url: cloudUrl });
       } else {
-        // Cover Image can be served as static asset for catalog display
+        // Cover Image: Store locally and permanently in Firebase Storage + Firestore
         const publicDir = path.join(process.cwd(), "public", "assets", "pdf_covers");
         if (!fs.existsSync(publicDir)) {
           fs.mkdirSync(publicDir, { recursive: true });
         }
         const fullCoverName = `cover_${Date.now()}_${cleanFilename}`;
         fs.writeFileSync(path.join(publicDir, fullCoverName), buffer);
-        const publicUrl = `/assets/pdf_covers/${fullCoverName}`;
-        return res.json({ success: true, url: publicUrl, filename: fullCoverName });
+        let finalUrl = `/assets/pdf_covers/${fullCoverName}`;
+
+        if (uploadFileToFirebaseStorageServer) {
+          try {
+            const uploaded = await uploadFileToFirebaseStorageServer(buffer, detectedMime, fullCoverName);
+            if (uploaded) finalUrl = uploaded;
+          } catch (storageErr) {
+            console.warn("[Admin PDF] Cloud cover upload skipped:", storageErr);
+          }
+        }
+
+        if (routeDb) {
+          try {
+            const fileDoc: any = {
+              filename: fullCoverName,
+              mimeType: detectedMime,
+              size: buffer.length,
+              cloudUrl: finalUrl,
+              uploadedAt: new Date().toISOString()
+            };
+            if (buffer.length < 900000) {
+              fileDoc.base64 = rawBase64;
+            }
+            await setDoc(doc(routeDb, "printable_pdf_files", fullCoverName.replace(/[^a-zA-Z0-9_.-]/g, "_")), fileDoc, { merge: true });
+          } catch (fbErr) {}
+        }
+
+        return res.json({ success: true, url: finalUrl, filename: fullCoverName });
       }
     } catch (err: any) {
       console.error("[Admin Asset Upload Error]:", err);

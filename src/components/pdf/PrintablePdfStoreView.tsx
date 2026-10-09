@@ -7,6 +7,8 @@ import {
 import { PrintablePdfProduct } from "../../types/printablePdf";
 import { printablePdfService } from "../../services/printablePdfService";
 import { PdfPreviewModal } from "./PdfPreviewModal";
+import { db } from "../../lib/firebase";
+import { collection, doc, onSnapshot } from "firebase/firestore";
 
 interface PrintablePdfStoreViewProps {
   onSelectProduct: (productId: string) => void;
@@ -37,8 +39,25 @@ export const PrintablePdfStoreView: React.FC<PrintablePdfStoreViewProps> = ({
       }
     }
     fetchCatalog();
+
+    const handleCatalogChanged = () => {
+      fetchCatalog();
+    };
+    window.addEventListener("fit-pdf-catalog-changed", handleCatalogChanged);
+
+    let unsubProducts: () => void = () => {};
+    if (db) {
+      try {
+        unsubProducts = onSnapshot(collection(db, "printable_pdf_products"), () => {
+          fetchCatalog();
+        });
+      } catch {}
+    }
+
     return () => {
       isMounted = false;
+      window.removeEventListener("fit-pdf-catalog-changed", handleCatalogChanged);
+      unsubProducts();
     };
   }, []);
 

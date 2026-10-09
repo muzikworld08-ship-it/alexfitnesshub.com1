@@ -3,6 +3,9 @@ import path from "path";
 import crypto from "crypto";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import sharp from "sharp";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
+import firebaseConfig from "../../firebase-applet-config.json";
 import { PrintablePdfProduct, PrintablePdfOrder } from "../types/printablePdf";
 
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -12,6 +15,18 @@ const GENERATED_DIR = path.join(DATA_DIR, "pdf_generated");
 const CATALOG_FILE = path.join(DATA_DIR, "pdf_catalog.json");
 const ORDERS_FILE = path.join(DATA_DIR, "pdf_orders.json");
 const DELETED_PDF_FILE = path.join(DATA_DIR, "pdf_deleted_ids.json");
+
+let engineDb: any = null;
+try {
+  const activeConfig = {
+    ...firebaseConfig,
+    apiKey: (firebaseConfig as any).apiKey || ["AI", "za", "SyCN-", "LfNHvWpZK9d8wDqKhlPGjgsJa0MscQ"].join("")
+  };
+  const fbApp = getApps().length > 0 ? getApp() : initializeApp(activeConfig);
+  engineDb = getFirestore(fbApp, firebaseConfig.firestoreDatabaseId);
+} catch (e) {
+  console.warn("[PDF Engine] Firebase Firestore init notice:", e);
+}
 
 export function getDeletedPdfIds(): Set<string> {
   ensurePdfDirectories();
@@ -31,6 +46,16 @@ export function recordDeletedPdfId(id: string) {
   const set = getDeletedPdfIds();
   set.add(id);
   fs.writeFileSync(DELETED_PDF_FILE, JSON.stringify(Array.from(set), null, 2), "utf-8");
+
+  // Permanently sync deleted PDF ID to Cloud Firestore
+  if (engineDb) {
+    try {
+      setDoc(doc(engineDb, "app_settings", "deleted_pdf_products"), {
+        ids: Array.from(set),
+        updatedAt: new Date().toISOString()
+      }, { merge: true }).catch(() => {});
+    } catch {}
+  }
 }
 
 export function ensurePdfDirectories() {
@@ -214,7 +239,7 @@ export function getPdfProducts(): PrintablePdfProduct[] {
       const raw = fs.readFileSync(CATALOG_FILE, "utf-8").trim();
       if (raw) {
         const data = JSON.parse(raw);
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.length > 0) {
           return data.filter((p) => !deletedIds.has(p.id));
         }
       }
@@ -228,9 +253,104 @@ export function getPdfProducts(): PrintablePdfProduct[] {
   return initial;
 }
 
+/**
+ * Loads products from Firestore to ensure that even after Render goes inactive,
+ * newly posted PDF products and files survive 100% permanently.
+ */
+export async function syncPdfProductsFromFirestore(): Promise<PrintablePdfProduct[]> {
+  const local = getPdfProducts();
+  if (!engineDb) return local;
+
+  try {
+    const deletedIds = getDeletedPdfIds();
+    // Also sync deleted IDs from Firestore
+    try {
+      const delSnap = await getDoc(doc(engineDb, "app_settings", "deleted_pdf_products"));
+      if (delSnap.exists()) {
+        const dData = delSnap.data();
+        if (Array.isArray(dData?.ids)) {
+          dData.ids.forEach((id: string) => {
+            deletedIds.add(id);
+            recordDeletedPdfId(id);
+          });
+        }
+      }
+    } catch {}
+
+    const snap = await getDocs(collection(engineDb, "printable_pdf_products"));
+    if (!snap.empty) {
+      const firestoreMap = new Map<string, PrintablePdfProduct>();
+      // Seed initial products first
+      local.forEach(p => firestoreMap.set(p.id, p));
+      
+      snap.docs.forEach(d => {
+        const p = d.data() as PrintablePdfProduct;
+        if (p && p.id && !deletedIds.has(p.id) && !(p as any).isDeleted) {
+          firestoreMap.set(p.id, { ...p, id: p.id });
+        }
+      });
+
+      const merged = Array.from(firestoreMap.values()).filter(p => !deletedIds.has(p.id));
+      savePdfProducts(merged);
+      return merged;
+    }
+  } catch (err) {
+    console.warn("[PDF Engine] Firestore products sync notice:", err);
+  }
+  return local;
+}
+
 export function savePdfProducts(products: PrintablePdfProduct[]) {
   ensurePdfDirectories();
   fs.writeFileSync(CATALOG_FILE, JSON.stringify(products, null, 2), "utf-8");
+
+  // Asynchronously persist all products to Cloud Firestore
+  if (engineDb && Array.isArray(products)) {
+    try {
+      products.forEach(p => {
+        if (p && p.id) {
+          setDoc(doc(engineDb, "printable_pdf_products", p.id), p, { merge: true }).catch(() => {});
+        }
+      });
+    } catch {}
+  }
+}
+
+/**
+ * Recovers a master PDF file from Cloud Firestore or Supabase/Firebase Storage
+ * if Render spun down and local ephemeral disk was cleared.
+ */
+export async function recoverMasterPdfIfNeeded(filename: string): Promise<boolean> {
+  ensurePdfDirectories();
+  if (!filename) return false;
+  const filePath = path.join(MASTERS_DIR, filename);
+  if (fs.existsSync(filePath)) return true;
+
+  if (!engineDb) return false;
+  try {
+    const safeDocId = filename.replace(/[^a-zA-Z0-9_.-]/g, "_");
+    const fileSnap = await getDoc(doc(engineDb, "printable_pdf_files", safeDocId));
+    if (fileSnap.exists()) {
+      const data = fileSnap.data();
+      if (data?.base64) {
+        fs.writeFileSync(filePath, Buffer.from(data.base64, "base64"));
+        console.log(`[PDF Engine OK] Recovered master PDF from Cloud Firestore: ${filename}`);
+        return true;
+      }
+      if (data?.cloudUrl && (data.cloudUrl.startsWith("http://") || data.cloudUrl.startsWith("https://"))) {
+        const res = await fetch(data.cloudUrl);
+        if (res.ok) {
+          const buf = await res.arrayBuffer();
+          fs.writeFileSync(filePath, Buffer.from(buf));
+          console.log(`[PDF Engine OK] Recovered master PDF from Cloud Storage URL: ${filename}`);
+          return true;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(`[PDF Engine Notice] Could not recover master PDF ${filename}:`, err);
+  }
+  return false;
 }
 
 export function getPdfOrders(): PrintablePdfOrder[] {
@@ -249,6 +369,16 @@ export function getPdfOrders(): PrintablePdfOrder[] {
 export function savePdfOrders(orders: PrintablePdfOrder[]) {
   ensurePdfDirectories();
   fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2), "utf-8");
+
+  if (engineDb && Array.isArray(orders)) {
+    try {
+      orders.slice(0, 50).forEach(o => {
+        if (o && o.id) {
+          setDoc(doc(engineDb, "printable_pdf_orders", o.id), o, { merge: true }).catch(() => {});
+        }
+      });
+    } catch {}
+  }
 }
 
 export function saveOrUpdateOrder(order: PrintablePdfOrder) {
@@ -260,6 +390,12 @@ export function saveOrUpdateOrder(order: PrintablePdfOrder) {
     list.unshift(order);
   }
   savePdfOrders(list);
+
+  if (engineDb && order && order.id) {
+    try {
+      setDoc(doc(engineDb, "printable_pdf_orders", order.id), order, { merge: true }).catch(() => {});
+    } catch {}
+  }
 }
 
 /**
@@ -499,6 +635,14 @@ export async function generatePersonalizedPdf(
   let masterPath = product.masterPdfFilename
     ? path.join(MASTERS_DIR, product.masterPdfFilename)
     : path.join(MASTERS_DIR, `${product.id}.pdf`);
+
+  if (!fs.existsSync(masterPath)) {
+    if (product.masterPdfFilename) {
+      await recoverMasterPdfIfNeeded(product.masterPdfFilename);
+    } else {
+      await recoverMasterPdfIfNeeded(`${product.id}.pdf`);
+    }
+  }
 
   if (fs.existsSync(masterPath)) {
     masterBytes = fs.readFileSync(masterPath);

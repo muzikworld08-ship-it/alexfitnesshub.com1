@@ -977,40 +977,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // 3. Fetch dynamically generated exercises
-        let fetchedGeneratedExercises: Exercise[] = [];
+        // 3. Fetch deleted exercises list from Cloud Firestore so mobile deletions manifest on desktop immediately
+        const firestoreDeletedIds: string[] = [];
         if (!isMockFirebase) {
           try {
-            const genSnap = await getDocs(collection(db, "generated_exercises"));
-            genSnap.docs.forEach(d => {
-              const gData = d.data() as Exercise;
-              if (gData && !(gData as any).isDeleted) {
-                fetchedGeneratedExercises.push(gData);
-              }
+            const delSnap = await getDocs(collection(db, "deleted_exercises"));
+            delSnap.docs.forEach(d => {
+              const dData = d.data();
+              if (dData?.id) firestoreDeletedIds.push(dData.id);
+              if (dData?.name) firestoreDeletedIds.push(dData.name);
+              firestoreDeletedIds.push(d.id);
             });
-          } catch (gErr) {
-            console.warn("Firestore dynamically generated exercises fetch notice:", gErr);
+          } catch (delErr) {
+            console.warn("Firestore deleted_exercises fetch notice:", delErr);
           }
         }
 
-        // Deep merge per-key so media overrides NEVER erase exercise metadata (name, sets, reps, category, etc.)
+        // Deep merge per-key: authoritative Firestore and server overrides take priority over stale local caches
         const allOverrideKeys = new Set([
+          ...Object.keys(localOverrides),
           ...Object.keys(persistentMediaOverrides),
           ...Object.keys(serverOverrides),
-          ...Object.keys(firestoreOverrides),
-          ...Object.keys(localOverrides)
+          ...Object.keys(firestoreOverrides)
         ]);
         const mergedOverrides: Record<string, any> = {};
         allOverrideKeys.forEach(k => {
           const localEntry = { ...(localOverrides[k] || {}) };
-          const firestoreEntry = { ...(firestoreOverrides[k] || {}) };
+          const persistentEntry = { ...(persistentMediaOverrides[k] || {}) };
           const serverEntry = { ...(serverOverrides[k] || {}) };
+          const firestoreEntry = { ...(firestoreOverrides[k] || {}) };
 
+          // Authoritative order: local cache first, then persistent media, server, and finally Firestore overrides on top
           mergedOverrides[k] = {
-            ...(persistentMediaOverrides[k] || {}),
+            ...localEntry,
+            ...persistentEntry,
             ...serverEntry,
-            ...firestoreEntry,
-            ...localEntry
+            ...firestoreEntry
           };
         });
 
@@ -1019,7 +1021,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem("fit_custom_exercise_overrides", JSON.stringify(mergedOverrides));
         } catch {}
 
-        const activeDeletedIds = new Set<string>(serverDeletedIds);
+        const activeDeletedIds = new Set<string>([...serverDeletedIds, ...firestoreDeletedIds]);
         try {
           const cachedDeleted = localStorage.getItem("fit_deleted_exercises");
           if (cachedDeleted) {
@@ -1060,16 +1062,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             return finalEx;
           });
 
-          // Avoid duplicates and deleted items for custom added workouts
+          // Avoid duplicates and deleted items for custom added workouts (do NOT auto-add generated exercises)
           const customMap = new Map<string, Exercise>();
 
-          fetchedGeneratedExercises.forEach(g => {
-            if (g && g.id && !activeDeletedIds.has(g.id) && !isRestrictedHomeWorkout(g).isViolating) {
-              customMap.set(g.id, { ...g, isCustom: true });
-            }
-          });
-
-          // Also any custom exercises saved in mergedOverrides
+          // Only custom exercises saved by admin in mergedOverrides
           Object.keys(mergedOverrides).forEach(key => {
             const val = mergedOverrides[key];
             if (val && typeof val === "object" && val.name && val.isCustom === true && !activeDeletedIds.has(key) && !isRestrictedHomeWorkout(val).isViolating) {
@@ -1320,10 +1316,87 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.warn("Real-time Firestore challenges listener notice:", err?.message || err);
       });
 
+      // 4. Real-time listener for 'deleted_exercises' collection (ensures deletes on mobile manifest on desktop instantly)
+      const deletedUnsub = onSnapshot(collection(db, "deleted_exercises"), (delSnap) => {
+        if (delSnap.empty) return;
+        const delSet = new Set<string>();
+        delSnap.docs.forEach(d => {
+          const data = d.data();
+          if (data?.id) {
+            delSet.add(data.id);
+            delSet.add(data.id.toLowerCase().trim());
+          }
+          if (data?.name) {
+            delSet.add(data.name.toLowerCase().trim());
+          }
+          delSet.add(d.id);
+          delSet.add(d.id.toLowerCase().trim());
+        });
+
+        if (delSet.size > 0) {
+          // Immediately purge from exercisesState
+          setExercisesState(prev => {
+            const next = prev.filter(e => !delSet.has(e.id) && !delSet.has(e.name?.toLowerCase().trim()));
+            if (next.length !== prev.length) {
+              safeSetItem("fit_exercises", JSON.stringify(next));
+              return next;
+            }
+            return prev;
+          });
+
+          // Immediately purge from customChallenges
+          setCustomChallenges(prev => {
+            let changed = false;
+            const updated = prev.map(c => {
+              if (c.workouts && c.workouts.some(w => delSet.has(w.id) || delSet.has(w.name?.toLowerCase().trim()))) {
+                changed = true;
+                return {
+                  ...c,
+                  workouts: c.workouts.filter(w => !delSet.has(w.id) && !delSet.has(w.name?.toLowerCase().trim()))
+                };
+              }
+              return c;
+            });
+            if (changed) {
+              safeSetItem("fit_custom_challenges", JSON.stringify(updated));
+              return updated;
+            }
+            return prev;
+          });
+
+          // Update cached deleted exercises
+          try {
+            const cached = localStorage.getItem("fit_deleted_exercises");
+            const arr: string[] = cached ? JSON.parse(cached) : [];
+            const merged = Array.from(new Set([...arr, ...Array.from(delSet)]));
+            localStorage.setItem("fit_deleted_exercises", JSON.stringify(merged));
+          } catch {}
+        }
+      }, (err) => {
+        console.warn("Real-time deleted_exercises listener notice:", err?.message || err);
+      });
+
+      // 5. Real-time listener for program schedule overrides
+      const schedulesUnsub = onSnapshot(doc(db, "program_schedules", "overrides"), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && data.overrides) {
+            try {
+              localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(data.overrides));
+              window.dispatchEvent(new CustomEvent("fit_schedule_overrides_updated"));
+            } catch {}
+          }
+        }
+      }, (err) => {
+        console.warn("Real-time program_schedules listener notice:", err?.message || err);
+      });
+
       return () => {
         unsub();
         manifestUnsub();
         challengesUnsub();
+        deletedUnsub();
+        schedulesUnsub();
       };
     } catch (e) {
       console.warn("Could not set up real-time exercise/asset/challenge listeners:", e);

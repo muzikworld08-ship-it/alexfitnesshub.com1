@@ -7078,7 +7078,9 @@ app.get("/api/premium/belly-fat-shred/content", checkPremiumStatus, (req: any, r
 registerPrintablePdfRoutes(app, {
   requireAdmin,
   paystackSecretKey: PAYSTACK_SECRET_KEY,
-  appUrl: APP_URL
+  appUrl: APP_URL,
+  uploadFileToFirebaseStorageServer,
+  db
 });
 
 // Serve frontend via Vite (development/production fallback configuration)

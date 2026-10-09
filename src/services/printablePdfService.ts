@@ -1,4 +1,6 @@
 import { PrintablePdfProduct, PrintablePdfOrder } from "../types/printablePdf";
+import { db } from "../lib/firebase";
+import { doc, setDoc, deleteDoc } from "firebase/firestore";
 
 export interface InitializeOrderParams {
   productId: string;
@@ -194,11 +196,33 @@ class PrintablePdfService {
     if (!res.ok || !data.success) {
       throw new Error(data.error || "Failed to save PDF product.");
     }
+
+    if (db && data.product?.id) {
+      try {
+        await setDoc(doc(db, "printable_pdf_products", data.product.id), data.product, { merge: true });
+      } catch (fbErr) {
+        console.warn("[PDF Service] Firestore save notice:", fbErr);
+      }
+    }
+
     return data.product;
   }
 
   async deleteProduct(id: string): Promise<boolean> {
     recordClientDeletedPdfId(id);
+
+    if (db) {
+      try {
+        await deleteDoc(doc(db, "printable_pdf_products", id));
+        await setDoc(doc(db, "app_settings", "deleted_pdf_products"), {
+          ids: Array.from(getClientDeletedPdfIds()),
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (fbErr) {
+        console.warn("[PDF Service] Firestore delete notice:", fbErr);
+      }
+    }
+
     const res = await fetch(`/api/admin/printable-pdfs/${encodeURIComponent(id)}`, {
       method: "DELETE",
       headers: this.getAuthHeaders()
