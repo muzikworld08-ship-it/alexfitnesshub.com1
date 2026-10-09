@@ -498,74 +498,89 @@ export default function AdminWorkoutEditor() {
     <div id="admin_workout_editor_root" className="space-y-6">
       
       {/* Command Control Header - Athlete Performance Desk Design System */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 text-[10px] font-mono font-black uppercase px-2.5 py-1 rounded-full border border-red-200">
-              <Dumbbell className="w-3 h-3 text-red-600" />
-              Workout Management Desk
-            </span>
-            <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
-              {exercises.length} Exercises Loaded
-            </span>
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-xs space-y-5">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 text-[10px] font-mono font-black uppercase px-2.5 py-1 rounded-full border border-red-200">
+                <Dumbbell className="w-3 h-3 text-red-600" />
+                Workout Management Desk
+              </span>
+              <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+                {exercises.length} Exercises Loaded
+              </span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight font-sans">
+              Exercise Catalog & Prescription Desk
+            </h2>
+            <p className="text-xs text-slate-500 max-w-2xl font-medium leading-relaxed">
+              Configure authoritative workout targets, progressive overload prescriptions (sets × reps), difficulty ratings, and visual GIF demonstration media.
+            </p>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight font-sans">
-            Exercise Catalog & Prescription Desk
-          </h2>
-          <p className="text-xs text-slate-500 max-w-2xl font-medium leading-relaxed">
-            Configure authoritative workout targets, progressive overload prescriptions (sets × reps), difficulty ratings, and visual GIF demonstration media.
-          </p>
+
+          {/* Primary High-Priority CTA: Add New Exercise - Prominently visible on desktop without overlapping */}
+          <div className="w-full lg:w-auto shrink-0 flex items-center gap-3">
+            <button
+              type="button"
+              id="admin-add-exercise-btn"
+              onClick={() => setIsAddModalOpen(true)}
+              className="w-full lg:w-auto bg-red-600 hover:bg-red-700 active:scale-95 text-white font-sans font-black uppercase tracking-wider text-xs px-6 py-3.5 rounded-2xl transition-all shadow-md shadow-red-600/25 hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer shrink-0"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Add New Exercise</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto flex-wrap sm:flex-nowrap">
-          <button
-            type="button"
-            onClick={handleRunHomeAuditPurge}
-            disabled={isPurgingHome || isResettingPrograms}
-            className="w-full md:w-auto bg-slate-900 hover:bg-black text-white border border-slate-700 font-sans font-black uppercase tracking-wider text-xs px-4 py-3 rounded-2xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
-            title="Scan and delete any workouts categorized as 'home' that contain restricted equipment tags (barbell, dumbbell, machines)"
-          >
-            {isPurgingHome ? (
-              <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
-            ) : (
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            )}
-            <span>{isPurgingHome ? "Auditing Home..." : "Purge Restricted Home Workouts"}</span>
-          </button>
+        {/* Secondary Audit, Cleaner & Optimization Action Bar - Wraps cleanly on all screens */}
+        <div className="pt-4 border-t border-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-slate-400 text-[11px] font-mono uppercase font-bold">
+            <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />
+            <span>Database Maintenance & Integrity Tools:</span>
+          </div>
 
-          <button
-            type="button"
-            onClick={handleRemoveFemaleFromAll}
-            disabled={isUpdatingAudience || isPurgingHome || isResettingPrograms}
-            className="w-full md:w-auto bg-slate-800 hover:bg-slate-900 text-white border border-slate-700 font-sans font-black uppercase tracking-wider text-xs px-4 py-3 rounded-2xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
-            title="Set all workouts to Unisex and remove female-only tags allowing admin to manage all workouts universally"
-          >
-            {isUpdatingAudience ? (
-              <RefreshCw className="w-4 h-4 text-cyan-400 animate-spin" />
-            ) : (
-              <Users className="w-4 h-4 text-cyan-400" />
-            )}
-            <span>{isUpdatingAudience ? "Removing Female Tags..." : "Remove Female Tag From All"}</span>
-          </button>
+          <div className="flex items-center gap-2.5 flex-wrap w-full md:w-auto">
+            <button
+              type="button"
+              onClick={handleRunHomeAuditPurge}
+              disabled={isPurgingHome || isResettingPrograms}
+              className="w-full sm:w-auto bg-slate-900 hover:bg-black text-white border border-slate-700 font-sans font-black uppercase tracking-wider text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
+              title="Scan and delete any workouts categorized as 'home' that contain restricted equipment tags (barbell, dumbbell, machines)"
+            >
+              {isPurgingHome ? (
+                <RefreshCw className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+              ) : (
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              )}
+              <span>{isPurgingHome ? "Auditing Home..." : "Purge Restricted Home Workouts"}</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={handleResetAndCleanAllPrograms}
-            disabled={isResettingPrograms || isPurgingHome}
-            className="w-full md:w-auto bg-amber-600 hover:bg-amber-700 text-white font-sans font-black uppercase tracking-wider text-xs px-4 py-3 rounded-2xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
-            title="One-Click Auto Clean: on back & biceps day removes chest or leg drills; limits daily workouts to 10 max"
-          >
-            <RotateCcw className={`w-4 h-4 ${isResettingPrograms ? "animate-spin" : ""}`} />
-            <span>{isResettingPrograms ? "Resetting All Programs..." : "Reset & Clean All Programs"}</span>
-          </button>
+            <button
+              type="button"
+              onClick={handleRemoveFemaleFromAll}
+              disabled={isUpdatingAudience || isPurgingHome || isResettingPrograms}
+              className="w-full sm:w-auto bg-slate-800 hover:bg-slate-900 text-white border border-slate-700 font-sans font-black uppercase tracking-wider text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
+              title="Set all workouts to Unisex and remove female-only tags allowing admin to manage all workouts universally"
+            >
+              {isUpdatingAudience ? (
+                <RefreshCw className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+              ) : (
+                <Users className="w-3.5 h-3.5 text-cyan-400" />
+              )}
+              <span>{isUpdatingAudience ? "Removing Female Tags..." : "Remove Female Tag From All"}</span>
+            </button>
 
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white font-sans font-black uppercase tracking-wider text-xs px-5 py-3 rounded-2xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add New Exercise</span>
-          </button>
+            <button
+              type="button"
+              onClick={handleResetAndCleanAllPrograms}
+              disabled={isResettingPrograms || isPurgingHome}
+              className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-sans font-black uppercase tracking-wider text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
+              title="One-Click Auto Clean: on back & biceps day removes chest or leg drills; limits daily workouts to 10 max"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 ${isResettingPrograms ? "animate-spin" : ""}`} />
+              <span>{isResettingPrograms ? "Resetting All Programs..." : "Reset & Clean All Programs"}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -587,37 +602,50 @@ export default function AdminWorkoutEditor() {
       )}
 
       {/* Sub-Desk Navigation Switcher */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 flex-wrap">
-        <button
-          type="button"
-          onClick={() => setAdminWorkoutSubTab("catalog")}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
-            adminWorkoutSubTab === "catalog"
-              ? "bg-slate-900 text-white shadow-xs"
-              : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
-          }`}
-        >
-          <Dumbbell className="w-4 h-4 text-red-500" />
-          <span>Exercise Catalog & Prescriptions</span>
-          <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-mono font-bold">
-            {exercises.length}
-          </span>
-        </button>
+      <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setAdminWorkoutSubTab("catalog")}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+              adminWorkoutSubTab === "catalog"
+                ? "bg-slate-900 text-white shadow-xs"
+                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+            }`}
+          >
+            <Dumbbell className="w-4 h-4 text-red-500" />
+            <span>Exercise Catalog & Prescriptions</span>
+            <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-mono font-bold">
+              {exercises.length}
+            </span>
+          </button>
 
+          <button
+            type="button"
+            onClick={() => setAdminWorkoutSubTab("schedules")}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+              adminWorkoutSubTab === "schedules"
+                ? "bg-slate-900 text-white shadow-xs"
+                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+            }`}
+          >
+            <Repeat className="w-4 h-4 text-amber-500" />
+            <span>Program Schedules & Vertical Split Architect</span>
+            <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-mono font-bold">
+              All Programs
+            </span>
+          </button>
+        </div>
+
+        {/* Quick Add Exercise Trigger on Desktop & Mobile */}
         <button
           type="button"
-          onClick={() => setAdminWorkoutSubTab("schedules")}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
-            adminWorkoutSubTab === "schedules"
-              ? "bg-slate-900 text-white shadow-xs"
-              : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
-          }`}
+          onClick={() => setIsAddModalOpen(true)}
+          className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs shrink-0"
+          title="Add a new custom exercise"
         >
-          <Repeat className="w-4 h-4 text-amber-500" />
-          <span>Program Schedules & Vertical Split Architect</span>
-          <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-mono font-bold">
-            All Programs
-          </span>
+          <Plus className="w-3.5 h-3.5 text-red-600 stroke-[2.5]" />
+          <span>+ Add Exercise</span>
         </button>
       </div>
 
@@ -783,6 +811,17 @@ export default function AdminWorkoutEditor() {
                 <span className="hidden sm:inline">Grid</span>
               </button>
             </div>
+
+            {/* Quick Add Exercise Action */}
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-black uppercase tracking-wider px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs hover:shadow-sm shrink-0"
+              title="Add New Exercise to Catalog"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Add Exercise</span>
+            </button>
           </div>
         </div>
       </div>
@@ -813,10 +852,18 @@ export default function AdminWorkoutEditor() {
               <tbody className="divide-y divide-slate-100">
                 {filteredExercises.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-16 text-center text-slate-500">
+                    <td colSpan={8} className="py-16 text-center text-slate-500 space-y-2">
                       <Dumbbell className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                       <p className="font-bold text-slate-700 text-sm">No exercises matched your query.</p>
-                      <p className="text-xs text-slate-400 mt-1">Try clearing filters or search keywords.</p>
+                      <p className="text-xs text-slate-400 mt-1">Try clearing filters, search keywords, or add a new exercise directly.</p>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition cursor-pointer shadow-xs"
+                      >
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Add New Exercise</span>
+                      </button>
                     </td>
                   </tr>
                 ) : (

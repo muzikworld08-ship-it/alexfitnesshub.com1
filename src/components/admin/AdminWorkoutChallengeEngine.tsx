@@ -1405,14 +1405,25 @@ export default function AdminWorkoutChallengeEngine() {
 
         {/* Workouts Routine List (Drag & Drop Reorder) */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-neutral-800">
             <h4 className="text-sm font-black uppercase tracking-wider text-neutral-300 flex items-center gap-2">
               <Dumbbell className="w-4 h-4 text-red-500" />
               <span>Prescribed Workout Routine ({activeExercises.length} Drills)</span>
             </h4>
-            <span className="text-xs text-neutral-500 hidden sm:inline">
-              Grab the handle <GripVertical className="w-3 h-3 inline text-neutral-400" /> to drag & reorder, or use the arrow buttons.
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-neutral-500 hidden md:inline">
+                Grab the handle <GripVertical className="w-3 h-3 inline text-neutral-400" /> to drag & reorder, or use the arrow buttons.
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 active:scale-95 text-white text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-red-600/20 shrink-0"
+                title="Add a new workout drill to this routine"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>+ Add Exercise Drill</span>
+              </button>
+            </div>
           </div>
 
           {activeExercises.length === 0 ? (
