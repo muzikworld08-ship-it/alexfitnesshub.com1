@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import UniversalExerciseSwapperModal from "./UniversalExerciseSwapperModal";
 import { detectWorkoutType, getPreWorkoutStretchesForDay } from "../utils/dynamicWorkoutEngine";
+import { isExplicitlyMarkedWomenWorkout } from "../data/womenConfidenceProgramData";
 import { Exercise } from "../data/exercises";
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -735,6 +736,8 @@ export default function Premium90DayChallenge() {
     // Filter exercises from active exercise list strictly matching focus words
     const focusWords = focusLabel.toLowerCase().split(/[ +&]+/);
     const filtered = exercises.filter(ex => {
+      // Workouts assigned as female ONLY appear in Women Confidence Program!
+      if (isExplicitlyMarkedWomenWorkout(ex)) return false;
       const matchCat = ex.category === targetCategory || ex.categories?.includes(targetCategory);
       const matchFocus = ex.muscleGroups?.some(m => focusWords.some(fw => m.toLowerCase().includes(fw))) ||
                          ex.name.toLowerCase().split(" ").some(w => focusWords.includes(w));
@@ -746,6 +749,7 @@ export default function Premium90DayChallenge() {
     if (matchedExercises.length < 10) {
       // Only pull extras that match the target muscle groups
       const muscleExtras = exercises.filter(ex => 
+        !isExplicitlyMarkedWomenWorkout(ex) &&
         !matchedExercises.some(m => m.id === ex.id) &&
         ex.muscleGroups?.some(m => focusWords.some(fw => m.toLowerCase().includes(fw)))
       ).slice(0, 10 - matchedExercises.length);

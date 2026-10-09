@@ -469,9 +469,8 @@ export default function AdminWorkoutChallengeEngine() {
   const handleAddExercise = (newEx: ChallengeExerciseItem) => {
     const name = (newEx.exerciseName || (newEx as any).name || "").trim();
     if (!name) return;
-    if (activeExercises.some(e => (e.exerciseName || "").toLowerCase().trim() === name.toLowerCase())) {
-      setSaveSuccessMsg(`"${name}" is already in this workout! Duplicate prevented.`);
-      setTimeout(() => setSaveSuccessMsg(null), 3500);
+    if (activeExercises.some(e => (e.exerciseName || (e as any).name || "").toLowerCase().trim() === name.toLowerCase())) {
+      alert(`Workout already exists!\n\n"${name}" is already included in Day ${effectiveDayNumber} of this workout routine.`);
       return;
     }
     const usedGifsInRoutine = new Set(activeExercises.map(e => e.gifUrl).filter((u): u is string => !!u));
@@ -1601,6 +1600,7 @@ export default function AdminWorkoutChallengeEngine() {
         libraryExercises={libraryExercises}
         programId={selectedProgramId}
         dayNumber={effectiveDayNumber}
+        currentExercises={activeExercises}
       />
 
       {/* 3. Delete Workout Confirmation Modal */}

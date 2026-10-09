@@ -14,6 +14,7 @@ import {
   Heart, Bookmark, Crown, Flame, Home, Layers, Clock
 } from "lucide-react";
 import { isHomeEligibleExercise } from "../utils/dynamicWorkoutEngine";
+import { isExplicitlyMarkedWomenWorkout } from "../data/womenConfidenceProgramData";
 import WorkoutVisual from "./WorkoutVisual";
 import MuscleAnatomyVisual from "./MuscleAnatomyVisual";
 import PageHero from "./PageHero";
@@ -793,6 +794,8 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
     // Search terms normalization and synonym expansions
     const matched = exercises.filter(ex => {
       if (!ex) return false;
+      // Workouts assigned as female ONLY appear in Women Confidence Program!
+      if (isExplicitlyMarkedWomenWorkout(ex)) return false;
       
       const exCategories = Array.isArray(ex.categories) ? ex.categories : [];
       const exMuscleGroups = Array.isArray(ex.muscleGroups) ? ex.muscleGroups : [];

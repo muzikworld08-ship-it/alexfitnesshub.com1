@@ -1,6 +1,6 @@
 import { Exercise } from "../data/exercises";
 import { ChallengeExerciseItem, DayWorkoutMeta, DayExecutionPlan } from "../types/challengeEngine";
-import { isWomenWorkoutEligibleExercise } from "../data/womenConfidenceProgramData";
+import { isWomenWorkoutEligibleExercise, isExplicitlyMarkedWomenWorkout } from "../data/womenConfidenceProgramData";
 
 /**
  * Checks whether an exercise is primarily a Chest movement.
@@ -703,6 +703,9 @@ export function buildDynamicDayPlan(
   let eligibleExercises = allExercises;
   if (isWomenProgram) {
     eligibleExercises = allExercises.filter(isWomenWorkoutEligibleExercise);
+  } else {
+    // Strictly enforce: workouts assigned as female ONLY appear in Women Confidence Program!
+    eligibleExercises = allExercises.filter(ex => !isExplicitlyMarkedWomenWorkout(ex));
   }
 
   const matchedExercises = filterExercisesForSplit(eligibleExercises, splitDef.targetMuscles, { requireHomeOnly: isHomeProgram });
@@ -773,29 +776,8 @@ export function purgeMismatchedExercisesFromRoutine(
     }
   }
 
+  // Strictly enforce user directive: do NOT add any additional exercises by yourself, only what admin adds
   const addedNames: string[] = [];
-  // If fewer than 5 exercises remain, replenish with authentic matching exercises from the admin library
-  if (keptExercises.length < 5 && availableLibraryExercises && availableLibraryExercises.length > 0) {
-    const isHome = programId.includes("home");
-    const matchingFromLib = filterExercisesForSplit(
-      availableLibraryExercises,
-      targetMuscles,
-      { requireHomeOnly: isHome }
-    ).filter(ex => isExerciseBelongingToSplit(ex, targetMuscles, categoryTitle));
-
-    for (const ex of matchingFromLib) {
-      if (keptExercises.length >= 6) break;
-      const cleanName = (ex.name || "").trim();
-      const lower = cleanName.toLowerCase();
-      if (!seenKept.has(lower)) {
-        seenKept.add(lower);
-        addedNames.push(cleanName);
-        keptExercises.push(
-          exerciseToChallengeItem(ex, programId, dayNumber, keptExercises.length)
-        );
-      }
-    }
-  }
 
   // Strictly enforce maximum 10 workouts daily
   return {

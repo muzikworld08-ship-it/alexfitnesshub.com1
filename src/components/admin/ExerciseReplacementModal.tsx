@@ -89,6 +89,9 @@ export default function ExerciseReplacementModal({
       // When replacing in women programs, strictly forbid heavy male / cable fly exercises
       if (isWomenProgram && !isWomenWorkoutEligibleExercise(ex)) return false;
 
+      // When replacing in non-women programs, workouts assigned as female ONLY appear in Women Confidence
+      if (!isWomenProgram && isExplicitlyMarkedWomenWorkout(ex)) return false;
+
       const exMuscles = (ex.muscleGroups || []).map(m => m.toLowerCase());
       const exCat = (ex.category || "").toLowerCase();
       const sharesMuscle = targetMuscles.some(tm => exMuscles.some(em => em.includes(tm) || tm.includes(em)));
@@ -117,6 +120,12 @@ export default function ExerciseReplacementModal({
 
       // When replacing in home programs, strictly forbid gym/barbell/dumbbell gear
       if (isHomeProgram && !isHomeEligibleExercise(ex)) return false;
+
+      // When replacing in women programs, strictly forbid heavy male / cable fly exercises
+      if (isWomenProgram && !isWomenWorkoutEligibleExercise(ex)) return false;
+
+      // When replacing in non-women programs, workouts assigned as female ONLY appear in Women Confidence
+      if (!isWomenProgram && isExplicitlyMarkedWomenWorkout(ex)) return false;
 
       if (selectedCategory !== "All") {
         const cat = (ex.category || "").toLowerCase();

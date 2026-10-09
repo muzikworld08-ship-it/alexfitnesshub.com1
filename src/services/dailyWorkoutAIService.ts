@@ -1,5 +1,6 @@
 import { EXERCISES, Exercise, getExerciseGifUrl } from "../data/exercises";
 import { getWorkoutForProgramAndDay, normalizeProgramId } from "../data/challengeEngineDatabase";
+import { isExplicitlyMarkedWomenWorkout } from "../data/womenConfidenceProgramData";
 import {
   AIDailyWorkoutPlan,
   DailyWorkoutProgramType,
@@ -64,13 +65,15 @@ export function findMatchingMasterExercise(
 // 2. FILTER MASTER EXERCISES BY PROGRAM
 // ============================================================================
 export function get237ExercisesForProgram(programType: DailyWorkoutProgramType): Exercise[] {
+  let list: Exercise[] = [];
   switch (programType) {
     case "immortal_90":
-      return EXERCISES.filter(e =>
+      list = EXERCISES.filter(e =>
         e.programAssignments?.includes("90-days-immortal") ||
         e.category.includes("Gym") ||
         e.categories?.some(c => ["Chest", "Back", "Legs", "Shoulders", "Triceps", "Biceps"].includes(c))
       );
+      break;
     case "women_confidence":
       return EXERCISES.filter(e =>
         e.categories?.includes("Women Confidence Program") ||
@@ -79,7 +82,7 @@ export function get237ExercisesForProgram(programType: DailyWorkoutProgramType):
         e.category.includes("Women")
       );
     case "belly_fat_shred":
-      return EXERCISES.filter(e =>
+      list = EXERCISES.filter(e =>
         e.categories?.some(c => ["Abs", "Core", "Obliques", "HIIT", "Cardio", "Full Body"].includes(c)) ||
         e.name.toLowerCase().includes("belly") ||
         e.name.toLowerCase().includes("plank") ||
@@ -87,28 +90,36 @@ export function get237ExercisesForProgram(programType: DailyWorkoutProgramType):
         e.name.toLowerCase().includes("vacuum") ||
         e.name.toLowerCase().includes("mountain")
       );
+      break;
     case "home_workout":
-      return EXERCISES.filter(e =>
+      list = EXERCISES.filter(e =>
         e.categories?.includes("Home Workouts") ||
         e.equipment?.includes("Bodyweight") ||
         e.equipment?.includes("Resistance Band") ||
         e.equipment?.length === 0
       );
+      break;
     case "lifestyle_academy":
-      return EXERCISES.filter(e =>
+      list = EXERCISES.filter(e =>
         e.category.includes("Gym") ||
         e.categories?.includes("Full Body") ||
         e.difficulty === "Intermediate" ||
         e.difficulty === "Advanced"
       );
+      break;
     case "cardio_calisthenics":
-      return EXERCISES.filter(e =>
+      list = EXERCISES.filter(e =>
         e.categories?.some(c => ["Cardio", "Cardio Workouts", "Calisthenics Workouts", "Military Style Fitness", "HIIT", "Running"].includes(c))
       );
+      break;
     case "gym_hypertrophy":
     default:
-      return EXERCISES.filter(e => e.category.includes("Gym") || e.equipment.some(eq => ["Barbell", "Dumbbell", "Cable Machine"].includes(eq)));
+      list = EXERCISES.filter(e => e.category.includes("Gym") || e.equipment.some(eq => ["Barbell", "Dumbbell", "Cable Machine"].includes(eq)));
+      break;
   }
+
+  // Workouts assigned as female ONLY appear in Women Confidence Program!
+  return list.filter(e => !isExplicitlyMarkedWomenWorkout(e));
 }
 
 // Program display metadata helper

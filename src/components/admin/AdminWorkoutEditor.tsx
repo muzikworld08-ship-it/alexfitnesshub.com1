@@ -418,8 +418,16 @@ export default function AdminWorkoutEditor() {
 
   // Save New Workout
   const handleSaveNewWorkout = async () => {
-    if (!newWorkout.name?.trim()) {
+    const rawName = (newWorkout.name || "").trim();
+    if (!rawName) {
       alert("Please provide a workout name.");
+      return;
+    }
+
+    const cleanLower = rawName.toLowerCase();
+    const existing = exercises.find(ex => ex.name.toLowerCase().trim() === cleanLower);
+    if (existing) {
+      alert(`Workout already exists!\n\nA workout named "${existing.name}" is already present in the exercise library. Duplicate workouts are not permitted. Please choose a different name or edit the existing workout.`);
       return;
     }
 
@@ -1718,14 +1726,50 @@ export default function AdminWorkoutEditor() {
             <div className="space-y-4">
               {/* Workout Name */}
               <div>
-                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Workout Name *</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-black uppercase text-slate-700">Workout Name *</label>
+                  {(() => {
+                    const clean = (newWorkout.name || "").trim().toLowerCase();
+                    if (!clean) return null;
+                    const exists = exercises.some(ex => ex.name.toLowerCase().trim() === clean);
+                    if (exists) {
+                      return (
+                        <span className="text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3 text-red-500" />
+                          Already Exists
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
                 <input
                   type="text"
                   value={newWorkout.name || ""}
                   onChange={(e) => setNewWorkout({ ...newWorkout, name: e.target.value })}
                   placeholder="e.g., Bulgarian Split Squats"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-600"
+                  className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none transition ${
+                    exercises.some(ex => (newWorkout.name || "").trim().length > 0 && ex.name.toLowerCase().trim() === (newWorkout.name || "").trim().toLowerCase())
+                      ? "border-red-500 bg-red-50/30 focus:border-red-600"
+                      : "border-slate-200 focus:border-red-600"
+                  }`}
                 />
+                {(() => {
+                  const clean = (newWorkout.name || "").trim().toLowerCase();
+                  if (!clean) return null;
+                  const match = exercises.find(ex => ex.name.toLowerCase().trim() === clean);
+                  if (match) {
+                    return (
+                      <div className="mt-2 p-3 bg-red-50 border border-red-300 rounded-xl text-xs text-red-800 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="font-bold">Workout Already Exists:</strong> A workout named &quot;{match.name}&quot; already exists in the workout library. Duplicate workouts are not permitted. Please choose a different name or edit the existing workout.
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Sets and Reps */}

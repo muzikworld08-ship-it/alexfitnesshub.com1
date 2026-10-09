@@ -4705,6 +4705,14 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
   };
 
   const addWorkout = async (workoutData: Partial<Exercise>): Promise<Exercise> => {
+    const workoutName = (workoutData.name || "").trim();
+    if (workoutName) {
+      const existing = exercises.find(e => (e.name || "").toLowerCase().trim() === workoutName.toLowerCase());
+      if (existing) {
+        throw new Error(`Workout already exists: A workout named "${existing.name}" already exists in the workout library.`);
+      }
+    }
+
     const rawId = workoutData.id || `custom_ex_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const safeId = rawId.replace(/[^a-zA-Z0-9_-]/g, "_");
     const sets = workoutData.recommendedSets || "3";
@@ -4836,38 +4844,24 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       return next;
     });
 
-    // 4. If any custom challenge or program was referencing this workout, auto-replace with matching category exercise
-    if (replacement) {
-      setCustomChallenges(prev => {
-        let changed = false;
-        const updated = prev.map(c => {
-          if (c.workouts && c.workouts.some(w => w.id === exerciseId)) {
-            changed = true;
-            return {
-              ...c,
-              workouts: c.workouts.map(w => w.id === exerciseId ? {
-                id: replacement.id,
-                name: replacement.name,
-                sets: w.sets || replacement.recommendedSets || "3-4",
-                reps: w.reps || replacement.recommendedReps || "10-12",
-                customMediaUrl: replacement.customMediaUrl || replacement.gifUrl || replacement.imageUrl,
-                customMediaType: replacement.customMediaType || "image",
-                gifUrl: replacement.gifUrl || replacement.imageUrl,
-                imageUrl: replacement.imageUrl || replacement.gifUrl,
-                category: replacement.category,
-                muscleGroups: replacement.muscleGroups,
-                restTime: w.restTime || replacement.restTime || "60s"
-              } : w)
-            };
-          }
-          return c;
-        });
-        if (changed) {
-          safeSetItem("fit_custom_challenges", JSON.stringify(updated));
+    // 4. Remove deleted workout from custom challenges without adding auto-replacements
+    setCustomChallenges(prev => {
+      let changed = false;
+      const updated = prev.map(c => {
+        if (c.workouts && c.workouts.some(w => w.id === exerciseId)) {
+          changed = true;
+          return {
+            ...c,
+            workouts: c.workouts.filter(w => w.id !== exerciseId)
+          };
         }
-        return updated;
+        return c;
       });
-    }
+      if (changed) {
+        safeSetItem("fit_custom_challenges", JSON.stringify(updated));
+      }
+      return updated;
+    });
 
     // 5. Notify server to persist permanently
     try {

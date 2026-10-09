@@ -13,6 +13,7 @@ interface AddWorkoutModalProps {
   libraryExercises: Exercise[];
   programId: string;
   dayNumber: number;
+  currentExercises?: ChallengeExerciseItem[];
 }
 
 const CATEGORY_FILTERS = [
@@ -49,7 +50,8 @@ export default function AddWorkoutModal({
   onAddExercise,
   libraryExercises,
   programId,
-  dayNumber
+  dayNumber,
+  currentExercises = []
 }: AddWorkoutModalProps) {
   const [activeTab, setActiveTab] = useState<"library" | "custom">("library");
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,6 +99,11 @@ export default function AddWorkoutModal({
         return false;
       }
 
+      // If NOT in Women Confidence Program, STRICTLY exclude any workout assigned as female / women
+      if (!isWomenProgram && isExplicitlyMarkedWomenWorkout(ex)) {
+        return false;
+      }
+
       if (selectedCategory !== "All") {
         const cat = (ex.category || "").toLowerCase();
         const cats = (ex.categories || []).map(c => c.toLowerCase());
@@ -122,6 +129,12 @@ export default function AddWorkoutModal({
   if (!isOpen) return null;
 
   const handleSelectFromLibrary = (ex: Exercise) => {
+    const cleanName = ex.name.toLowerCase().trim();
+    if (currentExercises && currentExercises.some(ce => (ce.exerciseName || (ce as any).name || "").toLowerCase().trim() === cleanName)) {
+      alert(`Workout already exists!\n\n"${ex.name}" is already included in Day ${dayNumber} of this workout routine.`);
+      return;
+    }
+
     const newEx: ChallengeExerciseItem = {
       id: `ex_${programId}_d${dayNumber}_${Date.now()}`,
       programId: programId as any,
@@ -150,7 +163,28 @@ export default function AddWorkoutModal({
 
   const handleCreateCustom = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customName.trim()) return;
+    const cleanCustom = customName.trim();
+    if (!cleanCustom) return;
+
+    // Check if duplicate in this day's workout
+    const cleanLower = cleanCustom.toLowerCase();
+    if (currentExercises && currentExercises.some(ce => (ce.exerciseName || (ce as any).name || "").toLowerCase().trim() === cleanLower)) {
+      alert(`Workout already exists!\n\nA workout named "${cleanCustom}" is already included in Day ${dayNumber} of this routine.`);
+      return;
+    }
+
+    // Check if already in library
+    const existingLib = libraryExercises.find(le => le.name.toLowerCase().trim() === cleanLower);
+    if (existingLib) {
+      alert(`Workout already exists!\n\nA workout named "${existingLib.name}" already exists in the exercise library. Please choose a unique name or select it from the Library tab.`);
+      return;
+    }
+
+    // Ensure workouts assigned as female only appear in Women Confidence
+    if (!isWomenProgram && targetAudience === "Women") {
+      alert("A workout assigned as female can only be added to the Women Confidence Program. Please select Unisex or Men for this program.");
+      return;
+    }
 
     const muscles = customMuscleGroup
       .split(",")
@@ -383,16 +417,36 @@ export default function AddWorkoutModal({
                         <span className="text-[10px] text-neutral-500 font-mono">
                           {ex.equipment?.[0] || "Standard"}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => handleSelectFromLibrary(ex)}
-                          className={`px-3 py-1.5 rounded-xl ${
-                            isWomenProgram ? "bg-rose-600 hover:bg-rose-500" : "bg-red-600 hover:bg-red-500"
-                          } text-white text-xs font-black transition flex items-center gap-1.5 cursor-pointer`}
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Add to Workout</span>
-                        </button>
+                        {(() => {
+                          const isAlreadyAdded = currentExercises && currentExercises.some(
+                            ce => (ce.exerciseName || (ce as any).name || "").toLowerCase().trim() === ex.name.toLowerCase().trim()
+                          );
+                          if (isAlreadyAdded) {
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => alert(`Workout already exists!\n\n"${ex.name}" is already included in Day ${dayNumber} of this workout routine.`)}
+                                className="px-3 py-1.5 rounded-xl bg-neutral-800 text-neutral-400 text-xs font-bold flex items-center gap-1.5 border border-neutral-700 cursor-pointer"
+                                title="This workout is already in this routine"
+                              >
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>Already in Workout</span>
+                              </button>
+                            );
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => handleSelectFromLibrary(ex)}
+                              className={`px-3 py-1.5 rounded-xl ${
+                                isWomenProgram ? "bg-rose-600 hover:bg-rose-500" : "bg-red-600 hover:bg-red-500"
+                              } text-white text-xs font-black transition flex items-center gap-1.5 cursor-pointer`}
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Add to Workout</span>
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
                   );

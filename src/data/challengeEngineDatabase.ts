@@ -1,6 +1,7 @@
 import { ProgramId, ProgramMetadata, ChallengeExerciseItem, DayWorkoutMeta, DayExecutionPlan } from "../types/challengeEngine";
 import { Exercise } from "./exercises";
 import { buildDynamicDayPlan } from "../utils/dynamicWorkoutEngine";
+import { isExplicitlyMarkedWomenWorkout } from "./womenConfidenceProgramData";
 
 // Clean, empty legacy pools to eliminate all old exercises and third-party GIFs
 export const HOME_UPPER_BODY_EXERCISES: any[] = [];
@@ -286,9 +287,15 @@ export function getWorkoutForProgramAndDay(
   }
 
   // 2. Dynamic generation adhering to new split
-  const activeExercises = Array.isArray(customExercisesListOrTarget) && customExercisesListOrTarget.length > 0
+  let activeExercises = Array.isArray(customExercisesListOrTarget) && customExercisesListOrTarget.length > 0
     ? customExercisesListOrTarget
     : getActiveExercisesFromStorage();
+
+  const isWomenTarget = normId === "women_confidence";
+  if (!isWomenTarget) {
+    // Workouts assigned as female ONLY appear in Women Confidence Program!
+    activeExercises = activeExercises.filter(ex => !isExplicitlyMarkedWomenWorkout(ex));
+  }
 
   return buildDynamicDayPlan(normId, safeDay, activeExercises, track);
 }

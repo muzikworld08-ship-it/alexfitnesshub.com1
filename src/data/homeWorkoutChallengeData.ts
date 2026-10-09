@@ -1,5 +1,6 @@
 import { Exercise } from "./exercises";
 import { filterExercisesForSplit, isHomeEligibleExercise, detectWorkoutType } from "../utils/dynamicWorkoutEngine";
+import { isExplicitlyMarkedWomenWorkout } from "./womenConfidenceProgramData";
 
 export interface HomeOnboardingProfile {
   gender: "Male" | "Female" | "Other";
@@ -344,9 +345,12 @@ export function getHomeWorkoutForDay(
     }
   }
 
-  const allActive = Array.isArray(activeExercisesList) && activeExercisesList.length > 0
+  const allActiveRaw = Array.isArray(activeExercisesList) && activeExercisesList.length > 0
     ? activeExercisesList
     : getActiveExercisesFromStorage();
+
+  // Workouts assigned as female ONLY appear in Women Confidence Program!
+  const allActive = allActiveRaw.filter(ex => !isExplicitlyMarkedWomenWorkout(ex));
 
   // Strictly filter for home-eligible exercises only: no barbell, dumbbell, or gym machines
   // Strictly capped at maximum 10 workouts daily

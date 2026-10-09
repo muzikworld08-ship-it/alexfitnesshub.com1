@@ -1,6 +1,7 @@
 import { Exercise, EXERCISES, getExerciseGifUrl } from "./exercises";
 import { ChallengeItem, ChallengeWorkout } from "../types";
 import { isHomeEligibleExercise } from "../utils/dynamicWorkoutEngine";
+import { isExplicitlyMarkedWomenWorkout } from "./womenConfidenceProgramData";
 
 export interface PremiumChallenge {
   id: string;
@@ -279,6 +280,8 @@ export function getChallengeWorkouts(challenge: PremiumChallenge, exercisesList?
       challenge.category.toLowerCase().includes("calisthenics") ||
       challenge.title.toLowerCase().includes("home");
 
+    const isWomenChallenge = challenge.id.toLowerCase().includes("women") || challenge.category.toLowerCase().includes("women");
+
     const splitCategories = CHALLENGE_SPLITS[challengeId] || [challenge.category || "Full Body"];
 
     const matched: Exercise[] = [];
@@ -290,6 +293,7 @@ export function getChallengeWorkouts(challenge: PremiumChallenge, exercisesList?
 
       const pool = exercises.filter(ex => {
         if (seenIds.has(ex.id)) return false;
+        if (!isWomenChallenge && isExplicitlyMarkedWomenWorkout(ex)) return false;
         if (isHomeChallenge && !isHomeEligibleExercise(ex)) return false;
         const mMatches = ex.muscleGroups?.some(m => splitWords.some(w => m.toLowerCase().includes(w)));
         const cMatches = ex.category.toLowerCase().includes(challenge.category.toLowerCase()) || 
@@ -310,6 +314,7 @@ export function getChallengeWorkouts(challenge: PremiumChallenge, exercisesList?
     if (matched.length < 10) {
       const categoryMatches = exercises.filter(ex => 
         !seenIds.has(ex.id) && 
+        (!isWomenChallenge ? !isExplicitlyMarkedWomenWorkout(ex) : true) &&
         (!isHomeChallenge || isHomeEligibleExercise(ex)) && (
           ex.category.toLowerCase().includes(challenge.category.toLowerCase()) ||
           ex.categories?.some(c => c.toLowerCase().includes(challenge.category.toLowerCase()))

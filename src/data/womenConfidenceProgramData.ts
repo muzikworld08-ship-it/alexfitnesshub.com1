@@ -276,14 +276,31 @@ export function isWomenWorkoutEligibleExercise(ex: Exercise | { name?: string; c
 
 /**
  * Checks whether an exercise is explicitly designated as a women / female workout
- * by admin configuration (genderSuitability === "Women", women categories assigned, or women program assignment).
+ * by admin configuration (genderSuitability === "Women" / "Female", womenCategories,
+ * female targetAudience, women/female program assignments, or women/female category).
  */
 export function isExplicitlyMarkedWomenWorkout(ex: any): boolean {
   if (!ex) return false;
-  if (ex.genderSuitability === "Women") return true;
+  const gs = (ex.genderSuitability || ex.gender || ex.targetAudience || "").toString().toLowerCase().trim();
+  if (gs === "women" || gs === "female") return true;
+
   if (Array.isArray(ex.womenCategories) && ex.womenCategories.length > 0) return true;
-  if (Array.isArray(ex.programAssignments) && ex.programAssignments.some((p: string) => p.toLowerCase().includes("women"))) return true;
-  if (typeof ex.category === "string" && ex.category.toLowerCase().includes("women")) return true;
+
+  if (Array.isArray(ex.programAssignments) && ex.programAssignments.some((p: string) => {
+    const pl = (p || "").toLowerCase();
+    return pl.includes("women") || pl.includes("female");
+  })) return true;
+
+  if (typeof ex.category === "string") {
+    const cl = ex.category.toLowerCase();
+    if (cl.includes("women") || cl.includes("female")) return true;
+  }
+
+  if (Array.isArray(ex.categories) && ex.categories.some((c: string) => {
+    const cl = (c || "").toLowerCase();
+    return cl.includes("women") || cl.includes("female");
+  })) return true;
+
   return false;
 }
 

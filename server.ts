@@ -3964,6 +3964,17 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
     return res.status(400).json({ success: false, error: "Workout data with name is required." });
   }
 
+  const cleanName = (workout.name || "").trim().toLowerCase();
+
+  // 1. Check if workout already exists in master library
+  const existingMaster = EXERCISES.find(e => e.name && e.name.trim().toLowerCase() === cleanName);
+  if (existingMaster) {
+    return res.status(409).json({
+      success: false,
+      error: `Workout already exists: A workout named "${existingMaster.name}" already exists in the exercise library.`
+    });
+  }
+
   try {
     const newId = workout.id || `custom_ex_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const fullWorkout = {
@@ -3984,6 +3995,14 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
       } catch (err) {
         console.error("Failed parsing overrides file:", err);
       }
+    }
+
+    const existingOverride = Object.values(overrides).find((o: any) => o?.name && o.name.trim().toLowerCase() === cleanName);
+    if (existingOverride) {
+      return res.status(409).json({
+        success: false,
+        error: `Workout already exists: A workout named "${existingOverride.name}" already exists in the exercise library.`
+      });
     }
 
     overrides[newId] = fullWorkout;
