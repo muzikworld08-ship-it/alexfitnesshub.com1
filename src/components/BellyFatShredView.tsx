@@ -386,7 +386,12 @@ const getWorkoutForWeekAndDay = (
   const hiitPrescription = week <= 8 ? "4 rounds x 30s work / 15s rest" : "4 rounds x 45s work / 15s rest";
 
   // Check admin overrides for this day/cycle
-  const overrideExercises: ChallengeExerciseItem[] = override?.exercises;
+  const tierKey = difficulty.toLowerCase();
+  const overrideExercises: ChallengeExerciseItem[] = 
+    (tierKey.includes("beg") && (override?.levels?.beginner?.length ? override.levels.beginner : override?.beginnerExercises)) ||
+    (tierKey.includes("adv") && (override?.levels?.advanced?.length ? override.levels.advanced : override?.advancedExercises)) ||
+    (tierKey.includes("inter") && (override?.levels?.intermediate?.length ? override.levels.intermediate : override?.intermediateExercises)) ||
+    override?.exercises;
   const cycleDay = ((dayNum - 1) % 7) + 1;
   const splitResolver = PROGRAM_SPLIT_DEFINITIONS["belly_fat_shred"];
   const splitDef = splitResolver ? splitResolver(cycleDay) : null;

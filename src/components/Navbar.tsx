@@ -68,12 +68,13 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
   }, []);
 
   const PREMIUM_PROGRAMS_MAP: Record<string, string> = {
+    "challenges": "Immortal 90-Day Challenge",
+    "immortal_90": "Immortal 90-Day Challenge",
     "home-workout-challenge": "180 Day Home Workout Challenge",
     "180-day-challenge": "180 Day Home Workout Challenge",
     "home-challenge": "180 Day Home Workout Challenge",
     "women-confidence": "Women Confidence Program",
     "belly-fat-shred": "Belly Fat Shred System",
-    "challenges": "Monthly 90-Day Challenges",
     "daily-plan": "My Daily Plan",
     "coach": "AI Fitness Coach",
     "dashboard": "Athlete Performance Desk",
@@ -189,6 +190,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     { id: "notification-settings", label: "Notification Settings", desc: "Alarm schedule, sound chime & email alerts", icon: Bell, color: "text-amber-600 bg-amber-50" },
     { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
     { id: "printable-pdfs", label: "Printable PDFs & Journals", desc: "Digital fitness workbooks, meal planners & guides", icon: FileText, color: "text-red-600 bg-red-50" },
+    { id: "challenges", label: "Immortal 90-Day Challenge", desc: "Flagship 90-day hypertrophy, strength & 7-day split protocol", icon: Award, color: "text-red-600 bg-red-50", isProBadge: true },
     { id: "home-workout-challenge", label: "180 Day Home Workout Challenge", desc: "Zero equipment bodyweight transformation & 5KM cardio", icon: Dumbbell, color: "text-amber-600 bg-amber-50", isProBadge: true },
     { id: "women-confidence", label: "Women Confidence Program", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-50", isProBadge: true },
     { id: "belly-fat-shred", label: "Belly Fat Shred System", desc: "5-Month core & metabolic shredding protocol", icon: Flame, color: "text-orange-600 bg-orange-50", isProBadge: true },

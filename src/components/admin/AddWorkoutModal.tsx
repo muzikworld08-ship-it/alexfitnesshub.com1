@@ -9,11 +9,12 @@ import UnifiedExerciseMedia from "../UnifiedExerciseMedia";
 interface AddWorkoutModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddExercise: (newExercise: ChallengeExerciseItem) => void;
+  onAddExercise: (newExercise: ChallengeExerciseItem, targetTier?: "Beginner" | "Intermediate" | "Advanced" | "All") => void;
   libraryExercises: Exercise[];
   programId: string;
   dayNumber: number;
   currentExercises?: ChallengeExerciseItem[];
+  targetDifficulty?: "Beginner" | "Intermediate" | "Advanced" | "All";
 }
 
 const CATEGORY_FILTERS = [
@@ -51,11 +52,16 @@ export default function AddWorkoutModal({
   libraryExercises,
   programId,
   dayNumber,
-  currentExercises = []
+  currentExercises = [],
+  targetDifficulty = "All"
 }: AddWorkoutModalProps) {
   const [activeTab, setActiveTab] = useState<"library" | "custom">("library");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [activeTier, setActiveTier] = useState<"Beginner" | "Intermediate" | "Advanced" | "All">(
+    targetDifficulty || "All"
+  );
+  const [difficultyFilter, setDifficultyFilter] = useState<string>("All");
 
   const isHomeProgram = useMemo(() => {
     return (programId || "").toLowerCase().includes("home");
@@ -66,12 +72,24 @@ export default function AddWorkoutModal({
     return pid.includes("women") || pid.includes("female");
   }, [programId]);
 
+  // Sync activeTier if targetDifficulty changes
+  React.useEffect(() => {
+    if (targetDifficulty) {
+      setActiveTier(targetDifficulty);
+      if (targetDifficulty !== "All") {
+        setCustomDifficulty(targetDifficulty);
+      }
+    }
+  }, [targetDifficulty, isOpen]);
+
   // Custom Form State
   const [customName, setCustomName] = useState("");
   const [customCategory, setCustomCategory] = useState(isWomenProgram ? "Glute & Lower Body Shaping" : "Strength");
   const [customMuscleGroup, setCustomMuscleGroup] = useState(isWomenProgram ? "Glutes, Hamstrings" : "");
   const [customEquipment, setCustomEquipment] = useState(isWomenProgram ? "Bodyweight / Dumbbells" : "Dumbbells");
-  const [customDifficulty, setCustomDifficulty] = useState<"Beginner" | "Intermediate" | "Advanced">("Intermediate");
+  const [customDifficulty, setCustomDifficulty] = useState<"Beginner" | "Intermediate" | "Advanced">(
+    targetDifficulty && targetDifficulty !== "All" ? targetDifficulty : "Intermediate"
+  );
   const [customSets, setCustomSets] = useState("3");
   const [customReps, setCustomReps] = useState("10-12 reps");
   const [customDuration, setCustomDuration] = useState("45s set");
@@ -113,18 +131,24 @@ export default function AddWorkoutModal({
         if (!matchCat) return false;
       }
 
+      if (difficultyFilter !== "All") {
+        const diff = (ex.difficulty || "").toLowerCase();
+        if (!diff.includes(difficultyFilter.toLowerCase())) return false;
+      }
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchName = ex.name.toLowerCase().includes(q);
         const matchMuscle = (ex.muscleGroups || []).some(m => m.toLowerCase().includes(q));
         const matchEquip = (ex.equipment || []).some(eq => eq.toLowerCase().includes(q));
         const matchCat = (ex.category || "").toLowerCase().includes(q);
-        if (!matchName && !matchMuscle && !matchEquip && !matchCat) return false;
+        const matchDiff = (ex.difficulty || "").toLowerCase().includes(q);
+        if (!matchName && !matchMuscle && !matchEquip && !matchCat && !matchDiff) return false;
       }
 
       return true;
     });
-  }, [libraryExercises, selectedCategory, searchQuery, isHomeProgram, isWomenProgram]);
+  }, [libraryExercises, selectedCategory, difficultyFilter, searchQuery, isHomeProgram, isWomenProgram]);
 
   if (!isOpen) return null;
 
@@ -135,6 +159,14 @@ export default function AddWorkoutModal({
       return;
     }
 
+    const assignedDifficulty = activeTier && activeTier !== "All"
+      ? activeTier
+      : (ex.difficulty || "Intermediate");
+
+    const defaultSets = assignedDifficulty === "Beginner" ? 3 : (assignedDifficulty === "Advanced" ? 4 : 3);
+    const defaultReps = assignedDifficulty === "Beginner" ? "10-12 reps" : (assignedDifficulty === "Advanced" ? "6-8 heavy reps" : "8-10 reps");
+    const defaultRest = assignedDifficulty === "Beginner" ? "60s" : (assignedDifficulty === "Advanced" ? "90s" : "45s");
+
     const newEx: ChallengeExerciseItem = {
       id: `ex_${programId}_d${dayNumber}_${Date.now()}`,
       programId: programId as any,
@@ -144,20 +176,20 @@ export default function AddWorkoutModal({
       muscleGroup: ex.muscleGroups || ["Full Body"],
       exerciseName: ex.name,
       equipment: Array.isArray(ex.equipment) ? ex.equipment : (ex.equipment ? [String(ex.equipment)] : ["Bodyweight"]),
-      difficulty: ex.difficulty || "Intermediate",
-      sets: 3,
-      reps: "10-12 reps",
+      difficulty: assignedDifficulty,
+      sets: defaultSets,
+      reps: defaultReps,
       duration: "45s set",
       instructions: ex.instructions && ex.instructions.length > 0 
         ? ex.instructions 
         : ["Execute controlled biomechanics through full active range of motion."],
-      restTime: "45s",
+      restTime: defaultRest,
       gifUrl: ex.gifUrl || getExerciseGifUrl(ex.name, ex.category),
       coachingCues: ex.movementExecution ? [ex.movementExecution] : ["Maintain rigid core stability and steady breathing."],
       genderSuitability: isWomenProgram || ex.genderSuitability === "Women" ? "Women" : (ex.genderSuitability || "Unisex"),
       womenCategories: isWomenProgram ? (ex.womenCategories?.length ? ex.womenCategories : ["Full Body Tone"]) : ex.womenCategories
     };
-    onAddExercise(newEx);
+    onAddExercise(newEx, activeTier);
     onClose();
   };
 
@@ -240,21 +272,21 @@ export default function AddWorkoutModal({
       muscleGroup: muscles.length > 0 ? muscles : (isWomenProgram ? ["Glutes", "Core"] : ["Full Body"]),
       exerciseName: customName.trim(),
       equipment: [customEquipment],
-      difficulty: customDifficulty,
+      difficulty: activeTier !== "All" ? activeTier : customDifficulty,
       sets: parseInt(customSets) || 3,
       reps: customReps.trim() || "10-12 reps",
       duration: customDuration.trim() || "45s set",
       instructions: customInstructions.trim() 
         ? [customInstructions.trim()] 
         : ["Execute controlled movement with strict posture and tempo."],
-      restTime: "45s",
+      restTime: activeTier === "Beginner" ? "60s" : (activeTier === "Advanced" ? "90s" : "45s"),
       gifUrl: customGifUrl.trim() || getExerciseGifUrl(customName.trim(), customCategory),
       coachingCues: ["Maintain core tension and controlled eccentric phase."],
       genderSuitability: isWomenProgram || targetAudience === "Women" ? "Women" : targetAudience,
       womenCategories: (isWomenProgram || targetAudience === "Women") ? [customCategory] : undefined
     };
 
-    onAddExercise(newEx);
+    onAddExercise(newEx, activeTier);
     onClose();
   };
 
@@ -286,11 +318,22 @@ export default function AddWorkoutModal({
                       Women Confidence (180 Days)
                     </span>
                   )}
+                  <span className={`text-[10px] font-mono font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                    activeTier === "Beginner"
+                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                      : activeTier === "Advanced"
+                      ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
+                      : activeTier === "Intermediate"
+                      ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                      : "bg-neutral-800 text-neutral-300 border-neutral-700"
+                  }`}>
+                    Adding to: {activeTier === "All" ? "All Levels (Baseline)" : `${activeTier} Category`}
+                  </span>
                 </div>
                 <p className="text-xs text-neutral-400 mt-0.5">
                   {isWomenProgram 
                     ? `Assign a movement to Day ${dayNumber} (No heavy strongman/powerlifting movements).`
-                    : `Append a workout to Day ${dayNumber} of ${programId}. You can drag and drop it into any position.`}
+                    : `Append a workout drill to Day ${dayNumber} of ${programId}. Select category/tier to manage exercises separately.`}
                 </p>
               </div>
             </div>
@@ -303,8 +346,83 @@ export default function AddWorkoutModal({
             </button>
           </div>
 
+          {/* Dedicated Category / Tier Selector Bar */}
+          <div className="mt-4 p-2.5 rounded-2xl bg-neutral-950/80 border border-neutral-800 flex items-center justify-between gap-2.5 flex-wrap">
+            <div className="flex items-center gap-2 text-xs font-bold text-neutral-300">
+              <Layers className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>Target Category:</span>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTier("All");
+                  setCustomDifficulty("Intermediate");
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  activeTier === "All"
+                    ? "bg-neutral-800 text-white border border-neutral-600 shadow-xs"
+                    : "bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800"
+                }`}
+              >
+                <span>🌐 All Levels</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTier("Beginner");
+                  setCustomDifficulty("Beginner");
+                  setCustomSets("3");
+                  setCustomReps("10-12 reps");
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  activeTier === "Beginner"
+                    ? "bg-emerald-950 text-emerald-200 border border-emerald-500 shadow-md shadow-emerald-950/40"
+                    : "bg-neutral-900 text-neutral-400 hover:text-emerald-300 border border-neutral-800"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span>Beginner</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTier("Intermediate");
+                  setCustomDifficulty("Intermediate");
+                  setCustomSets("3");
+                  setCustomReps("8-10 reps");
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  activeTier === "Intermediate"
+                    ? "bg-amber-950 text-amber-200 border border-amber-500 shadow-md shadow-amber-950/40"
+                    : "bg-neutral-900 text-neutral-400 hover:text-amber-300 border border-neutral-800"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span>Intermediate</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTier("Advanced");
+                  setCustomDifficulty("Advanced");
+                  setCustomSets("4");
+                  setCustomReps("6-8 heavy reps");
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  activeTier === "Advanced"
+                    ? "bg-rose-950 text-rose-200 border border-rose-500 shadow-md shadow-rose-950/40"
+                    : "bg-neutral-900 text-neutral-400 hover:text-rose-300 border border-neutral-800"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-rose-400" />
+                <span>Advanced</span>
+              </button>
+            </div>
+          </div>
+
           {/* Mode Switcher Tabs */}
-          <div className="flex items-center gap-2 mt-4">
+          <div className="flex items-center gap-2 mt-3">
             <button
               type="button"
               onClick={() => setActiveTab("library")}
@@ -346,7 +464,7 @@ export default function AddWorkoutModal({
             )}
 
             {/* Filters */}
-            <div className="p-4 sm:px-6 border-b border-neutral-800 bg-neutral-900/50 space-y-3 shrink-0">
+            <div className="p-4 sm:px-6 border-b border-neutral-800 bg-neutral-900/50 space-y-2.5 shrink-0">
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
                 <input
@@ -358,7 +476,39 @@ export default function AddWorkoutModal({
                 />
               </div>
 
+              {/* Difficulty Tier Filters */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+                <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+                  <Filter className="w-3 h-3 text-neutral-500" />
+                  Level:
+                </span>
+                {["All", "Beginner", "Intermediate", "Advanced"].map(diff => (
+                  <button
+                    key={diff}
+                    type="button"
+                    onClick={() => setDifficultyFilter(diff)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer shrink-0 ${
+                      difficultyFilter === diff
+                        ? diff === "Beginner"
+                          ? "bg-emerald-950 text-emerald-200 border border-emerald-500"
+                          : diff === "Advanced"
+                          ? "bg-rose-950 text-rose-200 border border-rose-500"
+                          : diff === "Intermediate"
+                          ? "bg-amber-950 text-amber-200 border border-amber-500"
+                          : "bg-red-600 text-white shadow-xs"
+                        : "bg-neutral-950 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700"
+                    }`}
+                  >
+                    {diff === "All" ? "All Levels" : diff}
+                  </button>
+                ))}
+              </div>
+
+              {/* Category / Muscle Filters */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+                  Muscle:
+                </span>
                 {(isWomenProgram ? WOMEN_CATEGORY_FILTERS : CATEGORY_FILTERS).map(cat => (
                   <button
                     key={cat}
@@ -404,6 +554,17 @@ export default function AddWorkoutModal({
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-1 mt-1.5">
+                            {ex.difficulty && (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                                ex.difficulty.toLowerCase().includes("beg")
+                                  ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/40"
+                                  : ex.difficulty.toLowerCase().includes("adv")
+                                  ? "bg-rose-950/80 text-rose-300 border-rose-500/40"
+                                  : "bg-amber-950/80 text-amber-300 border-amber-500/40"
+                              }`}>
+                                {ex.difficulty}
+                              </span>
+                            )}
                             {(ex.muscleGroups || []).slice(0, 2).map(m => (
                               <span key={m} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-300 border border-neutral-800">
                                 {m}
@@ -430,7 +591,7 @@ export default function AddWorkoutModal({
                                 title="This workout is already in this routine"
                               >
                                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                <span>Already in Workout</span>
+                                <span>Already in {activeTier !== "All" ? activeTier : "Workout"}</span>
                               </button>
                             );
                           }
@@ -439,11 +600,17 @@ export default function AddWorkoutModal({
                               type="button"
                               onClick={() => handleSelectFromLibrary(ex)}
                               className={`px-3 py-1.5 rounded-xl ${
-                                isWomenProgram ? "bg-rose-600 hover:bg-rose-500" : "bg-red-600 hover:bg-red-500"
-                              } text-white text-xs font-black transition flex items-center gap-1.5 cursor-pointer`}
+                                isWomenProgram 
+                                  ? "bg-rose-600 hover:bg-rose-500" 
+                                  : activeTier === "Beginner"
+                                  ? "bg-emerald-600 hover:bg-emerald-500"
+                                  : activeTier === "Advanced"
+                                  ? "bg-rose-600 hover:bg-rose-500"
+                                  : "bg-red-600 hover:bg-red-500"
+                              } text-white text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs`}
                             >
                               <Plus className="w-3.5 h-3.5" />
-                              <span>Add to Workout</span>
+                              <span>+ Add to {activeTier !== "All" ? activeTier : "Workout"}</span>
                             </button>
                           );
                         })()}
@@ -459,6 +626,68 @@ export default function AddWorkoutModal({
         {/* Tab 2: Create Custom Workout */}
         {activeTab === "custom" && (
           <form onSubmit={handleCreateCustom} className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-4">
+            {/* Category / Difficulty Tier Presets */}
+            <div className="bg-neutral-950 p-4 rounded-2xl border border-neutral-800 space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <label className="text-xs font-bold text-neutral-300 block">
+                  Difficulty Category & Prescribed Volume
+                </label>
+                <span className="text-[11px] text-neutral-400 font-mono">
+                  Currently targeted for: <strong className="text-white">{activeTier}</strong>
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomDifficulty("Beginner");
+                    setCustomSets("3");
+                    setCustomReps("10-12 reps");
+                  }}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                    customDifficulty === "Beginner"
+                      ? "bg-emerald-950 text-emerald-200 border-emerald-500 shadow-xs"
+                      : "bg-neutral-900 text-neutral-400 border-neutral-800 hover:text-white"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span>Beginner (3×10-12)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomDifficulty("Intermediate");
+                    setCustomSets("3");
+                    setCustomReps("8-10 reps");
+                  }}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                    customDifficulty === "Intermediate"
+                      ? "bg-amber-950 text-amber-200 border-amber-500 shadow-xs"
+                      : "bg-neutral-900 text-neutral-400 border-neutral-800 hover:text-white"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span>Intermediate (3-4×8-10)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomDifficulty("Advanced");
+                    setCustomSets("4");
+                    setCustomReps("6-8 heavy reps");
+                  }}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                    customDifficulty === "Advanced"
+                      ? "bg-rose-950 text-rose-200 border-rose-500 shadow-xs"
+                      : "bg-neutral-900 text-neutral-400 border-neutral-800 hover:text-white"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-rose-400" />
+                  <span>Advanced (4×6-8)</span>
+                </button>
+              </div>
+            </div>
+
             {/* Target Audience Selector */}
             <div className="bg-neutral-950 p-4 rounded-2xl border border-neutral-800 space-y-2">
               <label className="text-xs font-bold text-neutral-300 block">

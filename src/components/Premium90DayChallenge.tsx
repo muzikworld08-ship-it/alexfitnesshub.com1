@@ -595,7 +595,8 @@ export default function Premium90DayChallenge() {
 
     if (isImmortalVariant || hasProgramOverride) {
       const progToQuery = hasProgramOverride ? challengeId : "immortal_90";
-      const enginePlan = getWorkoutForProgramAndDay(progToQuery, dayNum);
+      const athleteLevel = dbState?.onboarding?.fitnessLevel || (user as any)?.fitnessLevel || "Intermediate";
+      const enginePlan = getWorkoutForProgramAndDay(progToQuery, dayNum, undefined, { fitnessLevel: athleteLevel });
       const isCardioDay = enginePlan.meta.isCardioOnly;
 
       const exercisesWithDetails = enginePlan.exercises.slice(0, 10).map((ex, idx) => {

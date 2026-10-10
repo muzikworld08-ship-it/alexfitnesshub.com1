@@ -1655,9 +1655,16 @@ export function getDailyWorkoutForDay(
         const womenOverrides = parsed.women_confidence || parsed["women-confidence"] || {};
         const cycleKey = `cycle_${dayInWeek}`;
         const dayOverride = womenOverrides[String(safeDay)] || womenOverrides[cycleKey];
-        if (dayOverride && Array.isArray(dayOverride.exercises) && dayOverride.exercises.length > 0) {
-          const overrideList: WomenDailyExercise[] = [];
-          for (const ovEx of dayOverride.exercises) {
+        if (dayOverride) {
+          const rawAthleteLevel = (profile?.fitnessLevel || (profile as any)?.experienceLevel || (profile as any)?.difficulty || "").toLowerCase();
+          const rawTierList = (rawAthleteLevel.includes("beg") && (dayOverride.levels?.beginner?.length ? dayOverride.levels.beginner : dayOverride.beginnerExercises))
+            || (rawAthleteLevel.includes("adv") && (dayOverride.levels?.advanced?.length ? dayOverride.levels.advanced : dayOverride.advancedExercises))
+            || (rawAthleteLevel.includes("inter") && (dayOverride.levels?.intermediate?.length ? dayOverride.levels.intermediate : dayOverride.intermediateExercises))
+            || (Array.isArray(dayOverride.exercises) ? dayOverride.exercises : []);
+
+          if (Array.isArray(rawTierList) && rawTierList.length > 0) {
+            const overrideList: WomenDailyExercise[] = [];
+            for (const ovEx of rawTierList) {
             const exName = (ovEx.exerciseName || ovEx.name || "").trim();
             const lower = exName.toLowerCase();
             if (exName && !seenExerciseNames.has(lower) && isWomenWorkoutEligibleExercise(ovEx)) {
@@ -1699,7 +1706,8 @@ export function getDailyWorkoutForDay(
         }
       }
     }
-  } catch (e) {}
+  }
+} catch (e) {}
 
   // Add eligible matched exercises from custom library first (if any)
   for (const ex of matchedActive) {

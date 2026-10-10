@@ -239,7 +239,11 @@ function FitnessAppContent() {
         "home-challenge": "180 Day Home Workout Challenge",
         "women-confidence": "Women Confidence Program",
         "belly-fat-shred": "Belly Fat Shred System",
-        "challenges": "Monthly 90-Day Challenges",
+        "challenges": "Immortal 90-Day Challenge",
+        "immortal_90": "Immortal 90-Day Challenge",
+        "immortal-90": "Immortal 90-Day Challenge",
+        "90-day-immortal": "Immortal 90-Day Challenge",
+        "90_day_immortal": "Immortal 90-Day Challenge",
         "daily-plan": "My Daily Plan",
         "coach": "AI Fitness Coach",
         "dashboard": "Athlete Performance Desk",
@@ -406,7 +410,11 @@ function FitnessAppContent() {
       "home-challenge": "180 Day Home Workout Challenge",
       "women-confidence": "Women Confidence Program (180 Days)",
       "belly-fat-shred": "Belly Fat Shred System",
-      "challenges": "Monthly 90-Day Challenges",
+      "challenges": "Immortal 90-Day Challenge",
+      "immortal_90": "Immortal 90-Day Challenge",
+      "immortal-90": "Immortal 90-Day Challenge",
+      "90-day-immortal": "Immortal 90-Day Challenge",
+      "90_day_immortal": "Immortal 90-Day Challenge",
       "daily-plan": "My Daily Plan",
       "coach": "AI Fitness Coach",
       "dashboard": "Athlete Performance Desk",
@@ -663,7 +671,10 @@ function FitnessAppContent() {
               {currentView === "women-confidence" && (
                 <WomenConfidenceProgram />
               )}
-              {["home-workout-challenge", "180-day-challenge", "home-challenge", "challenges", "challenge-engine", "workout-engine"].includes(currentView) && (
+              {["challenges", "immortal-90", "immortal_90", "90-day-immortal", "90_day_immortal", "immortal", "immortal-challenge", "flagship-90"].includes(currentView) && (
+                <FitnessChallenges />
+              )}
+              {["home-workout-challenge", "180-day-challenge", "home-challenge"].includes(currentView) && (
                 <HomeWorkoutChallengeView />
               )}
               {currentView === "lifestyle-academy" && (

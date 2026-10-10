@@ -298,8 +298,14 @@ export function getHomeWorkoutForDay(
         const homeOverrides = parsed[`home_180_${trackKey}`] || parsed.home_180 || parsed["180_day_home"] || {};
         const cycleKey = `cycle_${dayInWeek}`;
         const dayOverride = homeOverrides[String(safeDay)] || homeOverrides[cycleKey];
-        if (dayOverride && Array.isArray(dayOverride.exercises) && dayOverride.exercises.length > 0) {
-          const exercisesFromOverride: HomeExercise[] = dayOverride.exercises.map((ovEx: any, idx: number) => ({
+        if (dayOverride) {
+          const rawTierList = (level.toLowerCase().includes("beg") && (dayOverride.levels?.beginner?.length ? dayOverride.levels.beginner : dayOverride.beginnerExercises))
+            || (level.toLowerCase().includes("adv") && (dayOverride.levels?.advanced?.length ? dayOverride.levels.advanced : dayOverride.advancedExercises))
+            || (level.toLowerCase().includes("inter") && (dayOverride.levels?.intermediate?.length ? dayOverride.levels.intermediate : dayOverride.intermediateExercises))
+            || dayOverride.exercises;
+
+          if (Array.isArray(rawTierList) && rawTierList.length > 0) {
+            const exercisesFromOverride: HomeExercise[] = rawTierList.map((ovEx: any, idx: number) => ({
             id: ovEx.id || `home_ov_d${safeDay}_${idx + 1}`,
             name: ovEx.exerciseName || ovEx.name,
             targetMuscles: Array.isArray(ovEx.muscleGroup) ? ovEx.muscleGroup : [ovEx.muscleGroup || targets[0] || "Full Body"],
@@ -340,7 +346,8 @@ export function getHomeWorkoutForDay(
           } as any;
         }
       }
-    } catch (e) {
+    }
+  } catch (e) {
       console.warn("Home workout overrides read warning:", e);
     }
   }

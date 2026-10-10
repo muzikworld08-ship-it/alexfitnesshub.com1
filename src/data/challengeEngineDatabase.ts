@@ -256,28 +256,52 @@ export function getWorkoutForProgramAndDay(
         const progOverrides = parsed[normId] || parsed[programId] || (track ? parsed[`${normId}_${track}`] : undefined);
         if (progOverrides) {
           const dayOverride = progOverrides[String(safeDay)] || progOverrides[`cycle_${cycleDay}`];
-          if (dayOverride && Array.isArray(dayOverride.exercises) && dayOverride.exercises.length > 0) {
-            return {
-              meta: {
-                dayNumber: safeDay,
-                programId: normId as any,
-                title: dayOverride.title || `Day ${safeDay}: ${dayOverride.category || "Targeted Split"}`,
-                category: dayOverride.category || "Targeted Split",
-                targetMuscles: dayOverride.targetMuscles || ["Full Body"],
-                estimatedDuration: dayOverride.estimatedDuration || "45-60 mins",
-                estimatedCalories: dayOverride.estimatedCalories || 480,
-                isRestDay: !!dayOverride.isRestDay,
-                isCardioOnly: !!dayOverride.isCardioOnly,
-                cardioDistance: dayOverride.cardioDistance,
-                guidelines: dayOverride.guidelines || [
-                  `Focus: ${dayOverride.category || "Workout Session"}.`,
-                  "Progressive overload and deliberate tempo on every set.",
-                  "Rest adequately between sets."
-                ],
-                coachingNotes: dayOverride.coachingNotes || `${dayOverride.category || "Workout"} - execute with strict form.`
-              },
-              exercises: dayOverride.exercises
-            };
+          if (dayOverride) {
+            let chosenExercises = Array.isArray(dayOverride.exercises) ? dayOverride.exercises : [];
+            const requestedLevel = (
+              trackOrUser?.fitnessLevel || 
+              trackOrUser?.difficulty || 
+              (typeof trackOrUser === "string" ? trackOrUser : "") ||
+              (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level") || "") : "")
+            ).toLowerCase();
+
+            if (requestedLevel) {
+              if (requestedLevel.includes("beg") && (dayOverride.levels?.beginner?.length || dayOverride.beginnerExercises?.length)) {
+                chosenExercises = dayOverride.levels?.beginner || dayOverride.beginnerExercises;
+              } else if (requestedLevel.includes("adv") && (dayOverride.levels?.advanced?.length || dayOverride.advancedExercises?.length)) {
+                chosenExercises = dayOverride.levels?.advanced || dayOverride.advancedExercises;
+              } else if (requestedLevel.includes("inter") && (dayOverride.levels?.intermediate?.length || dayOverride.intermediateExercises?.length)) {
+                chosenExercises = dayOverride.levels?.intermediate || dayOverride.intermediateExercises;
+              }
+            }
+
+            if (!chosenExercises.length) {
+              chosenExercises = dayOverride.levels?.intermediate || dayOverride.levels?.beginner || dayOverride.levels?.advanced || dayOverride.intermediateExercises || dayOverride.beginnerExercises || dayOverride.advancedExercises || [];
+            }
+
+            if (Array.isArray(chosenExercises) && chosenExercises.length > 0) {
+              return {
+                meta: {
+                  dayNumber: safeDay,
+                  programId: normId as any,
+                  title: dayOverride.title || `Day ${safeDay}: ${dayOverride.category || "Targeted Split"}`,
+                  category: dayOverride.category || "Targeted Split",
+                  targetMuscles: dayOverride.targetMuscles || ["Full Body"],
+                  estimatedDuration: dayOverride.estimatedDuration || "45-60 mins",
+                  estimatedCalories: dayOverride.estimatedCalories || 480,
+                  isRestDay: !!dayOverride.isRestDay,
+                  isCardioOnly: !!dayOverride.isCardioOnly,
+                  cardioDistance: dayOverride.cardioDistance,
+                  guidelines: dayOverride.guidelines || [
+                    `Focus: ${dayOverride.category || "Workout Session"}.`,
+                    "Progressive overload and deliberate tempo on every set.",
+                    "Rest adequately between sets."
+                  ],
+                  coachingNotes: dayOverride.coachingNotes || `${dayOverride.category || "Workout"} - execute with strict form.`
+                },
+                exercises: chosenExercises
+              };
+            }
           }
         }
       }
