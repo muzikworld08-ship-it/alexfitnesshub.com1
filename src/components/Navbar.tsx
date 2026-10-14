@@ -4,7 +4,8 @@ import {
   Menu, X, Shield, Lock, Award, ChevronDown, Calendar, Flame, 
   Dumbbell, Sparkles, BookOpen, Activity, Heart, Users, Video, 
   Bookmark, BarChart3, Calculator, Crown, Star, ArrowRight, LogOut,
-  ShoppingBag, RotateCcw, Bell, BellRing, Mail, Clock, FileText
+  ShoppingBag, RotateCcw, Bell, BellRing, Mail, Clock, FileText,
+  Layers, Repeat, Trophy
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import Logo from "./Logo";
@@ -70,6 +71,8 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
   const PREMIUM_PROGRAMS_MAP: Record<string, string> = {
     "challenges": "Immortal 90-Day Challenge",
     "immortal_90": "Immortal 90-Day Challenge",
+    "immortal-90": "Immortal 90-Day Challenge",
+    "challenge-engine": "Challenge Engine Hub",
     "home-workout-challenge": "180 Day Home Workout Challenge",
     "180-day-challenge": "180 Day Home Workout Challenge",
     "home-challenge": "180 Day Home Workout Challenge",
@@ -161,17 +164,20 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
   };
 
   // Unified single drawer menu items (dynamic based on subscription)
+  // Unified single drawer menu items (dynamic based on subscription)
   const drawerMenuItems = isPremium ? [
     { id: "progress-tracker", label: "Progress & Activity Tracker", desc: "Workouts, cardio, water intake, meals & 7-day reports", icon: Activity, color: "text-emerald-600 bg-emerald-50", isHighlight: true },
+    { id: "challenges", label: "Immortal 90-Day Challenge", desc: "Flagship 90-day hypertrophy, strength & 7-day split protocol", icon: Award, color: "text-red-600 bg-red-50", isHighlight: true },
+    { id: "challenge-engine", label: "Challenge Engine Hub", desc: "All challenge programs, protocols & workout architect", icon: Layers, color: "text-indigo-600 bg-indigo-50" },
     { id: "dashboard", label: "Athlete Performance Desk", desc: "Your metrics, streaks & performance reports", icon: Shield, color: "text-sky-600 bg-sky-50" },
-    { id: "notification-settings", label: "Notification Settings", desc: "Alarm schedule, sound chime & email alerts", icon: Bell, color: "text-amber-600 bg-amber-50" },
-    { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
-    { id: "printable-pdfs", label: "Printable PDFs & Journals", desc: "Digital fitness workbooks, meal planners & guides", icon: FileText, color: "text-red-600 bg-red-50" },
     { id: "home-workout-challenge", label: "180 Day Home Workout Challenge", desc: "Zero equipment bodyweight transformation & 5KM cardio", icon: Dumbbell, color: "text-amber-600 bg-amber-50" },
     { id: "daily-plan", label: "My Daily Plan", desc: "Personalized daily schedule & drills", icon: Calendar, color: "text-red-600 bg-red-50" },
     { id: "women-confidence", label: "Women Confidence Program", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-50" },
     { id: "belly-fat-shred", label: "Belly Fat Shred System", desc: "5-Month core & metabolic shredding protocol", icon: Flame, color: "text-orange-600 bg-orange-50" },
+    { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
+    { id: "printable-pdfs", label: "Printable PDFs & Journals", desc: "Digital fitness workbooks, meal planners & guides", icon: FileText, color: "text-red-600 bg-red-50" },
     { id: "coach", label: "AI Fitness Coach", desc: "Personalized Gemini AI consultations", icon: Sparkles, color: "text-indigo-600 bg-indigo-50" },
+    { id: "notification-settings", label: "Notification Settings", desc: "Alarm schedule, sound chime & email alerts", icon: Bell, color: "text-amber-600 bg-amber-50" },
     { id: "home", label: "Home Page", desc: "Main portal, workout search & preview", icon: Dumbbell, color: "text-red-500 bg-red-50" },
     { id: "lifestyle-academy", label: "Programs & Academy", desc: "12-Week structured physique splits", icon: BookOpen, color: "text-blue-600 bg-blue-50" },
     { id: "library", label: "Workout Library & Drills", desc: "Full exercise directory with kinetic specs", icon: Activity, color: "text-emerald-600 bg-emerald-50" },
@@ -183,20 +189,22 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     { id: "community", label: "Community Arena", desc: "Share updates & connect with athletes", icon: Users, color: "text-teal-600 bg-teal-50" },
     { id: "success-stories", label: "Transformation Stories", desc: "Verified athlete before/after reviews", icon: Star, color: "text-yellow-600 bg-yellow-50" },
     ...((user?.role === "admin" || (user?.email && isEmailAdmin(user.email))) ? [
-      { id: "admin", label: "Admin Management Console", desc: "System settings, analytics & user controls", icon: Shield, color: "text-red-700 bg-red-100" }
+      { id: "admin", label: "Admin Management Console", desc: "System settings, analytics & user controls", icon: Shield, color: "text-red-700 bg-red-100" },
+      { id: "challenge-engine", label: "Challenge Engine Architect", desc: "Manage 90-Day & all program vertical splits, tiers & drills", icon: Repeat, color: "text-amber-700 bg-amber-100" }
     ] : [])
   ] : [
     { id: "progress-tracker", label: "Progress & Activity Tracker", desc: "Workouts, cardio, water intake, meals & 7-day reports", icon: Activity, color: "text-emerald-600 bg-emerald-50", isHighlight: true },
-    { id: "notification-settings", label: "Notification Settings", desc: "Alarm schedule, sound chime & email alerts", icon: Bell, color: "text-amber-600 bg-amber-50" },
-    { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
-    { id: "printable-pdfs", label: "Printable PDFs & Journals", desc: "Digital fitness workbooks, meal planners & guides", icon: FileText, color: "text-red-600 bg-red-50" },
-    { id: "challenges", label: "Immortal 90-Day Challenge", desc: "Flagship 90-day hypertrophy, strength & 7-day split protocol", icon: Award, color: "text-red-600 bg-red-50", isProBadge: true },
+    { id: "challenges", label: "Immortal 90-Day Challenge", desc: "Flagship 90-day hypertrophy, strength & 7-day split protocol", icon: Award, color: "text-red-600 bg-red-50", isProBadge: true, isHighlight: true },
+    { id: "challenge-engine", label: "Challenge Engine Hub", desc: "All challenge programs, split protocols & workout engine", icon: Layers, color: "text-indigo-600 bg-indigo-50", isProBadge: true },
     { id: "home-workout-challenge", label: "180 Day Home Workout Challenge", desc: "Zero equipment bodyweight transformation & 5KM cardio", icon: Dumbbell, color: "text-amber-600 bg-amber-50", isProBadge: true },
     { id: "women-confidence", label: "Women Confidence Program", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-50", isProBadge: true },
     { id: "belly-fat-shred", label: "Belly Fat Shred System", desc: "5-Month core & metabolic shredding protocol", icon: Flame, color: "text-orange-600 bg-orange-50", isProBadge: true },
     { id: "daily-plan", label: "My Daily Plan", desc: "Personalized daily schedule & drills", icon: Calendar, color: "text-red-600 bg-red-50", isProBadge: true },
     { id: "coach", label: "AI Fitness Coach", desc: "Personalized Gemini AI consultations", icon: Sparkles, color: "text-indigo-600 bg-indigo-50", isProBadge: true },
     { id: "dashboard", label: "Athlete Performance Desk", desc: "Your metrics, streaks & performance reports", icon: Shield, color: "text-sky-600 bg-sky-50", isProBadge: true },
+    { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
+    { id: "printable-pdfs", label: "Printable PDFs & Journals", desc: "Digital fitness workbooks, meal planners & guides", icon: FileText, color: "text-red-600 bg-red-50" },
+    { id: "notification-settings", label: "Notification Settings", desc: "Alarm schedule, sound chime & email alerts", icon: Bell, color: "text-amber-600 bg-amber-50" },
     { id: "home", label: "Home Page", desc: "Main portal, features & workout search", icon: Dumbbell, color: "text-red-500 bg-red-50" },
     { id: "lifestyle-academy", label: "Programs & Academy", desc: "12-Week structured physique splits", icon: BookOpen, color: "text-blue-500 bg-blue-50" },
     { id: "library", label: "Workout Library & Drills", desc: "Full exercise directory with kinetic specs", icon: Activity, color: "text-emerald-500 bg-emerald-50" },
@@ -207,7 +215,11 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     { id: "weight-trajectory", label: "Weight Trajectory Logs", desc: "Biometric weigh-in graph & checkpoints", icon: BarChart3, color: "text-emerald-600 bg-emerald-50", isProBadge: true },
     { id: "community", label: "Community Arena", desc: "Share updates & connect with athletes", icon: Users, color: "text-teal-500 bg-teal-50" },
     { id: "success-stories", label: "Transformation Stories", desc: "Verified athlete before/after reviews", icon: Star, color: "text-yellow-600 bg-yellow-50" },
-    { id: "pricing", label: "Upgrade to Premium Membership", desc: "Unlock All 4 Transformation Programs, Daily Plan & AI Coach", icon: Crown, color: "text-white bg-gradient-to-r from-red-600 to-rose-600", isHighlight: true }
+    { id: "pricing", label: "Upgrade to Premium Membership", desc: "Unlock All 4 Transformation Programs, Daily Plan & AI Coach", icon: Crown, color: "text-white bg-gradient-to-r from-red-600 to-rose-600", isHighlight: true },
+    ...((user?.role === "admin" || (user?.email && isEmailAdmin(user.email))) ? [
+      { id: "admin", label: "Admin Management Console", desc: "System settings, analytics & user controls", icon: Shield, color: "text-red-700 bg-red-100" },
+      { id: "challenge-engine", label: "Challenge Engine Architect", desc: "Manage 90-Day & all program vertical splits, tiers & drills", icon: Repeat, color: "text-amber-700 bg-amber-100" }
+    ] : [])
   ];
 
   return (
@@ -231,7 +243,202 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
             </a>
           </div>
 
-          {/* Center spacer: unified single navigation codebase across both mobile and desktop */}
+          {/* Desktop & Tablet Navigation Quick Bar */}
+          <nav className="hidden md:flex items-center gap-1 lg:gap-2 mx-2">
+            {/* Immortal 90 Flagship */}
+            <button
+              onClick={() => handleCustomNav("challenges")}
+              className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
+                currentView === "challenges" || currentView === "immortal-90"
+                  ? "bg-[#E53935] text-white shadow-md shadow-red-500/25 ring-2 ring-red-300"
+                  : "text-slate-800 hover:text-[#E53935] hover:bg-red-50/80 border border-slate-200/80"
+              }`}
+              title="Immortal 90-Day Challenge Hub"
+            >
+              <Award className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>Immortal 90</span>
+              <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-mono font-bold">90D</span>
+            </button>
+
+            {/* Challenge Engine Hub */}
+            <button
+              onClick={() => handleCustomNav("challenge-engine")}
+              className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
+                currentView === "challenge-engine"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/25 ring-2 ring-indigo-300"
+                  : "text-slate-800 hover:text-indigo-600 hover:bg-indigo-50/80 border border-slate-200/80"
+              }`}
+              title="Challenge Engine & Split Architecture Hub"
+            >
+              <Layers className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+              <span>Challenge Engine</span>
+            </button>
+
+            {/* 180D Home Challenge (Large screens) */}
+            <button
+              onClick={() => handleCustomNav("home-workout-challenge")}
+              className={`hidden lg:flex px-2.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider items-center gap-1.5 transition-all cursor-pointer ${
+                currentView === "home-workout-challenge"
+                  ? "bg-amber-600 text-white shadow-md shadow-amber-600/25"
+                  : "text-slate-700 hover:text-amber-600 hover:bg-amber-50/80 border border-transparent hover:border-amber-200"
+              }`}
+              title="180 Day Home Workout Challenge"
+            >
+              <Dumbbell className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span>180D Home</span>
+            </button>
+
+            {/* Programs Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="px-2.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-700 hover:text-[#E53935] hover:bg-slate-50 flex items-center gap-1 transition-all cursor-pointer border border-transparent hover:border-slate-200"
+                aria-expanded={isDropdownOpen}
+              >
+                <span>Programs</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isDropdownOpen ? "rotate-180 text-red-600" : "text-slate-400"}`} />
+              </button>
+
+              <AnimatePresence>
+                {isDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 overflow-hidden"
+                  >
+                    <div className="text-[10px] font-mono font-black uppercase text-slate-400 px-3 py-1.5 border-b border-slate-100">
+                      FLAGSHIP ATHLETE PROGRAMS
+                    </div>
+                    <div className="space-y-1 mt-1">
+                      <button
+                        onClick={() => handleCustomNav("challenges")}
+                        className="w-full text-left p-2 rounded-xl hover:bg-red-50 flex items-center gap-2.5 transition-all cursor-pointer text-slate-800"
+                      >
+                        <div className="p-1.5 rounded-lg bg-red-100 text-red-600">
+                          <Award className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            Immortal 90-Day Challenge
+                            <span className="text-[9px] bg-red-500 text-white px-1 rounded font-mono font-bold">HOT</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500">7-day rolling split & hypertrophy protocol</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => handleCustomNav("challenge-engine")}
+                        className="w-full text-left p-2 rounded-xl hover:bg-indigo-50 flex items-center gap-2.5 transition-all cursor-pointer text-slate-800"
+                      >
+                        <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-600">
+                          <Layers className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900">Challenge Engine Hub</div>
+                          <div className="text-[10px] text-slate-500">All programs & schedule architect</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => handleCustomNav("home-workout-challenge")}
+                        className="w-full text-left p-2 rounded-xl hover:bg-amber-50 flex items-center gap-2.5 transition-all cursor-pointer text-slate-800"
+                      >
+                        <div className="p-1.5 rounded-lg bg-amber-100 text-amber-600">
+                          <Dumbbell className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900">180 Day Home Workout</div>
+                          <div className="text-[10px] text-slate-500">Zero equipment bodyweight transformation</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => handleCustomNav("women-confidence")}
+                        className="w-full text-left p-2 rounded-xl hover:bg-rose-50 flex items-center gap-2.5 transition-all cursor-pointer text-slate-800"
+                      >
+                        <div className="p-1.5 rounded-lg bg-rose-100 text-rose-600">
+                          <Heart className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900">Women Confidence Program</div>
+                          <div className="text-[10px] text-slate-500">Full 180-Day glute & tone split</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => handleCustomNav("belly-fat-shred")}
+                        className="w-full text-left p-2 rounded-xl hover:bg-orange-50 flex items-center gap-2.5 transition-all cursor-pointer text-slate-800"
+                      >
+                        <div className="p-1.5 rounded-lg bg-orange-100 text-orange-600">
+                          <Flame className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900">Belly Fat Shred System</div>
+                          <div className="text-[10px] text-slate-500">Core conditioning & metabolic burn</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => handleCustomNav("workout-generator")}
+                        className="w-full text-left p-2 rounded-xl hover:bg-indigo-50 flex items-center gap-2.5 transition-all cursor-pointer text-slate-800"
+                      >
+                        <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-600">
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900">AI Workout Generator</div>
+                          <div className="text-[10px] text-slate-500">Custom routine generated in seconds</div>
+                        </div>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Tracker */}
+            <button
+              onClick={() => handleCustomNav("progress-tracker")}
+              className={`hidden xl:flex px-2.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider items-center gap-1.5 transition-all cursor-pointer ${
+                currentView === "progress-tracker"
+                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25"
+                  : "text-slate-700 hover:text-emerald-600 hover:bg-emerald-50/80 border border-transparent hover:border-emerald-200"
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <span>Tracker</span>
+            </button>
+
+            {/* Store */}
+            <button
+              onClick={() => handleCustomNav("store")}
+              className={`hidden xl:flex px-2.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider items-center gap-1.5 transition-all cursor-pointer ${
+                currentView === "store"
+                  ? "bg-red-600 text-white shadow-md shadow-red-600/25"
+                  : "text-slate-700 hover:text-[#E53935] hover:bg-red-50/80 border border-transparent hover:border-red-200"
+              }`}
+            >
+              <ShoppingBag className="w-3.5 h-3.5 text-red-500 shrink-0" />
+              <span>Store</span>
+            </button>
+
+            {/* Admin Console Direct Link (if admin) */}
+            {(user?.role === "admin" || (user?.email && isEmailAdmin(user.email))) && (
+              <button
+                onClick={() => handleCustomNav("admin")}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider text-red-700 bg-red-100 hover:bg-red-200 border border-red-300 flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                title="Open Admin Management Console"
+              >
+                <Shield className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                <span>Admin</span>
+              </button>
+            )}
+          </nav>
+
+          {/* Spacer */}
           <div className="flex-1" />
 
           {/* Right Control Bar (Only Sign In and Hamburger Menu button) */}

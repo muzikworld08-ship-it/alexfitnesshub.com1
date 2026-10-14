@@ -9,8 +9,9 @@ export interface SupabaseImageOptions {
   useProxyFallback?: boolean; // Default true for non-supabase URLs
 }
 
-// Default fallback project URL
-const DEFAULT_SUPABASE_PROJECT_URL = "https://ilfjiotgkdedgssachoe.supabase.co";
+// Default fallback project URL (updated to new project sqaxwqtjvaixqytnluiy)
+const DEFAULT_SUPABASE_PROJECT_URL = "https://sqaxwqtjvaixqytnluiy.supabase.co";
+const LEGACY_SUPABASE_PROJECT_URL = "https://ilfjiotgkdedgssachoe.supabase.co";
 
 /**
  * Transforms an image URL into a CDN-optimized Supabase Storage render URL.
@@ -26,6 +27,11 @@ export function getSupabaseCdnUrl(
   if (!src) return "";
 
   let trimmed = src.trim();
+
+  // Seamlessly rewrite legacy Supabase project references to the new project
+  if (trimmed.includes("ilfjiotgkdedgssachoe.supabase.co")) {
+    trimmed = trimmed.replace(/ilfjiotgkdedgssachoe\.supabase\.co/g, "sqaxwqtjvaixqytnluiy.supabase.co");
+  }
 
   // Upgrade http to https to avoid mixed-content blocks on deployed HTTPS sites
   if (trimmed.startsWith("http://")) {

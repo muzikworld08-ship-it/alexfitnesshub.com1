@@ -217,3 +217,46 @@ DROP POLICY IF EXISTS "Allow public access to saved_workouts" ON public.saved_wo
 CREATE POLICY "Allow public access to saved_workouts" ON public.saved_workouts FOR ALL USING (true) WITH CHECK (true);
 
 
+-- -------------------------------------------------------
+-- 8. PROGRAM SCHEDULES & OVERRIDES TABLE
+-- Resilient dual-persistence across Render, Supabase and Firebase
+-- -------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.program_schedules (
+  id TEXT PRIMARY KEY,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.program_schedules ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public access to program_schedules" ON public.program_schedules;
+CREATE POLICY "Allow public access to program_schedules" ON public.program_schedules FOR ALL USING (true) WITH CHECK (true);
+
+
+-- -------------------------------------------------------
+-- 9. CUSTOM CHALLENGES TABLE
+-- -------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.custom_challenges (
+  id TEXT PRIMARY KEY,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.custom_challenges ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public access to custom_challenges" ON public.custom_challenges;
+CREATE POLICY "Allow public access to custom_challenges" ON public.custom_challenges FOR ALL USING (true) WITH CHECK (true);
+
+
+-- -------------------------------------------------------
+-- 10. SYSTEM SETTINGS TABLE
+-- -------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.system_settings (
+  id TEXT PRIMARY KEY,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public access to system_settings" ON public.system_settings;
+CREATE POLICY "Allow public access to system_settings" ON public.system_settings FOR ALL USING (true) WITH CHECK (true);
+
+

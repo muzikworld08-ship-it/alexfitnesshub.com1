@@ -362,6 +362,75 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "orderNumber", "customerName", "customerEmail", "customerPhone", "items", "totalAmount", "paymentStatus", "orderStatus"]
+    },
+    "PrintablePdfProduct": {
+      "title": "Printable PDF Digital Product",
+      "description": "Store PDF product catalog item with master file and personalization config.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "shortDescription": { "type": "string" },
+        "fullDescription": { "type": "string" },
+        "priceNGN": { "type": "number" },
+        "originalPriceNGN": { "type": "number" },
+        "coverImage": { "type": "string" },
+        "pageCount": { "type": "number" },
+        "category": { "type": "string" },
+        "masterPdfFilename": { "type": "string" },
+        "masterPdfCloudUrl": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "salesCount": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "priceNGN"]
+    },
+    "PrintablePdfFile": {
+      "title": "Printable PDF File Master",
+      "description": "Permanent chunked master PDF or asset storage backup.",
+      "type": "object",
+      "properties": {
+        "filename": { "type": "string" },
+        "safeDocId": { "type": "string" },
+        "mimeType": { "type": "string" },
+        "size": { "type": "number" },
+        "totalChunks": { "type": "number" },
+        "chunkSize": { "type": "number" },
+        "base64": { "type": "string" },
+        "cloudUrl": { "type": "string" },
+        "uploadedAt": { "type": "string" }
+      },
+      "required": ["filename", "safeDocId"]
+    },
+    "PrintablePdfChunk": {
+      "title": "Printable PDF Chunk",
+      "description": "Individual 450KB binary chunk of a master PDF.",
+      "type": "object",
+      "properties": {
+        "fileDocId": { "type": "string" },
+        "chunkIndex": { "type": "number" },
+        "totalChunks": { "type": "number" },
+        "data": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["fileDocId", "chunkIndex", "data"]
+    },
+    "PrintablePdfOrder": {
+      "title": "Printable PDF Order",
+      "description": "Order records for purchased printable PDF digital downloads.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "productTitle": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "paymentReference": { "type": "string" },
+        "paymentStatus": { "type": "string", "enum": ["pending", "paid", "failed"] },
+        "downloadToken": { "type": "string" },
+        "downloadCount": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "productId", "customerEmail", "paymentReference"]
     }
   },
   "firestore": {
@@ -440,6 +509,22 @@
     "mail/{mailId}": {
       "schema": "Mail",
       "description": "Email queue for Trigger Email extension."
+    },
+    "printable_pdf_products/{productId}": {
+      "schema": "PrintablePdfProduct",
+      "description": "Digital printable PDF products store catalog."
+    },
+    "printable_pdf_files/{fileId}": {
+      "schema": "PrintablePdfFile",
+      "description": "Master PDF metadata and base64 store."
+    },
+    "printable_pdf_chunks/{chunkId}": {
+      "schema": "PrintablePdfChunk",
+      "description": "450KB chunk storage documents for persistent PDF reconstitution."
+    },
+    "printable_pdf_orders/{orderId}": {
+      "schema": "PrintablePdfOrder",
+      "description": "Customer digital goods purchases and download tokens."
     }
   }
 }

@@ -1,6 +1,6 @@
 import { PrintablePdfProduct, PrintablePdfOrder } from "../types/printablePdf";
 import { db } from "../lib/firebase";
-import { doc, setDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, deleteDoc, collection, getDocs, getDoc } from "firebase/firestore";
 
 export interface InitializeOrderParams {
   productId: string;
@@ -83,34 +83,71 @@ class PrintablePdfService {
   async getProducts(): Promise<PrintablePdfProduct[]> {
     try {
       const res = await fetch("/api/printable-pdfs");
-      if (!res.ok) throw new Error("Failed to load PDF products");
-      const data = await res.json();
-      
-      // If server returned deleted IDs, merge into client storage
-      if (Array.isArray(data.deletedIds)) {
-        data.deletedIds.forEach((id: string) => {
-          if (id) recordClientDeletedPdfId(id);
-        });
-      }
+      if (res.ok) {
+        const data = await res.json();
+        
+        // If server returned deleted IDs, merge into client storage
+        if (Array.isArray(data.deletedIds)) {
+          data.deletedIds.forEach((id: string) => {
+            if (id) recordClientDeletedPdfId(id);
+          });
+        }
 
-      const deletedIds = getClientDeletedPdfIds();
-      return (data.products || []).filter((p: PrintablePdfProduct) => !deletedIds.has(p.id) && !(p as any).isDeleted);
+        const deletedIds = getClientDeletedPdfIds();
+        const active = (data.products || []).filter((p: PrintablePdfProduct) => !deletedIds.has(p.id) && !(p as any).isDeleted);
+        if (active.length > 0) return active;
+      }
     } catch (err) {
-      console.warn("[PrintablePdfService] getProducts error:", err);
-      return [];
+      console.warn("[PrintablePdfService] getProducts API fetch error, checking Firestore fallback:", err);
     }
+
+    // Direct Firestore fallback (preserves user's posted PDFs even during Render spin-down / reboot)
+    if (db) {
+      try {
+        const snap = await getDocs(collection(db, "printable_pdf_products"));
+        if (!snap.empty) {
+          const deletedIds = getClientDeletedPdfIds();
+          const fallbackList: PrintablePdfProduct[] = [];
+          snap.docs.forEach(docSnap => {
+            const p = docSnap.data() as PrintablePdfProduct;
+            if (p && p.id && !deletedIds.has(p.id) && !(p as any).isDeleted && p.isActive !== false) {
+              fallbackList.push({ ...p, id: p.id });
+            }
+          });
+          if (fallbackList.length > 0) return fallbackList;
+        }
+      } catch (fbErr) {
+        console.warn("[PrintablePdfService] Firestore fallback notice:", fbErr);
+      }
+    }
+
+    return [];
   }
 
   async getProductById(id: string): Promise<PrintablePdfProduct | null> {
     try {
       const res = await fetch(`/api/printable-pdfs/${encodeURIComponent(id)}`);
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data.product || null;
+      if (res.ok) {
+        const data = await res.json();
+        if (data.product) return data.product;
+      }
     } catch (err) {
-      console.warn("[PrintablePdfService] getProductById error:", err);
-      return null;
+      console.warn("[PrintablePdfService] getProductById network error, checking Firestore:", err);
     }
+
+    // Direct Firestore fallback
+    if (db && id) {
+      try {
+        const docSnap = await getDoc(doc(db, "printable_pdf_products", id));
+        if (docSnap.exists()) {
+          return { ...docSnap.data(), id: docSnap.id } as PrintablePdfProduct;
+        }
+      } catch (fbErr) {
+        console.warn("[PrintablePdfService] Firestore getProductById error:", fbErr);
+      }
+    }
+
+    return null;
   }
 
   async initializeOrder(params: InitializeOrderParams): Promise<InitializeOrderResponse> {
@@ -173,13 +210,40 @@ class PrintablePdfService {
   // --- Admin API Methods ---
 
   async getAdminProducts(): Promise<PrintablePdfProduct[]> {
-    const res = await fetch("/api/admin/printable-pdfs", {
-      headers: this.getAuthHeaders()
-    });
-    if (!res.ok) throw new Error("Failed to fetch admin products");
-    const data = await res.json();
-    const deletedIds = getClientDeletedPdfIds();
-    return (data.products || []).filter((p: PrintablePdfProduct) => !deletedIds.has(p.id));
+    try {
+      const res = await fetch("/api/admin/printable-pdfs", {
+        headers: this.getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const deletedIds = getClientDeletedPdfIds();
+        const prods = (data.products || []).filter((p: PrintablePdfProduct) => !deletedIds.has(p.id));
+        if (prods.length > 0) return prods;
+      }
+    } catch (apiErr) {
+      console.warn("[PrintablePdfService] getAdminProducts API notice, checking Firestore:", apiErr);
+    }
+
+    if (db) {
+      try {
+        const snap = await getDocs(collection(db, "printable_pdf_products"));
+        if (!snap.empty) {
+          const deletedIds = getClientDeletedPdfIds();
+          const list: PrintablePdfProduct[] = [];
+          snap.docs.forEach(docSnap => {
+            const p = docSnap.data() as PrintablePdfProduct;
+            if (p && p.id && !deletedIds.has(p.id)) {
+              list.push({ ...p, id: p.id });
+            }
+          });
+          if (list.length > 0) return list;
+        }
+      } catch (fbErr) {
+        console.warn("[PrintablePdfService] getAdminProducts Firestore notice:", fbErr);
+      }
+    }
+
+    return [];
   }
 
   async saveProduct(product: Partial<PrintablePdfProduct>): Promise<PrintablePdfProduct> {
@@ -244,6 +308,54 @@ class PrintablePdfService {
     if (!res.ok || !data.success) {
       throw new Error(data.error || "Failed to upload asset.");
     }
+
+    // Direct browser Firestore backup for dual-layer redundancy across Render container restarts
+    if (db && data.filename) {
+      try {
+        const safeDocId = data.filename.replace(/[^a-zA-Z0-9_.-]/g, "_");
+        const match = fileData.match(/^data:([^;]+);base64,(.+)$/);
+        const rawBase64 = match ? match[2] : fileData;
+        const CHUNK_SIZE = 450000;
+        const totalChunks = Math.ceil(rawBase64.length / CHUNK_SIZE) || 1;
+
+        const metaDoc: any = {
+          filename: data.filename,
+          safeDocId,
+          mimeType,
+          totalChunks,
+          chunkSize: CHUNK_SIZE,
+          isChunked: true,
+          uploadedAt: new Date().toISOString()
+        };
+        if (rawBase64.length < 300000) {
+          metaDoc.base64 = rawBase64;
+        }
+
+        await setDoc(doc(db, "printable_pdf_files", safeDocId), metaDoc, { merge: true });
+
+        for (let i = 0; i < totalChunks; i++) {
+          const chunkStr = rawBase64.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+          await setDoc(doc(db, "printable_pdf_files", safeDocId, "chunks", String(i)), {
+            fileDocId: safeDocId,
+            chunkIndex: i,
+            totalChunks,
+            data: chunkStr,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+
+          await setDoc(doc(db, "printable_pdf_chunks", `${safeDocId}_chunk_${i}`), {
+            fileDocId: safeDocId,
+            chunkIndex: i,
+            totalChunks,
+            data: chunkStr,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        }
+      } catch (clientErr) {
+        console.warn("[PDF Service] Client-side Firestore mirror notice:", clientErr);
+      }
+    }
+
     return { url: data.url, filename: data.filename };
   }
 

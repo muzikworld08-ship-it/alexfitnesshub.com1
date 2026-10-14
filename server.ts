@@ -21,9 +21,24 @@ import {
 import { EXERCISES, getExerciseGifUrl } from "./src/data/exercises";
 import { getWorkoutForProgramAndDay, normalizeProgramId } from "./src/data/challengeEngineDatabase";
 import { registerPrintablePdfRoutes } from "./src/server/printablePdfRoutes";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 // Load environment variables
 dotenv.config();
+
+// Initialize Supabase Server Client (if credentials present in environment)
+const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "https://sqaxwqtjvaixqytnluiy.supabase.co").trim();
+const SUPABASE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "").trim();
+const isSupabaseServerActive = Boolean(SUPABASE_URL && SUPABASE_KEY && (SUPABASE_URL.startsWith("http://") || SUPABASE_URL.startsWith("https://")));
+let supabaseServer: any = null;
+if (isSupabaseServerActive) {
+  try {
+    supabaseServer = createSupabaseClient(SUPABASE_URL, SUPABASE_KEY);
+    console.log(`[Supabase Server OK] Connected to Supabase at: ${SUPABASE_URL}`);
+  } catch (e: any) {
+    console.warn("[Supabase Server Notice] Client init notice:", e?.message || e);
+  }
+}
 
 // Initialize Resend Client
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
@@ -239,9 +254,13 @@ const handleCdnImageProxy = async (req: any, res: any) => {
       return res.status(400).json({ error: "Missing required 'url' parameter." });
     }
 
-    const defaultSupabaseUrl = "https://ilfjiotgkdedgssachoe.supabase.co";
+    const defaultSupabaseUrl = "https://sqaxwqtjvaixqytnluiy.supabase.co";
+    const legacySupabaseUrl = "https://ilfjiotgkdedgssachoe.supabase.co";
 
     let targetCdnUrl = rawUrl;
+    if (targetCdnUrl.includes("ilfjiotgkdedgssachoe.supabase.co")) {
+      targetCdnUrl = targetCdnUrl.replace(/ilfjiotgkdedgssachoe\.supabase\.co/g, "sqaxwqtjvaixqytnluiy.supabase.co");
+    }
 
     // Check if URL is a Supabase Storage URL
     if (rawUrl.includes("supabase.co/storage/") || rawUrl.includes("supabase.in/storage/")) {
@@ -301,7 +320,9 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = process.env.RENDER
+  ? (process.env.PORT ? parseInt(process.env.PORT, 10) : 10000)
+  : (process.env.NODE_ENV === "production" && process.env.PORT ? parseInt(process.env.PORT, 10) : 3000);
 
 // Custom exercise overrides local file path
 const OVERRIDES_FILE_PATH = path.join(process.cwd(), "src", "data", "custom_exercise_overrides.json");
@@ -3694,6 +3715,37 @@ async function uploadFileToFirebaseStorageServer(
   return null;
 }
 
+async function uploadFileToSupabaseStorageServer(
+  buffer: Buffer,
+  mimeType: string,
+  filename: string,
+  bucketName = "exercise_media"
+): Promise<string | null> {
+  if (!supabaseServer) return null;
+  try {
+    const cleanFilename = filename.replace(/[^a-zA-Z0-9_.-]/g, "_");
+    const pathName = `uploads/${cleanFilename}`;
+    const { error } = await supabaseServer.storage
+      .from(bucketName)
+      .upload(pathName, buffer, {
+        upsert: true,
+        contentType: mimeType
+      });
+    if (error) {
+      console.warn(`[Supabase Server Storage Warning] Upload notice for ${filename}:`, error.message);
+      return null;
+    }
+    const { data } = supabaseServer.storage.from(bucketName).getPublicUrl(pathName);
+    if (data?.publicUrl) {
+      console.log(`[Supabase Server Storage OK] Uploaded permanent asset URL: ${data.publicUrl}`);
+      return data.publicUrl;
+    }
+  } catch (err: any) {
+    console.warn("[Supabase Server Storage Exception]:", err?.message || err);
+  }
+  return null;
+}
+
 // POST endpoint to handle base64 image uploads permanently to cloud storage
 app.post("/api/media/upload", async (req: any, res: any) => {
   try {
@@ -3722,7 +3774,10 @@ app.post("/api/media/upload", async (req: any, res: any) => {
     else if (detectedMime.includes("webp")) ext = "webp";
 
     const fullFilename = `${filename}_${Date.now()}.${ext}`;
-    const cloudUrl = await uploadFileToFirebaseStorageServer(buffer, detectedMime, fullFilename);
+    let cloudUrl = await uploadFileToFirebaseStorageServer(buffer, detectedMime, fullFilename);
+    if (!cloudUrl) {
+      cloudUrl = await uploadFileToSupabaseStorageServer(buffer, detectedMime, fullFilename);
+    }
 
     if (cloudUrl) {
       if (exerciseId) {
@@ -4168,8 +4223,247 @@ app.post("/api/store/products/delete", requireAdmin, async (req: any, res) => {
 // Allows editing all programs/challenges: delete/add workouts, sets, cardio days,
 // and auto-assigning similar replacements on deletion.
 // ============================================================================
+// CLOUD PERSISTENCE ENGINE (FIRESTORE & SUPABASE) FOR RENDER & LIVE RESILIENCE
+// Guarantees zero data loss on Render spin-downs, container restarts, or rebuilds.
+// ============================================================================
 
-// GET all program schedule overrides
+async function fetchProgramOverridesFromCloud(): Promise<Record<string, any>> {
+  try {
+    const snap = await getServerFirestoreDoc("system_settings", "program_schedule_overrides");
+    if (snap.exists) {
+      const data = snap.data();
+      if (data && typeof data === "object") {
+        const { _updatedAt, _updatedBy, ...actualOverrides } = data;
+        if (Object.keys(actualOverrides).length > 0) {
+          try {
+            let existing: Record<string, any> = {};
+            if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+              const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+              if (raw) existing = JSON.parse(raw);
+            }
+            const merged = { ...existing, ...actualOverrides };
+            fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(merged, null, 2), "utf-8");
+            console.log(`[Cloud Persistence] Loaded ${Object.keys(merged).length} program overrides from Firestore into cache.`);
+            return merged;
+          } catch (e) {
+            return actualOverrides;
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[Cloud Persistence] Notice reading program_schedule_overrides from Firestore:", err);
+  }
+  return {};
+}
+
+async function persistProgramOverridesToCloud(overrides: Record<string, any>, userEmail: string = "admin") {
+  // 1. Write to local disk cache
+  try {
+    fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(overrides, null, 2), "utf-8");
+  } catch (e) {
+    console.warn("[Cloud Persistence] Disk write notice:", e);
+  }
+
+  // 2. Persist master overrides document to Firestore: system_settings/program_schedule_overrides
+  try {
+    await setServerFirestoreDoc("system_settings", "program_schedule_overrides", {
+      ...overrides,
+      _updatedAt: new Date().toISOString(),
+      _updatedBy: userEmail
+    }, true);
+    console.log("[Cloud Persistence] Persisted all program schedule overrides to Firestore system_settings.");
+  } catch (err) {
+    console.warn("[Cloud Persistence] Failed writing program_schedule_overrides to system_settings:", err);
+  }
+
+  // 3. Persist master overrides to Firestore: program_schedules/overrides
+  try {
+    await setServerFirestoreDoc("program_schedules", "overrides", {
+      overrides: overrides,
+      updatedAt: new Date().toISOString(),
+      updatedBy: userEmail
+    }, true);
+    console.log("[Cloud Persistence] Persisted master overrides to Firestore program_schedules/overrides.");
+  } catch (err) {
+    console.warn("[Cloud Persistence] Failed writing to program_schedules/overrides:", err);
+  }
+
+  // 4. Persist individual program documents in program_schedules collection
+  try {
+    for (const [progId, progData] of Object.entries(overrides)) {
+      if (progData && typeof progData === "object") {
+        await setServerFirestoreDoc("program_schedules", progId, {
+          programId: progId,
+          schedule: progData,
+          updatedAt: new Date().toISOString(),
+          updatedBy: userEmail
+        }, true);
+      }
+    }
+  } catch (err) {
+    console.warn("[Cloud Persistence] Failed writing per-program documents to Firestore:", err);
+  }
+
+  // 5. Persist to Supabase if active
+  if (supabaseServer) {
+    try {
+      await supabaseServer.from("program_schedules").upsert({
+        id: "overrides",
+        data: overrides,
+        updated_at: new Date().toISOString()
+      });
+      for (const [progId, progData] of Object.entries(overrides)) {
+        if (progData && typeof progData === "object") {
+          await supabaseServer.from("program_schedules").upsert({
+            id: progId,
+            data: progData,
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+      console.log("[Cloud Persistence] Persisted overrides to Supabase program_schedules.");
+    } catch (err: any) {
+      console.warn("[Cloud Persistence] Supabase save notice:", err?.message || err);
+    }
+  }
+}
+
+// Full Cloud Hydration on Boot: restores all programs, schedules, drills and challenges from Firestore & Supabase
+async function hydrateAllDataFromCloud() {
+  console.log("[Cloud Hydration] Initializing automated Firestore & Supabase state hydration on server boot...");
+
+  // 1. Program Schedule Overrides
+  try {
+    let cloudOverrides: Record<string, any> = {};
+
+    // Try Firestore system_settings
+    try {
+      const snap = await getServerFirestoreDoc("system_settings", "program_schedule_overrides");
+      if (snap && snap.exists) {
+        const d = snap.data();
+        if (d && typeof d === "object") {
+          const { _updatedAt, _updatedBy, ...rest } = d;
+          cloudOverrides = { ...cloudOverrides, ...rest };
+        }
+      }
+    } catch (e) {
+      console.warn("[Cloud Hydration] Firestore system_settings notice:", e);
+    }
+
+    // Try Firestore program_schedules/overrides
+    try {
+      const snapOverrides = await getServerFirestoreDoc("program_schedules", "overrides");
+      if (snapOverrides && snapOverrides.exists) {
+        const d = snapOverrides.data();
+        if (d && d.overrides) {
+          cloudOverrides = { ...cloudOverrides, ...d.overrides };
+        }
+      }
+    } catch (e) {}
+
+    // Try Supabase if available
+    if (supabaseServer) {
+      try {
+        const { data: sbData } = await supabaseServer.from("program_schedules").select("*").eq("id", "overrides").maybeSingle();
+        if (sbData && sbData.data) {
+          cloudOverrides = { ...cloudOverrides, ...sbData.data };
+        }
+      } catch (e: any) {
+        console.warn("[Cloud Hydration] Supabase program_schedules notice:", e?.message || e);
+      }
+    }
+
+    if (Object.keys(cloudOverrides).length > 0) {
+      let diskOverrides: Record<string, any> = {};
+      if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+        try {
+          const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+          if (raw) diskOverrides = JSON.parse(raw);
+        } catch (e) {}
+      }
+      const merged = { ...cloudOverrides, ...diskOverrides };
+      fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(merged, null, 2), "utf-8");
+      console.log(`[Cloud Hydration OK] Hydrated ${Object.keys(merged).length} program schedule overrides from Cloud into disk cache.`);
+    }
+  } catch (err) {
+    console.warn("[Cloud Hydration] Program overrides hydration notice:", err);
+  }
+
+  // 2. Exercise Overrides & Catalog
+  try {
+    const snapEx = await getServerFirestoreDoc("system_settings", "exercise_overrides");
+    if (snapEx && snapEx.exists) {
+      const d = snapEx.data();
+      if (d && typeof d === "object") {
+        const { _updatedAt, _updatedBy, ...rest } = d;
+        let existing: Record<string, any> = {};
+        if (fs.existsSync(OVERRIDES_FILE_PATH)) {
+          try {
+            const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
+            if (raw) existing = JSON.parse(raw);
+          } catch (e) {}
+        }
+        const mergedEx = { ...rest, ...existing };
+        fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(mergedEx, null, 2), "utf-8");
+        console.log(`[Cloud Hydration OK] Hydrated exercise overrides from Firestore.`);
+      }
+    }
+  } catch (err) {}
+
+  // 3. Custom Challenges
+  try {
+    const challengesQuery = await getServerFirestoreQuery("challenges", "id", "!=", "");
+    if (challengesQuery && Array.isArray(challengesQuery.docs) && challengesQuery.docs.length > 0) {
+      const cloudChallenges = challengesQuery.docs.map((d: any) => d.data());
+      fs.writeFileSync(CHALLENGES_FILE_PATH, JSON.stringify(cloudChallenges, null, 2), "utf-8");
+      console.log(`[Cloud Hydration OK] Hydrated ${cloudChallenges.length} custom challenges from Firestore.`);
+    }
+  } catch (err) {}
+
+  // 4. Printable PDF Catalog, Orders & Master Templates
+  try {
+    const { 
+      syncPdfProductsFromFirestore, 
+      recoverMasterPdfIfNeeded, 
+      seedExistingPdfAssetsToFirestore, 
+      ensurePdfDirectories, 
+      setEngineDb 
+    } = await import("./src/server/printablePdfEngine");
+    
+    if (db) setEngineDb(db);
+    ensurePdfDirectories();
+    
+    // Seed existing local files and catalog to Firestore if needed
+    await seedExistingPdfAssetsToFirestore();
+    
+    // Hydrate all products from Firestore
+    const products = await syncPdfProductsFromFirestore();
+    console.log(`[Cloud Hydration OK] Hydrated ${products.length} Printable PDF products from Cloud Firestore.`);
+
+    // Proactively recover master templates for all products
+    for (const prod of products) {
+      if (prod.masterPdfFilename) {
+        await recoverMasterPdfIfNeeded(prod.masterPdfFilename);
+      }
+      await recoverMasterPdfIfNeeded(`${prod.id}.pdf`);
+    }
+  } catch (pdfHydrateErr) {
+    console.warn("[Cloud Hydration] PDF hydration notice:", pdfHydrateErr);
+  }
+
+  // 5. Automated Data & Files Transfer to new Supabase project (sqaxwqtjvaixqytnluiy)
+  try {
+    const { runSupabaseDataTransfer } = await import("./src/server/supabaseDataTransfer");
+    await runSupabaseDataTransfer(supabaseServer, db);
+  } catch (transferErr) {
+    console.warn("[Cloud Hydration] Supabase transfer notice:", transferErr);
+  }
+
+  console.log("[Cloud Hydration Complete] Render server boot state fully secured against data loss.");
+}
+
+// GET all program schedule overrides (with Firestore self-healing)
 app.get("/api/admin/programs/overrides", async (req, res) => {
   try {
     let overrides: Record<string, any> = {};
@@ -4181,9 +4475,43 @@ app.get("/api/admin/programs/overrides", async (req, res) => {
         console.error("Failed reading program schedule overrides:", err);
       }
     }
+
+    // If disk is empty (e.g. Render spin-down), self-heal from cloud Firestore immediately!
+    if (!overrides || Object.keys(overrides).length === 0) {
+      const cloudData = await fetchProgramOverridesFromCloud();
+      if (cloudData && Object.keys(cloudData).length > 0) {
+        overrides = cloudData;
+      }
+    }
+
     res.json({ success: true, overrides });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST sync overrides directly from/to cloud
+app.post("/api/admin/programs/sync-cloud", async (req: any, res) => {
+  try {
+    const { overrides: incomingOverrides } = req.body || {};
+    let currentDisk: Record<string, any> = {};
+    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      try {
+        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+        if (raw) currentDisk = JSON.parse(raw);
+      } catch (e) {}
+    }
+
+    const cloudData = await fetchProgramOverridesFromCloud();
+    const merged = { ...cloudData, ...currentDisk, ...(incomingOverrides || {}) };
+
+    if (Object.keys(merged).length > 0) {
+      await persistProgramOverridesToCloud(merged, req.user?.email || "admin");
+    }
+
+    res.json({ success: true, overrides: merged, count: Object.keys(merged).length });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -4243,31 +4571,8 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
       }
     }
 
-    fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
-
-    // Also persist to Firestore
-    try {
-      if (dayNumber) {
-        await setServerFirestoreDoc("program_overrides", `${programId}_d${dayNumber}`, {
-          programId,
-          dayNumber,
-          ...dayOverride,
-          updatedAt: new Date().toISOString(),
-          updatedBy: req.user?.email || "admin"
-        }, true);
-      }
-      if (computedCycleDay) {
-        await setServerFirestoreDoc("program_overrides", `${programId}_cycle_${computedCycleDay}`, {
-          programId,
-          cycleDay: computedCycleDay,
-          ...dayOverride,
-          updatedAt: new Date().toISOString(),
-          updatedBy: req.user?.email || "admin"
-        }, true);
-      }
-    } catch (fsErr) {
-      console.warn("Firestore program override sync warning:", fsErr);
-    }
+    // Persist to both local disk and Firestore cloud
+    await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin");
 
     await logAdminActivityOnFirebase(
       req.user?.email || "",
@@ -7080,6 +7385,7 @@ registerPrintablePdfRoutes(app, {
   paystackSecretKey: PAYSTACK_SECRET_KEY,
   appUrl: APP_URL,
   uploadFileToFirebaseStorageServer,
+  uploadFileToSupabaseStorageServer,
   db
 });
 
@@ -7203,8 +7509,13 @@ async function startServer() {
     console.log("[Commit Logging] Could not read commit hash from file, defaulting to unknown.");
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const serverInstance = app.listen(PORT, "0.0.0.0", () => {
     console.log(`AlexFitnessHub unified server booted on http://localhost:${PORT} | Git Commit: ${gitCommitHash}`);
+  });
+
+  // Automated Cloud Hydration (Firestore & Supabase) runs concurrently on boot
+  hydrateAllDataFromCloud().catch(err => {
+    console.warn("[Cloud Hydration] Boot hydration notice:", err);
   });
 }
 

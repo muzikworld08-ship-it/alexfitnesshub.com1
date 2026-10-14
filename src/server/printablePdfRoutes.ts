@@ -17,7 +17,9 @@ import {
   ensurePdfDirectories,
   recordDeletedPdfId,
   getDeletedPdfIds,
-  recoverMasterPdfIfNeeded
+  recoverMasterPdfIfNeeded,
+  persistPdfFileToFirestore,
+  setEngineDb
 } from "./printablePdfEngine";
 import { PrintablePdfProduct, PrintablePdfOrder } from "../types/printablePdf";
 
@@ -45,12 +47,16 @@ export function registerPrintablePdfRoutes(
     paystackSecretKey: string;
     appUrl?: string;
     uploadFileToFirebaseStorageServer?: (buffer: Buffer, mime: string, name: string) => Promise<string | null>;
+    uploadFileToSupabaseStorageServer?: (buffer: Buffer, mime: string, name: string) => Promise<string | null>;
     db?: any;
   }
 ) {
   ensurePdfDirectories();
-  const { requireAdmin, paystackSecretKey, appUrl, uploadFileToFirebaseStorageServer } = options;
-  if (options.db) routeDb = options.db;
+  const { requireAdmin, paystackSecretKey, appUrl, uploadFileToFirebaseStorageServer, uploadFileToSupabaseStorageServer } = options;
+  if (options.db) {
+    routeDb = options.db;
+    setEngineDb(options.db);
+  }
 
   // 1. GET /api/printable-pdfs - List public active products synced permanently from Firestore
   app.get("/api/printable-pdfs", async (req: Request, res: Response) => {
@@ -597,6 +603,10 @@ export function registerPrintablePdfRoutes(
         fs.writeFileSync(path.join(MASTERS_DIR, fullFilename), buffer);
         console.log(`[Admin PDF] Saved local master template: ${fullFilename}`);
 
+        // Permanently persist to Cloud Firestore chunked storage (guaranteed survival on Render spin-down)
+        const persistRes = await persistPdfFileToFirestore(fullFilename, buffer, "application/pdf");
+        console.log(`[Admin PDF OK] Master template chunked & persisted to Firestore: ${fullFilename} (chunks: ${persistRes.totalChunks})`);
+
         let cloudUrl = "";
         if (uploadFileToFirebaseStorageServer) {
           try {
@@ -607,27 +617,7 @@ export function registerPrintablePdfRoutes(
           }
         }
 
-        // Permanently record in Firestore 'printable_pdf_files' collection
-        if (routeDb) {
-          try {
-            const fileDoc: any = {
-              filename: fullFilename,
-              mimeType: "application/pdf",
-              size: buffer.length,
-              cloudUrl: cloudUrl || "",
-              uploadedAt: new Date().toISOString()
-            };
-            if (buffer.length < 900000) {
-              fileDoc.base64 = rawBase64;
-            }
-            await setDoc(doc(routeDb, "printable_pdf_files", fullFilename.replace(/[^a-zA-Z0-9_.-]/g, "_")), fileDoc, { merge: true });
-            console.log(`[Admin PDF OK] Master template permanently saved in Firestore: ${fullFilename}`);
-          } catch (fbErr) {
-            console.warn("[Admin PDF] Firestore file save notice:", fbErr);
-          }
-        }
-
-        return res.json({ success: true, filename: fullFilename, url: cloudUrl });
+        return res.json({ success: true, filename: fullFilename, url: cloudUrl, chunks: persistRes.totalChunks });
       } else {
         // Cover Image: Store locally and permanently in Firebase Storage + Firestore
         const publicDir = path.join(process.cwd(), "public", "assets", "pdf_covers");
@@ -638,6 +628,9 @@ export function registerPrintablePdfRoutes(
         fs.writeFileSync(path.join(publicDir, fullCoverName), buffer);
         let finalUrl = `/assets/pdf_covers/${fullCoverName}`;
 
+        // Also persist cover image into Firestore chunked storage
+        await persistPdfFileToFirestore(fullCoverName, buffer, detectedMime);
+
         if (uploadFileToFirebaseStorageServer) {
           try {
             const uploaded = await uploadFileToFirebaseStorageServer(buffer, detectedMime, fullCoverName);
@@ -645,22 +638,6 @@ export function registerPrintablePdfRoutes(
           } catch (storageErr) {
             console.warn("[Admin PDF] Cloud cover upload skipped:", storageErr);
           }
-        }
-
-        if (routeDb) {
-          try {
-            const fileDoc: any = {
-              filename: fullCoverName,
-              mimeType: detectedMime,
-              size: buffer.length,
-              cloudUrl: finalUrl,
-              uploadedAt: new Date().toISOString()
-            };
-            if (buffer.length < 900000) {
-              fileDoc.base64 = rawBase64;
-            }
-            await setDoc(doc(routeDb, "printable_pdf_files", fullCoverName.replace(/[^a-zA-Z0-9_.-]/g, "_")), fileDoc, { merge: true });
-          } catch (fbErr) {}
         }
 
         return res.json({ success: true, url: finalUrl, filename: fullCoverName });

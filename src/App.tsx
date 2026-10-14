@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { MessageSquare } from "lucide-react";
 import { auth } from "./lib/firebase";
 import ErrorBoundary, { SectionErrorBoundary } from "./components/ErrorBoundary";
-import { AppProvider, useApp, checkIsUserPremium } from "./context/AppContext";
+import { AppProvider, useApp, checkIsUserPremium, isEmailAdmin } from "./context/AppContext";
 import { motion, AnimatePresence, type Variants } from "motion/react";
 import Navbar from "./components/Navbar";
 import HomeView from "./components/HomeView";
@@ -48,6 +48,7 @@ const PricingView = React.lazy(() => import("./components/PricingView"));
 const StoreView = React.lazy(() => import("./components/StoreView"));
 const ProductDetailView = React.lazy(() => import("./components/ProductDetailView").then(m => ({ default: m.ProductDetailView })));
 const PremiumUpgradeModal = React.lazy(() => import("./components/PremiumUpgradeModal"));
+const AdminWorkoutChallengeEngine = React.lazy(() => import("./components/admin/AdminWorkoutChallengeEngine"));
 const PrintablePdfStoreView = React.lazy(() => import("./components/pdf/PrintablePdfStoreView").then(m => ({ default: m.PrintablePdfStoreView })));
 const PdfProductDetailView = React.lazy(() => import("./components/pdf/PdfProductDetailView").then(m => ({ default: m.PdfProductDetailView })));
 const PdfDownloadSuccessView = React.lazy(() => import("./components/pdf/PdfDownloadSuccessView").then(m => ({ default: m.PdfDownloadSuccessView })));
@@ -242,6 +243,7 @@ function FitnessAppContent() {
         "challenges": "Immortal 90-Day Challenge",
         "immortal_90": "Immortal 90-Day Challenge",
         "immortal-90": "Immortal 90-Day Challenge",
+        "challenge-engine": "Challenge Engine Hub",
         "90-day-immortal": "Immortal 90-Day Challenge",
         "90_day_immortal": "Immortal 90-Day Challenge",
         "daily-plan": "My Daily Plan",
@@ -413,6 +415,7 @@ function FitnessAppContent() {
       "challenges": "Immortal 90-Day Challenge",
       "immortal_90": "Immortal 90-Day Challenge",
       "immortal-90": "Immortal 90-Day Challenge",
+      "challenge-engine": "Challenge Engine Hub",
       "90-day-immortal": "Immortal 90-Day Challenge",
       "90_day_immortal": "Immortal 90-Day Challenge",
       "daily-plan": "My Daily Plan",
@@ -673,6 +676,15 @@ function FitnessAppContent() {
               )}
               {["challenges", "immortal-90", "immortal_90", "90-day-immortal", "90_day_immortal", "immortal", "immortal-challenge", "flagship-90"].includes(currentView) && (
                 <FitnessChallenges />
+              )}
+              {["challenge-engine", "workout-engine", "admin-challenge-engine"].includes(currentView) && (
+                (user?.role === "admin" || (user?.email && isEmailAdmin(user.email))) ? (
+                  <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full">
+                    <AdminWorkoutChallengeEngine />
+                  </div>
+                ) : (
+                  <FitnessChallenges />
+                )
               )}
               {["home-workout-challenge", "180-day-challenge", "home-challenge"].includes(currentView) && (
                 <HomeWorkoutChallengeView />

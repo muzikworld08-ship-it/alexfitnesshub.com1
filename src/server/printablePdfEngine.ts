@@ -17,6 +17,12 @@ const ORDERS_FILE = path.join(DATA_DIR, "pdf_orders.json");
 const DELETED_PDF_FILE = path.join(DATA_DIR, "pdf_deleted_ids.json");
 
 let engineDb: any = null;
+export function setEngineDb(dbInstance: any) {
+  if (dbInstance) {
+    engineDb = dbInstance;
+  }
+}
+
 try {
   const activeConfig = {
     ...firebaseConfig,
@@ -253,6 +259,75 @@ export function getPdfProducts(): PrintablePdfProduct[] {
   return initial;
 }
 
+// 450,000 characters of base64 = ~337 KB binary data, guaranteed safe under Firestore 1MB doc limit
+export const PDF_CHUNK_SIZE = 450000;
+
+/**
+ * Permanently stores a PDF file (regardless of size: 500KB, 5MB, 20MB+)
+ * into Cloud Firestore using 450KB chunks so it survives Render spin-downs.
+ */
+export async function persistPdfFileToFirestore(
+  filename: string,
+  buffer: Buffer,
+  mimeType = "application/pdf"
+): Promise<{ success: boolean; totalChunks: number; safeDocId: string }> {
+  ensurePdfDirectories();
+  const cleanFilename = filename.replace(/[^a-zA-Z0-9_.-]/g, "_");
+  const safeDocId = cleanFilename.replace(/[^a-zA-Z0-9_.-]/g, "_");
+
+  if (!engineDb || !buffer || buffer.length === 0) {
+    return { success: false, totalChunks: 0, safeDocId };
+  }
+
+  try {
+    const rawBase64 = buffer.toString("base64");
+    const totalChunks = Math.ceil(rawBase64.length / PDF_CHUNK_SIZE) || 1;
+
+    const fileMetaDoc: any = {
+      filename: cleanFilename,
+      safeDocId,
+      mimeType,
+      size: buffer.length,
+      totalChunks,
+      chunkSize: PDF_CHUNK_SIZE,
+      isChunked: true,
+      uploadedAt: new Date().toISOString()
+    };
+
+    // If small enough (< 300KB base64), also include directly in root doc for instantaneous 1-read recovery
+    if (rawBase64.length < 300000) {
+      fileMetaDoc.base64 = rawBase64;
+    }
+
+    await setDoc(doc(engineDb, "printable_pdf_files", safeDocId), fileMetaDoc, { merge: true });
+
+    // Store each chunk in subcollection and top-level collection for maximum resilience
+    for (let i = 0; i < totalChunks; i++) {
+      const chunkStr = rawBase64.slice(i * PDF_CHUNK_SIZE, (i + 1) * PDF_CHUNK_SIZE);
+      const chunkPayload = {
+        fileDocId: safeDocId,
+        chunkIndex: i,
+        totalChunks,
+        data: chunkStr,
+        size: chunkStr.length,
+        updatedAt: new Date().toISOString()
+      };
+
+      // 1. Subcollection: printable_pdf_files/{safeDocId}/chunks/{i}
+      await setDoc(doc(engineDb, "printable_pdf_files", safeDocId, "chunks", String(i)), chunkPayload, { merge: true });
+
+      // 2. Top-level collection: printable_pdf_chunks/{safeDocId}_chunk_{i}
+      await setDoc(doc(engineDb, "printable_pdf_chunks", `${safeDocId}_chunk_${i}`), chunkPayload, { merge: true });
+    }
+
+    console.log(`[PDF Engine OK] Master template permanently chunked & persisted to Firestore: ${cleanFilename} (${buffer.length} bytes in ${totalChunks} chunks)`);
+    return { success: true, totalChunks, safeDocId };
+  } catch (err: any) {
+    console.warn(`[PDF Engine Warning] Error persisting chunked PDF ${filename} to Firestore:`, err?.message || err);
+    return { success: false, totalChunks: 0, safeDocId };
+  }
+}
+
 /**
  * Loads products from Firestore to ensure that even after Render goes inactive,
  * newly posted PDF products and files survive 100% permanently.
@@ -292,7 +367,22 @@ export async function syncPdfProductsFromFirestore(): Promise<PrintablePdfProduc
 
       const merged = Array.from(firestoreMap.values()).filter(p => !deletedIds.has(p.id));
       savePdfProducts(merged);
+
+      // Proactively ensure master templates exist for all active products
+      for (const prod of merged) {
+        if (prod.masterPdfFilename) {
+          recoverMasterPdfIfNeeded(prod.masterPdfFilename).catch(() => {});
+        }
+      }
+
       return merged;
+    } else {
+      // If Firestore is empty, seed our current catalog into Firestore right now!
+      for (const prod of local) {
+        if (prod && prod.id && !deletedIds.has(prod.id)) {
+          setDoc(doc(engineDb, "printable_pdf_products", prod.id), prod, { merge: true }).catch(() => {});
+        }
+      }
     }
   } catch (err) {
     console.warn("[PDF Engine] Firestore products sync notice:", err);
@@ -317,7 +407,7 @@ export function savePdfProducts(products: PrintablePdfProduct[]) {
 }
 
 /**
- * Recovers a master PDF file from Cloud Firestore or Supabase/Firebase Storage
+ * Recovers a master PDF file from Cloud Firestore chunked storage
  * if Render spun down and local ephemeral disk was cleared.
  */
 export async function recoverMasterPdfIfNeeded(filename: string): Promise<boolean> {
@@ -332,13 +422,50 @@ export async function recoverMasterPdfIfNeeded(filename: string): Promise<boolea
     const fileSnap = await getDoc(doc(engineDb, "printable_pdf_files", safeDocId));
     if (fileSnap.exists()) {
       const data = fileSnap.data();
+
+      // Priority 1: Direct base64 (small files < 300KB)
       if (data?.base64) {
         fs.writeFileSync(filePath, Buffer.from(data.base64, "base64"));
-        console.log(`[PDF Engine OK] Recovered master PDF from Cloud Firestore: ${filename}`);
+        console.log(`[PDF Engine OK] Recovered master PDF from Cloud Firestore base64: ${filename}`);
         return true;
       }
-      if (data?.cloudUrl && (data.cloudUrl.startsWith("http://") || data.cloudUrl.startsWith("https://"))) {
-        const res = await fetch(data.cloudUrl);
+
+      // Priority 2: Chunked storage (any size file)
+      if (data?.totalChunks && data.totalChunks > 0) {
+        const total = Number(data.totalChunks);
+        const chunkParts: string[] = [];
+        let allChunksFound = true;
+
+        for (let i = 0; i < total; i++) {
+          // Check subcollection first: printable_pdf_files/{safeDocId}/chunks/{i}
+          let chunkSnap = await getDoc(doc(engineDb, "printable_pdf_files", safeDocId, "chunks", String(i)));
+          if (!chunkSnap.exists() || !chunkSnap.data()?.data) {
+            // Fallback to top-level collection: printable_pdf_chunks/{safeDocId}_chunk_{i}
+            chunkSnap = await getDoc(doc(engineDb, "printable_pdf_chunks", `${safeDocId}_chunk_${i}`));
+          }
+
+          if (chunkSnap.exists() && chunkSnap.data()?.data) {
+            chunkParts.push(chunkSnap.data().data);
+          } else {
+            console.warn(`[PDF Engine Notice] Missing chunk ${i}/${total} for PDF ${filename}`);
+            allChunksFound = false;
+            break;
+          }
+        }
+
+        if (allChunksFound && chunkParts.length === total) {
+          const fullBase64 = chunkParts.join("");
+          const recoveredBuffer = Buffer.from(fullBase64, "base64");
+          fs.writeFileSync(filePath, recoveredBuffer);
+          console.log(`[PDF Engine OK] Reassembled chunked PDF from Cloud Firestore: ${filename} (${recoveredBuffer.length} bytes, ${total} chunks)`);
+          return true;
+        }
+      }
+
+      // Priority 3: Cloud Storage URL fallback (Supabase / Firebase)
+      const cloudUrl = data?.cloudUrl || data?.supabaseUrl || data?.downloadUrl;
+      if (cloudUrl && (cloudUrl.startsWith("http://") || cloudUrl.startsWith("https://"))) {
+        const res = await fetch(cloudUrl);
         if (res.ok) {
           const buf = await res.arrayBuffer();
           fs.writeFileSync(filePath, Buffer.from(buf));
@@ -347,10 +474,97 @@ export async function recoverMasterPdfIfNeeded(filename: string): Promise<boolea
         }
       }
     }
+
+    // Secondary Search: Look inside printable_pdf_products for matching masterPdfFilename or product ID
+    const prodSnap = await getDocs(collection(engineDb, "printable_pdf_products")).catch(() => null);
+    if (prodSnap && !prodSnap.empty) {
+      for (const d of prodSnap.docs) {
+        const prodData = d.data();
+        if (
+          prodData.masterPdfFilename === filename ||
+          prodData.id === filename.replace(/\.pdf$/i, "") ||
+          filename.includes(prodData.id)
+        ) {
+          // If product has a direct cloud URL or Supabase URL
+          const url = prodData.masterPdfCloudUrl || prodData.cloudUrl || prodData.supabaseUrl;
+          if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+            const fRes = await fetch(url).catch(() => null);
+            if (fRes && fRes.ok) {
+              const buf = await fRes.arrayBuffer();
+              fs.writeFileSync(filePath, Buffer.from(buf));
+              console.log(`[PDF Engine OK] Recovered master PDF via product registry URL: ${filename}`);
+              return true;
+            }
+          }
+
+          // If product has embedded base64
+          if (prodData.masterPdfBase64) {
+            fs.writeFileSync(filePath, Buffer.from(prodData.masterPdfBase64, "base64"));
+            console.log(`[PDF Engine OK] Recovered master PDF via product embedded base64: ${filename}`);
+            return true;
+          }
+        }
+      }
+    }
+
+    // Tertiary Search: Check Supabase Storage default bucket
+    try {
+      const publicSbUrl = `https://sqaxwqtjvaixqytnluiy.supabase.co/storage/v1/object/public/exercise_media/${encodeURIComponent(filename)}`;
+      const sbRes = await fetch(publicSbUrl).catch(() => null);
+      if (sbRes && sbRes.ok) {
+        const buf = await sbRes.arrayBuffer();
+        fs.writeFileSync(filePath, Buffer.from(buf));
+        console.log(`[PDF Engine OK] Recovered master PDF from Supabase Storage: ${filename}`);
+        return true;
+      }
+    } catch {}
   } catch (err) {
     console.warn(`[PDF Engine Notice] Could not recover master PDF ${filename}:`, err);
   }
   return false;
+}
+
+/**
+ * Seeds any local master PDFs and catalog products to Firestore so they are never lost.
+ */
+export async function seedExistingPdfAssetsToFirestore() {
+  if (!engineDb) return;
+  try {
+    ensurePdfDirectories();
+    // 1. Seed existing local master PDF files to Firestore chunks
+    if (fs.existsSync(MASTERS_DIR)) {
+      const files = fs.readdirSync(MASTERS_DIR);
+      for (const f of files) {
+        if (f.endsWith(".pdf")) {
+          const p = path.join(MASTERS_DIR, f);
+          const stat = fs.statSync(p);
+          if (stat.isFile() && stat.size > 0) {
+            const safeDocId = f.replace(/[^a-zA-Z0-9_.-]/g, "_");
+            const snap = await getDoc(doc(engineDb, "printable_pdf_files", safeDocId)).catch(() => null);
+            if (!snap || !snap.exists()) {
+              const buf = fs.readFileSync(p);
+              await persistPdfFileToFirestore(f, buf, "application/pdf");
+              console.log(`[PDF Engine Seed OK] Backed up local PDF ${f} to Firestore chunks.`);
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Seed catalog products
+    const catalogSnap = await getDocs(collection(engineDb, "printable_pdf_products")).catch(() => null);
+    if (!catalogSnap || catalogSnap.empty) {
+      console.log("[PDF Engine Seed] Seeding catalog products into Cloud Firestore...");
+      const local = getPdfProducts();
+      for (const prod of local) {
+        if (prod && prod.id) {
+          await setDoc(doc(engineDb, "printable_pdf_products", prod.id), prod, { merge: true }).catch(() => {});
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[PDF Engine Seed Notice]:", e);
+  }
 }
 
 export function getPdfOrders(): PrintablePdfOrder[] {

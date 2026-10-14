@@ -176,7 +176,7 @@ export const AdminPdfManager: React.FC = () => {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim()) {
-      alert("Please provide a product title.");
+      setMessage({ text: "Please provide a product title.", isError: true });
       return;
     }
 
@@ -207,11 +207,11 @@ export const AdminPdfManager: React.FC = () => {
 
       await printablePdfService.saveProduct(payload);
       window.dispatchEvent(new CustomEvent("fit-pdf-catalog-changed"));
-      setMessage({ text: "Product saved successfully!", isError: false });
+      setMessage({ text: "Product saved successfully! Master template and details are securely preserved.", isError: false });
       setIsModalOpen(false);
       await loadData();
     } catch (err: any) {
-      alert(err.message || "Failed to save product.");
+      setMessage({ text: err.message || "Failed to save product.", isError: true });
     } finally {
       setActionLoading(false);
     }
@@ -227,7 +227,7 @@ export const AdminPdfManager: React.FC = () => {
       setProductToDelete(null);
       await loadData();
     } catch (err: any) {
-      alert(err.message || "Failed to delete product.");
+      setMessage({ text: err.message || "Failed to delete product.", isError: true });
     } finally {
       setActionLoading(false);
     }
@@ -242,7 +242,7 @@ export const AdminPdfManager: React.FC = () => {
       window.dispatchEvent(new CustomEvent("fit-pdf-catalog-changed"));
       await loadData();
     } catch (err: any) {
-      alert(err.message || "Failed to toggle status.");
+      setMessage({ text: err.message || "Failed to toggle status.", isError: true });
     }
   };
 
@@ -262,8 +262,9 @@ export const AdminPdfManager: React.FC = () => {
           "cover"
         );
         setFormCoverImage(res.url);
+        setMessage({ text: "Cover image uploaded and mirrored to cloud storage.", isError: false });
       } catch (err: any) {
-        alert(err.message || "Failed to upload cover.");
+        setMessage({ text: err.message || "Failed to upload cover.", isError: true });
       } finally {
         setIsUploadingCover(false);
       }
@@ -275,7 +276,7 @@ export const AdminPdfManager: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".pdf")) {
-      alert("Please select a valid .pdf file.");
+      setMessage({ text: "Please select a valid .pdf file.", isError: true });
       return;
     }
     e.target.value = "";
@@ -291,9 +292,9 @@ export const AdminPdfManager: React.FC = () => {
           "master_pdf"
         );
         setMasterPdfFilename(res.filename);
-        alert(`Master PDF "${file.name}" uploaded successfully and protected on secure storage.`);
+        setMessage({ text: `Master PDF "${file.name}" uploaded successfully! Chunked and secured in permanent cloud storage so it survives Render spin-downs.`, isError: false });
       } catch (err: any) {
-        alert(err.message || "Failed to upload PDF.");
+        setMessage({ text: err.message || "Failed to upload PDF.", isError: true });
       } finally {
         setIsUploadingPdf(false);
       }
@@ -302,13 +303,12 @@ export const AdminPdfManager: React.FC = () => {
   };
 
   const handleRegeneratePdf = async (orderId: string) => {
-    if (!confirm("Regenerate personalized PDF for this order?")) return;
     try {
       await printablePdfService.regenerateOrderPdf(orderId);
-      alert("PDF regenerated successfully!");
+      setMessage({ text: "PDF regenerated successfully!", isError: false });
       await loadData();
     } catch (err: any) {
-      alert(err.message || "Failed to regenerate PDF.");
+      setMessage({ text: err.message || "Failed to regenerate PDF.", isError: true });
     }
   };
 
@@ -801,9 +801,14 @@ export const AdminPdfManager: React.FC = () => {
                 </div>
 
                 {masterPdfFilename ? (
-                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 mt-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Master Template File: {masterPdfFilename}</span>
+                  <div className="flex flex-col gap-1 text-xs text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 mt-2">
+                    <div className="flex items-center gap-2 font-bold">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Master Template File: {masterPdfFilename}</span>
+                    </div>
+                    <span className="text-[10px] text-emerald-600 pl-6">
+                      ✓ Chunked and synced to Cloud Firestore — permanently protected against Render spin-downs.
+                    </span>
                   </div>
                 ) : (
                   <div className="text-[11px] text-slate-500 font-mono mt-1">

@@ -1384,6 +1384,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             try {
               localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(data.overrides));
               window.dispatchEvent(new CustomEvent("fit_schedule_overrides_updated"));
+              window.dispatchEvent(new CustomEvent("fit_program_schedule_overrides_updated"));
             } catch {}
           }
         }
@@ -1391,12 +1392,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.warn("Real-time program_schedules listener notice:", err?.message || err);
       });
 
+      const sysSettingsUnsub = onSnapshot(doc(db, "system_settings", "program_schedule_overrides"), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && typeof data === "object") {
+            const { _updatedAt, _updatedBy, ...actualOverrides } = data;
+            if (Object.keys(actualOverrides).length > 0) {
+              try {
+                const current = localStorage.getItem("fit_program_schedule_overrides");
+                const currentParsed = current ? JSON.parse(current) : {};
+                const merged = { ...currentParsed, ...actualOverrides };
+                localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(merged));
+                window.dispatchEvent(new CustomEvent("fit_schedule_overrides_updated"));
+                window.dispatchEvent(new CustomEvent("fit_program_schedule_overrides_updated"));
+              } catch {}
+            }
+          }
+        }
+      }, () => {});
+
       return () => {
         unsub();
         manifestUnsub();
         challengesUnsub();
         deletedUnsub();
         schedulesUnsub();
+        sysSettingsUnsub();
       };
     } catch (e) {
       console.warn("Could not set up real-time exercise/asset/challenge listeners:", e);

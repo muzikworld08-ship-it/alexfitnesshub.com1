@@ -22,7 +22,9 @@ import {
 import { getExerciseGifUrl, Exercise } from "../../data/exercises";
 import { ChallengeValidationService } from "../../services/challengeValidationService";
 import { useApp } from "../../context/AppContext";
-import { auth } from "../../lib/firebase";
+import { auth, db } from "../../lib/firebase";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { supabase, isSupabaseConfigured } from "../../utils/supabase/client";
 import DeleteWorkoutConfirmModal, { DeleteWorkoutTarget } from "./DeleteWorkoutConfirmModal";
 import ExerciseReplacementModal from "./ExerciseReplacementModal";
 import AddWorkoutModal from "./AddWorkoutModal";
@@ -149,28 +151,64 @@ export default function AdminWorkoutChallengeEngine() {
   const [isValidating, setIsValidating] = useState<boolean>(false);
   const [auditTimestamp, setAuditTimestamp] = useState<string | null>(null);
 
-  // Load Overrides from Server & LocalStorage
+  // Load Overrides from Server, Firestore, Supabase & LocalStorage
   const refreshOverrides = useCallback(async () => {
     setIsLoadingOverrides(true);
+    let loaded = false;
     try {
       const res = await fetch("/api/admin/programs/overrides");
       if (res.ok) {
         const data = await res.json();
-        if (data.overrides) {
+        if (data.overrides && Object.keys(data.overrides).length > 0) {
           setServerOverrides(data.overrides);
           localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(data.overrides));
+          loaded = true;
         }
-      } else {
-        const cached = localStorage.getItem("fit_program_schedule_overrides");
-        if (cached) setServerOverrides(JSON.parse(cached));
       }
     } catch (err) {
-      console.error("Failed fetching program schedule overrides:", err);
-      const cached = localStorage.getItem("fit_program_schedule_overrides");
-      if (cached) setServerOverrides(JSON.parse(cached));
-    } finally {
-      setIsLoadingOverrides(false);
+      console.warn("Notice fetching overrides from /api/admin/programs/overrides:", err);
     }
+
+    // Direct Firestore self-healing fallback
+    if (!loaded) {
+      try {
+        const snap = await getDoc(doc(db, "program_schedules", "overrides"));
+        if (snap.exists()) {
+          const d = snap.data();
+          if (d && d.overrides && Object.keys(d.overrides).length > 0) {
+            setServerOverrides(d.overrides);
+            localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(d.overrides));
+            loaded = true;
+            console.log("[Dual-Persist Recovery OK] Overrides recovered from Firestore program_schedules/overrides.");
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Direct Supabase self-healing fallback
+    if (!loaded && isSupabaseConfigured) {
+      try {
+        const { data: sbData } = await supabase.from("program_schedules").select("*").eq("id", "overrides").maybeSingle();
+        if (sbData && sbData.data && Object.keys(sbData.data).length > 0) {
+          setServerOverrides(sbData.data);
+          localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(sbData.data));
+          loaded = true;
+          console.log("[Dual-Persist Recovery OK] Overrides recovered from Supabase program_schedules.");
+        }
+      } catch (e) {}
+    }
+
+    // LocalStorage fallback
+    if (!loaded) {
+      try {
+        const cached = localStorage.getItem("fit_program_schedule_overrides");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed === "object") setServerOverrides(parsed);
+        }
+      } catch (e) {}
+    }
+    setIsLoadingOverrides(false);
   }, []);
 
   useEffect(() => {
@@ -872,6 +910,50 @@ export default function AdminWorkoutChallengeEngine() {
           }
         });
         broadcastOverridesUpdated(next);
+
+        // Direct client-side dual persistence to Firebase Firestore
+        try {
+          setDoc(doc(db, "program_schedules", "overrides"), {
+            overrides: next,
+            updatedAt: new Date().toISOString(),
+            updatedBy: adminEmail
+          }, { merge: true }).catch((e) => console.warn("Notice updating program_schedules/overrides:", e));
+
+          setDoc(doc(db, "system_settings", "program_schedule_overrides"), {
+            ...next,
+            _updatedAt: new Date().toISOString(),
+            _updatedBy: adminEmail
+          }, { merge: true }).catch((e) => console.warn("Notice updating system_settings:", e));
+
+          setDoc(doc(db, "program_schedules", selectedProgramId), {
+            programId: selectedProgramId,
+            schedule: next[selectedProgramId] || dayData,
+            updatedAt: new Date().toISOString(),
+            updatedBy: adminEmail
+          }, { merge: true }).catch((e) => console.warn("Notice updating program doc:", e));
+        } catch (fsErr) {
+          console.warn("Direct Firestore dual-persistence notice:", fsErr);
+        }
+
+        // Direct client-side dual persistence to Supabase
+        if (isSupabaseConfigured) {
+          Promise.resolve(
+            supabase.from("program_schedules").upsert({
+              id: "overrides",
+              data: next,
+              updated_at: new Date().toISOString()
+            })
+          ).catch(() => {});
+
+          Promise.resolve(
+            supabase.from("program_schedules").upsert({
+              id: selectedProgramId,
+              data: next[selectedProgramId] || dayData,
+              updated_at: new Date().toISOString()
+            })
+          ).catch(() => {});
+        }
+
         return next;
       });
 
