@@ -30,6 +30,7 @@ export interface UserProfile {
   targetWeight?: number;
   activityLevel?: string;
   workoutExperience?: string;
+  fitnessLevel?: "Beginner" | "Intermediate" | "Advanced" | string;
   workoutPreference?: string;
   dietaryPreference?: string;
   availableDays?: number;

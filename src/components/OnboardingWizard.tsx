@@ -114,6 +114,10 @@ export default function OnboardingWizard() {
   const handleSubmit = async () => {
     setSaving(true);
     try {
+      try {
+        localStorage.setItem("fit_athlete_fitness_level", workoutExperience.toLowerCase());
+        localStorage.setItem("fit_user_fitness_level", workoutExperience.toLowerCase());
+      } catch (e) {}
       await completeOnboarding({
         gender,
         age: parseInt(age) || 25,
@@ -123,6 +127,7 @@ export default function OnboardingWizard() {
         height: height ? parseFloat(height) : 175,
         activityLevel,
         workoutExperience,
+        fitnessLevel: workoutExperience as any,
         availableEquipment,
         dietaryPreference,
         foodAllergies,

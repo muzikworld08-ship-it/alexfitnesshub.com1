@@ -708,7 +708,15 @@ export function buildDynamicDayPlan(
     eligibleExercises = allExercises.filter(ex => !isExplicitlyMarkedWomenWorkout(ex));
   }
 
-  const matchedExercises = filterExercisesForSplit(eligibleExercises, splitDef.targetMuscles, { requireHomeOnly: isHomeProgram });
+  let matchedExercises = filterExercisesForSplit(eligibleExercises, splitDef.targetMuscles, { requireHomeOnly: isHomeProgram });
+  const isBeginnerTier = (track || "").toLowerCase().includes("beg") || (typeof window !== "undefined" && (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level") || "").includes("beg"));
+  if (isBeginnerTier) {
+    matchedExercises = [...matchedExercises].sort((a, b) => {
+      const aBeg = a.difficulty === "Beginner" ? 1 : 0;
+      const bBeg = b.difficulty === "Beginner" ? 1 : 0;
+      return bBeg - aBeg;
+    });
+  }
   // Enforce strict maximum of 10 workouts daily
   const challengeItems = matchedExercises.slice(0, 10).map((ex, idx) =>
     exerciseToChallengeItem(ex, programId, safeDay, idx)

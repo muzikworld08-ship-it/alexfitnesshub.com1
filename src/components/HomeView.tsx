@@ -1276,7 +1276,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                 >
                   <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
                     <img
-                      src={item.coverImage || "https://images.unsplash.com/photo-1544717305-2782549b5136?w=900&auto=format&fit=crop&q=80"}
+                      src={item.coverImage || "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTRcusKrv90Cyvg9Ozf1KQ-MaOQwGXU7naDNeb6MdL2qItazaMhFr19kZE&s=10"}
                       alt={item.title}
                       className="w-full h-full object-cover group-hover:scale-104 transition-transform duration-300"
                     />

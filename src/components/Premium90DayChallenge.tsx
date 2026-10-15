@@ -595,7 +595,7 @@ export default function Premium90DayChallenge() {
 
     if (isImmortalVariant || hasProgramOverride) {
       const progToQuery = hasProgramOverride ? challengeId : "immortal_90";
-      const athleteLevel = dbState?.onboarding?.fitnessLevel || (user as any)?.fitnessLevel || "Intermediate";
+      const athleteLevel = dbState?.onboarding?.fitnessLevel || (user as any)?.workoutExperience || (user as any)?.fitnessLevel || (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level")) : null) || "Beginner";
       const enginePlan = getWorkoutForProgramAndDay(progToQuery, dayNum, undefined, { fitnessLevel: athleteLevel });
       const isCardioDay = enginePlan.meta.isCardioOnly;
 

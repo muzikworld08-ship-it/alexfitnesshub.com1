@@ -286,8 +286,15 @@ export default function HomeWorkoutChallengeView() {
 
   // Get current selected day workout
   const currentWorkout: HomeDailyWorkout = useMemo(() => {
-    return getHomeWorkoutForDay(selectedDayNumber, "Intermediate", state.onboarding, exercises, selectedTrack);
-  }, [selectedDayNumber, state.onboarding, exercises, selectedTrack, overrideTick]);
+    const athleteLvl = (
+      state.onboarding?.fitnessLevel || 
+      (user as any)?.workoutExperience || 
+      (user as any)?.fitnessLevel || 
+      (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level")) : null) || 
+      "Beginner"
+    ) as any;
+    return getHomeWorkoutForDay(selectedDayNumber, athleteLvl, state.onboarding, exercises, selectedTrack);
+  }, [selectedDayNumber, state.onboarding, exercises, selectedTrack, overrideTick, user]);
 
   // Exercise Swapper State (when users lack equipment or want an alternative from the same category)
   const [swappingExerciseItem, setSwappingExerciseItem] = useState<{ exercise: any; index: number } | null>(null);

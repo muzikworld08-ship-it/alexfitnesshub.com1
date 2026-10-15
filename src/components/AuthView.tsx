@@ -45,6 +45,7 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [fitnessExperienceLevel, setFitnessExperienceLevel] = useState<string>("Beginner");
 
   // Field-specific touched state for natural progressive validation
   const [touched, setTouched] = useState<{
@@ -243,6 +244,10 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
         await sendPasswordReset(cleanEmail);
         setMessage(`A password reset link has been dispatched to ${cleanEmail}. Please check your inbox and spam folder.`);
       } else if (isSignUp) {
+        try {
+          localStorage.setItem("fit_athlete_fitness_level", fitnessExperienceLevel.toLowerCase());
+          localStorage.setItem("fit_user_fitness_level", fitnessExperienceLevel.toLowerCase());
+        } catch (e) {}
         await signUpEmail(cleanEmail, cleanPass, cleanName, rememberMe);
         handleSuccessfulAuth(true);
       } else {
@@ -560,6 +565,28 @@ export default function AuthView({ initialMode = "signin", onSuccess }: AuthView
                       <span>{validation.name}</span>
                     </p>
                   )}
+
+                  {/* Starting Fitness Level */}
+                  <div className="mt-4">
+                    <label htmlFor="auth-view-fitness-level" className="block text-[10px] font-mono font-black text-slate-600 mb-1 uppercase">
+                      STARTING FITNESS LEVEL <span className="text-[#C0392B]">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                        <Dumbbell className="w-4 h-4" />
+                      </span>
+                      <select
+                        id="auth-view-fitness-level"
+                        value={fitnessExperienceLevel}
+                        onChange={(e) => setFitnessExperienceLevel(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl bg-white border border-slate-200 text-slate-900 font-semibold focus:outline-none focus:border-[#C0392B] focus:ring-2 focus:ring-rose-100"
+                      >
+                        <option value="Beginner">Beginner (Starting Fresh / Tailored Routine)</option>
+                        <option value="Intermediate">Intermediate (Consistent Experience)</option>
+                        <option value="Advanced">Advanced (High Intensity & Strength)</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               )}
 

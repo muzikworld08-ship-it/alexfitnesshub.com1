@@ -35,7 +35,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "8-10 reps",
     restTime: "90s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-BENCH-PRESS.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs", "5-Month Belly Fat Shred System"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_incline_dumbbell_press",
@@ -63,7 +63,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "10-12 reps",
     restTime: "75s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_cable_chest_flyes",
@@ -91,7 +91,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "12-15 reps",
     restTime: "60s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_pec_deck_fly",
@@ -119,7 +119,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "12-15 reps",
     restTime: "60s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Pec-Deck-Fly.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_chest_dips",
@@ -147,7 +147,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "8-12 reps",
     restTime: "75s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Chest-Dip.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs", "180 Day Home Workout Challenge"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_standard_pushups",
@@ -175,7 +175,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "15-20 reps",
     restTime: "45s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
-    programAssignments: ["180 Day Home Workout Challenge", "5-Month Belly Fat Shred System", "90 Days Immortal Challenge", "Home Workout Programs"]
+    programAssignments: ["Home Workout Programs"]
   },
 
   // ==========================================
@@ -207,7 +207,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "12-15 reps",
     restTime: "60s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_skull_crushers",
@@ -235,7 +235,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "10-12 reps",
     restTime: "75s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_overhead_dumbbell_triceps",
@@ -263,7 +263,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "10-12 reps",
     restTime: "60s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Overhead-Triceps-Extension.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_close_grip_bench",
@@ -291,7 +291,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "8-10 reps",
     restTime: "90s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Close-Grip-Bench-Press.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
 
   // ==========================================
@@ -323,7 +323,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "8-10 reps",
     restTime: "90s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bent-Over-Row.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_lat_pulldown_wide",
@@ -351,7 +351,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "10-12 reps",
     restTime: "75s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lat-Pulldown.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_seated_cable_row",
@@ -379,7 +379,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "10-12 reps",
     restTime: "60s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Seated-Cable-Row.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_pullups",
@@ -407,7 +407,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "6-10 reps",
     restTime: "90s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Pull-up.gif",
-    programAssignments: ["90 Days Immortal Challenge", "180 Day Home Workout Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_biceps_dumbbell_curl",
@@ -435,7 +435,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "10-12 reps",
     restTime: "60s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Curl.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_incline_hammer_curls",
@@ -463,7 +463,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "10-12 reps",
     restTime: "60s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Hammer-Curl.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
 
   // ==========================================
@@ -495,7 +495,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "8-10 reps",
     restTime: "120s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-SQUAT.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_romanian_deadlift",
@@ -523,7 +523,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "10-12 reps",
     restTime: "90s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Romanian-Deadlift.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs", "5-Month Belly Fat Shred System"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_walking_lunges",
@@ -551,7 +551,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "12-14 strides per leg",
     restTime: "75s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lunges.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs", "5-Month Belly Fat Shred System", "180 Day Home Workout Challenge"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_leg_press_45",
@@ -579,7 +579,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "10-12 reps",
     restTime: "90s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Press.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_standing_calf_raises",
@@ -607,7 +607,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "15-20 reps",
     restTime: "45s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Calf-Raise.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs", "180 Day Home Workout Challenge"]
+    programAssignments: ["Gym Workout Programs"]
   },
 
   // ==========================================
@@ -639,7 +639,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "8-10 reps",
     restTime: "90s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Military-Press.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
   {
     id: "ex_dumbbell_lateral_raises",
@@ -667,7 +667,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "12-15 reps",
     restTime: "60s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
-    programAssignments: ["90 Days Immortal Challenge", "Gym Workout Programs"]
+    programAssignments: ["Gym Workout Programs"]
   },
 
   // ==========================================
@@ -699,7 +699,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "12-15 reps",
     restTime: "45s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hanging-Leg-Raise.gif",
-    programAssignments: ["5-Month Belly Fat Shred System", "90 Days Immortal Challenge", "180 Day Home Workout Challenge"]
+    programAssignments: []
   },
   {
     id: "ex_plank_bracing",
@@ -728,7 +728,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     duration: "45-60s hold",
     restTime: "45s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Plank.gif",
-    programAssignments: ["5-Month Belly Fat Shred System", "180 Day Home Workout Challenge", "90 Days Immortal Challenge", "Posture Correction Challenge"]
+    programAssignments: ["Posture Correction Challenge"]
   },
   {
     id: "ex_bicycle_crunches",
@@ -756,7 +756,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "20 alternating reps",
     restTime: "40s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bicycle-Crunch.gif",
-    programAssignments: ["5-Month Belly Fat Shred System", "180 Day Home Workout Challenge", "Women Confidence Program (180 Days)"]
+    programAssignments: []
   },
   {
     id: "ex_mountain_climbers",
@@ -785,7 +785,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     duration: "40s continuous",
     restTime: "20s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Mountain-Climber.gif",
-    programAssignments: ["5-Month Belly Fat Shred System", "180 Day Home Workout Challenge", "Cardio, Calisthenics & Military (30 Days)"]
+    programAssignments: ["Cardio", "Calisthenics & Military (30 Days)"]
   },
   {
     id: "ex_russian_twists",
@@ -813,7 +813,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "20 alternating twists",
     restTime: "45s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Russian-Twist.gif",
-    programAssignments: ["5-Month Belly Fat Shred System", "180 Day Home Workout Challenge", "Women Confidence Program (180 Days)"]
+    programAssignments: []
   },
 
   // ==========================================
@@ -846,7 +846,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     duration: "50-70 mins",
     restTime: "Full Rest Post-Cardio",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Running.gif",
-    programAssignments: ["90 Days Immortal Challenge", "5-Month Belly Fat Shred System", "180 Day Home Workout Challenge"]
+    programAssignments: []
   },
   {
     id: "ex_burpees_conditioning",
@@ -874,7 +874,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "12-15 reps",
     restTime: "60s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Burpee.gif",
-    programAssignments: ["5-Month Belly Fat Shred System", "180 Day Home Workout Challenge", "Cardio, Calisthenics & Military (30 Days)"]
+    programAssignments: ["Cardio", "Calisthenics & Military (30 Days)"]
   },
 
   // ==========================================
@@ -906,7 +906,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "15-20 reps",
     restTime: "45s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Squat.gif",
-    programAssignments: ["180 Day Home Workout Challenge", "90 Days Immortal Challenge", "Women Confidence Program (180 Days)", "5-Month Belly Fat Shred System"]
+    programAssignments: []
   },
   {
     id: "ex_bodyweight_walking_lunges",
@@ -933,7 +933,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "20 total strides",
     restTime: "45s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Walking-Lunge.gif",
-    programAssignments: ["180 Day Home Workout Challenge", "90 Days Immortal Challenge", "Women Confidence Program (180 Days)", "5-Month Belly Fat Shred System"]
+    programAssignments: []
   },
   {
     id: "ex_glute_bridges",
@@ -961,7 +961,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "15-20 reps",
     restTime: "45s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Glute-Bridge.gif",
-    programAssignments: ["180 Day Home Workout Challenge", "Women Confidence Program (180 Days)", "5-Month Belly Fat Shred System", "Posture Correction Challenge"]
+    programAssignments: ["Posture Correction Challenge"]
   },
   {
     id: "ex_bulgarian_split_squats_bw",
@@ -988,7 +988,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "12 reps per leg",
     restTime: "60s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Bulgarian-Split-Squat.gif",
-    programAssignments: ["180 Day Home Workout Challenge", "90 Days Immortal Challenge", "Women Confidence Program (180 Days)"]
+    programAssignments: []
   },
   {
     id: "ex_bodyweight_calf_raises",
@@ -1015,7 +1015,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "20-25 reps",
     restTime: "30s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Calf-Raise.gif",
-    programAssignments: ["180 Day Home Workout Challenge", "90 Days Immortal Challenge"]
+    programAssignments: []
   },
   {
     id: "ex_wall_sit_isometric",
@@ -1043,7 +1043,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     duration: "45s hold",
     restTime: "45s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
-    programAssignments: ["180 Day Home Workout Challenge", "5-Month Belly Fat Shred System"]
+    programAssignments: []
   },
 
   // ==========================================
@@ -1074,7 +1074,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "10-15 reps",
     restTime: "60s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Diamond-Push-up.gif",
-    programAssignments: ["180 Day Home Workout Challenge", "90 Days Immortal Challenge"]
+    programAssignments: []
   },
   {
     id: "ex_incline_pushups",
@@ -1101,7 +1101,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "12-15 reps",
     restTime: "45s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Push-Up.gif",
-    programAssignments: ["180 Day Home Workout Challenge", "Women Confidence Program (180 Days)"]
+    programAssignments: []
   },
   {
     id: "ex_decline_pushups",
@@ -1128,7 +1128,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "10-12 reps",
     restTime: "60s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Decline-Push-Up.gif",
-    programAssignments: ["180 Day Home Workout Challenge", "90 Days Immortal Challenge"]
+    programAssignments: []
   },
   {
     id: "ex_bench_dips_bodyweight",
@@ -1155,7 +1155,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "12-15 reps",
     restTime: "45s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bench-Dips.gif",
-    programAssignments: ["180 Day Home Workout Challenge", "90 Days Immortal Challenge"]
+    programAssignments: []
   },
 
   // ==========================================
@@ -1187,7 +1187,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     duration: "60s Flow",
     restTime: "30s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/07/Downward-Facing-Dog.gif",
-    programAssignments: ["90 Days Immortal Challenge", "180 Day Home Workout Challenge", "Women Confidence Program (180 Days)", "5-Month Belly Fat Shred System", "Posture Correction Challenge"]
+    programAssignments: ["Posture Correction Challenge"]
   },
   {
     id: "ex_cat_cow_mobility",
@@ -1215,7 +1215,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     duration: "60s Flow",
     restTime: "20s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Cat-Cow-Stretch.gif",
-    programAssignments: ["90 Days Immortal Challenge", "180 Day Home Workout Challenge", "Posture Correction Challenge", "Women Confidence Program (180 Days)"]
+    programAssignments: ["Posture Correction Challenge"]
   },
   {
     id: "ex_standing_quad_stretch",
@@ -1243,7 +1243,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     duration: "45s Each Leg",
     restTime: "15s transition",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Standing-Quad-Stretch.gif",
-    programAssignments: ["90 Days Immortal Challenge", "180 Day Home Workout Challenge", "5-Month Belly Fat Shred System"]
+    programAssignments: []
   },
   {
     id: "ex_figure4_glute_stretch",
@@ -1271,7 +1271,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     duration: "45s Each Leg",
     restTime: "15s transition",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/04/Figure-Four-Stretch.gif",
-    programAssignments: ["90 Days Immortal Challenge", "180 Day Home Workout Challenge", "Women Confidence Program (180 Days)"]
+    programAssignments: []
   },
   {
     id: "ex_childs_pose_breathing",
@@ -1299,7 +1299,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     duration: "60s Hold",
     restTime: "30s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Child-Pose.gif",
-    programAssignments: ["90 Days Immortal Challenge", "180 Day Home Workout Challenge", "5-Month Belly Fat Shred System", "Posture Correction Challenge"]
+    programAssignments: ["Posture Correction Challenge"]
   },
   {
     id: "ex_worlds_greatest_stretch",
@@ -1328,6 +1328,6 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     duration: "60s Total",
     restTime: "20s",
     gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Side-Bend-Stretch.gif",
-    programAssignments: ["90 Days Immortal Challenge", "180 Day Home Workout Challenge", "Women Confidence Program (180 Days)"]
+    programAssignments: []
   }
 ];

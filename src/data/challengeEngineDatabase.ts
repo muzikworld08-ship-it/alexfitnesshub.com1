@@ -276,7 +276,7 @@ export function getWorkoutForProgramAndDay(
             }
 
             if (!chosenExercises.length) {
-              chosenExercises = dayOverride.levels?.intermediate || dayOverride.levels?.beginner || dayOverride.levels?.advanced || dayOverride.intermediateExercises || dayOverride.beginnerExercises || dayOverride.advancedExercises || [];
+              chosenExercises = dayOverride.levels?.beginner || dayOverride.beginnerExercises || dayOverride.levels?.intermediate || dayOverride.intermediateExercises || dayOverride.levels?.advanced || dayOverride.advancedExercises || [];
             }
 
             if (Array.isArray(chosenExercises) && chosenExercises.length > 0) {

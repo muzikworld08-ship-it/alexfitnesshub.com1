@@ -302,6 +302,8 @@ export function getHomeWorkoutForDay(
           const rawTierList = (level.toLowerCase().includes("beg") && (dayOverride.levels?.beginner?.length ? dayOverride.levels.beginner : dayOverride.beginnerExercises))
             || (level.toLowerCase().includes("adv") && (dayOverride.levels?.advanced?.length ? dayOverride.levels.advanced : dayOverride.advancedExercises))
             || (level.toLowerCase().includes("inter") && (dayOverride.levels?.intermediate?.length ? dayOverride.levels.intermediate : dayOverride.intermediateExercises))
+            || dayOverride.levels?.beginner
+            || dayOverride.beginnerExercises
             || dayOverride.exercises;
 
           if (Array.isArray(rawTierList) && rawTierList.length > 0) {
@@ -309,7 +311,7 @@ export function getHomeWorkoutForDay(
             id: ovEx.id || `home_ov_d${safeDay}_${idx + 1}`,
             name: ovEx.exerciseName || ovEx.name,
             targetMuscles: Array.isArray(ovEx.muscleGroup) ? ovEx.muscleGroup : [ovEx.muscleGroup || targets[0] || "Full Body"],
-            difficulty: ovEx.difficulty || level,
+            difficulty: ovEx.difficulty || (level.toLowerCase().includes("beg") ? "Beginner" : level),
             workoutType: detectWorkoutType(ovEx.exerciseName || ovEx.name, ovEx.reps),
             instructions: Array.isArray(ovEx.instructions) ? ovEx.instructions : [`Execute ${ovEx.exerciseName || ovEx.name} with strict form.`],
             sets: `${ovEx.sets || 3} Sets`,
@@ -318,7 +320,7 @@ export function getHomeWorkoutForDay(
             beginnerModification: "Perform at reduced intensity or with chair assistance.",
             advancedProgression: "Add tempo pause at peak contraction.",
             coachingCues: ovEx.coachingCues || ["Maintain posture and continuous breathing."],
-            gifUrl: ovEx.gifUrl || "",
+            gifUrl: ovEx.gifUrl || ovEx.customMediaUrl || "",
             equipment: "Zero Equipment (Bodyweight)"
           }));
 
@@ -360,8 +362,16 @@ export function getHomeWorkoutForDay(
   const allActive = allActiveRaw.filter(ex => !isExplicitlyMarkedWomenWorkout(ex));
 
   // Strictly filter for home-eligible exercises only: no barbell, dumbbell, or gym machines
-  // Strictly capped at maximum 10 workouts daily
-  const matched = filterExercisesForSplit(allActive, targets, { requireHomeOnly: true }).slice(0, 10);
+  // Prioritize beginner difficulty if level is beginner
+  let matched = filterExercisesForSplit(allActive, targets, { requireHomeOnly: true });
+  if (level.toLowerCase().includes("beg")) {
+    matched = [...matched].sort((a, b) => {
+      const aBeg = a.difficulty === "Beginner" ? 1 : 0;
+      const bBeg = b.difficulty === "Beginner" ? 1 : 0;
+      return bBeg - aBeg;
+    });
+  }
+  matched = matched.slice(0, 10);
 
   const exercises: HomeExercise[] = matched.map((ex, idx) => {
     const mediaUrl = ex.customMediaUrl || ex.gifUrl || ex.imageUrl || "";

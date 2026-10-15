@@ -1678,6 +1678,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Standardize default profile fields with seamless dashboard access
     const isNewUser = isNewSignUp || (profile ? profile.onboarded === false : false);
 
+    const savedFitnessLvl = (typeof window !== "undefined" ? (localStorage.getItem("fit_athlete_fitness_level") || localStorage.getItem("fit_user_fitness_level")) : null) || "beginner";
+    const initialFitnessLevel = (profile?.fitnessLevel || (profile as any)?.workoutExperience || (savedFitnessLvl.includes("adv") ? "Advanced" : savedFitnessLvl.includes("inter") ? "Intermediate" : "Beginner")) as any;
+
     const baseProfile: UserProfile = {
       uid,
       email,
@@ -1693,6 +1696,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       freeTrialDaysRemaining: isAdmin ? 0 : 7,
       createdAt: new Date().toISOString(),
       onboarded: !isNewUser,
+      fitnessLevel: initialFitnessLevel,
+      workoutExperience: initialFitnessLevel,
       ...profile, // overlay cached attributes if any
     };
 
@@ -4362,9 +4367,17 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       }
       const finalWaterGoal = Math.round(baseGoal);
 
+      const resolvedLevel = onboardingData.workoutExperience || (onboardingData as any).fitnessLevel || safeUser.fitnessLevel || "Beginner";
+      try {
+        localStorage.setItem("fit_athlete_fitness_level", resolvedLevel.toLowerCase());
+        localStorage.setItem("fit_user_fitness_level", resolvedLevel.toLowerCase());
+      } catch (e) {}
+
       const updated: UserProfile = {
         ...safeUser,
         ...onboardingData,
+        fitnessLevel: resolvedLevel,
+        workoutExperience: resolvedLevel,
         onboarded: true,
         subscriptionStatus: safeUser.subscriptionStatus === "premium" ? "premium" : "free",
         subscriptionTier: safeUser.subscriptionTier || "none",

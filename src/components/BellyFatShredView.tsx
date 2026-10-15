@@ -37,6 +37,7 @@ import {
 import { isEmailAdmin } from "../context/AppContext";
 import { Exercise } from "../data/exercises";
 import { ChallengeExerciseItem } from "../types/challengeEngine";
+import { isExplicitlyMarkedWomenWorkout } from "../data/womenConfidenceProgramData";
 
 // High-fidelity local types
 interface WeightEntry {
@@ -291,12 +292,23 @@ export const parseDrillDetails = (drill: string, sectionType: string): ParsedDri
 };
 
 // Dynamic workouts progression for weeks 1 to 20 powered by admin-uploaded library & category splits
+// Dynamic workouts progression for weeks 1 to 20 powered by admin manual dashboard exercise structuring
 const getWorkoutForWeekAndDay = (
   week: number, 
   dayNum: number,
   availableExercises: Exercise[] = [],
-  adminOverrides: Record<string, any> = {}
+  adminOverrides: Record<string, any> = {},
+  userFitnessLevel?: string
 ) => {
+  const userLevel = (
+    userFitnessLevel || 
+    (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level")) : null) || 
+    (week <= 4 ? "Beginner" : "Intermediate")
+  ).toLowerCase();
+  const isBeginner = userLevel.includes("beg");
+  const isAdvanced = userLevel.includes("adv");
+  const difficulty = isBeginner ? "Beginner" : isAdvanced ? "Advanced" : "Intermediate";
+
   // Muscle groups & themes progression
   const phase = week <= 4 ? "Phase 1: Foundational Core & Metabolic Prep" 
               : week <= 8 ? "Phase 2: HIIT Acceleration & Strength Base" 
@@ -304,10 +316,6 @@ const getWorkoutForWeekAndDay = (
               : week <= 16 ? "Phase 4: High-Velocity Metabolic Conditioning" 
               : "Phase 5: Peak Fat Shred & Sculpt Definition";
 
-  const isBeginner = week <= 4;
-  const isIntermediate = week > 4 && week <= 12;
-  const difficulty = isBeginner ? "Beginner" : isIntermediate ? "Intermediate" : "Advanced";
-  
   const durationMap = [45, 50, 60, 75, 90];
   const duration = durationMap[Math.min(4, Math.floor((week - 1) / 4))] + " mins";
   const calMap = [350, 480, 620, 750, 920];
@@ -329,6 +337,7 @@ const getWorkoutForWeekAndDay = (
   else defaultTitle = "Sunday: Recovery";
 
   const title = override?.title || defaultTitle;
+  const exerciseMediaMap: Record<string, string> = {};
 
   // Walking & Mobility Day (Saturday Day 6) and Recovery Day (Sunday Day 7)
   if (dayNum === 6 || dayNum === 7) {
@@ -339,59 +348,39 @@ const getWorkoutForWeekAndDay = (
       duration: isWalkingDay ? "50-70 mins" : "25-35 mins",
       calBurn: isWalkingDay ? "450-600 kcal" : "120-180 kcal",
       title,
-      warmup: [
-        "Light ankle & hip circles — 3 mins",
-        "Dynamic hamstring sweeps & torso rotations — 3 mins",
-        "Deep diaphragmatic ribcage expansion — 2 mins"
-      ],
-      core: [
-        "Standing core vacuum & pelvic neutral alignment: 3 sets x 30s",
-        "Primal Cat-Cow Spinal Waves: 3 sets x 60s rhythmic decompression",
-        "Child's pose deep breathing — 2 mins"
-      ],
-      hiit: [
-        isWalkingDay 
-          ? "Aerobic Walking Assignment: 5 to 10 KM Brisk Walking outdoors or on treadmill."
-          : "Full Rest Protocol: Parasympathetic nervous system reset — no HIIT intervals today."
-      ],
-      strength: [
-        isWalkingDay
-          ? "Joint Mobility Focus: Thoracic rotations, deep squat hold, and 90/90 hip mobility."
-          : "Complete Muscular Recovery: Lie down, hydrate, and allow muscles to repair."
-      ],
-      fullBodyCircuit: [
-        isWalkingDay 
-          ? "Saturday Protocol: Dedicated 5 to 10 KM Walking + Full Mobility flow."
-          : "Sunday Protocol: Parasympathetic Regeneration, foam rolling, and rest."
-      ],
-      cooldown: [
-        "Cobra pose stretch — hold 30s x 2",
-        "Kneeling hamstring stretch — 1 min per side",
-        "Child's pose deep breathing — 2 mins"
-      ],
+      warmup: isWalkingDay ? ["Dynamic ankle & hip mobilization — 3 mins", "Torso rotations & ribcage breathing — 3 mins"] : ["Restorative breathing — 3 mins", "Spine decompression — 3 mins"],
+      core: isWalkingDay ? ["Standing core vacuum: 3 sets x 30s", "Pelvic alignment breathing: 3 sets x 45s"] : ["Diaphragmatic decompression: 3 sets x 60s"],
+      hiit: [isWalkingDay ? "Aerobic Walking Assignment: 5 to 10 KM Brisk Walking outdoors or on treadmill." : "Full Rest Protocol: Parasympathetic nervous system reset — no HIIT today."],
+      strength: [isWalkingDay ? "Joint Mobility Focus: Thoracic rotations and hip mobility." : "Complete Muscular Recovery: Hydrate and allow muscle tissue to rebuild."],
+      fullBodyCircuit: [isWalkingDay ? "Saturday Protocol: Dedicated 5 to 10 KM Walking + Full Mobility flow." : "Sunday Protocol: Parasympathetic Regeneration and rest."],
+      cooldown: ["Full body stretching & deep breathing — 3 mins"],
       modifications: {
         beginner: isWalkingDay ? "Brisk walk 3 to 5 KM at steady conversational pace." : "20 minutes gentle stretching and deep breathing.",
         intermediate: isWalkingDay ? "Brisk walk 5 to 8 KM with posture engagement." : "30 minutes mobility flow.",
         advanced: isWalkingDay ? "Fast-paced power walk 8 to 10 KM." : "Full restorative session."
       },
       exercisesList: isWalkingDay 
-        ? ["5-10 KM Brisk Walk", "Cat-Cow Spinal Waves", "Thoracic Spine Reach", "Standing Core Vacuum"]
-        : ["Restorative Breathing", "Child's Pose", "Cat-Cow Waves", "Hamstring Stretch"]
+        ? ["5-10 KM Brisk Walk", "Thoracic Spine Reach", "Standing Core Vacuum"]
+        : ["Restorative Breathing", "Spine Decompression"],
+      exerciseMediaMap
     };
   }
 
-  // Active Training Days (1, 2, 4, 5, 6)
-  const strengthReps = week <= 4 ? "3 sets x 12 reps (Bodyweight)" : (week <= 12 ? "4 sets x 10 reps (Moderate Weight)" : "4 sets x 8 reps (Progressive Overload)");
-  const corePrescription = week <= 4 ? "3 sets x 12 reps" : (week <= 12 ? "4 sets x 15 reps" : "4 sets x 20 reps (Weighted)");
-  const hiitPrescription = week <= 8 ? "4 rounds x 30s work / 15s rest" : "4 rounds x 45s work / 15s rest";
+  // Active Training Days (1, 2, 3, 4, 5)
+  const strengthReps = isBeginner ? "3 sets x 10-12 reps" : isAdvanced ? "4 sets x 6-8 reps" : "3-4 sets x 8-10 reps";
+  const corePrescription = isBeginner ? "3 sets x 12 reps" : isAdvanced ? "4 sets x 20 reps" : "3 sets x 15 reps";
+  const hiitPrescription = isBeginner ? "3 rounds x 25s work / 20s rest" : "4 rounds x 40s work / 20s rest";
 
-  // Check admin overrides for this day/cycle
-  const tierKey = difficulty.toLowerCase();
+  // Check admin overrides from manual dashboard exercise structuring
   const overrideExercises: ChallengeExerciseItem[] = 
-    (tierKey.includes("beg") && (override?.levels?.beginner?.length ? override.levels.beginner : override?.beginnerExercises)) ||
-    (tierKey.includes("adv") && (override?.levels?.advanced?.length ? override.levels.advanced : override?.advancedExercises)) ||
-    (tierKey.includes("inter") && (override?.levels?.intermediate?.length ? override.levels.intermediate : override?.intermediateExercises)) ||
-    override?.exercises;
+    (isBeginner && (override?.levels?.beginner?.length ? override.levels.beginner : override?.beginnerExercises)) ||
+    (isAdvanced && (override?.levels?.advanced?.length ? override.levels.advanced : override?.advancedExercises)) ||
+    (override?.levels?.intermediate?.length ? override.levels.intermediate : override?.intermediateExercises) ||
+    override?.levels?.beginner ||
+    override?.beginnerExercises ||
+    override?.exercises ||
+    [];
+
   const cycleDay = ((dayNum - 1) % 7) + 1;
   const splitResolver = PROGRAM_SPLIT_DEFINITIONS["belly_fat_shred"];
   const splitDef = splitResolver ? splitResolver(cycleDay) : null;
@@ -402,31 +391,34 @@ const getWorkoutForWeekAndDay = (
   let coreDrills: string[] = [];
   let hiitDrills: string[] = [];
   let strengthDrills: string[] = [];
-  const finisherDrills: string[] = [
-    "Bear Crawl: 3 sets x 40 seconds",
-    "Core Functional Isometric: 3 sets x 45s Plank & Hollow Body Hold"
-  ];
+  const finisherDrills: string[] = [];
   const cooldownDrills: string[] = [
-    "Cobra pose stretch — hold 30s x 2",
-    "Kneeling hamstring stretch — 1 min per side",
-    "Child's pose deep breathing — 2 mins"
+    "Thoracic Spine Stretch — hold 30s x 2",
+    "Hamstring decompression — 1 min per side",
+    "Diaphragmatic reset — 2 mins"
   ];
 
   if (overrideExercises && Array.isArray(overrideExercises) && overrideExercises.length > 0) {
     for (const ex of overrideExercises) {
       const name = ex.exerciseName || (ex as any).name || "";
+      const cleanName = name.trim();
+      if (!cleanName) continue;
+      const lower = cleanName.toLowerCase();
       const cat = (ex.category || "").toLowerCase();
 
-      // Strict anti-cross-contamination check:
-      // If the exercise does NOT belong to this day's category/muscles (e.g. flat bench on back day, leg day, or cardio day), skip it!
+      // Record gif from admin
+      if (ex.gifUrl) {
+        exerciseMediaMap[lower] = ex.gifUrl;
+      }
+
       if (!isExerciseBelongingToSplit(ex, targetMuscles, targetCategoryTitle)) {
         continue;
       }
 
-      const presc = `${ex.sets || 3} sets x ${ex.reps || "12 reps"}`;
-      const drillStr = `${name}: ${presc}`;
+      const presc = `${ex.sets || 3} sets x ${ex.reps || (isBeginner ? "10-12 reps" : "12 reps")}`;
+      const drillStr = `${cleanName}: ${presc}`;
 
-      if (cat.includes("core") || cat.includes("abs") || isCoreExercise(name, cat)) {
+      if (cat.includes("core") || cat.includes("abs") || isCoreExercise(cleanName, cat)) {
         coreDrills.push(drillStr);
       } else if (cat.includes("hiit") || cat.includes("cardio")) {
         hiitDrills.push(drillStr);
@@ -438,24 +430,33 @@ const getWorkoutForWeekAndDay = (
     }
   }
 
-  // If no override or sections need authentic exercises, dynamically pull and categorize from admin's library
+  // If sections need exercises, dynamically pull and categorize from admin's library
   if (availableExercises && availableExercises.length > 0) {
-    const coreMatches = availableExercises.filter(e => isCoreExercise(e.name, e.category || ""));
-    const hiitMatches = availableExercises.filter(e => {
+    const eligibleLib = availableExercises.filter(e => {
+      if (isExplicitlyMarkedWomenWorkout(e)) return false;
+      if (isBeginner && e.difficulty && e.difficulty !== "Beginner") return false;
+      return true;
+    });
+
+    for (const ex of eligibleLib) {
+      const media = ex.customMediaUrl || ex.gifUrl || ex.imageUrl;
+      if (media) exerciseMediaMap[ex.name.toLowerCase().trim()] = media;
+    }
+
+    const coreMatches = eligibleLib.filter(e => isCoreExercise(e.name, e.category || ""));
+    const hiitMatches = eligibleLib.filter(e => {
       const c = (e.category || "").toLowerCase();
       const n = (e.name || "").toLowerCase();
       return c.includes("hiit") || c.includes("cardio") || n.includes("climber") || n.includes("burpee") || n.includes("jump") || n.includes("jack");
     });
-    
-    // Day-specific strength matches from admin library strictly validated against split
-    const strengthMatches = availableExercises.filter(e => {
+    const strengthMatches = eligibleLib.filter(e => {
       const c = (e.category || "").toLowerCase();
       const n = (e.name || "").toLowerCase();
       if (isCoreExercise(n, c)) return false;
       return isExerciseBelongingToSplit(e, targetMuscles, targetCategoryTitle);
     });
 
-    if (coreDrills.length < 3) {
+    if (coreDrills.length < 3 && coreMatches.length > 0) {
       const needed = 3 - coreDrills.length;
       coreMatches.slice(0, needed).forEach(ex => {
         const presc = ex.recommendedSets && ex.recommendedReps ? `${ex.recommendedSets} sets x ${ex.recommendedReps}` : corePrescription;
@@ -463,7 +464,7 @@ const getWorkoutForWeekAndDay = (
       });
     }
 
-    if (hiitDrills.length < 3) {
+    if (hiitDrills.length < 3 && hiitMatches.length > 0) {
       const needed = 3 - hiitDrills.length;
       hiitMatches.slice(0, needed).forEach(ex => {
         const presc = ex.recommendedSets && ex.recommendedReps ? `${ex.recommendedSets} sets x ${ex.recommendedReps}` : hiitPrescription;
@@ -471,7 +472,7 @@ const getWorkoutForWeekAndDay = (
       });
     }
 
-    if (strengthDrills.length < 3) {
+    if (strengthDrills.length < 3 && strengthMatches.length > 0) {
       const needed = 3 - strengthDrills.length;
       strengthMatches.slice(0, needed).forEach(ex => {
         const presc = ex.recommendedSets && ex.recommendedReps ? `${ex.recommendedSets} sets x ${ex.recommendedReps}` : strengthReps;
@@ -480,34 +481,12 @@ const getWorkoutForWeekAndDay = (
     }
   }
 
-  // Fallback defaults if admin library has not populated yet
+  // Ensure warmup is set if empty
   if (warmupDrills.length === 0) {
     warmupDrills = [
-      "Arm circles & torso twists — 3 mins",
-      "Dynamic hip openers — 2 mins",
-      "Light jumping jacks or marching — 3 mins",
-      week > 8 ? "Spidermans with chest rotations — 2 mins" : "Cat-Cow stretching — 1 min"
-    ];
-  }
-  if (coreDrills.length === 0) {
-    coreDrills = [
-      `Plank Hold: ${week <= 4 ? "3 sets x 30s" : week <= 12 ? "4 sets x 45s" : "4 sets x 60s (Weighted)"}`,
-      `Dead Bug: 3 sets x ${week <= 4 ? "12 reps" : "16 reps with control"}`,
-      `Side Plank Hold: 3 sets x ${week <= 4 ? "20s" : "45s per side"}`
-    ];
-  }
-  if (hiitDrills.length === 0) {
-    hiitDrills = [
-      `Mountain Climbers: 4 rounds x ${week <= 8 ? "30s work / 15s rest" : "45s work / 15s rest"}`,
-      `Burpees: 3 rounds x ${week <= 4 ? "10 reps" : week <= 12 ? "15 reps" : "20 reps with push-up"}`,
-      `Rope Jump intervals: ${week <= 8 ? "3 mins continuous" : "5 mins high intensity double-unders"}`
-    ];
-  }
-  if (strengthDrills.length === 0) {
-    strengthDrills = [
-      `Squats: ${strengthReps}`,
-      `Push-ups (Knee or Full): 3 sets x ${week <= 4 ? "8 reps" : "15 reps with slow negatives"}`,
-      `Reverse Lunges: 3 sets x 12 reps per side ${week > 8 ? "(Hold dumbbells)" : ""}`
+      "Dynamic arm & shoulder sweeps — 2 mins",
+      "Hip circles & dynamic groin stretch — 2 mins",
+      "Low impact activation march — 2 mins"
     ];
   }
 
@@ -530,11 +509,12 @@ const getWorkoutForWeekAndDay = (
     fullBodyCircuit: finisherDrills,
     cooldown: cooldownDrills,
     modifications: {
-      beginner: "Scale cardio work-to-rest ratio (e.g. 20s work / 20s rest). Use elevated pushups. Do standard bodyweight air squats.",
-      intermediate: "Add light dumbbells. Maintain steady pace at full duration. Perform classic pushups.",
-      advanced: "Increase dumbbell weights. Replace standard squats with jump squats."
+      beginner: "Scale cardio work-to-rest ratio (e.g. 20s work / 20s rest). Use bodyweight and controlled cadence.",
+      intermediate: "Add light dumbbells. Maintain steady pace at full duration.",
+      advanced: "Increase dumbbell weights. Focus on explosive concentric tempo."
     },
-    exercisesList: allNames
+    exercisesList: allNames,
+    exerciseMediaMap
   };
 };
 
@@ -548,6 +528,7 @@ interface BoldDrillCardProps {
   isCompleted?: boolean;
   onToggleComplete?: () => void;
   accentColor?: string;
+  customGifUrl?: string;
 }
 
 const BoldDrillCard: React.FC<BoldDrillCardProps> = ({
@@ -559,10 +540,12 @@ const BoldDrillCard: React.FC<BoldDrillCardProps> = ({
   isDark,
   isCompleted,
   onToggleComplete,
-  accentColor = "#D32F2F"
+  accentColor = "#D32F2F",
+  customGifUrl
 }) => {
   const details = parseDrillDetails(drill, sectionType);
-  const authentic = resolveAuthenticExercise(details.libName || details.name);
+  const authentic = resolveAuthenticExercise(details.libName || details.name, customGifUrl);
+  const finalMediaUrl = customGifUrl || authentic.gifUrl;
 
   return (
     <div
@@ -576,7 +559,7 @@ const BoldDrillCard: React.FC<BoldDrillCardProps> = ({
       <div className="relative w-full aspect-[16/10] workout-media-frameless flex items-center justify-center overflow-hidden">
         <UnifiedExerciseMedia
           exerciseName={authentic.name}
-          mediaUrl={authentic.gifUrl}
+          mediaUrl={finalMediaUrl}
           className="w-full h-full object-contain workout-gif-display workout-gif-bold group-hover:scale-105 transition-transform duration-500"
         />
 
@@ -1174,14 +1157,16 @@ export default function BellyFatShredView() {
 
   // Active workout definition dynamically resolved from admin library & schedule overrides
   const bellyOverrides = programScheduleOverrides["belly_fat_shred"] || {};
+  const athleteLevel = user?.workoutExperience || (user as any)?.fitnessLevel || (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level")) : null) || "Beginner";
   const workoutInfo = useMemo(() => {
     return getWorkoutForWeekAndDay(
       progress.currentWeek, 
       progress.currentDay, 
       centralizedExercises, 
-      bellyOverrides
+      bellyOverrides,
+      athleteLevel
     );
-  }, [progress.currentWeek, progress.currentDay, centralizedExercises, bellyOverrides]);
+  }, [progress.currentWeek, progress.currentDay, centralizedExercises, bellyOverrides, athleteLevel]);
 
   // Check if today is Run Day (Wednesday Day 3 and Sunday Day 7 are the ONLY cardio days on the entire program)
   const isRunScheduled = progress.currentDay === 3 || progress.currentDay === 7;
