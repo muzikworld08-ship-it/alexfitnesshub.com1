@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useApp, isEmailAdmin } from "../context/AppContext";
 import { Exercise, PROGRAMS, Program, EXERCISES, getExerciseGifUrl } from "../data/exercises";
+import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
 import { WORKOUTS_DATABASE, WORKOUT_CATEGORIES_INFO, Workout, WorkoutExercise, getWorkoutMappedCategory, calculateWorkoutDuration, calculateProgramWorkoutDuration } from "../data/workoutsData";
 import YouTubePlayer from "./video/YouTubePlayer";
 import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
@@ -4510,40 +4511,48 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 <h5 className="text-[10px] font-bold text-slate-400 font-mono uppercase tracking-widest">WEEKLY TRAINING SCHEDULE</h5>
                 
                 <div className="space-y-3">
-                  {selectedProgram.schedule.map((sch, i) => (
-                    <div key={`sch-${selectedProgram.id}-${sch.day}`} className="p-4 rounded-xl bg-slate-950 border border-slate-850 text-xs text-left">
-                      <div className="flex items-center justify-between border-b border-slate-900 pb-2 mb-2">
-                        <span className="font-extrabold text-emerald-400 uppercase font-mono tracking-wider">{sch.day}</span>
-                        <span className="text-[10px] font-semibold text-slate-200">{sch.focus}</span>
-                      </div>
+                  {selectedProgram.schedule.map((sch, i) => {
+                    const cycleDay = i + 1;
+                    const enginePlan = getWorkoutForProgramAndDay(selectedProgram.id, cycleDay, exercises);
+                    const dayFocus = enginePlan.meta.title || enginePlan.meta.category || sch.focus;
+                    const dayExercises = (enginePlan.exercises && enginePlan.exercises.length > 0)
+                      ? enginePlan.exercises.map(e => e.exerciseName || (e as any).name)
+                      : sch.exercises;
 
-                      <div className="space-y-2 mt-2">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase font-mono">TARGET EXERCISES:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {sch.exercises.map((exName, idx) => {
-                            // Find matching exercise in DB using centralized matching
-                            const match = findMatchingExercise(exercises, null, exName);
-                            return (
-                              <button
-                                key={match?.id || `sch-ex-${selectedProgram.id}-${sch.day}-${exName}`}
-                                type="button"
-                                onClick={() => {
-                                  if (match) {
-                                    handleOpenDetail(match);
-                                  } else {
-                                    alert(`To practice ${exName}, browse the Exercises lists. Keep form strict!`);
-                                  }
-                                }}
-                                className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white font-sans text-[11px] rounded border border-slate-800 transition flex items-center gap-1 group"
-                              >
-                                <Play className="w-2.5 h-2.5 text-emerald-400 group-hover:scale-110" />
-                                {exName}
-                                <span className="text-[8px] text-slate-500 group-hover:text-emerald-400 ml-1">→ VIEW</span>
-                              </button>
-                            );
-                          })}
+                    return (
+                      <div key={`sch-${selectedProgram.id}-${sch.day}`} className="p-4 rounded-xl bg-slate-950 border border-slate-850 text-xs text-left">
+                        <div className="flex items-center justify-between border-b border-slate-900 pb-2 mb-2">
+                          <span className="font-extrabold text-emerald-400 uppercase font-mono tracking-wider">{sch.day}</span>
+                          <span className="text-[10px] font-semibold text-slate-200">{dayFocus}</span>
                         </div>
-                      </div>
+
+                        <div className="space-y-2 mt-2">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase font-mono">TARGET EXERCISES:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {dayExercises.map((exName, idx) => {
+                              // Find matching exercise in DB using centralized matching
+                              const match = findMatchingExercise(exercises, null, exName);
+                              return (
+                                <button
+                                  key={match?.id || `sch-ex-${selectedProgram.id}-${sch.day}-${exName}`}
+                                  type="button"
+                                  onClick={() => {
+                                    if (match) {
+                                      handleOpenDetail(match);
+                                    } else {
+                                      alert(`To practice ${exName}, browse the Exercises lists. Keep form strict!`);
+                                    }
+                                  }}
+                                  className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white font-sans text-[11px] rounded border border-slate-800 transition flex items-center gap-1 group"
+                                >
+                                  <Play className="w-2.5 h-2.5 text-emerald-400 group-hover:scale-110" />
+                                  {exName}
+                                  <span className="text-[8px] text-slate-500 group-hover:text-emerald-400 ml-1">→ VIEW</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
 
                       {/* Display Nutrition integration plan inside program! */}
                       {sch.mealPlan && (
@@ -4558,9 +4567,10 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                         </div>
                       )}
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
+            </div>
 
               {/* Status and Active Sign-In checks */}
               <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-between text-xs">

@@ -2,6 +2,7 @@ import { Exercise } from "./exercises";
 import { filterExercisesForSplit, isHomeEligibleExercise, detectWorkoutType } from "../utils/dynamicWorkoutEngine";
 import { isExplicitlyMarkedWomenWorkout } from "./womenConfidenceProgramData";
 import { CANONICAL_EXERCISES } from "./canonicalExercises";
+import { getWorkoutForProgramAndDay } from "./challengeEngineDatabase";
 import DEFAULT_PROGRAM_SCHEDULE_OVERRIDES from "./program_schedule_overrides.json";
 
 export interface HomeOnboardingProfile {
@@ -205,7 +206,7 @@ function getActiveExercisesFromStorage(): Exercise[] {
  */
 export function getHomeWorkoutForDay(
   day: number,
-  level: "Beginner" | "Intermediate" | "Advanced" = "Intermediate",
+  fitnessLevel: "Beginner" | "Intermediate" | "Advanced" = "Intermediate",
   profile?: HomeOnboardingProfile | null,
   activeExercisesList?: Exercise[],
   trackOverride?: "Men" | "Women"
@@ -215,199 +216,49 @@ export function getHomeWorkoutForDay(
   const phase = HOME_PROGRAM_PHASES[phaseNumber - 1];
   const phaseName = phase ? phase.name : "Movement Foundations";
 
-  const dayInWeek = ((safeDay - 1) % 7) + 1;
-  const isRestDay = dayInWeek === 7;
-  const is5KmCardioDay = dayInWeek === 4;
-
   const activeTrack: "Men" | "Women" = trackOverride 
     ? trackOverride 
     : (profile?.gender === "Female" ? "Women" : "Men");
-
-  let title = `Day ${safeDay}: `;
-  let focus = "";
-  let targets: string[] = [];
-
-  if (activeTrack === "Women") {
-    if (dayInWeek === 1) {
-      title += "Monday: Glutes + Hamstrings";
-      focus = "Glutes + Hamstrings";
-      targets = ["Glutes", "Hamstrings", "Lower Body"];
-    } else if (dayInWeek === 2) {
-      title += "Tuesday: Upper Body Tone + Core";
-      focus = "Upper Body Tone + Core";
-      targets = ["Upper Body", "Back", "Shoulders", "Core", "Abs"];
-    } else if (dayInWeek === 3) {
-      title += "Wednesday: Quads + Glutes";
-      focus = "Quads + Glutes";
-      targets = ["Quadriceps", "Glutes", "Lower Body"];
-    } else if (dayInWeek === 4) {
-      title += "Thursday: Cardio + Core + Mobility";
-      focus = "Cardio + Core + Mobility";
-      targets = ["Cardio", "Core", "Abs", "Mobility", "Walking"];
-    } else if (dayInWeek === 5) {
-      title += "Friday: Glutes + Full Lower Body";
-      focus = "Glutes + Full Lower Body";
-      targets = ["Glutes", "Full Lower Body", "Hamstrings", "Quads", "Calves"];
-    } else if (dayInWeek === 6) {
-      title += "Saturday: Full Body Conditioning";
-      focus = "Full Body Conditioning";
-      targets = ["Full Body", "Conditioning", "Cardio"];
-    } else {
-      title += "Sunday: Recovery";
-      focus = "Recovery";
-      targets = ["Recovery", "Mobility", "Stretching"];
-    }
-  } else {
-    // Men Track (Default)
-    if (dayInWeek === 1) {
-      title += "Monday: Upper Body Push & Calisthenics";
-      focus = "Upper Body Push & Calisthenics";
-      targets = ["Chest", "Upper Body", "Shoulders", "Triceps", "Home Workouts"];
-    } else if (dayInWeek === 2) {
-      title += "Tuesday: Core & Abs Shred";
-      focus = "Core & Abs Shred";
-      targets = ["Core", "Abs", "Obliques"];
-    } else if (dayInWeek === 3) {
-      title += "Wednesday: Lower Body & Legs";
-      focus = "Lower Body & Legs";
-      targets = ["Legs", "Quadriceps", "Hamstrings", "Calves"];
-    } else if (dayInWeek === 4) {
-      title += "Thursday: Cardio + Mobility";
-      focus = "Cardio + Mobility";
-      targets = ["Cardio", "Running", "Mobility", "Conditioning"];
-    } else if (dayInWeek === 5) {
-      title += "Friday: Upper Body Pull & Back";
-      focus = "Upper Body Pull & Back";
-      targets = ["Back", "Biceps", "Upper Body"];
-    } else if (dayInWeek === 6) {
-      title += "Saturday: Athletic Full Body Conditioning";
-      focus = "Athletic Full Body Conditioning";
-      targets = ["Full Body", "Cardio", "Conditioning"];
-    } else {
-      title += "Sunday: Recovery";
-      focus = "Recovery";
-      targets = ["Recovery", "Mobility", "Stretching"];
-    }
-  }
-
-  // Check admin overrides from local storage or bundled defaults
-  let homeOverrides: any = undefined;
   const trackKey = (activeTrack || "").toLowerCase().includes("women") ? "women" : "men";
-  if (typeof window !== "undefined" && window.localStorage) {
-    try {
-      const stored = window.localStorage.getItem("fit_program_schedule_overrides");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        homeOverrides = parsed[`home_180_${trackKey}`] || parsed.home_180 || parsed["180_day_home"];
-      }
-    } catch (e) {
-      console.warn("Home workout overrides read warning:", e);
-    }
-  }
+  const level = fitnessLevel || profile?.fitnessLevel || "Beginner";
 
-  if (!homeOverrides && DEFAULT_PROGRAM_SCHEDULE_OVERRIDES) {
-    const dOverrides = DEFAULT_PROGRAM_SCHEDULE_OVERRIDES as Record<string, any>;
-    homeOverrides = dOverrides[`home_180_${trackKey}`] || dOverrides.home_180 || dOverrides["180_day_home"];
-  }
+  const progKey = trackKey === "women" ? "home_180_women" : "home_180";
+  const enginePlan = getWorkoutForProgramAndDay(
+    progKey,
+    safeDay,
+    activeExercisesList,
+    { fitnessLevel: level, track: trackKey }
+  );
 
-  if (homeOverrides) {
-    const cycleKey = `cycle_${dayInWeek}`;
-    const dayOverride = homeOverrides[String(safeDay)] || homeOverrides[cycleKey];
-    if (dayOverride) {
-      const rawTierList = (level.toLowerCase().includes("beg") && (dayOverride.levels?.beginner?.length ? dayOverride.levels.beginner : dayOverride.beginnerExercises))
-        || (level.toLowerCase().includes("adv") && (dayOverride.levels?.advanced?.length ? dayOverride.levels.advanced : dayOverride.advancedExercises))
-        || (level.toLowerCase().includes("inter") && (dayOverride.levels?.intermediate?.length ? dayOverride.levels.intermediate : dayOverride.intermediateExercises))
-        || dayOverride.levels?.beginner
-        || dayOverride.beginnerExercises
-        || dayOverride.exercises;
+  const title = enginePlan.meta.title || `Day ${safeDay}: ${enginePlan.meta.category}`;
+  const focus = enginePlan.meta.category || "Home Workout Session";
+  const isRestDay = !!enginePlan.meta.isRestDay;
+  const is5KmCardioDay = !!enginePlan.meta.isCardioOnly;
 
-          if (Array.isArray(rawTierList) && rawTierList.length > 0) {
-            const exercisesFromOverride: HomeExercise[] = rawTierList.map((ovEx: any, idx: number) => ({
-            id: ovEx.id || `home_ov_d${safeDay}_${idx + 1}`,
-            name: ovEx.exerciseName || ovEx.name,
-            targetMuscles: Array.isArray(ovEx.muscleGroup) ? ovEx.muscleGroup : [ovEx.muscleGroup || targets[0] || "Full Body"],
-            difficulty: ovEx.difficulty || (level.toLowerCase().includes("beg") ? "Beginner" : level),
-            workoutType: detectWorkoutType(ovEx.exerciseName || ovEx.name, ovEx.reps),
-            instructions: Array.isArray(ovEx.instructions) ? ovEx.instructions : [`Execute ${ovEx.exerciseName || ovEx.name} with strict form.`],
-            sets: `${ovEx.sets || 3} Sets`,
-            repsOrDuration: String(ovEx.reps || "10-12 reps"),
-            restPeriod: ovEx.restTime || "45-60s",
-            beginnerModification: "Perform at reduced intensity or with chair assistance.",
-            advancedProgression: "Add tempo pause at peak contraction.",
-            coachingCues: ovEx.coachingCues || ["Maintain posture and continuous breathing."],
-            gifUrl: ovEx.gifUrl || ovEx.customMediaUrl || "",
-            equipment: "Zero Equipment (Bodyweight)"
-          }));
-
-          return {
-            dayNumber: safeDay,
-            phaseNumber,
-            phaseName,
-            title: dayOverride.title || title,
-            focus: dayOverride.focus || focus,
-            isRestDay: !!dayOverride.isRestDay,
-            is5KmCardioDay: !!dayOverride.isCardioOnly,
-            cardioTypeRecommended: dayOverride.isCardioOnly ? "5 to 10 KM Run or Walk" : undefined,
-            estimatedDuration: dayOverride.estimatedDuration || (dayOverride.isRestDay ? 20 : 45),
-            estimatedMinutes: dayOverride.isRestDay ? 20 : 45,
-            exercises: exercisesFromOverride,
-            sections: [
-              {
-                id: `sec_${safeDay}_1`,
-                title: dayOverride.focus || focus,
-                description: `Customized routine for Day ${safeDay}.`,
-                exerciseIndices: exercisesFromOverride.map((_, i) => i)
-              }
-            ],
-            motivationalQuote: "Consistency creates momentum. Show up today with intention."
-          } as any;
-        }
-      }
-    }
-
-  const allActiveRaw = Array.isArray(activeExercisesList) && activeExercisesList.length > 0
-    ? activeExercisesList
-    : getActiveExercisesFromStorage();
-
-  // Workouts assigned as female ONLY appear in Women Confidence Program!
-  const allActive = allActiveRaw.filter(ex => !isExplicitlyMarkedWomenWorkout(ex));
-
-  // Strictly filter for home-eligible exercises only: no barbell, dumbbell, or gym machines
-  // Prioritize beginner difficulty if level is beginner
-  let matched = filterExercisesForSplit(allActive, targets, { requireHomeOnly: true });
-  if (level.toLowerCase().includes("beg")) {
-    matched = [...matched].sort((a, b) => {
-      const aBeg = a.difficulty === "Beginner" ? 1 : 0;
-      const bBeg = b.difficulty === "Beginner" ? 1 : 0;
-      return bBeg - aBeg;
-    });
-  }
-  matched = matched.slice(0, 10);
-
-  const exercises: HomeExercise[] = matched.map((ex, idx) => {
+  const exercises: HomeExercise[] = (enginePlan.exercises || []).map((ex: any, idx: number) => {
     const mediaUrl = ex.customMediaUrl || ex.gifUrl || ex.imageUrl || "";
-    const type = detectWorkoutType(ex.name, ex.recommendedReps);
+    const type = detectWorkoutType(ex.exerciseName || ex.name, ex.reps);
     const durationOrReps = type === "time"
-      ? (ex.recommendedReps?.includes("s") ? ex.recommendedReps : ex.duration || "45s Continuous")
-      : (ex.recommendedReps || "12-15 Reps");
+      ? (String(ex.reps || "").includes("s") ? ex.reps : "45s Continuous")
+      : String(ex.reps || "10-12 Reps");
 
     return {
-      id: `home_d${safeDay}_ex_${idx + 1}`,
-      name: ex.name,
-      targetMuscles: ex.muscleGroups || targets,
-      difficulty: ex.difficulty || level,
+      id: ex.id || `home_${trackKey}_d${safeDay}_ex_${idx + 1}`,
+      name: ex.exerciseName || ex.name,
+      targetMuscles: Array.isArray(ex.muscleGroup) ? ex.muscleGroup : [ex.muscleGroup || focus],
+      difficulty: ex.difficulty || (level.toLowerCase().includes("beg") ? "Beginner" : "Intermediate"),
       workoutType: type,
-      instructions: ex.instructions && ex.instructions.length > 0 ? ex.instructions : [
-        `Assume starting position for ${ex.name}.`,
+      instructions: Array.isArray(ex.instructions) && ex.instructions.length > 0 ? ex.instructions : [
+        `Assume starting position for ${ex.exerciseName || ex.name}.`,
         `Execute movement with strict form and full range of motion.`,
         `Hold peak contraction briefly, return under control.`
       ],
-      sets: `${ex.recommendedSets || "3-4"} Sets`,
+      sets: typeof ex.sets === "number" ? `${ex.sets} Sets` : (ex.sets || "3-4 Sets"),
       repsOrDuration: durationOrReps,
       restPeriod: ex.restTime || "45-60s",
       beginnerModification: "Perform with reduced range or bodyweight assistance.",
-      advancedProgression: "Slow down eccentric tempo or increase repetition volume.",
-      coachingCues: ex.movementExecution ? [ex.movementExecution] : ["Maintain rigid core stability and steady breathing."],
+      advancedProgression: "Slow down eccentric tempo or add a 2-second isometric hold.",
+      coachingCues: ex.coachingCues || ["Maintain rigid core stability and steady breathing."],
       gifUrl: mediaUrl,
       equipment: "Zero Equipment (Bodyweight)"
     };

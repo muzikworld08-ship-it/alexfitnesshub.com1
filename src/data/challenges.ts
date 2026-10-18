@@ -2,6 +2,7 @@ import { Exercise, EXERCISES, getExerciseGifUrl } from "./exercises";
 import { ChallengeItem, ChallengeWorkout } from "../types";
 import { isHomeEligibleExercise } from "../utils/dynamicWorkoutEngine";
 import { isExplicitlyMarkedWomenWorkout } from "./womenConfidenceProgramData";
+import { getWorkoutForProgramAndDay } from "./challengeEngineDatabase";
 
 export interface PremiumChallenge {
   id: string;
@@ -251,6 +252,28 @@ export const CHALLENGE_SPLITS: Record<string, string[]> = {
  */
 export function getChallengeWorkouts(challenge: PremiumChallenge, exercisesList?: Exercise[]): ChallengeWorkout[] {
   const exercises = exercisesList && exercisesList.length > 0 ? exercisesList : EXERCISES;
+
+  // 1. Authoritative Admin Dashboard workout engine resolution
+  try {
+    const dayPlan = getWorkoutForProgramAndDay(challenge.id, 1, exercises);
+    if (dayPlan && Array.isArray(dayPlan.exercises) && dayPlan.exercises.length > 0) {
+      return dayPlan.exercises.slice(0, 10).map((ex, idx) => ({
+        id: ex.id || `cw_${challenge.id}_${idx + 1}`,
+        name: ex.exerciseName || (ex as any).name || "Target Exercise",
+        sets: typeof ex.sets === "number" ? `${ex.sets} sets` : (ex.sets || "3-4 sets"),
+        reps: ex.reps || "10-12 reps",
+        customMediaUrl: ex.customMediaUrl || ex.gifUrl || ex.imageUrl,
+        customMediaType: "image",
+        gifUrl: ex.gifUrl || ex.imageUrl || ex.customMediaUrl,
+        imageUrl: ex.imageUrl || ex.gifUrl,
+        category: ex.category || challenge.category || "General Strength",
+        muscleGroups: Array.isArray(ex.muscleGroup) ? ex.muscleGroup : [ex.category || "Full Body"],
+        restTime: ex.restTime || "60s"
+      }));
+    }
+  } catch (err) {
+    console.warn("Notice resolving challenge workouts from challenge engine:", err);
+  }
 
   let rawWorkouts: ChallengeWorkout[] = [];
 

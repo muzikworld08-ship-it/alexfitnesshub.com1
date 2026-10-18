@@ -289,111 +289,123 @@ export const EXERCISES: Exercise[] = CANONICAL_EXERCISES;
 
 export const PROGRAMS: Program[] = [
   {
-    id: "beginner-muscle-building",
-    name: "Beginner Muscle Building",
+    id: "immortal_90",
+    name: "90 Immortal Challenge",
     category: "Men's Programs",
-    description: "Construct a rock-solid foundation of muscular hypertrophy with controlled lifts. Perfect starting point for physical adaptation.",
-    duration: "8 Weeks",
-    difficulty: "Beginner",
-    searchTags: ["beginner", "hypertrophy", "muscle building"],
-    imageUrl: "",
-    isPremium: false,
-    schedule: [
-      { day: "Day 1", focus: "Horizontal Upper Push & Pull", exercises: [] },
-      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Zone 2 Kinetic Walking & Aerobic Flush", exercises: [] },
-      { day: "Day 3", focus: "Glute & Lower Quad Stability", exercises: [] },
-      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Low-Impact Cardio Conditioning", exercises: [] },
-      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Outdoor Walking", exercises: [] }
-    ]
-  },
-  {
-    id: "advanced-hypertrophy",
-    name: "Advanced Hypertrophy Mastery",
-    category: "Training Styles",
-    description: "Target peak muscular fiber failure through systematic progressive overload and dedicated volume.",
-    duration: "12 Weeks",
+    description: "Designed specifically for men. Strict 7-day cyclical split repeating continuously across all 90 days with heavy compound lifts, sarcoplasmic volume, and dedicated cardio.",
+    duration: "90 Days",
     difficulty: "Advanced",
-    searchTags: ["advanced", "hypertrophy", "bodybuilding"],
-    imageUrl: "",
+    searchTags: ["immortal", "hypertrophy", "muscle building", "chest", "back", "legs"],
+    imageUrl: "https://learn.athleanx.com/wp-content/uploads/2021/10/BACK-MAIN-IMAGE.png",
     isPremium: true,
     schedule: [
-      { day: "Day 1", focus: "Chest & Triceps Overload", exercises: [] },
-      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Low-Impact Cardio & Incline Walk", exercises: [] },
-      { day: "Day 3", focus: "Back & Biceps Thickness", exercises: [] },
-      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Zone 2 Kinetic Walking & Mobility Flush", exercises: [] },
-      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Walking & Metabolic Recovery", exercises: [] }
+      { day: "Day 1", focus: "Monday: Push (Chest, shoulders and triceps)", exercises: ["Barbell Flat Bench Press", "Incline Dumbbell Bench Press", "Incline Barbell Bench Press", "Dumbbell Overhead Shoulder Press", "Standing Dumbbell Lateral Raises"] },
+      { day: "Day 2", focus: "Tuesday: Pull (Back, rear delts and biceps)", exercises: ["Barbell Bent-Over Row", "Lat Pulldown (Wide Grip)", "Seated Cable Row", "Bodyweight Pull-Ups", "Standing Dumbbell Biceps Curls", "Incline Dumbbell Hammer Curls"] },
+      { day: "Day 3", focus: "Wednesday: Legs + Core (Quads, hamstrings, glutes, calves and abs)", exercises: ["Barbell Back Squat", "Romanian Deadlift (RDL)", "Dumbbell Walking Lunges", "45-Degree Leg Press Machine", "Standing Calf Raises", "Isometric Forearm Plank", "Hanging Knee / Leg Raises"] },
+      { day: "Day 4", focus: "Thursday: Cardio + Mobility (Running, conditioning and mobility)", exercises: ["5 to 10 KM Aerobic Running or Walking", "Downward Dog to Cobra Flow", "Cat-Cow Dynamic Spine Flow", "World's Greatest Thoracic Stretch", "Child's Pose Deep Breathing Reset"] },
+      { day: "Day 5", focus: "Friday: Upper Body (Chest, back, shoulders and arms)", exercises: ["Incline Dumbbell Bench Press", "Barbell Bent-Over Row", "Barbell Flat Bench Press", "Lat Pulldown (Wide Grip)", "Standing Dumbbell Lateral Raises", "Standing Dumbbell Biceps Curls", "Triceps Cable Rope Pushdown"] },
+      { day: "Day 6", focus: "Saturday: Athletic Conditioning + Core (Functional movements, conditioning and abdominal work)", exercises: ["Full Body Conditioning Burpees", "High-Tempo Mountain Climbers", "Seated Russian Twists", "Bicycle Crunches", "Isometric Forearm Plank", "Bodyweight Deep Air Squats"] },
+      { day: "Day 7", focus: "Sunday: Recovery (Recovery & System Reset)", exercises: ["Child's Pose Deep Breathing Reset", "Cat-Cow Dynamic Spine Flow", "Supine Figure-4 Glute Stretch", "Standing Quadriceps & Hip Stretch", "Downward Dog to Cobra Flow"] }
     ]
   },
   {
-    id: "fat-loss",
-    name: "Fat Loss Accelerator",
-    category: "Home Workout Programs",
-    description: "Melt fat fast using calorie-blasting compound bodyweight movements, metabolic intervals, and conditioning tracks.",
-    duration: "6 Weeks",
-    difficulty: "Beginner",
-    searchTags: ["fat loss", "cardio", "shred"],
-    imageUrl: "",
-    isPremium: false,
-    schedule: [
-      { day: "Day 1", focus: "Metabolic HIIT Blast", exercises: [] },
-      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Incline Walking & Aerobic Base", exercises: [] },
-      { day: "Day 3", focus: "Low-Intensity Fat Burn", exercises: [] },
-      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Low-Impact Steady Cardio & Steps", exercises: [] },
-      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Outdoor Walking & Hip Decompression", exercises: [] }
-    ]
-  },
-  {
-    id: "strength",
-    name: "Max Power Strength",
-    category: "Training Styles",
-    description: "Build raw neural strength on compound lifts using systematic powerlifting principles.",
-    duration: "10 Weeks",
-    difficulty: "Advanced",
-    searchTags: ["strength", "power", "heavy"],
-    imageUrl: "",
-    isPremium: true,
-    schedule: [
-      { day: "Day 1", focus: "Posterior Chain Power", exercises: [] },
-      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Incline Walk & Parasympathetic Reset", exercises: [] },
-      { day: "Day 3", focus: "Anterior Squat Drive", exercises: [] },
-      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Zone 2 Walking & Joint Flushing", exercises: [] },
-      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Walking & Hip Mobility", exercises: [] }
-    ]
-  },
-  {
-    id: "womens-fitness",
-    name: "Women's Toning & Glute Lift",
+    id: "women_confidence",
+    name: "180 Women Confidence Challenge",
     category: "Women's Programs",
-    description: "Sculpt, tone, and build athletic curves with glute lifts, core stabilization, and full body conditioning.",
-    duration: "6 Weeks",
-    difficulty: "Beginner",
-    searchTags: ["women", "toning", "glute lift"],
-    imageUrl: "",
-    isPremium: false,
+    description: "Designed for women. Continuous 7-day split repeating across 180 days: glute shaping, posture correction, waist sculpting, and toned athletic curves.",
+    duration: "180 Days",
+    difficulty: "Intermediate",
+    searchTags: ["women", "glutes", "confidence", "toning", "curves", "sculpt"],
+    imageUrl: "https://i.pinimg.com/236x/d0/39/8d/d0398d92f60f14a045675fbc5f2c16ac.jpg",
+    isPremium: true,
     schedule: [
-      { day: "Day 1", focus: "Glute & Hamstring Lift", exercises: [] },
-      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Incline Treadmill Walk & Glute Flow", exercises: [] },
-      { day: "Day 3", focus: "Core & Leg Definition", exercises: [] },
-      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Low-Impact Cardio & Core Reset", exercises: [] },
-      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Outdoor Walk & Hip Mobility", exercises: [] }
+      { day: "Day 1", focus: "Monday: Glutes + Hamstrings", exercises: ["Supine Kinetic Glute Bridges", "Bodyweight Dynamic Walking Lunges", "Bodyweight Deep Air Squats", "Bodyweight Bulgarian Split Squats", "Supine Figure-4 Glute Stretch"] },
+      { day: "Day 2", focus: "Tuesday: Upper Body + Core", exercises: ["Incline Calisthenic Push-Ups", "Chair / Bench Triceps Dips", "Isometric Forearm Plank", "Bicycle Crunches", "Cat-Cow Dynamic Spine Flow"] },
+      { day: "Day 3", focus: "Wednesday: Quads + Glutes", exercises: ["Bodyweight Deep Air Squats", "Isometric Quad Wall Sit", "Supine Kinetic Glute Bridges", "Standing Bodyweight Calf Raises", "Standing Quadriceps & Hip Stretch"] },
+      { day: "Day 4", focus: "Thursday: Cardio + Core + Mobility", exercises: ["5 to 10 KM Aerobic Running or Walking", "High-Tempo Mountain Climbers", "Isometric Forearm Plank", "Child's Pose Deep Breathing Reset"] },
+      { day: "Day 5", focus: "Friday: Glutes + Full Lower Body", exercises: ["Supine Kinetic Glute Bridges", "Bodyweight Dynamic Walking Lunges", "Bodyweight Deep Air Squats", "Bodyweight Bulgarian Split Squats", "Supine Figure-4 Glute Stretch"] },
+      { day: "Day 6", focus: "Saturday: Full Body Conditioning", exercises: ["Full Body Conditioning Burpees", "High-Tempo Mountain Climbers", "Bicycle Crunches", "Isometric Forearm Plank"] },
+      { day: "Day 7", focus: "Sunday: Recovery & Restorative Stretches", exercises: ["Child's Pose Deep Breathing Reset", "Cat-Cow Dynamic Spine Flow", "Supine Figure-4 Glute Stretch", "Standing Quadriceps & Hip Stretch"] }
     ]
   },
   {
-    id: "home-workouts",
-    name: "Total Home Workouts",
+    id: "belly_fat_shred",
+    name: "5-Month Belly Fat Shred System",
     category: "Home Workout Programs",
-    description: "Build muscle, burn fat, and stay active directly from your home with minimal or zero equipment.",
-    duration: "4 Weeks",
+    description: "Continuous 7-day repeating split designed to incinerate visceral belly fat, tone the core, and elevate metabolic conditioning across 140 days.",
+    duration: "140 Days",
     difficulty: "Beginner",
-    searchTags: ["home", "no equipment", "dumbbells"],
-    imageUrl: "",
+    searchTags: ["belly fat", "shred", "core", "abs", "fat loss", "cardio"],
+    imageUrl: "https://i.ytimg.com/vi/T2de9yQv-yc/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLDXYdVILMIN7nnFzJLRsAXDN7vQXQ",
+    isPremium: true,
+    schedule: [
+      { day: "Day 1", focus: "Monday: Full Body + Core", exercises: ["Isometric Forearm Plank", "Bicycle Crunches", "Bodyweight Deep Air Squats", "Strict Calisthenic Push-Ups", "High-Tempo Mountain Climbers"] },
+      { day: "Day 2", focus: "Tuesday: Cardio + Abs", exercises: ["5 to 10 KM Aerobic Running or Walking", "Seated Russian Twists", "Bicycle Crunches", "Isometric Forearm Plank"] },
+      { day: "Day 3", focus: "Wednesday: Full Body Strength", exercises: ["Bodyweight Deep Air Squats", "Strict Calisthenic Push-Ups", "Chair / Bench Triceps Dips", "Bodyweight Dynamic Walking Lunges", "Isometric Forearm Plank"] },
+      { day: "Day 4", focus: "Thursday: Cardio + Core", exercises: ["High-Tempo Mountain Climbers", "Seated Russian Twists", "Bicycle Crunches", "Isometric Forearm Plank", "5 to 10 KM Aerobic Running or Walking"] },
+      { day: "Day 5", focus: "Friday: Full Body Conditioning", exercises: ["Full Body Conditioning Burpees", "High-Tempo Mountain Climbers", "Bodyweight Deep Air Squats", "Strict Calisthenic Push-Ups"] },
+      { day: "Day 6", focus: "Saturday: Walking + Mobility (5-10 KM Brisk Walk)", exercises: ["5 to 10 KM Aerobic Running or Walking", "Downward Dog to Cobra Flow", "Cat-Cow Dynamic Spine Flow", "Standing Quadriceps & Hip Stretch"] },
+      { day: "Day 7", focus: "Sunday: Recovery & Parasympathetic Reset", exercises: ["Child's Pose Deep Breathing Reset", "Cat-Cow Dynamic Spine Flow", "Supine Figure-4 Glute Stretch", "Downward Dog to Cobra Flow"] }
+    ]
+  },
+  {
+    id: "home_180",
+    name: "180 Days Home Workout",
+    category: "Home Workout Programs",
+    description: "Zero and minimal equipment calisthenics, core armor, and functional conditioning repeating continuously across 180 days with dedicated tracks for Men and Women.",
+    duration: "180 Days",
+    difficulty: "Beginner",
+    searchTags: ["home", "bodyweight", "calisthenics", "180 days", "no equipment"],
+    imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-89uZaleE8506y-CMEmQT9-GMnzZVZidcyy7NO1UhF6z5d3I9NJaXf-Q&s=10",
     isPremium: false,
     schedule: [
-      { day: "Day 1", focus: "Full Body Fat Burn", exercises: [] },
-      { day: "Day 2 (Recovery Day)", focus: "Active Recovery: Living Room Kinetic Walking & Mobility", exercises: [] },
-      { day: "Day 3", focus: "Living Room Cardio", exercises: [] },
-      { day: "Day 4 (Recovery Day)", focus: "Active Recovery: Zone 2 Step Walking & Low-Impact Flow", exercises: [] },
-      { day: "Day 6 (Recovery Day)", focus: "Active Recovery: LISS Walking & Full Body Flush", exercises: [] }
+      { day: "Day 1", focus: "Monday: Upper Body Push & Calisthenics", exercises: ["Strict Calisthenic Push-Ups", "Incline Calisthenic Push-Ups", "Decline Upper Chest Push-Ups", "Close-Grip Diamond Push-Ups", "Chair / Bench Triceps Dips"] },
+      { day: "Day 2", focus: "Tuesday: Core & Abs Shred", exercises: ["Isometric Forearm Plank", "Bicycle Crunches", "Seated Russian Twists", "High-Tempo Mountain Climbers"] },
+      { day: "Day 3", focus: "Wednesday: Lower Body & Legs", exercises: ["Bodyweight Deep Air Squats", "Bodyweight Dynamic Walking Lunges", "Isometric Quad Wall Sit", "Standing Bodyweight Calf Raises", "Supine Kinetic Glute Bridges"] },
+      { day: "Day 4", focus: "Thursday: Cardio + Mobility (5-10 KM Run/Walk)", exercises: ["5 to 10 KM Aerobic Running or Walking", "Downward Dog to Cobra Flow", "Cat-Cow Dynamic Spine Flow", "Standing Quadriceps & Hip Stretch"] },
+      { day: "Day 5", focus: "Friday: Upper Body Pull & Back", exercises: ["Bodyweight Pull-Ups", "Incline Calisthenic Push-Ups", "Cat-Cow Dynamic Spine Flow", "Downward Dog to Cobra Flow"] },
+      { day: "Day 6", focus: "Saturday: Athletic Full Body Conditioning", exercises: ["Full Body Conditioning Burpees", "High-Tempo Mountain Climbers", "Bodyweight Deep Air Squats", "Isometric Forearm Plank"] },
+      { day: "Day 7", focus: "Sunday: Recovery & Joint Mobility", exercises: ["Child's Pose Deep Breathing Reset", "Cat-Cow Dynamic Spine Flow", "Supine Figure-4 Glute Stretch", "Standing Quadriceps & Hip Stretch"] }
+    ]
+  },
+  {
+    id: "posture_vitality",
+    name: "Posture Correction Challenge",
+    category: "Training Styles",
+    description: "Continuous 7-day cyclical split reversing slouching, forward neck tilt, and lower back tightness with clinical mobility and spinal stabilization.",
+    duration: "60 Days",
+    difficulty: "Beginner",
+    searchTags: ["posture", "mobility", "spine", "vitality", "alignment"],
+    imageUrl: "https://fitnessprogramer.com/wp-content/uploads/2023/02/warm-up-exercises.png",
+    isPremium: true,
+    schedule: [
+      { day: "Day 1", focus: "Monday: Upper Back + Shoulder Mobility", exercises: ["Cat-Cow Dynamic Spine Flow", "World's Greatest Thoracic Stretch", "Downward Dog to Cobra Flow", "Child's Pose Deep Breathing Reset"] },
+      { day: "Day 2", focus: "Tuesday: Core Stability + Hip Mobility", exercises: ["Isometric Forearm Plank", "Supine Figure-4 Glute Stretch", "Standing Quadriceps & Hip Stretch", "Cat-Cow Dynamic Spine Flow"] },
+      { day: "Day 3", focus: "Wednesday: Full Body Posture Training", exercises: ["Cat-Cow Dynamic Spine Flow", "Downward Dog to Cobra Flow", "World's Greatest Thoracic Stretch", "Isometric Forearm Plank"] },
+      { day: "Day 4", focus: "Thursday: Recovery Mobility", exercises: ["Child's Pose Deep Breathing Reset", "Standing Quadriceps & Hip Stretch", "Supine Figure-4 Glute Stretch"] },
+      { day: "Day 5", focus: "Friday: Upper Back + Core", exercises: ["Cat-Cow Dynamic Spine Flow", "Isometric Forearm Plank", "Downward Dog to Cobra Flow"] },
+      { day: "Day 6", focus: "Saturday: Full Body Mobility + Stability", exercises: ["World's Greatest Thoracic Stretch", "Isometric Forearm Plank", "Supine Figure-4 Glute Stretch"] },
+      { day: "Day 7", focus: "Sunday: Recovery & Decompression", exercises: ["Child's Pose Deep Breathing Reset", "Cat-Cow Dynamic Spine Flow"] }
+    ]
+  },
+  {
+    id: "lifestyle_academy",
+    name: "Lifestyle Fitness Academy",
+    category: "Training Styles",
+    description: "Counteract prolonged sitting and desk work with clinical mobility, brisk walking, and functional strength designed for modern lifestyle athletes.",
+    duration: "90 Days",
+    difficulty: "Beginner",
+    searchTags: ["lifestyle", "desk", "wellness", "longevity", "mobility"],
+    imageUrl: "https://learn.athleanx.com/wp-content/uploads/2022/12/FULL-BODY-WORKOUTS.jpg",
+    isPremium: false,
+    schedule: [
+      { day: "Day 1", focus: "Monday: Posture Alignment & Posterior Chain", exercises: ["Cat-Cow Dynamic Spine Flow", "World's Greatest Thoracic Stretch", "Downward Dog to Cobra Flow", "Isometric Forearm Plank"] },
+      { day: "Day 2", focus: "Tuesday: Hip Flexor Decompression & Reset", exercises: ["Supine Figure-4 Glute Stretch", "Standing Quadriceps & Hip Stretch", "Isometric Quad Wall Sit"] },
+      { day: "Day 3", focus: "Wednesday: Aerobic Circulation & Brisk Walking", exercises: ["5 to 10 KM Aerobic Running or Walking", "Child's Pose Deep Breathing Reset", "Cat-Cow Dynamic Spine Flow"] },
+      { day: "Day 4", focus: "Thursday: Chest Opening & Anterior Mobility", exercises: ["Downward Dog to Cobra Flow", "World's Greatest Thoracic Stretch", "Child's Pose Deep Breathing Reset"] },
+      { day: "Day 5", focus: "Friday: Spinal Decompression & Core Stability", exercises: ["Isometric Forearm Plank", "Bicycle Crunches", "Cat-Cow Dynamic Spine Flow"] },
+      { day: "Day 6", focus: "Saturday: Glute Activation & Kinetic Chain", exercises: ["Supine Kinetic Glute Bridges", "Bodyweight Deep Air Squats", "Bodyweight Dynamic Walking Lunges"] },
+      { day: "Day 7", focus: "Sunday: Restorative Mobility & Rest", exercises: ["Child's Pose Deep Breathing Reset", "Cat-Cow Dynamic Spine Flow", "Supine Figure-4 Glute Stretch"] }
     ]
   }
 ];

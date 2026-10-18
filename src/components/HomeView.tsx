@@ -2114,6 +2114,36 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
 
               // Comprehensive Primary Outcomes & Benefits Dictionary
               const programBenefits: Record<string, { label: string; desc: string }[]> = {
+                "immortal_90": [
+                  { label: "Continuous 7-Day Split", desc: "Push, Pull, Legs, Cardio/Mobility, Upper Body, Conditioning & Active Recovery." },
+                  { label: "Hypertrophy & Strength", desc: "Targeted progressive overload for complete athletic muscle definition." },
+                  { label: "Zero Guesswork Architecture", desc: "Standardized cycle with integrated 5-10km cardio intervals." }
+                ],
+                "women_confidence": [
+                  { label: "Glute & Posterior Chain Focus", desc: "Dedicated glute, hamstring, and quad sculpting without bulky fatigue." },
+                  { label: "Hourglass & Core Tightening", desc: "Transverse abdominal bracing, posture restoration, and waist sculpting." },
+                  { label: "Progressive Stamina & Vitality", desc: "Integrated mobility and low-impact cardiovascular conditioning." }
+                ],
+                "belly_fat_shred": [
+                  { label: "Visceral Fat Oxidation", desc: "Systematically targets stubborn deep organ fat and lower pouch." },
+                  { label: "Transverse Core Strength", desc: "Flattens waistline and reinforces abdominal wall bracing." },
+                  { label: "Zone 2 Incline Protocol", desc: "Maximizes metabolic burn while preserving joint integrity." }
+                ],
+                "home_180": [
+                  { label: "Zero-Equipment Calisthenics", desc: "Push-up progressions, squats, lunges, and full-body athletic conditioning." },
+                  { label: "Dedicated Men & Women Tracks", desc: "Tailored movement variations for upper body push/pull or glute/posture focus." },
+                  { label: "Unbreakable 180-Day Habit", desc: "Structured 7-day cyclical split built for maximum compliance at home." }
+                ],
+                "posture_vitality": [
+                  { label: "Scapular & Thoracic Mobility", desc: "Reverses desk slouch, forward head posture, and rounded shoulders." },
+                  { label: "Pelvic & Lumbar Stability", desc: "Decompresses lower back, strengthens deep transverse abdominals." },
+                  { label: "Systemic Decompression", desc: "Deep diaphragmatic breathing, spinal flows, and joint preservation." }
+                ],
+                "lifestyle_academy": [
+                  { label: "Desk Bound Antidote", desc: "Specific counter-movements to eliminate chronic sitting stiffness." },
+                  { label: "Cardio & Circulation Baseline", desc: "Brisk walking protocols and dynamic flows to elevate energy." },
+                  { label: "Joint Longevity & Resilience", desc: "Strengthens stabilizing muscles for pain-free daily living." }
+                ],
                 "5-month-belly-fat": [
                   { label: "Visceral Fat Oxidation", desc: "Systematically targets stubborn deep organ fat and lower pouch." },
                   { label: "Transverse Core Strength", desc: "Flattens waistline and reinforces abdominal wall bracing." },

@@ -640,6 +640,25 @@ export const PROGRAM_SPLIT_DEFINITIONS: Record<string, (cycleDay: number, track?
       }
     }
   },
+  home_180_women: (cycleDay: number) => {
+    switch (cycleDay) {
+      case 1:
+        return { categoryTitle: "Monday: Glutes + Hamstrings", targetMuscles: ["Glutes", "Hamstrings", "Lower Body"] };
+      case 2:
+        return { categoryTitle: "Tuesday: Upper Body Tone + Core", targetMuscles: ["Upper Body", "Back", "Shoulders", "Core", "Abs"] };
+      case 3:
+        return { categoryTitle: "Wednesday: Quads + Glutes", targetMuscles: ["Quadriceps", "Glutes", "Lower Body"] };
+      case 4:
+        return { categoryTitle: "Thursday: Cardio + Core + Mobility", targetMuscles: ["Cardio", "Core", "Abs", "Mobility", "Walking"] };
+      case 5:
+        return { categoryTitle: "Friday: Glutes + Full Lower Body", targetMuscles: ["Glutes", "Full Lower Body", "Hamstrings", "Quads", "Calves"] };
+      case 6:
+        return { categoryTitle: "Saturday: Full Body Conditioning", targetMuscles: ["Full Body", "Conditioning", "Cardio"] };
+      case 7:
+      default:
+        return { categoryTitle: "Sunday: Recovery", targetMuscles: ["Recovery", "Mobility", "Stretching"], isRestDay: true };
+    }
+  },
   posture_vitality: (cycleDay: number) => {
     switch (cycleDay) {
       case 1:

@@ -208,6 +208,7 @@ import DEFAULT_PROGRAM_SCHEDULE_OVERRIDES from "./program_schedule_overrides.jso
 export function normalizeProgramId(rawId: string = ""): ProgramId {
   const clean = rawId.toLowerCase().trim();
   if (clean.includes("immortal") || clean === "90_day_immortal" || clean === "90-days-immortal") return "immortal_90";
+  if (clean.includes("home") && (clean.includes("women") || clean.includes("female"))) return "home_180_women" as any;
   if (clean.includes("home") || clean === "home_180" || clean === "180_day_home") return "home_180";
   if (clean.includes("belly") || clean.includes("shred") || clean === "belly_fat_shred") return "belly_fat_shred";
   if (clean.includes("posture") || clean === "posture_vitality") return "posture_vitality";

@@ -1,6 +1,7 @@
 import { Exercise } from "./exercises";
 import { filterExercisesForSplit } from "../utils/dynamicWorkoutEngine";
 import { CANONICAL_EXERCISES } from "./canonicalExercises";
+import { getWorkoutForProgramAndDay } from "./challengeEngineDatabase";
 import DEFAULT_PROGRAM_SCHEDULE_OVERRIDES from "./program_schedule_overrides.json";
 
 export interface WomenOnboardingProfile {
@@ -354,225 +355,50 @@ export function getDailyWorkoutForDay(
 ): WomenDailyWorkout {
   const safeDay = Math.max(1, Math.min(180, Number(dayNumber) || 1));
   const phaseNum = Math.min(6, Math.ceil(safeDay / 30));
-  const dayInWeek = ((safeDay - 1) % 7) + 1;
+  const userLevel = profile?.fitnessLevel || (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level")) : null) || "beginner";
 
-  let title = `Day ${safeDay}: `;
-  let subtitle = "";
-  let focus = "";
-  let dayType: "strength" | "conditioning" | "mobility" | "walking" | "stretching" | "active_recovery" | "rest" = "strength";
-  let estimatedMinutes = 35;
-  let intensity: "Low" | "Moderate" | "Challenging" | "High" = "Moderate";
-  let targetTargets: string[] = [];
-  let primaryPoolKey: keyof typeof AUTHENTIC_WOMEN_WORKOUT_LIBRARY = "glutes";
+  // Delegate strictly to the authoritative Admin Dashboard Challenge Engine
+  const enginePlan = getWorkoutForProgramAndDay(
+    "women_confidence",
+    safeDay,
+    activeExercisesList,
+    { fitnessLevel: userLevel, track: "women" }
+  );
 
-  if (dayInWeek === 1) {
-    dayType = "strength";
-    title += "Monday: Glutes + Hamstrings";
-    subtitle = "Target glutes, hamstrings, and the posterior kinetic chain with progressive volume and hip thrust variations.";
-    focus = "Glutes + Hamstrings";
-    intensity = phaseNum <= 2 ? "Moderate" : "Challenging";
-    estimatedMinutes = 35;
-    targetTargets = ["Glutes", "Hamstrings", "Lower Body", "Hips"];
-    primaryPoolKey = "glutes";
-  } else if (dayInWeek === 2) {
-    dayType = "strength";
-    title += "Tuesday: Upper Body + Core";
-    subtitle = "Sculpt postural back fibers, sleek shoulders, toned arms, and compress the deep transverse core.";
-    focus = "Upper Body + Core";
-    intensity = phaseNum <= 2 ? "Moderate" : "Challenging";
-    estimatedMinutes = 30;
-    targetTargets = ["Upper Body", "Back", "Shoulders", "Arms", "Core", "Abs"];
-    primaryPoolKey = "upper_body_posture";
-  } else if (dayInWeek === 3) {
-    dayType = "strength";
-    title += "Wednesday: Quads + Glutes";
-    subtitle = "Sculpt quadriceps definition and round out the glutes with goblet squats, walking lunges, and step-ups.";
-    focus = "Quads + Glutes";
-    intensity = phaseNum <= 2 ? "Moderate" : "Challenging";
-    estimatedMinutes = 35;
-    targetTargets = ["Quadriceps", "Glutes", "Legs", "Lower Body"];
-    primaryPoolKey = "glutes";
-  } else if (dayInWeek === 4) {
-    dayType = "conditioning";
-    title += "Thursday: Cardio + Core + Mobility";
-    subtitle = "Elevate caloric output with low-impact cardio flows, waist compression drills, and thoracic mobility.";
-    focus = "Cardio + Core + Mobility";
-    intensity = "Moderate";
-    estimatedMinutes = 35;
-    targetTargets = ["Cardio", "Core", "Abs", "Mobility", "Walking"];
-    primaryPoolKey = "cardio_walking";
-  } else if (dayInWeek === 5) {
-    dayType = "strength";
-    title += "Friday: Glutes + Full Lower Body";
-    subtitle = "Intense lower body sculpt targeting glute max, glute medius, hamstrings, quads, and calves.";
-    focus = "Glutes + Full Lower Body";
-    intensity = phaseNum <= 2 ? "Moderate" : "High";
-    estimatedMinutes = 40;
-    targetTargets = ["Glutes", "Hamstrings", "Quadriceps", "Calves", "Lower Body"];
-    primaryPoolKey = "glutes";
-  } else if (dayInWeek === 6) {
-    dayType = "conditioning";
-    title += "Saturday: Full Body Conditioning";
-    subtitle = "High-energy metabolic circuit combining multi-planar movements for full body tone and endurance.";
-    focus = "Full Body Conditioning";
-    intensity = "Challenging";
-    estimatedMinutes = 35;
-    targetTargets = ["Full Body", "Conditioning", "Cardio", "Tone"];
-    primaryPoolKey = "full_body";
-  } else {
-    dayType = "active_recovery";
-    title += "Sunday: Recovery";
-    subtitle = "Gentle parasympathetic decompression, full body stretches, and restorative recovery.";
-    focus = "Recovery";
-    intensity = "Low";
-    estimatedMinutes = 30;
-    targetTargets = ["Recovery", "Mobility", "Stretching", "Rest"];
-    primaryPoolKey = "recovery_rest";
-  }
+  const isRestDay = !!enginePlan.meta.isRestDay;
+  const isCardioDay = !!enginePlan.meta.isCardioOnly;
+  const dayType: "strength" | "conditioning" | "mobility" | "walking" | "stretching" | "active_recovery" | "rest" = 
+    isCardioDay ? "conditioning" : isRestDay ? "active_recovery" : "strength";
 
-  // 1. Gather all active exercises from library, filtering out ANY strong men / cable fly exercises
-  const allActiveRaw = Array.isArray(activeExercisesList) && activeExercisesList.length > 0
-    ? activeExercisesList
-    : getActiveExercisesFromStorage();
+  const title = enginePlan.meta.title || `Day ${safeDay}: ${enginePlan.meta.category}`;
+  const focus = enginePlan.meta.category || "Glutes & Toning";
+  const subtitle = enginePlan.meta.coachingNotes || `Deliberate form, deep mind-muscle connection, and posture alignment.`;
+  const estimatedMinutes = typeof enginePlan.meta.estimatedDuration === "number" 
+    ? enginePlan.meta.estimatedDuration 
+    : parseInt(String(enginePlan.meta.estimatedDuration || "45"), 10) || 45;
 
-  const womenEligibleActive = allActiveRaw.filter(isWomenWorkoutEligibleExercise);
-  const matchedActive = filterExercisesForSplit(womenEligibleActive, targetTargets);
-
-  // 2. Curated pool of authentic women's exercises for this day
-  const authenticPool = AUTHENTIC_WOMEN_WORKOUT_LIBRARY[primaryPoolKey] || AUTHENTIC_WOMEN_WORKOUT_LIBRARY.glutes;
-  const secondaryPool = primaryPoolKey === "glutes" 
-    ? AUTHENTIC_WOMEN_WORKOUT_LIBRARY.core_waist 
-    : primaryPoolKey === "upper_body_posture"
-      ? AUTHENTIC_WOMEN_WORKOUT_LIBRARY.full_body
-      : AUTHENTIC_WOMEN_WORKOUT_LIBRARY.glutes;
-
-  // 3. Assemble exactly 10 exercises daily
-  const finalExercisesList: WomenDailyExercise[] = [];
-  const seenExerciseNames = new Set<string>();
-
-  // 0. Check admin schedule overrides specifically saved for Women Confidence in AdminWorkoutChallengeEngine or bundled verified defaults
-  try {
-    let womenOverrides: any = undefined;
-    if (typeof window !== "undefined" && window.localStorage) {
-      const stored = window.localStorage.getItem("fit_program_schedule_overrides");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        womenOverrides = parsed.women_confidence || parsed["women-confidence"];
-      }
-    }
-    if (!womenOverrides && DEFAULT_PROGRAM_SCHEDULE_OVERRIDES) {
-      const dOverrides = DEFAULT_PROGRAM_SCHEDULE_OVERRIDES as Record<string, any>;
-      womenOverrides = dOverrides.women_confidence || dOverrides["women-confidence"];
-    }
-
-    if (womenOverrides) {
-      const cycleKey = `cycle_${dayInWeek}`;
-      const dayOverride = womenOverrides[String(safeDay)] || womenOverrides[cycleKey];
-        if (dayOverride) {
-          const rawAthleteLevel = (
-            profile?.fitnessLevel || 
-            (profile as any)?.experienceLevel || 
-            (profile as any)?.difficulty || 
-            (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level") || "") : "") ||
-            "beginner"
-          ).toLowerCase();
-          const rawTierList = (rawAthleteLevel.includes("beg") && (dayOverride.levels?.beginner?.length ? dayOverride.levels.beginner : dayOverride.beginnerExercises))
-            || (rawAthleteLevel.includes("adv") && (dayOverride.levels?.advanced?.length ? dayOverride.levels.advanced : dayOverride.advancedExercises))
-            || (rawAthleteLevel.includes("inter") && (dayOverride.levels?.intermediate?.length ? dayOverride.levels.intermediate : dayOverride.intermediateExercises))
-            || dayOverride.levels?.beginner
-            || dayOverride.beginnerExercises
-            || (Array.isArray(dayOverride.exercises) ? dayOverride.exercises : []);
-
-          if (Array.isArray(rawTierList) && rawTierList.length > 0) {
-            const overrideList: WomenDailyExercise[] = [];
-            for (const ovEx of rawTierList) {
-              const exName = (ovEx.exerciseName || ovEx.name || "").trim();
-              const lower = exName.toLowerCase();
-              if (exName && !seenExerciseNames.has(lower) && isWomenWorkoutEligibleExercise(ovEx)) {
-                seenExerciseNames.add(lower);
-                overrideList.push({
-                  id: ovEx.id || `wc_ov_d${safeDay}_${overrideList.length + 1}`,
-                  name: exName,
-                  muscleGroups: Array.isArray(ovEx.muscleGroup) ? ovEx.muscleGroup : [ovEx.muscleGroup || targetTargets[0] || "Full Body"],
-                  sets: Number(ovEx.sets) || 3,
-                  reps: String(ovEx.reps || "10-12 reps"),
-                  restPeriod: ovEx.restTime || "45-60s",
-                  equipment: Array.isArray(ovEx.equipment) ? ovEx.equipment.join(", ") : String(ovEx.equipment || "Bodyweight"),
-                  difficulty: ovEx.difficulty || (rawAthleteLevel.includes("beg") ? "Beginner" : "Intermediate"),
-                  instructions: Array.isArray(ovEx.instructions) && ovEx.instructions.length > 0 ? ovEx.instructions : [`Perform ${exName} with strict posture and smooth control.`],
-                  formTips: ovEx.coachingCues || ["Maintain tight core posture and elongated spine."],
-                  beginnerModification: "Perform at bodyweight or reduce repetition range.",
-                  advancedProgression: "Add tempo pause at peak contraction.",
-                  gifUrl: ovEx.gifUrl || ovEx.customMediaUrl || "",
-                  targetMuscles: Array.isArray(ovEx.muscleGroup) ? ovEx.muscleGroup.join(", ") : String(ovEx.muscleGroup || "Full Body")
-                });
-              }
-            }
-
-            if (overrideList.length > 0) {
-              return {
-                dayNumber: safeDay,
-                phaseNumber: phaseNum,
-                dayType: dayOverride.isCardioOnly ? "conditioning" : dayType,
-                title: dayOverride.title || title,
-                subtitle: dayOverride.focus || subtitle,
-                focus: dayOverride.focus || focus,
-                estimatedMinutes: dayOverride.estimatedDuration || estimatedMinutes,
-                intensity,
-                calorieEstimate: 320 + safeDay * 2,
-                exercises: overrideList,
-                coachingCue: "Focus on deep mind-muscle connection and deliberate tempo on every single rep."
-              };
-            }
-          }
-        }
-      }
-    } catch (e) {}
-
-  // Prioritize beginner exercises if user is beginner when matching from admin active library
-  const isAthleteBeginner = (profile?.fitnessLevel || (typeof window !== "undefined" && window.localStorage?.getItem("fit_athlete_fitness_level")) || "beginner").toLowerCase().includes("beg");
-  const sortedActive = [...matchedActive].sort((a, b) => {
-    if (isAthleteBeginner) {
-      const aBeg = a.difficulty === "Beginner" ? 1 : 0;
-      const bBeg = b.difficulty === "Beginner" ? 1 : 0;
-      return bBeg - aBeg;
-    }
-    return 0;
+  const exercises: WomenDailyExercise[] = (enginePlan.exercises || []).map((ex: any, idx: number) => {
+    const exName = (ex.exerciseName || ex.name || "").trim();
+    const mediaUrl = ex.customMediaUrl || ex.gifUrl || ex.imageUrl || "";
+    return {
+      id: ex.id || `wc_d${safeDay}_ex${idx + 1}`,
+      name: exName,
+      muscleGroups: Array.isArray(ex.muscleGroup) ? ex.muscleGroup : [ex.muscleGroup || focus],
+      sets: typeof ex.sets === "number" ? ex.sets : parseInt(String(ex.sets || "3"), 10) || 3,
+      reps: String(ex.reps || "10-12 reps"),
+      restPeriod: ex.restTime || "45-60s",
+      equipment: Array.isArray(ex.equipment) ? ex.equipment.join(", ") : String(ex.equipment || "Bodyweight"),
+      difficulty: ex.difficulty || (userLevel.toLowerCase().includes("beg") ? "Beginner" : "Intermediate"),
+      instructions: Array.isArray(ex.instructions) && ex.instructions.length > 0 
+        ? ex.instructions 
+        : [`Perform ${exName} with strict posture, full range of motion, and smooth control.`],
+      formTips: ex.coachingCues || ["Maintain tight core posture, depressed scapula, and elongated spine."],
+      beginnerModification: "Perform at bodyweight or reduce repetition range slightly.",
+      advancedProgression: "Add a 2-second isometric pause at peak contraction.",
+      gifUrl: mediaUrl,
+      targetMuscles: Array.isArray(ex.muscleGroup) ? ex.muscleGroup.join(", ") : String(ex.muscleGroup || focus)
+    };
   });
-
-  // Add eligible matched exercises from admin custom library (with real gifs from admin)
-  for (const ex of sortedActive) {
-    if (finalExercisesList.length >= 10) break;
-    const cleanName = (ex.name || "").trim();
-    const lower = cleanName.toLowerCase();
-    if (!seenExerciseNames.has(lower) && isWomenWorkoutEligibleExercise(ex)) {
-      seenExerciseNames.add(lower);
-      const mediaUrl = ex.customMediaUrl || ex.gifUrl || ex.imageUrl || "";
-      finalExercisesList.push({
-        id: `wc_d${safeDay}_ex${finalExercisesList.length + 1}`,
-        name: cleanName,
-        muscleGroups: ex.muscleGroups || targetTargets,
-        sets: Number(ex.recommendedSets) || 3,
-        reps: ex.recommendedReps || "10-12 reps",
-        restPeriod: ex.restTime || "45-60s",
-        equipment: Array.isArray(ex.equipment) ? ex.equipment.join(", ") : String(ex.equipment || "Bodyweight"),
-        difficulty: ex.difficulty || (isAthleteBeginner ? "Beginner" : "Intermediate"),
-        instructions: ex.instructions && ex.instructions.length > 0 ? ex.instructions : [
-          `Assume starting alignment for ${cleanName}.`,
-          `Execute with smooth cadence and deep mind-muscle connection.`,
-          `Squeeze target muscle at peak contraction, return under control.`
-        ],
-        formTips: ex.trainerTips ? [ex.trainerTips] : ["Maintain elongated neutral spine and controlled breathing."],
-        beginnerModification: "Perform at bodyweight or reduce repetition range slightly.",
-        advancedProgression: "Add a 2-second isometric pause at peak contraction.",
-        gifUrl: mediaUrl,
-        targetMuscles: (ex.muscleGroups || targetTargets).join(", ")
-      });
-    }
-  }
-
-  // Strictly enforce EXACTLY 10 workouts daily
-  const guaranteed10Exercises = finalExercisesList.slice(0, 10);
 
   const coachingCues = [
     "Focus on mind-muscle connection over heavy ego lifting. Feel the target glute and posture fibers ignite with every repetition.",
@@ -582,8 +408,6 @@ export function getDailyWorkoutForDay(
     "Hydrate between sets with steady sips. Prime your body for optimal kinetic output."
   ];
 
-  const coachingCue = coachingCues[(safeDay - 1) % coachingCues.length];
-
   return {
     dayNumber: safeDay,
     phaseNumber: phaseNum,
@@ -592,10 +416,10 @@ export function getDailyWorkoutForDay(
     focus,
     dayType,
     estimatedMinutes,
-    intensity,
-    calorieEstimate: (dayType as string) === "active_recovery" ? 220 : (dayType as string) === "mobility" ? 240 : estimatedMinutes * 8,
-    exercises: guaranteed10Exercises,
-    coachingCue
+    intensity: isRestDay ? "Low" : isCardioDay ? "Moderate" : "Challenging",
+    calorieEstimate: isRestDay ? 220 : isCardioDay ? 420 : estimatedMinutes * 8,
+    exercises,
+    coachingCue: coachingCues[(safeDay - 1) % coachingCues.length]
   };
 }
 

@@ -584,283 +584,75 @@ export default function Premium90DayChallenge() {
       } catch (e) {}
     }
 
-    // Delegate directly to the strictly organized 7-day repeating Challenge Engine for Immortal 90 / Lean Muscle or any overridden challenge
-    const isImmortalVariant = 
-      !challengeId ||
-      challengeId === "immortal_90" || 
-      challengeId === "90_day_immortal" || 
-      challengeId === "90-days-immortal" || 
-      challengeId.includes("immortal") ||
-      challengeId === "lean_muscle";
+    // Delegate directly to the authoritative Admin Dashboard Challenge Engine for ALL programs
+    const progToQuery = challengeId || "immortal_90";
+    const athleteLevel = dbState?.onboarding?.fitnessLevel || (user as any)?.workoutExperience || (user as any)?.fitnessLevel || (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level")) : null) || "Beginner";
+    const enginePlan = getWorkoutForProgramAndDay(progToQuery, dayNum, undefined, { fitnessLevel: athleteLevel });
+    const isCardioDay = !!enginePlan.meta.isCardioOnly;
 
-    if (isImmortalVariant || hasProgramOverride) {
-      const progToQuery = hasProgramOverride ? challengeId : "immortal_90";
-      const athleteLevel = dbState?.onboarding?.fitnessLevel || (user as any)?.workoutExperience || (user as any)?.fitnessLevel || (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level")) : null) || "Beginner";
-      const enginePlan = getWorkoutForProgramAndDay(progToQuery, dayNum, undefined, { fitnessLevel: athleteLevel });
-      const isCardioDay = enginePlan.meta.isCardioOnly;
+    const exercisesWithDetails = enginePlan.exercises.slice(0, 10).map((ex, idx) => {
+      const isCardio = isCardioDay || ex.muscleGroup?.includes("Cardio") || ex.category.includes("Cardio") || ex.category.includes("Running") || ex.category.includes("Walking");
+      const calBurn = isCardio ? 460 : Math.round(setsMultiplier * 75);
 
-      const exercisesWithDetails = enginePlan.exercises.slice(0, 10).map((ex, idx) => {
-        const isCardio = isCardioDay || ex.muscleGroup?.includes("Cardio") || ex.category.includes("Cardio") || ex.category.includes("Running") || ex.category.includes("Walking");
-        const calBurn = isCardio ? 460 : Math.round(setsMultiplier * 75);
-
-        const eqStr = Array.isArray(ex.equipment) ? ex.equipment.join(" ").toLowerCase() : String(ex.equipment || "").toLowerCase();
-        let weightRec = "Moderate Load";
-        if (eqStr.includes("bodyweight") || eqStr.includes("shoes")) {
-          weightRec = "Bodyweight load";
-        } else if (eqStr.includes("barbell")) {
-          weightRec = "65%-80% of 1RM";
-        } else if (eqStr.includes("machine") || eqStr.includes("cable")) {
-          weightRec = "Standard machine stack";
-        } else if (eqStr.includes("dumbbell")) {
-          weightRec = "Moderate Dumbbells";
-        }
-
-        return {
-          id: ex.id || `immortal_d${dayNum}_ex_${idx + 1}`,
-          name: ex.exerciseName,
-          category: ex.category,
-          muscleGroups: ex.muscleGroup,
-          gifUrl: (ex as any).gifUrl,
-          customMediaUrl: (ex as any).gifUrl,
-          equipment: Array.isArray(ex.equipment) ? ex.equipment : (ex.equipment ? [ex.equipment] : ["Bodyweight"]),
-          sets: isCardio ? 1 : (ex.sets || setsMultiplier),
-          reps: ex.reps || repScheme,
-          weight: weightRec,
-          rest: isCardio ? "Full Rest Post-Cardio" : (ex.restTime || restTime),
-          calories: calBurn,
-          instruction: ex.instructions?.[0] || "Execute with strict posture, full range of motion, and controlled tempo.",
-          mistake: ex.coachingCues?.[0] || "Avoid relying on momentum; maintain muscular control.",
-          safety: "Keep core braced. Maintain neutral spine and joint alignment throughout."
-        };
-      });
-
-      return {
-        dayNum,
-        weekNum,
-        phase,
-        phaseDesc: isCardioDay 
-          ? "5 to 10 KM Aerobic Engine & Total Muscular Rest. Strict protocol: No weight training or resistance drills today. After cardio, take complete rest."
-          : phaseDesc,
-        focus: enginePlan.meta.category,
-        isRecoveryDay: isCardioDay,
-        restTime: isCardioDay ? "Full Rest Post-Cardio" : restTime,
-        intensityLabel: isCardioDay ? "Aerobic Zone 2 (Conversational Pace)" : intensityLabel,
-        exercises: exercisesWithDetails,
-        estTime: isCardioDay ? 55 : 75,
-        estCalories: enginePlan.meta.estimatedCalories || 520,
-        warmUp: isCardioDay ? [
-          { name: "Ankle, Hip & Knee Joint Mobilizations", duration: "3 Mins", desc: "Dynamic joint lubrication before 5-10 KM cardio." },
-          { name: "Light Aerobic Walking Warm-Up", duration: "3 Mins", desc: "Gradual elevation of heart rate and core temperature." }
-        ] : [
-          { name: "Dynamic Warm-up Jumps", duration: "3 Mins", desc: "Light impact baseline dynamic hopping." },
-          { name: "Dynamic Rotational Swings", duration: "3 Mins", desc: "Full range axial mobility pivots." },
-          { name: "Target Joint Articulations", duration: "4 Mins", desc: "Lubricate target joints specifically for today's muscle groups." }
-        ],
-        coolDown: isCardioDay ? [
-          { name: "Deep Diaphragmatic Box Breathing", duration: "4 Mins", desc: "Lower heart rate and initiate parasympathetic nervous recovery." },
-          { name: "Complete Post-Cardio Rest & Rehydration", duration: "Full Rest", desc: "Rest muscles completely; zero weight training." }
-        ] : [
-          { name: "Systemic Decompression Breathing", duration: "4 Mins", desc: "Deep diaphragmatic nasal inhalation cycles." },
-          { name: "Target Muscle Static Lengthening", duration: "4 Mins", desc: "Release tension in worked muscle groups." }
-        ]
-      };
-    }
-
-    const currentSplit = CHALLENGE_SPLITS[challengeId] || CHALLENGE_SPLITS["lean_muscle"];
-    const focusLabel = currentSplit[dayOfWeekIdx];
-
-    // Day 3 & Day 7 / Cardio Days: Remove workout entirely - users only do cardio and rest after cardio
-    const isCardioDay = dayOfWeekIdx === 2 || dayOfWeekIdx === 6 || focusLabel.toLowerCase().includes("cardio") || focusLabel.toLowerCase().includes("walking") || focusLabel.toLowerCase().includes("running");
-    if (isCardioDay) {
-      const cardioDayExercises = [
-        {
-          id: "challenge-cardio-5-10km",
-          name: dayOfWeekIdx === 6 ? "5 to 10 KM Running or Walking" : "5 to 10 KM Cardio / Walking",
-          category: "Cardio Workouts",
-          muscleGroups: ["Cardio"],
-          equipment: ["Bodyweight"],
-          sets: 1,
-          reps: "5 to 10 KM Continuous",
-          weight: "Bodyweight",
-          rest: "Full Rest Post-Cardio",
-          calories: 460,
-          instruction: "Complete 5 to 10 KM continuous at conversational pace. Strict protocol: zero weight training or resistance drills today. After cardio, take complete rest.",
-          mistake: "Adding heavy lifting or intense resistance drills on cardio days.",
-          safety: "Wear proper running shoes and maintain steady hydration."
-        },
-        {
-          id: "challenge-cardio-rest-recovery",
-          name: "Post-Cardio Decompression & Complete Rest",
-          category: "Recovery & Mobility",
-          muscleGroups: ["Recovery"],
-          equipment: ["Bodyweight"],
-          sets: 1,
-          reps: "Complete Rest Protocol",
-          weight: "None",
-          rest: "Full Rest Until Tomorrow",
-          calories: 50,
-          instruction: "Relax comfortably. No resistance exercises allowed today. Rehydrate, replenish glycogen, and allow muscles to recover completely.",
-          mistake: "Forcing extra workouts when the schedule prescribes complete rest.",
-          safety: "Elevate your legs and practice slow diaphragmatic breathing."
-        }
-      ];
-
-      return {
-        dayNum,
-        weekNum,
-        phase,
-        phaseDesc: "Pure Aerobic Engine & Total Muscular Rest. Workouts removed entirely today; rest and rehydrate after your 5-10 KM cardio session.",
-        focus: focusLabel,
-        isRecoveryDay: true,
-        restTime: "Full Rest",
-        intensityLabel: "Aerobic Zone 2 (Conversational Pace)",
-        exercises: cardioDayExercises,
-        estTime: 50,
-        estCalories: 510,
-        warmUp: [
-          { name: "Ankle & Calf Rotations", duration: "3 Mins", desc: "Gentle joint lubrication before cardio." },
-          { name: "Light Walking Warm-Up", duration: "3 Mins", desc: "Gradual elevation of heart rate." }
-        ],
-        coolDown: [
-          { name: "Deep Diaphragmatic Box Breathing", duration: "4 Mins", desc: "Lower heart rate and initiate parasympathetic nervous system recovery." },
-          { name: "Complete Post-Cardio Rest", duration: "Full Rest", desc: "Rest muscles completely; no lifting or workout." }
-        ]
-      };
-    }
-
-    // Pick dynamic exercises based on focusLabel
-    let targetCategory = "Gym Workouts";
-    if (dbState?.onboarding?.gymOrHome === "Home" || onboardingForm.gymOrHome === "Home") {
-      targetCategory = "Home Workouts";
-    }
-
-    // Filter exercises from active exercise list strictly matching focus words
-    const focusWords = focusLabel.toLowerCase().split(/[ +&]+/);
-    const filtered = exercises.filter(ex => {
-      // Workouts assigned as female ONLY appear in Women Confidence Program!
-      if (isExplicitlyMarkedWomenWorkout(ex)) return false;
-      const matchCat = ex.category === targetCategory || ex.categories?.includes(targetCategory);
-      const matchFocus = ex.muscleGroups?.some(m => focusWords.some(fw => m.toLowerCase().includes(fw))) ||
-                         ex.name.toLowerCase().split(" ").some(w => focusWords.includes(w));
-      return matchCat && matchFocus;
-    });
-
-    // Select exercises matching this day's routine strictly - guarantee maximum 10 workouts daily
-    let matchedExercises = filtered.slice(0, 10);
-    if (matchedExercises.length < 10) {
-      // Only pull extras that match the target muscle groups
-      const muscleExtras = exercises.filter(ex => 
-        !isExplicitlyMarkedWomenWorkout(ex) &&
-        !matchedExercises.some(m => m.id === ex.id) &&
-        ex.muscleGroups?.some(m => focusWords.some(fw => m.toLowerCase().includes(fw)))
-      ).slice(0, 10 - matchedExercises.length);
-      matchedExercises = [...matchedExercises, ...muscleExtras];
-    }
-    // If still under 10, fill strictly from the corresponding muscle category pool — NEVER cross-contaminate chest into legs!
-    if (matchedExercises.length < 10) {
-      const isLegsFocus = focusWords.some(w => ["leg", "legs", "lower", "squat", "quad", "hamstring", "glute", "calf"].includes(w));
-      const isChestFocus = focusWords.some(w => ["chest", "tricep", "triceps", "push", "bench", "pec"].includes(w));
-      const isBackFocus = focusWords.some(w => ["back", "bicep", "biceps", "pull", "lat", "row", "forearm"].includes(w));
-      const isShoulderFocus = focusWords.some(w => ["shoulder", "shoulders", "delt", "overhead"].includes(w));
-
-      let targetedPool: any[] = [];
-      if (isLegsFocus) {
-        targetedPool = IMMORTAL_PURE_LOWER_BODY;
-      } else if (isChestFocus) {
-        targetedPool = IMMORTAL_CHEST_TRICEPS;
-      } else if (isBackFocus) {
-        targetedPool = IMMORTAL_BACK_BICEPS_FOREARMS;
-      } else if (isShoulderFocus) {
-        targetedPool = IMMORTAL_LEGS_SHOULDERS;
-      } else {
-        targetedPool = IMMORTAL_LEGS_SHOULDERS_ABS;
-      }
-
-      const poolExtras = targetedPool
-        .filter(pEx => !matchedExercises.some(m => m.name.toLowerCase() === pEx.exerciseName.toLowerCase()))
-        .slice(0, 10 - matchedExercises.length)
-        .map((pEx, idx) => ({
-          id: `challenge_fallback_d${dayNum}_${idx + 1}`,
-          name: pEx.exerciseName,
-          category: pEx.category,
-          muscleGroups: pEx.muscleGroup,
-          equipment: [pEx.equipment],
-          sets: setsMultiplier,
-          reps: pEx.reps || repScheme,
-          weight: "Standard Load",
-          rest: pEx.restTime || restTime,
-          calories: 80,
-          instruction: pEx.instructions?.[0] || "Execute with controlled posture and full range of motion.",
-          mistake: "Avoid swinging or utilizing momentum.",
-          safety: "Keep core locked. Maintain neutral spine alignment throughout."
-        }));
-
-      matchedExercises = [...matchedExercises, ...poolExtras as any].slice(0, 10);
-    }
-
-    // Construct exercises details list
-    const exercisesWithDetails = matchedExercises.map((ex, idx) => {
-      // Dynamic calculations
-      const exerciseSets = setsMultiplier;
-      const isCardio = ex.muscleGroups?.includes("Cardio") || ex.name.toLowerCase().includes("run") || ex.name.toLowerCase().includes("hiit");
-      const calBurnFactor = isCardio ? 12 : 8;
-      const calories = Math.round(exerciseSets * 10 * calBurnFactor * (dbState?.onboarding?.fitnessLevel === "Advanced" ? 1.2 : 0.9));
-
-      let weightRec = "Moderate Dumbbells";
-      if (ex.equipment?.includes("Bodyweight")) weightRec = "Bodyweight load";
-      else if (ex.equipment?.includes("Barbell")) weightRec = "65%-80% of 1RM load";
-      else if (ex.equipment?.includes("Machine")) weightRec = "Standard stack weight";
-
-      if (dbState?.onboarding?.fitnessLevel === "Beginner") {
-        weightRec = ex.equipment?.includes("Bodyweight") ? "Light bodyweight assistance" : "Minimal/Light load";
+      const eqStr = Array.isArray(ex.equipment) ? ex.equipment.join(" ").toLowerCase() : String(ex.equipment || "").toLowerCase();
+      let weightRec = "Moderate Load";
+      if (eqStr.includes("bodyweight") || eqStr.includes("shoes")) {
+        weightRec = "Bodyweight load";
+      } else if (eqStr.includes("barbell")) {
+        weightRec = "65%-80% of 1RM";
+      } else if (eqStr.includes("machine") || eqStr.includes("cable")) {
+        weightRec = "Standard machine stack";
+      } else if (eqStr.includes("dumbbell")) {
+        weightRec = "Moderate Dumbbells";
       }
 
       return {
-        ...ex,
-        sets: exerciseSets,
-        reps: isCardio ? "30-45 seconds" : repScheme,
+        id: ex.id || `${progToQuery}_d${dayNum}_ex_${idx + 1}`,
+        name: ex.exerciseName || (ex as any).name,
+        category: ex.category,
+        muscleGroups: ex.muscleGroup,
+        gifUrl: (ex as any).gifUrl,
+        customMediaUrl: (ex as any).gifUrl,
+        equipment: Array.isArray(ex.equipment) ? ex.equipment : (ex.equipment ? [ex.equipment] : ["Bodyweight"]),
+        sets: isCardio ? 1 : (ex.sets || setsMultiplier),
+        reps: ex.reps || repScheme,
         weight: weightRec,
-        rest: restTime,
-        calories,
-        instruction: ex.instructions?.[0] || "Maintain stable spine posture and execute movement slowly.",
-        mistake: ex.commonMistakes?.[0] || "Letting momentum take over during negative phase.",
-        safety: ex.safetyTips?.[0] || "Keep core locked tightly. Do not hyper-extend lower back."
+        rest: isCardio ? "Full Rest Post-Cardio" : (ex.restTime || restTime),
+        calories: calBurn,
+        instruction: ex.instructions?.[0] || "Execute with strict posture, full range of motion, and controlled tempo.",
+        mistake: ex.coachingCues?.[0] || "Avoid relying on momentum; maintain muscular control.",
+        safety: "Keep core braced. Maintain neutral spine and joint alignment throughout."
       };
     });
-
-    // Estimate overall stats
-    const totalEstTime = isRecoveryDay ? 30 : 75; // 60-90 minutes
-    const totalEstCalories = isRecoveryDay ? 150 : exercisesWithDetails.reduce((acc, curr) => acc + curr.calories, 120);
 
     return {
       dayNum,
       weekNum,
       phase,
-      phaseDesc,
-      focus: focusLabel,
-      isRecoveryDay,
-      restTime,
-      intensityLabel,
+      phaseDesc: isCardioDay 
+        ? "5 to 10 KM Aerobic Engine & Total Muscular Rest. Strict protocol: No weight training or resistance drills today. After cardio, take complete rest."
+        : phaseDesc,
+      focus: enginePlan.meta.category || enginePlan.meta.title,
+      isRecoveryDay: isCardioDay || !!enginePlan.meta.isRestDay,
+      restTime: isCardioDay ? "Full Rest Post-Cardio" : restTime,
+      intensityLabel: isCardioDay ? "Aerobic Zone 2 (Conversational Pace)" : intensityLabel,
       exercises: exercisesWithDetails,
-      estTime: totalEstTime,
-      estCalories: totalEstCalories,
-      warmUp: (() => {
-        const dynamicStretches = getPreWorkoutStretchesForDay([focusLabel], exercises, 2);
-        if (dynamicStretches && dynamicStretches.length > 0) {
-          return dynamicStretches.map(s => ({
-            name: s.name,
-            duration: "3-4 Mins",
-            desc: s.instructions?.[0] || s.description || "Dynamic joint mobility and activation."
-          }));
-        }
-        return [
-          { name: "Dynamic Joint Mobility Warm-Up", duration: "4 Mins", desc: `Lubricate target joints specifically for ${focusLabel}.` },
-          { name: "Progressive Activation Sets", duration: "3 Mins", desc: "Neuromuscular readiness drills and targeted blood flow." }
-        ];
-      })(),
-      coolDown: [
+      estTime: isCardioDay ? 55 : (enginePlan.meta.isRestDay ? 25 : 75),
+      estCalories: enginePlan.meta.estimatedCalories || 520,
+      warmUp: isCardioDay ? [
+        { name: "Ankle, Hip & Knee Joint Mobilizations", duration: "3 Mins", desc: "Dynamic joint lubrication before 5-10 KM cardio." },
+        { name: "Light Aerobic Walking Warm-Up", duration: "3 Mins", desc: "Gradual elevation of heart rate and core temperature." }
+      ] : [
+        { name: "Dynamic Warm-up Jumps", duration: "3 Mins", desc: "Light impact baseline dynamic hopping." },
+        { name: "Dynamic Rotational Swings", duration: "3 Mins", desc: "Full range axial mobility pivots." },
+        { name: "Target Joint Articulations", duration: "4 Mins", desc: "Lubricate target joints specifically for today's muscle groups." }
+      ],
+      coolDown: isCardioDay ? [
+        { name: "Deep Diaphragmatic Box Breathing", duration: "4 Mins", desc: "Lower heart rate and initiate parasympathetic nervous recovery." },
+        { name: "Complete Post-Cardio Rest & Rehydration", duration: "Full Rest", desc: "Rest muscles completely; zero weight training." }
+      ] : [
         { name: "Systemic Decompression Breathing", duration: "4 Mins", desc: "Deep diaphragmatic nasal inhalation cycles." },
-        { name: "Full Posterior Muscle Release Stretch", duration: "4 Mins", desc: "Static hamstring and back lengthening holds." }
+        { name: "Target Muscle Static Lengthening", duration: "4 Mins", desc: "Release tension in worked muscle groups." }
       ]
     };
   };
