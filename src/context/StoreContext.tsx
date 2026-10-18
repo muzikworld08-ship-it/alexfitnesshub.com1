@@ -229,21 +229,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           } catch (e) {}
           setIsLoadingProducts(false);
         } else {
-          // If Firestore collection is empty, only seed default products that have not been permanently deleted
+          // If Firestore collection is empty, use initial catalog without spamming unneeded cloud writes
           const candidates = INITIAL_STORE_PRODUCTS.filter((p) => !currentDeletedIds.has(p.id));
-          if (candidates.length > 0 && currentDeletedIds.size === 0) {
-            console.log("[Store] Initializing Firestore products collection with initial catalog...");
-            candidates.forEach(async (prod) => {
-              try {
-                await setDoc(doc(db, "products", prod.id), prod);
-              } catch (err) {
-                console.warn("Error seeding product:", prod.id, err);
-              }
-            });
-            setProducts(candidates);
-          } else {
-            setProducts(candidates);
-          }
+          setProducts(candidates);
           setIsLoadingProducts(false);
         }
       }, (error) => {

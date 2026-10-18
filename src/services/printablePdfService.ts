@@ -1,6 +1,6 @@
 import { PrintablePdfProduct, PrintablePdfOrder } from "../types/printablePdf";
-import { db } from "../lib/firebase";
-import { doc, setDoc, deleteDoc, collection, getDocs, getDoc } from "firebase/firestore";
+import { db, safeFirestoreSetDoc, safeFirestoreDeleteDoc } from "../lib/firebase";
+import { doc, collection, getDocs, getDoc } from "firebase/firestore";
 
 export interface InitializeOrderParams {
   productId: string;
@@ -263,7 +263,7 @@ class PrintablePdfService {
 
     if (db && data.product?.id) {
       try {
-        await setDoc(doc(db, "printable_pdf_products", data.product.id), data.product, { merge: true });
+        await safeFirestoreSetDoc(doc(db, "printable_pdf_products", data.product.id), data.product, { merge: true });
       } catch (fbErr) {
         console.warn("[PDF Service] Firestore save notice:", fbErr);
       }
@@ -277,8 +277,8 @@ class PrintablePdfService {
 
     if (db) {
       try {
-        await deleteDoc(doc(db, "printable_pdf_products", id));
-        await setDoc(doc(db, "app_settings", "deleted_pdf_products"), {
+        await safeFirestoreDeleteDoc(doc(db, "printable_pdf_products", id));
+        await safeFirestoreSetDoc(doc(db, "app_settings", "deleted_pdf_products"), {
           ids: Array.from(getClientDeletedPdfIds()),
           updatedAt: new Date().toISOString()
         }, { merge: true });
@@ -331,11 +331,11 @@ class PrintablePdfService {
           metaDoc.base64 = rawBase64;
         }
 
-        await setDoc(doc(db, "printable_pdf_files", safeDocId), metaDoc, { merge: true });
+        await safeFirestoreSetDoc(doc(db, "printable_pdf_files", safeDocId), metaDoc, { merge: true });
 
         for (let i = 0; i < totalChunks; i++) {
           const chunkStr = rawBase64.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-          await setDoc(doc(db, "printable_pdf_files", safeDocId, "chunks", String(i)), {
+          await safeFirestoreSetDoc(doc(db, "printable_pdf_files", safeDocId, "chunks", String(i)), {
             fileDocId: safeDocId,
             chunkIndex: i,
             totalChunks,
@@ -343,7 +343,7 @@ class PrintablePdfService {
             updatedAt: new Date().toISOString()
           }, { merge: true });
 
-          await setDoc(doc(db, "printable_pdf_chunks", `${safeDocId}_chunk_${i}`), {
+          await safeFirestoreSetDoc(doc(db, "printable_pdf_chunks", `${safeDocId}_chunk_${i}`), {
             fileDocId: safeDocId,
             chunkIndex: i,
             totalChunks,

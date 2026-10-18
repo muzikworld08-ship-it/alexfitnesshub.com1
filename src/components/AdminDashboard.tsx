@@ -13,8 +13,8 @@ import AdminOverviewTab from "./admin/AdminOverviewTab";
 import AdminWorkoutEditor from "./admin/AdminWorkoutEditor";
 import { AdminStoreManager } from "./admin/AdminStoreManager";
 import { AdminPdfManager } from "./admin/AdminPdfManager";
-import { db } from "../lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { db, safeFirestoreSetDoc } from "../lib/firebase";
+import { doc } from "firebase/firestore";
 import { PREMIUM_CHALLENGES } from "./Premium90DayChallenge";
 import UnifiedExerciseMedia from "./UnifiedExerciseMedia";
 import { AssetManifestService } from "../services/AssetManifestService";
@@ -219,7 +219,7 @@ export default function AdminDashboard() {
 
     try {
       const targetDocRef = doc(db, "user_premium_challenges", enrollUserUid);
-      await setDoc(targetDocRef, initialProgress);
+      await safeFirestoreSetDoc(targetDocRef, initialProgress);
       localStorage.setItem(`premium_90_day_challenge_${enrollUserUid}`, JSON.stringify(initialProgress));
       setEnrollStatus("Successfully enrolled athlete and initialized progressive overload splits!");
     } catch (err: any) {

@@ -51,14 +51,37 @@ export function resolveAuthenticExercise(
   let mediaUrl = fallbackGifUrl || "";
   let targetCat = category || "General";
 
-  // 1. Check Canonical Exercises database for exact authentic GIF match
-  const canonicalMatch = CANONICAL_EXERCISES.find(e => 
-    e.name.toLowerCase().trim() === cleanName.toLowerCase() ||
+  const cleanLower = cleanName.toLowerCase();
+
+  // 1. Check Canonical Exercises database for exact authentic GIF match or alias match
+  let canonicalMatch = CANONICAL_EXERCISES.find(e => 
+    e.name.toLowerCase().trim() === cleanLower ||
     isExerciseMatch(cleanName, e.name)
   );
 
+  // If no direct or alias match, look for smart non-conflicting substring match in CANONICAL_EXERCISES
+  if (!canonicalMatch) {
+    canonicalMatch = CANONICAL_EXERCISES.find(e => {
+      const eLower = e.name.toLowerCase().trim();
+      if (areExercisesConflicting(cleanLower, eLower)) return false;
+      return cleanLower.includes(eLower) || eLower.includes(cleanLower);
+    });
+  }
+
+  // If still no canonical match, look for non-conflicting token match in CANONICAL_EXERCISES
+  if (!canonicalMatch) {
+    const tokens = cleanLower.split(/[\s-]+/).filter(t => t.length > 3 && !["with", "hold", "deep", "high", "tempo", "dynamic", "kinetic", "calisthenic"].includes(t));
+    if (tokens.length > 0) {
+      canonicalMatch = CANONICAL_EXERCISES.find(e => {
+        const eLower = e.name.toLowerCase().trim();
+        if (areExercisesConflicting(cleanLower, eLower)) return false;
+        return tokens.some(t => eLower.includes(t));
+      });
+    }
+  }
+
   if (canonicalMatch) {
-    if (canonicalMatch.gifUrl) {
+    if (canonicalMatch.gifUrl && !mediaUrl) {
       mediaUrl = canonicalMatch.gifUrl;
     }
     if (canonicalMatch.category) {
@@ -70,6 +93,8 @@ export function resolveAuthenticExercise(
   if (fallbackGifUrl && isMediaUrlConflictingWithExercise(cleanName, fallbackGifUrl)) {
     // Discard conflicting media (e.g. bench press GIF for back squat)
     mediaUrl = canonicalMatch?.gifUrl || "";
+  } else if (fallbackGifUrl && !mediaUrl) {
+    mediaUrl = fallbackGifUrl;
   }
 
   // 3. Check active Admin-added exercises in localStorage
@@ -83,7 +108,9 @@ export function resolveAuthenticExercise(
             if (!e.name) return false;
             // Never match an exercise with a conflicting name
             if (areExercisesConflicting(cleanName, e.name)) return false;
-            return isExerciseMatch(cleanName, e.name);
+            return isExerciseMatch(cleanName, e.name) || 
+                   cleanLower.includes(e.name.toLowerCase()) || 
+                   e.name.toLowerCase().includes(cleanLower);
           });
           if (match) {
             const candidateMedia = match.customMediaUrl || match.gifUrl || match.imageUrl;
@@ -97,7 +124,12 @@ export function resolveAuthenticExercise(
     } catch {}
   }
 
-  // 4. Final safety check: if mediaUrl still conflicts with cleanName, fallback to canonical
+  // 4. Check bundled admin schedule overrides if mediaUrl is still empty
+  if (!mediaUrl && canonicalMatch?.gifUrl) {
+    mediaUrl = canonicalMatch.gifUrl;
+  }
+
+  // 5. Final safety check: if mediaUrl still conflicts with cleanName, fallback to canonical
   if (mediaUrl && isMediaUrlConflictingWithExercise(cleanName, mediaUrl)) {
     mediaUrl = canonicalMatch?.gifUrl || "";
   }

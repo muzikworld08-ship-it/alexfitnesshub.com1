@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
-import { db, auth, OperationType, handleFirestoreError } from "../lib/firebase";
+import { db, auth, OperationType, handleFirestoreError, safeFirestoreAddDoc, safeFirestoreDeleteDoc } from "../lib/firebase";
 import PageHero from "./PageHero";
 import YouTubePlayer from "./video/YouTubePlayer";
 import { getCuratedFallback } from "../data/curatedVideos";
 import { 
   collection, 
-  addDoc, 
   getDocs, 
   query, 
   where, 
-  deleteDoc, 
   doc, 
   serverTimestamp 
 } from "firebase/firestore";
@@ -183,7 +181,7 @@ export default function WorkoutVideos() {
       if (isDuplicate) return;
 
       const historyPath = "video_search_history";
-      await addDoc(collection(db, historyPath), {
+      await safeFirestoreAddDoc(collection(db, historyPath), {
         userId: user.uid,
         query: term.trim(),
         timestamp: serverTimestamp()
@@ -198,7 +196,7 @@ export default function WorkoutVideos() {
   const deleteHistoryItem = async (e: React.MouseEvent, docId: string) => {
     e.stopPropagation();
     try {
-      await deleteDoc(doc(db, "video_search_history", docId));
+      await safeFirestoreDeleteDoc(doc(db, "video_search_history", docId));
       setHistoryList(prev => prev.filter(item => item.id !== docId));
       triggerToast("Deleted search entry.");
     } catch (err) {
@@ -218,7 +216,7 @@ export default function WorkoutVideos() {
     if (exFav) {
       // Remove from favorites
       try {
-        await deleteDoc(doc(db, "favorite_videos", exFav.id));
+        await safeFirestoreDeleteDoc(doc(db, "favorite_videos", exFav.id));
         setFavoritesList(prev => prev.filter(f => f.videoId !== video.id));
         triggerToast("Removed video from favorites.");
       } catch (err) {
@@ -228,7 +226,7 @@ export default function WorkoutVideos() {
       // Add to favorites
       try {
         const favPath = "favorite_videos";
-        const newDoc = await addDoc(collection(db, favPath), {
+        const newDocId = await safeFirestoreAddDoc(collection(db, favPath), {
           userId: user.uid,
           videoId: video.id,
           title: video.title,
@@ -242,7 +240,7 @@ export default function WorkoutVideos() {
         setFavoritesList(prev => [
           ...prev, 
           {
-            id: newDoc.id,
+            id: newDocId || `fav_${Date.now()}`,
             videoId: video.id,
             title: video.title,
             channelTitle: video.channelTitle,

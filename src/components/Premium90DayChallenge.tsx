@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext";
 import WorkoutVisual from "./WorkoutVisual";
-import { db } from "../lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db, safeFirestoreSetDoc } from "../lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Trophy, Flame, Zap, Award, CheckCircle2, Lock, Calendar, 
@@ -360,7 +360,7 @@ export default function Premium90DayChallenge() {
     localStorage.setItem(getLocalChallengeKey(uid), JSON.stringify(data));
     try {
       const docRef = doc(db, "user_premium_challenges", uid.trim());
-      await setDoc(docRef, cleanFirestoreData(data), { merge: true });
+      await safeFirestoreSetDoc(docRef, cleanFirestoreData(data), { merge: true });
       return true;
     } catch (err) {
       console.warn("Firestore write failed, saved to localStorage fallback successfully:", err);

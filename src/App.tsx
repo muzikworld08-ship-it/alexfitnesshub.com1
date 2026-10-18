@@ -20,6 +20,8 @@ import { CheckoutModal } from "./components/store/CheckoutModal";
 import { PATH_TO_VIEW_MAP, VIEW_TO_PATH_MAP, resolveViewFromPath } from "./constants/routes";
 import FloatingWorkoutTimerOverlay from "./components/FloatingWorkoutTimerOverlay";
 import { OfflineIndicator } from "./components/OfflineIndicator";
+import SocialLinksBar from "./components/SocialLinksBar";
+import { BRAND_CONTACTS } from "./constants/socialLinks";
 
 // Lazy-load heavy views to drastically reduce initial bundle size and boost page interaction speed
 const WorkoutLibrary = React.lazy(() => import("./components/WorkoutLibrary"));
@@ -504,10 +506,10 @@ function FitnessAppContent() {
               </a>
 
               <a 
-                href="https://wa.me/2347073307875" 
+                href={BRAND_CONTACTS.whatsapp.url} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-red-500/30 hover:bg-slate-900 transition-all duration-200"
+                className="flex items-center gap-3 p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-emerald-500/30 hover:bg-slate-900 transition-all duration-200"
               >
                 <div className="p-2 rounded bg-slate-900 border border-slate-800">
                   <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 24 24">
@@ -516,7 +518,7 @@ function FitnessAppContent() {
                 </div>
                 <div>
                   <div className="text-[10px] uppercase tracking-wider font-bold text-slate-500">WhatsApp Desktop / Mobile</div>
-                  <div className="text-xs font-mono text-slate-200">+2347073307875</div>
+                  <div className="text-xs font-mono text-slate-200">{BRAND_CONTACTS.whatsapp.formatted}</div>
                 </div>
               </a>
 
@@ -530,8 +532,13 @@ function FitnessAppContent() {
                 </div>
                 <div>
                   <div className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Phone Hotline</div>
-                  <div className="text-xs font-mono text-slate-200">+2347073307875</div>
+                  <div className="text-xs font-mono text-slate-200">{BRAND_CONTACTS.whatsapp.formatted}</div>
                 </div>
+              </div>
+
+              <div className="pt-2">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500 block mb-2">Connect (@alexfitnesshub)</span>
+                <SocialLinksBar variant="dark" />
               </div>
 
             </div>

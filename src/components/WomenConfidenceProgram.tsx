@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db, isMockFirebase } from "../lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { db, isMockFirebase, safeFirestoreSetDoc } from "../lib/firebase";
 import { 
   WomenOnboardingProfile, 
   WomenDailyWorkout, 
@@ -256,7 +256,7 @@ export default function WomenConfidenceProgram() {
 
       if (user?.uid && typeof user.uid === "string" && user.uid.trim() && !isMockFirebase) {
         const docRef = doc(db, "users", user.uid.trim(), "programs", "women_confidence");
-        await setDoc(docRef, cleanFirestoreData(newState), { merge: true });
+        await safeFirestoreSetDoc(docRef, cleanFirestoreData(newState), { merge: true });
       }
     } catch (err) {
       console.warn("Failed to persist Women Confidence progress:", err);

@@ -1,5 +1,5 @@
-import { db, isMockFirebase } from "../lib/firebase";
-import { collection, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
+import { db, isMockFirebase, isFirestoreQuotaExhausted, safeFirestoreSetDoc } from "../lib/firebase";
+import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 
 interface AssetSignature {
   id: string;
@@ -214,11 +214,11 @@ export class AssetManifestService {
     };
     this.saveManifest();
 
-    // Sync to Firestore 'assets_manifest' collection asynchronously
-    if (!isMockFirebase && db) {
+    // Sync to Firestore 'assets_manifest' collection asynchronously if quota permits
+    if (!isMockFirebase && db && !isFirestoreQuotaExhausted()) {
       try {
         const manifestRef = doc(db, "assets_manifest", assetId);
-        setDoc(manifestRef, {
+        safeFirestoreSetDoc(manifestRef, {
           id: assetId,
           assetId,
           mediaUrl,

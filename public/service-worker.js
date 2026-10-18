@@ -1,7 +1,7 @@
 // ALEX FITNESS HUB Service Worker
-// Version: alexfitnesshub-cache-v3.1-unified
+// Version: alexfitnesshub-cache-v4.0-unified
 
-const CACHE_NAME = "alexfitnesshub-cache-v3.1-unified";
+const CACHE_NAME = "alexfitnesshub-cache-v4.0-unified";
 const urlsToCache = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",

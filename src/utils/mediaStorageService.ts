@@ -1,6 +1,6 @@
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { doc, setDoc, getDoc, collection, getDocs } from "firebase/firestore";
-import { storage, db, auth, isMockFirebase } from "../lib/firebase";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+import { storage, db, auth, isMockFirebase, safeFirestoreSetDoc } from "../lib/firebase";
 import { supabase, isSupabaseConfigured } from "./supabase/client";
 import { uploadAdminMedia } from "../lib/mediaStorage";
 
@@ -189,7 +189,7 @@ export async function saveExerciseMediaToDatabase(
     try {
       // Store in exercise_media backup doc
       const mediaDocRef = doc(db, "exercise_media", exerciseId);
-      await setDoc(mediaDocRef, {
+      await safeFirestoreSetDoc(mediaDocRef, {
         exerciseId,
         originalUrlOrBase64: mediaUrl,
         customMediaType: mediaType,
@@ -198,7 +198,7 @@ export async function saveExerciseMediaToDatabase(
 
       // Store in exercises collection doc
       const exDocRef = doc(db, "exercises", exerciseId);
-      await setDoc(exDocRef, {
+      await safeFirestoreSetDoc(exDocRef, {
         id: exerciseId,
         customMediaUrl: mediaUrl,
         customMediaType: mediaType,

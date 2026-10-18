@@ -57,8 +57,40 @@ export interface Exercise {
   durationMinutes?: number;
 }
 
+import { CANONICAL_EXERCISES } from "./canonicalExercises";
+import { resolveAuthenticExercise } from "./authoritativeExerciseMap";
+
 export function getExerciseGifUrl(name: string = "", category: string = "", usedGifs?: Set<string>): string {
-  return "";
+  if (!name && !category) return "";
+  const auth = resolveAuthenticExercise(name, "", category);
+  if (auth?.gifUrl) return auth.gifUrl;
+
+  const clean = name.toLowerCase().trim();
+  const cat = category.toLowerCase().trim();
+
+  // 1. Direct exact or substring match in CANONICAL_EXERCISES
+  const direct = CANONICAL_EXERCISES.find(e => {
+    const eName = e.name.toLowerCase().trim();
+    return eName === clean || clean.includes(eName) || eName.includes(clean);
+  });
+  if (direct?.gifUrl) return direct.gifUrl;
+
+  // 2. Category matching in CANONICAL_EXERCISES
+  if (cat) {
+    const catMatch = CANONICAL_EXERCISES.find(e => {
+      const eCat = e.category.toLowerCase();
+      return eCat.includes(cat) || cat.includes(eCat);
+    });
+    if (catMatch?.gifUrl) return catMatch.gifUrl;
+  }
+
+  // 3. Muscle group matching
+  const muscleMatch = CANONICAL_EXERCISES.find(e => 
+    (e.muscleGroups || []).some(m => clean.includes(m.toLowerCase()) || (cat && cat.includes(m.toLowerCase())))
+  );
+  if (muscleMatch?.gifUrl) return muscleMatch.gifUrl;
+
+  return CANONICAL_EXERCISES[0]?.gifUrl || "";
 }
 
 export interface Program {
@@ -250,8 +282,6 @@ export function determineCategories(
 
   return Array.from(new Set(cats));
 }
-
-import { CANONICAL_EXERCISES } from "./canonicalExercises";
 
 // Authentic Canonical Baseline Exercise Pool:
 // Admin modifications and additions in fit_exercises take precedence.

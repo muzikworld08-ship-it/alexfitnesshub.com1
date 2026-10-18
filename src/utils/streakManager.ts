@@ -1,5 +1,5 @@
-import { db, auth, isMockFirebase, cleanFirestoreData } from "../lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db, auth, isMockFirebase, cleanFirestoreData, isFirestoreQuotaExhausted, safeFirestoreSetDoc } from "../lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 /**
  * Consistency Streak Manager
@@ -111,8 +111,8 @@ function saveWorkoutCompletions(records: WorkoutCompletionRecord[]): void {
     
     // Asynchronously synchronize with Firestore so progress is mirrored across all devices
     const currentUid = auth?.currentUser?.uid;
-    if (currentUid && typeof currentUid === "string" && currentUid.trim() && !isMockFirebase) {
-      setDoc(
+    if (currentUid && typeof currentUid === "string" && currentUid.trim() && !isMockFirebase && !isFirestoreQuotaExhausted()) {
+      safeFirestoreSetDoc(
         doc(db, "user_streak_history", currentUid),
         cleanFirestoreData({
           userId: currentUid,
@@ -157,8 +157,8 @@ export async function syncStreakWithFirestore(uid: string): Promise<WorkoutCompl
       return mergedList;
     } else {
       const localRecords = getStoredWorkoutCompletions();
-      if (localRecords.length > 0 && uid && typeof uid === "string" && uid.trim()) {
-        setDoc(
+      if (localRecords.length > 0 && uid && typeof uid === "string" && uid.trim() && !isFirestoreQuotaExhausted()) {
+        safeFirestoreSetDoc(
           doc(db, "user_streak_history", uid),
           cleanFirestoreData({
             userId: uid,

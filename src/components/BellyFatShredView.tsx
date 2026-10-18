@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { LineChart as ReLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db, handleFirestoreError, OperationType, isMockFirebase, auth } from "../lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { db, handleFirestoreError, OperationType, isMockFirebase, auth, safeFirestoreSetDoc } from "../lib/firebase";
 import { queueBellyFatShredReminderEmail } from "../lib/mailTriggers";
 import WorkoutVisual from "./WorkoutVisual";
 import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
@@ -38,6 +38,8 @@ import { isEmailAdmin } from "../context/AppContext";
 import { Exercise } from "../data/exercises";
 import { ChallengeExerciseItem } from "../types/challengeEngine";
 import { isExplicitlyMarkedWomenWorkout } from "../data/womenConfidenceProgramData";
+import { CANONICAL_EXERCISES } from "../data/canonicalExercises";
+import DEFAULT_PROGRAM_SCHEDULE_OVERRIDES from "../data/program_schedule_overrides.json";
 
 // High-fidelity local types
 interface WeightEntry {
@@ -411,10 +413,6 @@ const getWorkoutForWeekAndDay = (
         exerciseMediaMap[lower] = ex.gifUrl;
       }
 
-      if (!isExerciseBelongingToSplit(ex, targetMuscles, targetCategoryTitle)) {
-        continue;
-      }
-
       const presc = `${ex.sets || 3} sets x ${ex.reps || (isBeginner ? "10-12 reps" : "12 reps")}`;
       const drillStr = `${cleanName}: ${presc}`;
 
@@ -430,9 +428,10 @@ const getWorkoutForWeekAndDay = (
     }
   }
 
-  // If sections need exercises, dynamically pull and categorize from admin's library
-  if (availableExercises && availableExercises.length > 0) {
-    const eligibleLib = availableExercises.filter(e => {
+  // If sections need exercises, dynamically pull and categorize from admin's library or canonical database
+  const effectiveLib = (availableExercises && availableExercises.length > 0) ? availableExercises : CANONICAL_EXERCISES;
+  if (effectiveLib && effectiveLib.length > 0) {
+    const eligibleLib = effectiveLib.filter(e => {
       if (isExplicitlyMarkedWomenWorkout(e)) return false;
       if (isBeginner && e.difficulty && e.difficulty !== "Beginner") return false;
       return true;
@@ -725,10 +724,9 @@ export default function BellyFatShredView() {
   const [programScheduleOverrides, setProgramScheduleOverrides] = useState<Record<string, any>>(() => {
     try {
       const saved = localStorage.getItem("fit_program_schedule_overrides");
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return (DEFAULT_PROGRAM_SCHEDULE_OVERRIDES as any) || {};
   });
 
   useEffect(() => {
@@ -1074,7 +1072,7 @@ export default function BellyFatShredView() {
       setSavingDb(true);
       try {
         const docRef = doc(db, "belly_fat_shred_progress", user.uid.trim());
-        await setDoc(docRef, cleanFirestoreData(updated), { merge: true });
+        await safeFirestoreSetDoc(docRef, cleanFirestoreData(updated), { merge: true });
       } catch (err) {
         console.warn("Notice syncing belly fat progress:", err);
       } finally {

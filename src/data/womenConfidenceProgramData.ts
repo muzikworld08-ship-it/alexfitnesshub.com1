@@ -1,5 +1,7 @@
 import { Exercise } from "./exercises";
 import { filterExercisesForSplit } from "../utils/dynamicWorkoutEngine";
+import { CANONICAL_EXERCISES } from "./canonicalExercises";
+import DEFAULT_PROGRAM_SCHEDULE_OVERRIDES from "./program_schedule_overrides.json";
 
 export interface WomenOnboardingProfile {
   age: number;
@@ -329,15 +331,15 @@ const AUTHENTIC_WOMEN_WORKOUT_LIBRARY: Record<string, WomenCatalogItem[]> = {
 export const WOMEN_EXERCISE_CATALOG: Record<string, WomenDailyExercise> = {};
 
 function getActiveExercisesFromStorage(): Exercise[] {
-  if (typeof window === "undefined" || !window.localStorage) return [];
+  if (typeof window === "undefined" || !window.localStorage) return CANONICAL_EXERCISES;
   try {
     const raw = window.localStorage.getItem("fit_exercises");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch (e) {}
-  return [];
+  return CANONICAL_EXERCISES;
 }
 
 /**
@@ -448,15 +450,24 @@ export function getDailyWorkoutForDay(
   const finalExercisesList: WomenDailyExercise[] = [];
   const seenExerciseNames = new Set<string>();
 
-  // 0. Check admin schedule overrides specifically saved for Women Confidence in AdminWorkoutChallengeEngine
+  // 0. Check admin schedule overrides specifically saved for Women Confidence in AdminWorkoutChallengeEngine or bundled verified defaults
   try {
+    let womenOverrides: any = undefined;
     if (typeof window !== "undefined" && window.localStorage) {
       const stored = window.localStorage.getItem("fit_program_schedule_overrides");
       if (stored) {
         const parsed = JSON.parse(stored);
-        const womenOverrides = parsed.women_confidence || parsed["women-confidence"] || {};
-        const cycleKey = `cycle_${dayInWeek}`;
-        const dayOverride = womenOverrides[String(safeDay)] || womenOverrides[cycleKey];
+        womenOverrides = parsed.women_confidence || parsed["women-confidence"];
+      }
+    }
+    if (!womenOverrides && DEFAULT_PROGRAM_SCHEDULE_OVERRIDES) {
+      const dOverrides = DEFAULT_PROGRAM_SCHEDULE_OVERRIDES as Record<string, any>;
+      womenOverrides = dOverrides.women_confidence || dOverrides["women-confidence"];
+    }
+
+    if (womenOverrides) {
+      const cycleKey = `cycle_${dayInWeek}`;
+      const dayOverride = womenOverrides[String(safeDay)] || womenOverrides[cycleKey];
         if (dayOverride) {
           const rawAthleteLevel = (
             profile?.fitnessLevel || 
@@ -516,8 +527,7 @@ export function getDailyWorkoutForDay(
           }
         }
       }
-    }
-  } catch (e) {}
+    } catch (e) {}
 
   // Prioritize beginner exercises if user is beginner when matching from admin active library
   const isAthleteBeginner = (profile?.fitnessLevel || (typeof window !== "undefined" && window.localStorage?.getItem("fit_athlete_fitness_level")) || "beginner").toLowerCase().includes("beg");

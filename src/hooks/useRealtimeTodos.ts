@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase, isSupabaseConfigured } from "../utils/supabase/client";
-import { collection, onSnapshot, setDoc, doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { collection, onSnapshot, doc, deleteDoc } from "firebase/firestore";
+import { db, safeFirestoreSetDoc, safeFirestoreUpdateDoc } from "../lib/firebase";
 
 export interface Todo {
   id: string;
@@ -156,7 +156,7 @@ export function useRealtimeTodos(userId?: string) {
       }
 
       // Storage 2: Firebase (always active)
-      await setDoc(doc(db, "todos", newId), {
+      await safeFirestoreSetDoc(doc(db, "todos", newId), {
         id: newTodo.id,
         title: newTodo.title,
         completed: newTodo.completed,
@@ -187,9 +187,7 @@ export function useRealtimeTodos(userId?: string) {
       }
 
       // Update Firebase
-      await updateDoc(doc(db, "todos", id), { completed: nextCompleted }).catch(() => {
-        return setDoc(doc(db, "todos", id), { completed: nextCompleted }, { merge: true });
-      });
+      await safeFirestoreUpdateDoc(doc(db, "todos", id), { completed: nextCompleted });
 
       setSyncStatus("synced");
     } catch (err) {

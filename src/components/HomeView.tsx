@@ -19,6 +19,8 @@ import { PROGRAMS } from "../data/exercises";
 import { calculateProgramWorkoutDuration } from "../data/workoutsData";
 import { printablePdfService, getClientDeletedPdfIds } from "../services/printablePdfService";
 import { PrintablePdfProduct } from "../types/printablePdf";
+import SocialLinksBar from "./SocialLinksBar";
+import { BRAND_CONTACTS } from "../constants/socialLinks";
 
 const workoutCategories = [
   {
@@ -3599,16 +3601,21 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
           <div>
             <h4 className="text-[10px] font-sans font-black uppercase tracking-widest text-[#C0392B] mb-3">Customer Support</h4>
             <div className="text-xs text-slate-600 leading-relaxed font-sans space-y-2">
-              <p>Have questions or transaction inquiries? Contact Coach Alex:</p>
+              <p>Have questions or inquiries? Contact Coach Alex directly:</p>
               <div>
                 <span className="font-bold text-[#C0392B] uppercase text-[9px] block">Email Address</span>
-                <a href="mailto:alexfitnesshub@gmail.com" className="text-[10px] text-white bg-[#C0392B] px-2.5 py-1 rounded inline-block font-mono hover:bg-[#A82E22] transition-colors mt-0.5">alexfitnesshub@gmail.com</a>
+                <a href={`mailto:${BRAND_CONTACTS.email}`} className="text-[10px] text-white bg-[#C0392B] px-2.5 py-1 rounded inline-block font-mono hover:bg-[#A82E22] transition-colors mt-0.5">{BRAND_CONTACTS.email}</a>
               </div>
               <div className="pt-1">
-                <span className="font-bold text-[#C0392B] uppercase text-[9px] block">WhatsApp / Phone</span>
-                <a href="https://wa.me/2347073307875" target="_blank" rel="noopener noreferrer" className="text-[10px] text-white bg-[#C0392B] px-2.5 py-1 rounded inline-block font-mono hover:bg-[#A82E22] transition-colors mt-0.5">+2347073307875</a>
+                <span className="font-bold text-[#C0392B] uppercase text-[9px] block">WhatsApp Support Desk</span>
+                <a href={BRAND_CONTACTS.whatsapp.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-white bg-emerald-600 px-2.5 py-1 rounded inline-flex items-center gap-1 font-mono hover:bg-emerald-700 transition-colors mt-0.5">
+                  <span>{BRAND_CONTACTS.whatsapp.formatted}</span>
+                </a>
               </div>
-
+              <div className="pt-2">
+                <span className="font-bold text-slate-700 uppercase text-[9px] block mb-1">Official Channels (@alexfitnesshub)</span>
+                <SocialLinksBar variant="light" className="gap-1.5" />
+              </div>
             </div>
           </div>
 

@@ -22,8 +22,8 @@ import {
 import { getExerciseGifUrl, Exercise } from "../../data/exercises";
 import { ChallengeValidationService } from "../../services/challengeValidationService";
 import { useApp } from "../../context/AppContext";
-import { auth, db } from "../../lib/firebase";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { auth, db, safeFirestoreSetDoc } from "../../lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import { supabase, isSupabaseConfigured } from "../../utils/supabase/client";
 import DeleteWorkoutConfirmModal, { DeleteWorkoutTarget } from "./DeleteWorkoutConfirmModal";
 import ExerciseReplacementModal from "./ExerciseReplacementModal";
@@ -913,19 +913,19 @@ export default function AdminWorkoutChallengeEngine() {
 
         // Direct client-side dual persistence to Firebase Firestore
         try {
-          setDoc(doc(db, "program_schedules", "overrides"), {
+          safeFirestoreSetDoc(doc(db, "program_schedules", "overrides"), {
             overrides: next,
             updatedAt: new Date().toISOString(),
             updatedBy: adminEmail
           }, { merge: true }).catch((e) => console.warn("Notice updating program_schedules/overrides:", e));
 
-          setDoc(doc(db, "system_settings", "program_schedule_overrides"), {
+          safeFirestoreSetDoc(doc(db, "system_settings", "program_schedule_overrides"), {
             ...next,
             _updatedAt: new Date().toISOString(),
             _updatedBy: adminEmail
           }, { merge: true }).catch((e) => console.warn("Notice updating system_settings:", e));
 
-          setDoc(doc(db, "program_schedules", selectedProgramId), {
+          safeFirestoreSetDoc(doc(db, "program_schedules", selectedProgramId), {
             programId: selectedProgramId,
             schedule: next[selectedProgramId] || dayData,
             updatedAt: new Date().toISOString(),

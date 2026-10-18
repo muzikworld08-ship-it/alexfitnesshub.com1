@@ -7,8 +7,8 @@ import {
   Lightbulb, ChevronLeft, Calendar, Sparkle, Mail, Send
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { doc, setDoc, getDoc } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { db, safeFirestoreSetDoc } from "../lib/firebase";
 import { queueLifestyleAcademyReminderEmail } from "../lib/mailTriggers";
 import WorkoutVisual from "./WorkoutVisual";
 import { resolveAuthenticExercise } from "../data/authoritativeExerciseMap";
@@ -827,7 +827,7 @@ export default function LifestyleFitnessAcademy() {
       if (user && user.uid) {
         // Quietly back up to Firestore
         const userProgressRef = doc(db, "user_academy_progress", user.uid);
-        await setDoc(userProgressRef, {
+        await safeFirestoreSetDoc(userProgressRef, {
           progress: newProgress,
           updatedAt: new Date().toISOString()
         }, { merge: true });

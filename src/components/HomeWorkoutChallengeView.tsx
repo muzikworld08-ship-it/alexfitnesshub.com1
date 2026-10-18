@@ -13,8 +13,8 @@ import UniversalExerciseSwapperModal from "./UniversalExerciseSwapperModal";
 import { Exercise } from "../data/exercises";
 import { detectWorkoutType } from "../utils/dynamicWorkoutEngine";
 import { motion, AnimatePresence } from "motion/react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db, isMockFirebase } from "../lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { db, isMockFirebase, safeFirestoreSetDoc } from "../lib/firebase";
 import { 
   HomeOnboardingProfile, 
   HomeDailyWorkout, 
@@ -227,7 +227,7 @@ export default function HomeWorkoutChallengeView() {
     if (user?.uid && typeof user.uid === "string" && user.uid.trim() && !isMockFirebase) {
       try {
         const docRef = doc(db, "home_workout_challenge", user.uid.trim());
-        await setDoc(docRef, cleanFirestoreData({ ...newState, updatedAt: new Date().toISOString() }), { merge: true });
+        await safeFirestoreSetDoc(docRef, cleanFirestoreData({ ...newState, updatedAt: new Date().toISOString() }), { merge: true });
       } catch (e) {
         console.warn("[HomeChallenge] Firestore sync notice:", e);
       }

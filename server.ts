@@ -1,3 +1,43 @@
+// Suppress benign Firestore quota exhaustion and idle stream logs in Node environment
+(function() {
+  const isBenign = (msg: any): boolean => {
+    if (!msg) return false;
+    const str = typeof msg === "string" ? msg : (msg?.message || msg?.stack || String(msg));
+    const lower = str.toLowerCase();
+    return (
+      lower.includes("resource_exhausted") ||
+      lower.includes("resource-exhausted") ||
+      lower.includes("quota limit exceeded") ||
+      lower.includes("quota exceeded") ||
+      lower.includes("free daily write units") ||
+      lower.includes("free tier database") ||
+      lower.includes("rpc 'write' stream") ||
+      lower.includes("code: 8 message: 8") ||
+      lower.includes("code: 8") ||
+      lower.includes("disconnecting idle stream") ||
+      lower.includes("timed out waiting for new targets") ||
+      lower.includes("rpc 'listen' stream") ||
+      lower.includes("code: 1 message: 1 cancelled")
+    );
+  };
+
+  const origError = console.error;
+  console.error = function(...args: any[]) {
+    for (const arg of args) {
+      if (isBenign(arg)) return;
+    }
+    return origError.apply(console, args);
+  };
+
+  const origWarn = console.warn;
+  console.warn = function(...args: any[]) {
+    for (const arg of args) {
+      if (isBenign(arg)) return;
+    }
+    return origWarn.apply(console, args);
+  };
+})();
+
 import express from "express";
 import path from "path";
 import fs from "fs";
@@ -431,9 +471,20 @@ const brandFooter = `
       Need live coaching assistance? Contact Coach Alex:
     </p>
     <div style="margin-top: 10px;">
-      <a href="mailto:alexfitnesshub@gmail.com" style="color: #C0392B; text-decoration: none; font-weight: bold; font-family: 'JetBrains Mono', monospace; font-size: 11px; margin: 0 10px;">alexfitnesshub@gmail.com</a>
+      <a href="mailto:alexfitnesshub@gmail.com" style="color: #C0392B; text-decoration: none; font-weight: bold; font-family: 'JetBrains Mono', monospace; font-size: 11px; margin: 0 8px;">alexfitnesshub@gmail.com</a>
       <span style="color: #334155;">|</span>
-      <a href="https://wa.me/2347073307875" style="color: #C0392B; text-decoration: none; font-weight: bold; font-family: 'JetBrains Mono', monospace; font-size: 11px; margin: 0 10px;">WhatsApp Support Desk</a>
+      <a href="https://wa.me/2349015798601" style="color: #10B981; text-decoration: none; font-weight: bold; font-family: 'JetBrains Mono', monospace; font-size: 11px; margin: 0 8px;">WhatsApp (+2349015798601)</a>
+    </div>
+    <div style="margin-top: 12px; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
+      <a href="https://www.instagram.com/alexfitnesshub" style="color: #94A3B8; text-decoration: none; margin: 0 6px;">Instagram</a>
+      <span style="color: #334155;">•</span>
+      <a href="https://www.threads.net/@alexfitnesshub" style="color: #94A3B8; text-decoration: none; margin: 0 6px;">Threads</a>
+      <span style="color: #334155;">•</span>
+      <a href="https://x.com/alexfitnesshub" style="color: #94A3B8; text-decoration: none; margin: 0 6px;">X</a>
+      <span style="color: #334155;">•</span>
+      <a href="https://www.tiktok.com/@alexfitnesshub" style="color: #94A3B8; text-decoration: none; margin: 0 6px;">TikTok</a>
+      <span style="color: #334155;">•</span>
+      <a href="https://www.facebook.com/alexfitnesshub" style="color: #94A3B8; text-decoration: none; margin: 0 6px;">Facebook</a>
     </div>
     <p style="color: #475569; font-family: 'JetBrains Mono', monospace; font-size: 9px; margin: 16px 0 0 0; letter-spacing: 1px;">
       &copy; 2026 ALEXFITNESSHUB. ALL RIGHTS RESERVED.
@@ -809,6 +860,9 @@ function formatFirestoreRestFields(obj: any): any {
   return fields;
 }
 
+// Global server Firestore write quota tracker
+let serverFirestoreQuotaExhausted = false;
+
 // Ultra-reliable server-side document write handler supporting metadata REST fallback in Cloud Run
 async function setServerFirestoreDoc(collectionName: string, docId: string, data: any, merge: boolean = false, userToken?: string) {
   const projectId = firebaseConfig.projectId;
@@ -892,12 +946,27 @@ async function setServerFirestoreDoc(collectionName: string, docId: string, data
   }
 
   // 3. Fallback to standard Firestore SDK
+  if (serverFirestoreQuotaExhausted) {
+    return { success: false, error: "Firestore write quota exhausted (local storage fallback active)" };
+  }
   try {
     const docRef = doc(db, collectionName, docId);
     await setDoc(docRef, data, { merge });
     console.log(`[Server Firestore Web SDK Write OK] Successfully wrote ${collectionName}/${docId} via Web SDK`);
     return { success: true };
   } catch (err: any) {
+    const msg = String(err?.message || err);
+    if (
+      msg.includes("resource-exhausted") ||
+      msg.includes("RESOURCE_EXHAUSTED") ||
+      msg.includes("Quota limit exceeded") ||
+      msg.includes("Free daily write units") ||
+      err?.code === "resource-exhausted"
+    ) {
+      serverFirestoreQuotaExhausted = true;
+      console.warn(`[Server Firestore Write Quota Exceeded] Daily quota reached; using server disk fallback for ${collectionName}/${docId}`);
+      return { success: false, error: "Firestore write quota exceeded" };
+    }
     console.warn(`[Server Firestore Web SDK Notice] Could not write ${collectionName}/${docId}:`, err?.message || err);
     return { success: false, error: err?.message || err };
   }

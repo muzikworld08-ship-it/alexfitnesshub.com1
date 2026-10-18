@@ -236,7 +236,7 @@ export const CheckoutModal: React.FC = () => {
             {/* Action Buttons */}
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
               <a
-                href={`https://wa.me/2347073307875?text=Hello%20Coach%20Alex,%20I%20just%20placed%20order%20%23${confirmedOrder.orderNumber}%20on%20the%20ALEXFITNESSHUB%20Store!`}
+                href={`https://wa.me/2349015798601?text=Hello%20Coach%20Alex,%20I%20just%20placed%20order%20%23${confirmedOrder.orderNumber}%20on%20the%20ALEXFITNESSHUB%20Store!`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition-all"

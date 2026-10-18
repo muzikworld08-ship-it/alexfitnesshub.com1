@@ -1,6 +1,8 @@
 import { Exercise } from "./exercises";
 import { filterExercisesForSplit, isHomeEligibleExercise, detectWorkoutType } from "../utils/dynamicWorkoutEngine";
 import { isExplicitlyMarkedWomenWorkout } from "./womenConfidenceProgramData";
+import { CANONICAL_EXERCISES } from "./canonicalExercises";
+import DEFAULT_PROGRAM_SCHEDULE_OVERRIDES from "./program_schedule_overrides.json";
 
 export interface HomeOnboardingProfile {
   gender: "Male" | "Female" | "Other";
@@ -183,15 +185,15 @@ export const HOME_MILESTONE_BADGES = [
 export const HOME_EXERCISES_CATALOG: Record<string, HomeExercise> = {};
 
 function getActiveExercisesFromStorage(): Exercise[] {
-  if (typeof window === "undefined" || !window.localStorage) return [];
+  if (typeof window === "undefined" || !window.localStorage) return CANONICAL_EXERCISES;
   try {
     const raw = window.localStorage.getItem("fit_exercises");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch (e) {}
-  return [];
+  return CANONICAL_EXERCISES;
 }
 
 /**
@@ -288,23 +290,36 @@ export function getHomeWorkoutForDay(
     }
   }
 
-  // Check admin overrides from local storage
+  // Check admin overrides from local storage or bundled defaults
+  let homeOverrides: any = undefined;
+  const trackKey = (activeTrack || "").toLowerCase().includes("women") ? "women" : "men";
   if (typeof window !== "undefined" && window.localStorage) {
     try {
       const stored = window.localStorage.getItem("fit_program_schedule_overrides");
       if (stored) {
         const parsed = JSON.parse(stored);
-        const trackKey = (activeTrack || "").toLowerCase().includes("women") ? "women" : "men";
-        const homeOverrides = parsed[`home_180_${trackKey}`] || parsed.home_180 || parsed["180_day_home"] || {};
-        const cycleKey = `cycle_${dayInWeek}`;
-        const dayOverride = homeOverrides[String(safeDay)] || homeOverrides[cycleKey];
-        if (dayOverride) {
-          const rawTierList = (level.toLowerCase().includes("beg") && (dayOverride.levels?.beginner?.length ? dayOverride.levels.beginner : dayOverride.beginnerExercises))
-            || (level.toLowerCase().includes("adv") && (dayOverride.levels?.advanced?.length ? dayOverride.levels.advanced : dayOverride.advancedExercises))
-            || (level.toLowerCase().includes("inter") && (dayOverride.levels?.intermediate?.length ? dayOverride.levels.intermediate : dayOverride.intermediateExercises))
-            || dayOverride.levels?.beginner
-            || dayOverride.beginnerExercises
-            || dayOverride.exercises;
+        homeOverrides = parsed[`home_180_${trackKey}`] || parsed.home_180 || parsed["180_day_home"];
+      }
+    } catch (e) {
+      console.warn("Home workout overrides read warning:", e);
+    }
+  }
+
+  if (!homeOverrides && DEFAULT_PROGRAM_SCHEDULE_OVERRIDES) {
+    const dOverrides = DEFAULT_PROGRAM_SCHEDULE_OVERRIDES as Record<string, any>;
+    homeOverrides = dOverrides[`home_180_${trackKey}`] || dOverrides.home_180 || dOverrides["180_day_home"];
+  }
+
+  if (homeOverrides) {
+    const cycleKey = `cycle_${dayInWeek}`;
+    const dayOverride = homeOverrides[String(safeDay)] || homeOverrides[cycleKey];
+    if (dayOverride) {
+      const rawTierList = (level.toLowerCase().includes("beg") && (dayOverride.levels?.beginner?.length ? dayOverride.levels.beginner : dayOverride.beginnerExercises))
+        || (level.toLowerCase().includes("adv") && (dayOverride.levels?.advanced?.length ? dayOverride.levels.advanced : dayOverride.advancedExercises))
+        || (level.toLowerCase().includes("inter") && (dayOverride.levels?.intermediate?.length ? dayOverride.levels.intermediate : dayOverride.intermediateExercises))
+        || dayOverride.levels?.beginner
+        || dayOverride.beginnerExercises
+        || dayOverride.exercises;
 
           if (Array.isArray(rawTierList) && rawTierList.length > 0) {
             const exercisesFromOverride: HomeExercise[] = rawTierList.map((ovEx: any, idx: number) => ({
@@ -349,10 +364,6 @@ export function getHomeWorkoutForDay(
         }
       }
     }
-  } catch (e) {
-      console.warn("Home workout overrides read warning:", e);
-    }
-  }
 
   const allActiveRaw = Array.isArray(activeExercisesList) && activeExercisesList.length > 0
     ? activeExercisesList

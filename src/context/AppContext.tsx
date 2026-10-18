@@ -14,7 +14,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs, query, where, deleteDoc, onSnapshot } from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
-import { auth, db, isMockFirebase, handleFirestoreError, OperationType, cleanFirestoreData } from "../lib/firebase";
+import { auth, db, isMockFirebase, handleFirestoreError, OperationType, cleanFirestoreData, isFirestoreQuotaExhausted, safeFirestoreSetDoc } from "../lib/firebase";
 import { supabase, isSupabaseConfigured } from "../utils/supabase/client";
 import { AssetManifestService } from "../services/AssetManifestService";
 import { 
@@ -1790,7 +1790,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } else {
             profile = baseProfile;
           }
-          setDoc(userDocRef, profile, { merge: true }).catch(err => {
+          safeFirestoreSetDoc(userDocRef, profile, { merge: true }).catch(err => {
             console.warn("Firestore profile background write notice:", err);
           });
         }
@@ -2050,7 +2050,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     onboarded: true,
                     createdAt: new Date().toISOString(),
                   };
-                  await setDoc(userDocRef, profile, { merge: true });
+                  await safeFirestoreSetDoc(userDocRef, profile, { merge: true });
                 }
                 // Cache in local storage
                 safeSetItem(`fit_user_${profile.uid}`, JSON.stringify(profile));
@@ -2301,7 +2301,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const saveWorkoutFiltersToFirebase = async (uid: string, filters: WorkoutLibraryFilters) => {
     if (isMockFirebase) return;
     try {
-      await setDoc(doc(db, "workout_library_filters", uid), {
+      await safeFirestoreSetDoc(doc(db, "workout_library_filters", uid), {
         userId: uid,
         ...filters,
         updatedAt: new Date().toISOString()
@@ -2372,7 +2372,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const saveProgramProgressToFirebase = async (uid: string, progress: Record<string, ProgramProgressItem>) => {
     if (isMockFirebase) return;
     try {
-      await setDoc(doc(db, "user_program_progress", uid), {
+      await safeFirestoreSetDoc(doc(db, "user_program_progress", uid), {
         userId: uid,
         progress,
         updatedAt: new Date().toISOString()
@@ -2686,7 +2686,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (auth.currentUser?.uid && !isMockFirebase) {
         try {
           const calibRef = doc(db, "users", auth.currentUser.uid, "calibrationGoals", "current");
-          await setDoc(calibRef, defaultCalibration, { merge: true });
+          await safeFirestoreSetDoc(calibRef, defaultCalibration, { merge: true });
         } catch (e) {
           console.warn("Could not sync default calibration goals to Firestore:", e);
         }

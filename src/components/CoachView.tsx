@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { Sparkles, Send, Trash2, ShieldAlert, Cpu, Heart, CheckCircle2, Flame, Clock, BookOpen, Info, Apple, Award, Image as ImageIcon, Download, Trash, Check, Loader2, RefreshCw, Palette, Layers, HelpCircle } from "lucide-react";
-import { collection, addDoc, getDocs, query, where, deleteDoc, doc } from "firebase/firestore";
-import { db, isMockFirebase, auth } from "../lib/firebase";
+import { collection, getDocs, query, where, doc } from "firebase/firestore";
+import { db, isMockFirebase, auth, safeFirestoreAddDoc, safeFirestoreDeleteDoc } from "../lib/firebase";
 import PageHero from "./PageHero";
 import WorkoutVisual from "./WorkoutVisual";
 
@@ -144,8 +144,8 @@ export default function CoachView() {
         setSavedGallery(nextList);
         localStorage.setItem(`fit_gallery_${user.uid}`, JSON.stringify(nextList));
       } else {
-        const docRef = await addDoc(collection(db, "user_inspirations"), payload);
-        const newItem = { id: docRef.id, ...payload };
+        const addedId = await safeFirestoreAddDoc(collection(db, "user_inspirations"), payload);
+        const newItem = { id: addedId || `insp_${Date.now()}`, ...payload };
         setSavedGallery(prev => [newItem, ...prev]);
         localStorage.setItem(`fit_gallery_${user.uid}`, JSON.stringify([newItem, ...savedGallery]));
       }
@@ -167,7 +167,7 @@ export default function CoachView() {
         setSavedGallery(nextList);
         localStorage.setItem(`fit_gallery_${user.uid}`, JSON.stringify(nextList));
       } else {
-        await deleteDoc(doc(db, "user_inspirations", id));
+        await safeFirestoreDeleteDoc(doc(db, "user_inspirations", id));
         setSavedGallery(prev => prev.filter(item => item.id !== id));
         const nextList = savedGallery.filter(item => item.id !== id);
         localStorage.setItem(`fit_gallery_${user.uid}`, JSON.stringify(nextList));

@@ -23,6 +23,8 @@ import {
   REMINDER_SCHEDULE_EVENT, 
   WorkoutReminderSchedule 
 } from "../utils/pushNotificationService";
+import SocialLinksBar from "./SocialLinksBar";
+import { BRAND_CONTACTS } from "../constants/socialLinks";
 
 interface NavbarProps {
   currentView: string;
@@ -89,11 +91,8 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     "workout-generator": "AI Workout Generator"
   };
 
-  const GUEST_PROTECTED_VIEWS = [
-    ...Object.keys(PREMIUM_PROGRAMS_MAP),
-    "nutrition",
-    "community",
-    "success-stories"
+  const GUEST_PROTECTED_VIEWS: string[] = [
+    // Keep open access for challenge programs and performance desks
   ];
 
   const handleCustomNav = (targetView: string, subview?: string, elementId?: string) => {
@@ -101,31 +100,6 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     setIsDropdownOpen(false);
     
     if (targetView === "pricing") {
-      setView("pricing");
-      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-      return;
-    }
-
-    const progName = PREMIUM_PROGRAMS_MAP[targetView] || targetView;
-
-    // 1. Check if user is unauthenticated (guest / not signed up)
-    if (!user && GUEST_PROTECTED_VIEWS.includes(targetView)) {
-      localStorage.setItem("fit_attempted_view", targetView);
-      onOpenAuth();
-      setView("login");
-      return;
-    }
-
-    // 2. Check if logged-in user is on FREE TIER attempting a premium program
-    if (user && !isPremium && PREMIUM_PROGRAMS_MAP[targetView]) {
-      localStorage.setItem("fit_upgrade_reason", progName);
-      setUpgradeToast({
-        message: `👑 Upgrade Required: "${progName}" is exclusive to Premium Athletes. Redirecting to choose your membership plan...`,
-        visible: true
-      });
-      setTimeout(() => {
-        setUpgradeToast(null);
-      }, 4500);
       setView("pricing");
       window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
       return;
@@ -163,10 +137,8 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     }, 180);
   };
 
-  // Unified single drawer menu items (dynamic based on subscription)
-  // Unified single drawer menu items (dynamic based on subscription)
-  const drawerMenuItems = isPremium ? [
-    { id: "progress-tracker", label: "Progress & Activity Tracker", desc: "Workouts, cardio, water intake, meals & 7-day reports", icon: Activity, color: "text-emerald-600 bg-emerald-50", isHighlight: true },
+  // Unified single drawer menu items rearranged in exact requested architecture
+  const drawerMenuItems = [
     { id: "challenges", label: "Immortal 90-Day Challenge", desc: "Flagship 90-day hypertrophy, strength & 7-day split protocol", icon: Award, color: "text-red-600 bg-red-50", isHighlight: true },
     { id: "challenge-engine", label: "Challenge Engine Hub", desc: "All challenge programs, protocols & workout architect", icon: Layers, color: "text-indigo-600 bg-indigo-50" },
     { id: "dashboard", label: "Athlete Performance Desk", desc: "Your metrics, streaks & performance reports", icon: Shield, color: "text-sky-600 bg-sky-50" },
@@ -174,48 +146,20 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     { id: "daily-plan", label: "My Daily Plan", desc: "Personalized daily schedule & drills", icon: Calendar, color: "text-red-600 bg-red-50" },
     { id: "women-confidence", label: "Women Confidence Program", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-50" },
     { id: "belly-fat-shred", label: "Belly Fat Shred System", desc: "5-Month core & metabolic shredding protocol", icon: Flame, color: "text-orange-600 bg-orange-50" },
+    { id: "lifestyle-academy", label: "Programs & Academy", desc: "12-Week structured physique splits", icon: BookOpen, color: "text-blue-600 bg-blue-50" },
+    { id: "progress-tracker", label: "Progress & Activity Tracker", desc: "Workouts, cardio, water intake, meals & 7-day reports", icon: Activity, color: "text-emerald-600 bg-emerald-50" },
     { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
     { id: "printable-pdfs", label: "Printable PDFs & Journals", desc: "Digital fitness workbooks, meal planners & guides", icon: FileText, color: "text-red-600 bg-red-50" },
     { id: "coach", label: "AI Fitness Coach", desc: "Personalized Gemini AI consultations", icon: Sparkles, color: "text-indigo-600 bg-indigo-50" },
-    { id: "notification-settings", label: "Notification Settings", desc: "Alarm schedule, sound chime & email alerts", icon: Bell, color: "text-amber-600 bg-amber-50" },
     { id: "home", label: "Home Page", desc: "Main portal, workout search & preview", icon: Dumbbell, color: "text-red-500 bg-red-50" },
-    { id: "lifestyle-academy", label: "Programs & Academy", desc: "12-Week structured physique splits", icon: BookOpen, color: "text-blue-600 bg-blue-50" },
     { id: "library", label: "Workout Library & Drills", desc: "Full exercise directory with kinetic specs", icon: Activity, color: "text-emerald-600 bg-emerald-50" },
     { id: "workout-videos", label: "Exercise Video Vault", desc: "HD form demonstrations & workouts", icon: Video, color: "text-purple-600 bg-purple-50" },
-    { id: "saved-exercises", label: "Saved Drills & Workouts", desc: "Your bookmarked routine collection", icon: Bookmark, color: "text-amber-600 bg-amber-50" },
     { id: "nutrition", label: "Nutrition & Meal Matrix", desc: "Macro calibrator & localized diet plans", icon: Heart, color: "text-rose-600 bg-rose-50" },
     { id: "weight-trajectory", label: "Weight Trajectory Logs", desc: "Biometric weigh-in graph & checkpoints", icon: BarChart3, color: "text-emerald-600 bg-emerald-50" },
     { id: "daily-calibration-desk", label: "Biometric Calibration Desk", desc: "Hydration, calories & sleep targets", icon: Calculator, color: "text-indigo-600 bg-indigo-50" },
     { id: "community", label: "Community Arena", desc: "Share updates & connect with athletes", icon: Users, color: "text-teal-600 bg-teal-50" },
     { id: "success-stories", label: "Transformation Stories", desc: "Verified athlete before/after reviews", icon: Star, color: "text-yellow-600 bg-yellow-50" },
-    ...((user?.role === "admin" || (user?.email && isEmailAdmin(user.email))) ? [
-      { id: "admin", label: "Admin Management Console", desc: "System settings, analytics & user controls", icon: Shield, color: "text-red-700 bg-red-100" },
-      { id: "challenge-engine", label: "Challenge Engine Architect", desc: "Manage 90-Day & all program vertical splits, tiers & drills", icon: Repeat, color: "text-amber-700 bg-amber-100" }
-    ] : [])
-  ] : [
-    { id: "progress-tracker", label: "Progress & Activity Tracker", desc: "Workouts, cardio, water intake, meals & 7-day reports", icon: Activity, color: "text-emerald-600 bg-emerald-50", isHighlight: true },
-    { id: "challenges", label: "Immortal 90-Day Challenge", desc: "Flagship 90-day hypertrophy, strength & 7-day split protocol", icon: Award, color: "text-red-600 bg-red-50", isProBadge: true, isHighlight: true },
-    { id: "challenge-engine", label: "Challenge Engine Hub", desc: "All challenge programs, split protocols & workout engine", icon: Layers, color: "text-indigo-600 bg-indigo-50", isProBadge: true },
-    { id: "home-workout-challenge", label: "180 Day Home Workout Challenge", desc: "Zero equipment bodyweight transformation & 5KM cardio", icon: Dumbbell, color: "text-amber-600 bg-amber-50", isProBadge: true },
-    { id: "women-confidence", label: "Women Confidence Program", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-50", isProBadge: true },
-    { id: "belly-fat-shred", label: "Belly Fat Shred System", desc: "5-Month core & metabolic shredding protocol", icon: Flame, color: "text-orange-600 bg-orange-50", isProBadge: true },
-    { id: "daily-plan", label: "My Daily Plan", desc: "Personalized daily schedule & drills", icon: Calendar, color: "text-red-600 bg-red-50", isProBadge: true },
-    { id: "coach", label: "AI Fitness Coach", desc: "Personalized Gemini AI consultations", icon: Sparkles, color: "text-indigo-600 bg-indigo-50", isProBadge: true },
-    { id: "dashboard", label: "Athlete Performance Desk", desc: "Your metrics, streaks & performance reports", icon: Shield, color: "text-sky-600 bg-sky-50", isProBadge: true },
-    { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
-    { id: "printable-pdfs", label: "Printable PDFs & Journals", desc: "Digital fitness workbooks, meal planners & guides", icon: FileText, color: "text-red-600 bg-red-50" },
-    { id: "notification-settings", label: "Notification Settings", desc: "Alarm schedule, sound chime & email alerts", icon: Bell, color: "text-amber-600 bg-amber-50" },
-    { id: "home", label: "Home Page", desc: "Main portal, features & workout search", icon: Dumbbell, color: "text-red-500 bg-red-50" },
-    { id: "lifestyle-academy", label: "Programs & Academy", desc: "12-Week structured physique splits", icon: BookOpen, color: "text-blue-500 bg-blue-50" },
-    { id: "library", label: "Workout Library & Drills", desc: "Full exercise directory with kinetic specs", icon: Activity, color: "text-emerald-500 bg-emerald-50" },
-    { id: "workout-videos", label: "Exercise Video Vault", desc: "HD form demonstrations & workouts", icon: Video, color: "text-purple-500 bg-purple-50" },
-    { id: "saved-exercises", label: "Saved Drills & Workouts", desc: "Your bookmarked routine collection", icon: Bookmark, color: "text-amber-600 bg-amber-50", isProBadge: true },
-    { id: "nutrition", label: "Nutrition & Macro Matrix", desc: "Macro calibrator & localized diet plans", icon: Heart, color: "text-rose-500 bg-rose-50" },
-    { id: "daily-calibration-desk", label: "Biometric Calibration Desk", desc: "Hydration, calories & sleep targets", icon: Calculator, color: "text-indigo-600 bg-indigo-50", isProBadge: true },
-    { id: "weight-trajectory", label: "Weight Trajectory Logs", desc: "Biometric weigh-in graph & checkpoints", icon: BarChart3, color: "text-emerald-600 bg-emerald-50", isProBadge: true },
-    { id: "community", label: "Community Arena", desc: "Share updates & connect with athletes", icon: Users, color: "text-teal-500 bg-teal-50" },
-    { id: "success-stories", label: "Transformation Stories", desc: "Verified athlete before/after reviews", icon: Star, color: "text-yellow-600 bg-yellow-50" },
-    { id: "pricing", label: "Upgrade to Premium Membership", desc: "Unlock All 4 Transformation Programs, Daily Plan & AI Coach", icon: Crown, color: "text-white bg-gradient-to-r from-red-600 to-rose-600", isHighlight: true },
+    { id: "pricing", label: "Membership Plans", desc: "Full athlete training memberships", icon: Crown, color: "text-white bg-gradient-to-r from-red-600 to-rose-600" },
     ...((user?.role === "admin" || (user?.email && isEmailAdmin(user.email))) ? [
       { id: "admin", label: "Admin Management Console", desc: "System settings, analytics & user controls", icon: Shield, color: "text-red-700 bg-red-100" },
       { id: "challenge-engine", label: "Challenge Engine Architect", desc: "Manage 90-Day & all program vertical splits, tiers & drills", icon: Repeat, color: "text-amber-700 bg-amber-100" }
@@ -765,7 +709,25 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
               )}
 
               {/* Drawer Bottom Footer */}
-              <div className="p-4 border-t border-slate-200 bg-slate-50/80 flex flex-col gap-2">
+              <div className="p-4 border-t border-slate-200 bg-slate-50/80 flex flex-col gap-2.5">
+                {/* Official Social Links & Community */}
+                <div className="pt-0.5">
+                  <div className="flex items-center justify-between mb-1.5 px-0.5">
+                    <span className="text-[10px] font-mono font-bold uppercase text-slate-500 tracking-wider">
+                      Follow @alexfitnesshub
+                    </span>
+                    <a
+                      href={BRAND_CONTACTS.whatsapp.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-mono font-bold text-emerald-600 hover:text-emerald-700 hover:underline"
+                    >
+                      WhatsApp: {BRAND_CONTACTS.whatsapp.formatted}
+                    </a>
+                  </div>
+                  <SocialLinksBar variant="light" className="justify-between" />
+                </div>
+
                 <button
                   onClick={async () => {
                     setIsMenuOpen(false);

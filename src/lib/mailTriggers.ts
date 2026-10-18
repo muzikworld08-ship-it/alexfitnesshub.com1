@@ -1,5 +1,5 @@
-import { collection, addDoc } from "firebase/firestore";
-import { db, isMockFirebase } from "./firebase";
+import { collection } from "firebase/firestore";
+import { db, isMockFirebase, safeFirestoreAddDoc } from "./firebase";
 
 // High-end CSS styled template wrappers for beautiful brand rendering
 const emailHeader = `
@@ -22,9 +22,20 @@ const emailFooter = `
       Need live coaching assistance? Contact Coach Alex:
     </p>
     <div style="margin-top: 10px;">
-      <a href="mailto:alexfitnesshub@gmail.com" style="color: #C0392B; text-decoration: none; font-weight: bold; font-family: 'JetBrains Mono', monospace; font-size: 11px; margin: 0 10px;">alexfitnesshub@gmail.com</a>
+      <a href="mailto:alexfitnesshub@gmail.com" style="color: #C0392B; text-decoration: none; font-weight: bold; font-family: 'JetBrains Mono', monospace; font-size: 11px; margin: 0 8px;">alexfitnesshub@gmail.com</a>
       <span style="color: #334155;">|</span>
-      <a href="https://wa.me/2347073307875" style="color: #C0392B; text-decoration: none; font-weight: bold; font-family: 'JetBrains Mono', monospace; font-size: 11px; margin: 0 10px;">WhatsApp Support Desk</a>
+      <a href="https://wa.me/2349015798601" style="color: #10B981; text-decoration: none; font-weight: bold; font-family: 'JetBrains Mono', monospace; font-size: 11px; margin: 0 8px;">WhatsApp (+2349015798601)</a>
+    </div>
+    <div style="margin-top: 12px; font-size: 10px; font-family: 'JetBrains Mono', monospace;">
+      <a href="https://www.instagram.com/alexfitnesshub" style="color: #94A3B8; text-decoration: none; margin: 0 6px;">Instagram</a>
+      <span style="color: #334155;">•</span>
+      <a href="https://www.threads.net/@alexfitnesshub" style="color: #94A3B8; text-decoration: none; margin: 0 6px;">Threads</a>
+      <span style="color: #334155;">•</span>
+      <a href="https://x.com/alexfitnesshub" style="color: #94A3B8; text-decoration: none; margin: 0 6px;">X</a>
+      <span style="color: #334155;">•</span>
+      <a href="https://www.tiktok.com/@alexfitnesshub" style="color: #94A3B8; text-decoration: none; margin: 0 6px;">TikTok</a>
+      <span style="color: #334155;">•</span>
+      <a href="https://www.facebook.com/alexfitnesshub" style="color: #94A3B8; text-decoration: none; margin: 0 6px;">Facebook</a>
     </div>
     <p style="color: #475569; font-family: 'JetBrains Mono', monospace; font-size: 9px; margin: 16px 0 0 0; letter-spacing: 1px;">
       &copy; 2026 ALEXFITNESSHUB. ALL RIGHTS RESERVED.
@@ -70,9 +81,11 @@ async function queueEmail(to: string, subject: string, htmlContent: string, plai
       createdAt: new Date().toISOString()
     };
     
-    const docRef = await addDoc(collection(db, "mail"), mailDoc);
-    docId = docRef.id;
-    console.log(`[Firestore Mail Trigger Logged] Created pending trigger doc ${docId} in 'mail' collection for ${to}`);
+    const addedId = await safeFirestoreAddDoc(collection(db, "mail"), mailDoc);
+    if (addedId) {
+      docId = addedId;
+      console.log(`[Firestore Mail Trigger Logged] Created pending trigger doc ${docId} in 'mail' collection for ${to}`);
+    }
   } catch (fallbackErr) {
     console.warn(`[Mail Trigger Firestore Warning] Could not store pending mail doc in Firestore:`, fallbackErr);
   }
