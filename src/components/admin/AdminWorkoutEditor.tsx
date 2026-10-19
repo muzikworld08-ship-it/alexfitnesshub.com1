@@ -15,6 +15,7 @@ import { AssetManifestService } from "../../services/AssetManifestService";
 import { purgeRestrictedHomeWorkouts, PurgeRestrictedHomeResult } from "../../utils/adminWorkoutCleaner";
 import DeleteWorkoutConfirmModal, { DeleteWorkoutTarget } from "./DeleteWorkoutConfirmModal";
 import { resetAndCleanAllProgramSplits } from "../../utils/dynamicWorkoutEngine";
+import { getScheduleOverrides, setScheduleOverridesFromAdmin } from "../../utils/scheduleOverridesStore";
 import { auth } from "../../lib/firebase";
 import { 
   STRONG_MEN_EXERCISE_BLOCKLIST, 
@@ -194,17 +195,11 @@ export default function AdminWorkoutEditor() {
 
     setIsResettingPrograms(true);
     try {
-      let overrides: Record<string, any> = {};
-      try {
-        const cached = localStorage.getItem("fit_program_schedule_overrides");
-        if (cached) overrides = JSON.parse(cached);
-      } catch (e) {}
-
+      const overrides = getScheduleOverrides();
       const cleanRes = resetAndCleanAllProgramSplits(exercises || [], overrides);
       
-      // Save locally
-      localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(cleanRes.updatedOverrides));
-      window.dispatchEvent(new CustomEvent("fit_schedule_overrides_updated"));
+      // Save locally & broadcast
+      setScheduleOverridesFromAdmin(cleanRes.updatedOverrides);
 
       // Send to server
       const token = await auth.currentUser?.getIdToken().catch(() => null);

@@ -200,7 +200,7 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
 };
 
 import { CANONICAL_EXERCISES } from "./canonicalExercises";
-import DEFAULT_PROGRAM_SCHEDULE_OVERRIDES from "./program_schedule_overrides.json";
+import { getScheduleOverrides } from "../utils/scheduleOverridesStore";
 
 /**
  * Normalizes program id string aliases.
@@ -251,25 +251,9 @@ export function getWorkoutForProgramAndDay(
     ? (trackOrUser.toLowerCase().includes("women") || trackOrUser.toLowerCase().includes("female") ? "women" : "men")
     : (trackOrUser?.gender?.toLowerCase() === "female" ? "women" : undefined);
 
-  // 1. Check admin schedule overrides in localStorage or bundled verified defaults
-  let progOverrides: any = undefined;
-  if (typeof window !== "undefined" && window.localStorage) {
-    try {
-      const stored = window.localStorage.getItem("fit_program_schedule_overrides");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        progOverrides = parsed[normId] || parsed[programId] || (track ? parsed[`${normId}_${track}`] : undefined);
-      }
-    } catch (e) {
-      console.warn("Error reading schedule overrides in getWorkoutForProgramAndDay:", e);
-    }
-  }
-
-  // Fallback to bundled verified admin schedule overrides
-  if (!progOverrides && DEFAULT_PROGRAM_SCHEDULE_OVERRIDES) {
-    const dOverrides = DEFAULT_PROGRAM_SCHEDULE_OVERRIDES as Record<string, any>;
-    progOverrides = dOverrides[normId] || dOverrides[programId] || (track ? dOverrides[`${normId}_${track}`] : undefined);
-  }
+  // 1. Check admin schedule overrides from centralized store (Memory -> localStorage cache -> Bundled defaults)
+  const allOverrides = getScheduleOverrides();
+  const progOverrides = allOverrides[normId] || allOverrides[programId] || (track ? allOverrides[`${normId}_${track}`] : undefined);
 
   if (progOverrides) {
     const dayOverride = progOverrides[String(safeDay)] || progOverrides[`cycle_${cycleDay}`];

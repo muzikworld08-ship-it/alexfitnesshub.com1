@@ -3,7 +3,7 @@ import { filterExercisesForSplit, isHomeEligibleExercise, detectWorkoutType } fr
 import { isExplicitlyMarkedWomenWorkout } from "./womenConfidenceProgramData";
 import { CANONICAL_EXERCISES } from "./canonicalExercises";
 import { getWorkoutForProgramAndDay } from "./challengeEngineDatabase";
-import DEFAULT_PROGRAM_SCHEDULE_OVERRIDES from "./program_schedule_overrides.json";
+import { getScheduleOverrides } from "../utils/scheduleOverridesStore";
 
 export interface HomeOnboardingProfile {
   gender: "Male" | "Female" | "Other";

@@ -27,6 +27,7 @@ import {
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import { resolveAuthenticExercise } from "../data/authoritativeExerciseMap";
 import { saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
+import { subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
 import { DailyLifestyleChecklist, DailyLifestyleHabits } from "./DailyLifestyleChecklist";
 import { getExerciseGifUrl } from "../data/exercises";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
@@ -279,9 +280,8 @@ export default function HomeWorkoutChallengeView() {
   // Listen for admin schedule overrides updates
   const [overrideTick, setOverrideTick] = useState(0);
   useEffect(() => {
-    const handleOverridesUpdated = () => setOverrideTick(t => t + 1);
-    window.addEventListener("fit_program_schedule_overrides_updated", handleOverridesUpdated);
-    return () => window.removeEventListener("fit_program_schedule_overrides_updated", handleOverridesUpdated);
+    const unsub = subscribeScheduleOverrides(() => setOverrideTick(t => t + 1));
+    return () => unsub();
   }, []);
 
   // Get current selected day workout

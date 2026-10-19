@@ -22,6 +22,7 @@ import {
 } from "recharts";
 import PersistentDashboardTabs from "./PersistentDashboardTabs";
 import { getChallengeWorkouts } from "../data/challenges";
+import { getScheduleOverrides } from "../utils/scheduleOverridesStore";
 import { 
   getWorkoutForProgramAndDay,
   normalizeProgramId,
@@ -572,17 +573,9 @@ export default function Premium90DayChallenge() {
     }
 
     // Check if an admin override exists for this challenge
-    const rawOverrides = typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem("fit_program_schedule_overrides") : null;
-    let hasProgramOverride = false;
-    if (rawOverrides) {
-      try {
-        const parsed = JSON.parse(rawOverrides);
-        const pOverrides = parsed[challengeId] || parsed[normalizeProgramId(challengeId)];
-        if (pOverrides && (pOverrides[String(dayNum)] || pOverrides[`cycle_${((dayNum - 1) % 7) + 1}`])) {
-          hasProgramOverride = true;
-        }
-      } catch (e) {}
-    }
+    const allOverrides = getScheduleOverrides();
+    const pOverrides = allOverrides[challengeId] || allOverrides[normalizeProgramId(challengeId)];
+    const hasProgramOverride = Boolean(pOverrides && (pOverrides[String(dayNum)] || pOverrides[`cycle_${((dayNum - 1) % 7) + 1}`]));
 
     // Delegate directly to the authoritative Admin Dashboard Challenge Engine for ALL programs
     const progToQuery = challengeId || "immortal_90";

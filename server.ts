@@ -186,7 +186,25 @@ app.use("/api", apiLimiter);
 
 // Health check endpoints for deployment platforms (Render, Cloud Run, etc.)
 app.get(["/health", "/api/health"], (req, res) => {
-  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  let buildId = "unknown";
+  let commit = "unknown";
+  try {
+    const metadataPath = path.join(process.cwd(), "dist", "build-metadata.json");
+    if (fs.existsSync(metadataPath)) {
+      const parsed = JSON.parse(fs.readFileSync(metadataPath, "utf-8"));
+      buildId = parsed.buildId || parsed.deploymentId || "unknown";
+      commit = parsed.commit || parsed.commitHash || "unknown";
+    }
+  } catch (err: any) {
+    // ignore read errors
+  }
+
+  res.status(200).json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    buildId,
+    commit
+  });
 });
 
 const ASSETS_DIR = path.join(process.cwd(), "assets");
@@ -7515,8 +7533,8 @@ async function startServer() {
           res.setHeader("Pragma", "no-cache");
           res.setHeader("Expires", "0");
           res.removeHeader("ETag");
-        } else if (lowerPath.endsWith(".js") || lowerPath.endsWith(".css")) {
-          // Compiled JS/CSS are chunk-hashed and immutable, but let's give them a 1-year max age
+        } else if (lowerPath.includes("/static/") || lowerPath.includes("\\static\\") || lowerPath.endsWith(".js") || lowerPath.endsWith(".css")) {
+          // Compiled JS/CSS in /static/ are chunk-hashed and immutable, give them a 1-year max age
           res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
         } else if (lowerPath.endsWith(".png") || lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg") || lowerPath.endsWith(".gif") || lowerPath.endsWith(".svg") || lowerPath.endsWith(".ico")) {
           res.setHeader("Cache-Control", "public, max-age=604800, must-revalidate");
@@ -7539,6 +7557,7 @@ async function startServer() {
       // and poisons mobile service worker caches. Return a clean 404 instead.
       if (
         req.path.startsWith("/assets/") ||
+        req.path.startsWith("/static/") ||
         /\.(js|mjs|cjs|css|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|map)$/i.test(req.path)
       ) {
         return res.status(404).type("text/plain").send("Asset not found");

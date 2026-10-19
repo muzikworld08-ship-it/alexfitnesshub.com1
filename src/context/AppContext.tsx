@@ -38,6 +38,7 @@ import {
 import { calculateReadinessScore } from "../utils/readiness";
 import { EXERCISES, Exercise, getExerciseGifUrl, AUTHENTIC_STRETCH_EXERCISES } from "../data/exercises";
 import { PremiumChallenge, FLAGSHIP_CHALLENGES, getChallengeWorkouts } from "../data/challenges";
+import { setScheduleOverridesFromRemote } from "../utils/scheduleOverridesStore";
 import { isExerciseMatch } from "../utils/exerciseMatching";
 import { fetchAllExerciseMediaFromDatabase } from "../utils/mediaStorageService";
 import { samplePopupTestimonials } from "../data/sampleTestimonials";
@@ -1376,47 +1377,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.warn("Real-time deleted_exercises listener notice:", err?.message || err);
       });
 
-      // 5. Real-time listener for program schedule overrides
-      const schedulesUnsub = onSnapshot(doc(db, "program_schedules", "overrides"), (snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          if (data && data.overrides) {
-            try {
-              localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(data.overrides));
-              window.dispatchEvent(new CustomEvent("fit_schedule_overrides_updated"));
-              window.dispatchEvent(new CustomEvent("fit_program_schedule_overrides_updated"));
-            } catch {}
-          }
-        }
-      }, (err) => {
-        console.warn("Real-time program_schedules listener notice:", err?.message || err);
-      });
-
+      // 5. Real-time canonical listener for program schedule overrides
       const sysSettingsUnsub = onSnapshot(doc(db, "system_settings", "program_schedule_overrides"), (snap) => {
         if (snap.exists()) {
           const data = snap.data();
           if (data && typeof data === "object") {
-            const { _updatedAt, _updatedBy, ...actualOverrides } = data;
-            if (Object.keys(actualOverrides).length > 0) {
-              try {
-                const current = localStorage.getItem("fit_program_schedule_overrides");
-                const currentParsed = current ? JSON.parse(current) : {};
-                const merged = { ...currentParsed, ...actualOverrides };
-                localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(merged));
-                window.dispatchEvent(new CustomEvent("fit_schedule_overrides_updated"));
-                window.dispatchEvent(new CustomEvent("fit_program_schedule_overrides_updated"));
-              } catch {}
-            }
+            const { _updatedAt, _updatedBy, ...rest } = data;
+            const payload = rest.overrides && typeof rest.overrides === "object" ? rest.overrides : rest;
+            setScheduleOverridesFromRemote(payload, _updatedAt);
           }
         }
-      }, () => {});
+      }, (err) => {
+        console.warn("Real-time program_schedule_overrides listener notice:", err?.message || err);
+      });
 
       return () => {
         unsub();
         manifestUnsub();
         challengesUnsub();
         deletedUnsub();
-        schedulesUnsub();
         sysSettingsUnsub();
       };
     } catch (e) {

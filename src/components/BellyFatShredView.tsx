@@ -40,7 +40,7 @@ import { ChallengeExerciseItem } from "../types/challengeEngine";
 import { isExplicitlyMarkedWomenWorkout } from "../data/womenConfidenceProgramData";
 import { CANONICAL_EXERCISES } from "../data/canonicalExercises";
 import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
-import DEFAULT_PROGRAM_SCHEDULE_OVERRIDES from "../data/program_schedule_overrides.json";
+import { getScheduleOverrides, setScheduleOverridesFromAdmin, subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
 
 // High-fidelity local types
 interface WeightEntry {
@@ -643,28 +643,14 @@ export default function BellyFatShredView() {
 
   // Program schedule overrides (synced with Admin Workout Challenge Engine)
   const [programScheduleOverrides, setProgramScheduleOverrides] = useState<Record<string, any>>(() => {
-    try {
-      const saved = localStorage.getItem("fit_program_schedule_overrides");
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return (DEFAULT_PROGRAM_SCHEDULE_OVERRIDES as any) || {};
+    return getScheduleOverrides();
   });
 
   useEffect(() => {
-    const handleUpdate = () => {
-      try {
-        const saved = localStorage.getItem("fit_program_schedule_overrides");
-        if (saved) setProgramScheduleOverrides(JSON.parse(saved));
-      } catch {}
-    };
-    window.addEventListener("fit_schedule_overrides_updated", handleUpdate);
-    fetch("/api/admin/programs/overrides")
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.overrides) setProgramScheduleOverrides(data.overrides);
-      })
-      .catch(() => {});
-    return () => window.removeEventListener("fit_schedule_overrides_updated", handleUpdate);
+    const unsub = subscribeScheduleOverrides((updated) => {
+      setProgramScheduleOverrides(updated);
+    });
+    return () => unsub();
   }, []);
 
   const isAdmin = Boolean(user?.role === "admin" || (user?.email && isEmailAdmin(user.email)));
@@ -735,8 +721,7 @@ export default function BellyFatShredView() {
       };
 
       setProgramScheduleOverrides(newAllOverrides);
-      localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(newAllOverrides));
-      window.dispatchEvent(new Event("fit_schedule_overrides_updated"));
+      setScheduleOverridesFromAdmin(newAllOverrides);
 
       try {
         await fetch("/api/admin/programs/save-day-override", {

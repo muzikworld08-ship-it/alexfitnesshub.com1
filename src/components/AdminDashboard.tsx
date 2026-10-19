@@ -21,6 +21,7 @@ import { AssetManifestService } from "../services/AssetManifestService";
 import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
 import { uploadAdminMedia, getAdminMediaUrl, resolveAdminMediaUrl } from "../lib/mediaStorage";
 import { sendEmail } from "../services/emailNotificationService";
+import { getSyncStatus, subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
 
 export default function AdminDashboard() {
   const { 
@@ -39,6 +40,14 @@ export default function AdminDashboard() {
   const [activeAdminTab, setActiveAdminTab] = useState<"overview" | "workouts" | "media" | "directory" | "store" | "paystack" | "printable-pdfs" | "testimonials">("overview");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(() => getSyncStatus());
+
+  useEffect(() => {
+    const unsub = subscribeScheduleOverrides(() => {
+      setSyncStatus(getSyncStatus());
+    });
+    return () => unsub();
+  }, []);
 
   // Media Manager Filters & Local Inputs
   const [mediaSearch, setMediaSearch] = useState("");
@@ -546,6 +555,20 @@ export default function AdminDashboard() {
 
         {/* RESPONSIVE MAIN BODY */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] w-full mx-auto">
+          {/* Live Build & Overrides Sync Status Line */}
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-mono text-slate-600 shadow-2xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span>Build ID: <strong className="text-slate-900">{(window as any).__APP_BUILD_ID__ || "dev"}</strong></span>
+              <span className="text-slate-300">•</span>
+              <span>Schedule Source: <strong className="text-slate-900 capitalize">{syncStatus.source}</strong></span>
+              <span className="text-slate-300">•</span>
+              <span>Updated: <strong className="text-slate-900">{syncStatus.updatedAt ? new Date(syncStatus.updatedAt).toLocaleTimeString() : "Bundled Default"}</strong></span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className={`h-2 w-2 rounded-full ${syncStatus.degraded ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
+              <span>Sync State: <strong className={syncStatus.degraded ? "text-amber-700 font-bold" : "text-emerald-700 font-bold"}>{syncStatus.degraded ? "Degraded (Quota Swallowed)" : "Active"}</strong></span>
+            </div>
+          </div>
 
           {/* VIEW: OVERVIEW CONTROL DESK */}
           {activeAdminTab === "overview" && (

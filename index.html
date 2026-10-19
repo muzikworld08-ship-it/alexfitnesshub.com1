@@ -11,7 +11,7 @@
           if (!msg) return false;
           var str = typeof msg === "string" ? msg : (msg.message || msg.stack || JSON.stringify(msg) || String(msg));
           var lower = str.toLowerCase();
-          return (
+          var matched = (
             lower.includes("resource_exhausted") ||
             lower.includes("resource-exhausted") ||
             lower.includes("quota limit exceeded") ||
@@ -26,6 +26,10 @@
             lower.includes("rpc 'listen' stream") ||
             lower.includes("code: 1 message: 1 cancelled")
           );
+          if (matched) {
+            window.__AFH_SYNC_DEGRADED__ = true;
+          }
+          return matched;
         };
 
         var origError = console.error;
@@ -99,11 +103,11 @@
     <script async src="https://js.paystack.co/v2/inline.js"></script>
     <script>
       // Build Hash Version Identifier - Unified Single Codebase
-      window.__APP_BUILD_ID__ = "4.0.0-20261017-UNIFIED-RELEASE";
+      window.__APP_BUILD_ID__ = "__BUILD_ID__";
 
       // Immediate cache purge on version update across mobile and desktop
       (function() {
-        var CURRENT_VERSION = "4.0.0-20261017-UNIFIED-RELEASE";
+        var CURRENT_VERSION = "__BUILD_ID__";
         try {
           var stored = localStorage.getItem("afh_build_version");
           if (stored !== CURRENT_VERSION) {
@@ -134,12 +138,16 @@
           });
         } else {
           let refreshing = false;
-          // Auto-reload the page when a new service worker activates and claims the client
+          // Auto-reload the page when a new service worker activates and claims the client (at most once per session)
           navigator.serviceWorker.addEventListener("controllerchange", () => {
             if (!refreshing) {
-              refreshing = true;
-              console.log("[Service Worker] New version activated. Reloading page for newest build...");
-              window.location.reload();
+              const sessionFlag = sessionStorage.getItem("afh_sw_reloaded");
+              if (!sessionFlag) {
+                refreshing = true;
+                sessionStorage.setItem("afh_sw_reloaded", "1");
+                console.log("[Service Worker] New version activated. Reloading page for newest build...");
+                window.location.reload();
+              }
             }
           });
 

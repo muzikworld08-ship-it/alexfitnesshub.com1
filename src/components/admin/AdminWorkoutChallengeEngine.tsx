@@ -19,6 +19,11 @@ import {
   PROGRAM_SPLIT_DEFINITIONS,
   resetAndCleanAllProgramSplits 
 } from "../../utils/dynamicWorkoutEngine";
+import { 
+  getScheduleOverrides, 
+  setScheduleOverridesFromRemote, 
+  setScheduleOverridesFromAdmin 
+} from "../../utils/scheduleOverridesStore";
 import { getExerciseGifUrl, Exercise } from "../../data/exercises";
 import { ChallengeValidationService } from "../../services/challengeValidationService";
 import { useApp } from "../../context/AppContext";
@@ -161,7 +166,7 @@ export default function AdminWorkoutChallengeEngine() {
         const data = await res.json();
         if (data.overrides && Object.keys(data.overrides).length > 0) {
           setServerOverrides(data.overrides);
-          localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(data.overrides));
+          setScheduleOverridesFromRemote(data.overrides);
           loaded = true;
         }
       }
@@ -177,7 +182,7 @@ export default function AdminWorkoutChallengeEngine() {
           const d = snap.data();
           if (d && d.overrides && Object.keys(d.overrides).length > 0) {
             setServerOverrides(d.overrides);
-            localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(d.overrides));
+            setScheduleOverridesFromRemote(d.overrides);
             loaded = true;
             console.log("[Dual-Persist Recovery OK] Overrides recovered from Firestore program_schedules/overrides.");
           }
@@ -191,21 +196,18 @@ export default function AdminWorkoutChallengeEngine() {
         const { data: sbData } = await supabase.from("program_schedules").select("*").eq("id", "overrides").maybeSingle();
         if (sbData && sbData.data && Object.keys(sbData.data).length > 0) {
           setServerOverrides(sbData.data);
-          localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(sbData.data));
+          setScheduleOverridesFromRemote(sbData.data);
           loaded = true;
           console.log("[Dual-Persist Recovery OK] Overrides recovered from Supabase program_schedules.");
         }
       } catch (e) {}
     }
 
-    // LocalStorage fallback
+    // Cache fallback
     if (!loaded) {
       try {
-        const cached = localStorage.getItem("fit_program_schedule_overrides");
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (parsed && typeof parsed === "object") setServerOverrides(parsed);
-        }
+        const cached = getScheduleOverrides();
+        if (cached && typeof cached === "object") setServerOverrides(cached);
       } catch (e) {}
     }
     setIsLoadingOverrides(false);
@@ -402,9 +404,7 @@ export default function AdminWorkoutChallengeEngine() {
 
   // Broadcast and persist changes helper
   const broadcastOverridesUpdated = (updatedOverrides: Record<string, any>) => {
-    localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(updatedOverrides));
-    window.dispatchEvent(new CustomEvent("fit_schedule_overrides_updated", { detail: { programId: selectedProgramId } }));
-    window.dispatchEvent(new CustomEvent("fit_program_schedule_overrides_updated", { detail: { programId: selectedProgramId } }));
+    setScheduleOverridesFromAdmin(updatedOverrides);
   };
 
   // Reorder Exercises Handler
@@ -1124,8 +1124,7 @@ export default function AdminWorkoutChallengeEngine() {
     try {
       const cleanRes = resetAndCleanAllProgramSplits(libraryExercises || [], serverOverrides || {});
       setServerOverrides(cleanRes.updatedOverrides);
-      localStorage.setItem("fit_program_schedule_overrides", JSON.stringify(cleanRes.updatedOverrides));
-      window.dispatchEvent(new CustomEvent("fit_schedule_overrides_updated"));
+      setScheduleOverridesFromAdmin(cleanRes.updatedOverrides);
 
       const token = await auth.currentUser?.getIdToken().catch(() => null);
       const headers: Record<string, string> = { "Content-Type": "application/json" };
