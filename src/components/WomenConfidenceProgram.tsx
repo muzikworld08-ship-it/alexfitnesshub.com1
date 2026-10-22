@@ -25,6 +25,7 @@ import {
 } from "../data/womenConfidenceProgramData";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import { resolveAuthenticExercise } from "../data/authoritativeExerciseMap";
+import { subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
 import RestDayCard from "./RestDayCard";
 import CardioDayCard from "./CardioDayCard";
@@ -266,10 +267,26 @@ export default function WomenConfidenceProgram() {
   // Compute Today's Date String
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
 
+  const [scheduleOverridesTick, setScheduleOverridesTick] = useState<number>(0);
+
+  useEffect(() => {
+    const unsub = subscribeScheduleOverrides(() => {
+      setScheduleOverridesTick(t => t + 1);
+    });
+    const handleOverrides = () => setScheduleOverridesTick(t => t + 1);
+    window.addEventListener("fit_schedule_overrides_updated", handleOverrides);
+    window.addEventListener("fit_program_schedule_overrides_updated", handleOverrides);
+    return () => {
+      unsub();
+      window.removeEventListener("fit_schedule_overrides_updated", handleOverrides);
+      window.removeEventListener("fit_program_schedule_overrides_updated", handleOverrides);
+    };
+  }, []);
+
   // Compute Current Workout & Lifestyle based on selectedDayNumber and profile
   const currentWorkout: WomenDailyWorkout = useMemo(() => {
     return getDailyWorkoutForDay(selectedDayNumber, progState.onboarding, exercises);
-  }, [selectedDayNumber, progState.onboarding, exercises]);
+  }, [selectedDayNumber, progState.onboarding, exercises, scheduleOverridesTick]);
 
   const currentLifestyle: WomenDailyLifestyle = useMemo(() => {
     return getDailyLifestyleForDay(selectedDayNumber, progState.onboarding);
@@ -1700,9 +1717,9 @@ export default function WomenConfidenceProgram() {
                           {/* Media / Unified Media Demonstration */}
                           <div className="w-full lg:w-72 aspect-video rounded-xl overflow-hidden workout-media-frameless flex-shrink-0 relative">
                             <UnifiedExerciseMedia 
-                              exerciseName={auth.name}
+                              exerciseName={ex.name || auth.name}
                               exerciseId={ex.id}
-                              mediaUrl={auth.gifUrl}
+                              mediaUrl={ex.gifUrl !== undefined ? ex.gifUrl : auth.gifUrl}
                               className="w-full h-full object-contain workout-gif-display"
                               fallbackType="dumbbell"
                             />

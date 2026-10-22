@@ -1645,10 +1645,11 @@ export default function HomeWorkoutChallengeView() {
                               <UnifiedExerciseMedia
                                 key={`${ex.id}-${auth.name}-${exIdx}`}
                                 exerciseId={ex.id}
-                                exerciseName={auth.name}
-                                mediaUrl={auth.gifUrl}
+                                exerciseName={ex.name || auth.name}
+                                mediaUrl={ex.gifUrl !== undefined ? ex.gifUrl : auth.gifUrl}
                                 className="w-full h-full object-contain workout-gif-display workout-gif-frameless"
                                 priority={exIdx < 2}
+                                fallbackType="dumbbell"
                               />
                             );
                           })()}

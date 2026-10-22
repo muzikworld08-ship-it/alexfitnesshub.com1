@@ -4604,7 +4604,7 @@ app.post("/api/admin/programs/sync-cloud", async (req: any, res) => {
 
 // POST save day schedule override (workouts, sets, reps, cardio settings, drag-reorder)
 app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any, res) => {
-  const { programId, dayNumber, cycleDay, dayOverride, applyToAllCycleWeeks, totalDays } = req.body;
+  const { programId, track, targetProgramKey, dayNumber, cycleDay, dayOverride, applyToAllCycleWeeks, totalDays } = req.body;
   if (!programId || (!dayNumber && !cycleDay) || !dayOverride) {
     return res.status(400).json({ success: false, error: "programId, dayNumber or cycleDay, and dayOverride are required." });
   }
@@ -4620,9 +4620,11 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
       }
     }
 
-    if (!allOverrides[programId]) {
-      allOverrides[programId] = {};
-    }
+    const targetKeys = Array.from(new Set([
+      programId,
+      targetProgramKey,
+      track ? `${programId}_${track}` : null
+    ].filter(Boolean))) as string[];
 
     const maxDays = Number(totalDays) || 90;
     const computedCycleDay = Number(cycleDay) || (((Number(dayNumber) - 1) % 7) + 1);
@@ -4633,30 +4635,36 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
       updatedBy: req.user?.email || "admin"
     };
 
-    if (dayNumber) {
-      allOverrides[programId][String(dayNumber)] = {
-        ...baseRecord,
-        dayNumber: Number(dayNumber)
-      };
-    }
+    targetKeys.forEach((key) => {
+      if (!allOverrides[key]) {
+        allOverrides[key] = {};
+      }
 
-    // Always update cycle key so new/future days also adopt this 7-day template
-    if (computedCycleDay) {
-      allOverrides[programId][`cycle_${computedCycleDay}`] = {
-        ...baseRecord,
-        cycleDay: computedCycleDay
-      };
-    }
-
-    // If applyToAllCycleWeeks is requested, replicate to all recurring days across the entire program (Days 1, 8, 15... up to maxDays)
-    if (applyToAllCycleWeeks && computedCycleDay) {
-      for (let d = computedCycleDay; d <= maxDays; d += 7) {
-        allOverrides[programId][String(d)] = {
+      if (dayNumber) {
+        allOverrides[key][String(dayNumber)] = {
           ...baseRecord,
-          dayNumber: d
+          dayNumber: Number(dayNumber)
         };
       }
-    }
+
+      // Always update cycle key so new/future days also adopt this 7-day template
+      if (computedCycleDay) {
+        allOverrides[key][`cycle_${computedCycleDay}`] = {
+          ...baseRecord,
+          cycleDay: computedCycleDay
+        };
+      }
+
+      // If applyToAllCycleWeeks is requested, replicate to all recurring days across the entire program (Days 1, 8, 15... up to maxDays)
+      if (applyToAllCycleWeeks && computedCycleDay) {
+        for (let d = computedCycleDay; d <= maxDays; d += 7) {
+          allOverrides[key][String(d)] = {
+            ...baseRecord,
+            dayNumber: d
+          };
+        }
+      }
+    });
 
     // Persist to both local disk and Firestore cloud
     await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin");
@@ -5038,19 +5046,8 @@ app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any
       }
     }
 
-    fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
-
-    // Also sync to Firestore
-    try {
-      await setServerFirestoreDoc("program_overrides", `${programId}_d${dayNumber || computedCycleDay}`, {
-        programId,
-        dayNumber: Number(dayNumber) || computedCycleDay,
-        exercises: updatedExercises,
-        updatedAt: new Date().toISOString()
-      }, true);
-    } catch (fsErr) {
-      console.warn("Firestore program override sync warning:", fsErr);
-    }
+    // Persist to local disk and Firestore cloud (both system_settings and program_schedules)
+    await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin");
 
     await logAdminActivityOnFirebase(
       req.user?.email || "",

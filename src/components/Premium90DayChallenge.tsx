@@ -22,7 +22,8 @@ import {
 } from "recharts";
 import PersistentDashboardTabs from "./PersistentDashboardTabs";
 import { getChallengeWorkouts } from "../data/challenges";
-import { getScheduleOverrides } from "../utils/scheduleOverridesStore";
+import { getScheduleOverrides, subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
+import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import { 
   getWorkoutForProgramAndDay,
   normalizeProgramId,
@@ -143,46 +144,66 @@ export const PREMIUM_CHALLENGES: PremiumChallenge[] = [
     badgeId: "badge_core_citadel",
     badgeName: "Citadel Core Overlord",
     badgeColor: "from-pink-500 to-rose-600"
+  },
+  {
+    id: "posture_vitality",
+    title: "Posture Correction Challenge",
+    description: "Continuous 7-Day Spinal Alignment & Joint Mobility. Reverses slouching, thoracic kyphosis, and rounded shoulders with clinically verified spinal mechanics.",
+    category: "Posture & Joint Longevity",
+    goal: "Reverse slouching, anterior shoulder rounding, and lower back tightness with clinical mobility.",
+    image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=1000&q=80",
+    badgeId: "badge_posture_master",
+    badgeName: "Postural Radiance",
+    badgeColor: "from-cyan-500 to-blue-600"
   }
 ];
 
-// Presets for splits - Day 3 and Day 7 are Cardio (5-10 km, workouts removed, rest after cardio)
+// Presets for splits - matching Admin Program Schedule Architect canonical 7-day cyclical splits
 const CHALLENGE_SPLITS: Record<string, string[]> = {
   immortal_90: [
-    "Chest + Triceps",
-    "Back + Biceps + Forearm",
-    "5 to 10 KM Cardio or Walking",
-    "Legs + Shoulders + Abs",
-    "Chest + Triceps + Neck",
-    "Back + Biceps + Forearm & Abs",
-    "5 to 10 KM Running or Walking"
+    "Monday: Push (Chest, Shoulders & Triceps)",
+    "Tuesday: Pull (Back, Rear Delts & Biceps)",
+    "Wednesday: Legs + Core",
+    "Thursday: 5 to 10 KM Cardio + Mobility",
+    "Friday: Upper Body",
+    "Saturday: Athletic Conditioning + Core",
+    "Sunday: Recovery & System Reset"
   ],
   "90_day_immortal": [
-    "Chest + Triceps",
-    "Back + Biceps + Forearm",
-    "5 to 10 KM Cardio or Walking",
-    "Legs + Shoulders + Abs",
-    "Chest + Triceps + Neck",
-    "Back + Biceps + Forearm & Abs",
-    "5 to 10 KM Running or Walking"
+    "Monday: Push (Chest, Shoulders & Triceps)",
+    "Tuesday: Pull (Back, Rear Delts & Biceps)",
+    "Wednesday: Legs + Core",
+    "Thursday: 5 to 10 KM Cardio + Mobility",
+    "Friday: Upper Body",
+    "Saturday: Athletic Conditioning + Core",
+    "Sunday: Recovery & System Reset"
   ],
   "90-days-immortal": [
-    "Chest + Triceps",
-    "Back + Biceps + Forearm",
-    "5 to 10 KM Cardio or Walking",
-    "Legs + Shoulders + Abs",
-    "Chest + Triceps + Neck",
-    "Back + Biceps + Forearm & Abs",
-    "5 to 10 KM Running or Walking"
+    "Monday: Push (Chest, Shoulders & Triceps)",
+    "Tuesday: Pull (Back, Rear Delts & Biceps)",
+    "Wednesday: Legs + Core",
+    "Thursday: 5 to 10 KM Cardio + Mobility",
+    "Friday: Upper Body",
+    "Saturday: Athletic Conditioning + Core",
+    "Sunday: Recovery & System Reset"
+  ],
+  posture_vitality: [
+    "Monday: Upper Back + Shoulder Mobility",
+    "Tuesday: Core Stability + Hip Mobility",
+    "Wednesday: Full Body Posture Training",
+    "Thursday: Recovery Mobility",
+    "Friday: Upper Back + Core",
+    "Saturday: Full Body Mobility + Stability",
+    "Sunday: Recovery & System Reset"
   ],
   lean_muscle: [
-    "Chest + Triceps",
-    "Back + Biceps + Forearm",
-    "5 to 10 KM Cardio or Walking",
-    "Legs + Shoulders + Abs",
-    "Chest + Triceps + Neck",
-    "Back + Biceps + Forearm & Abs",
-    "5 to 10 KM Running or Walking"
+    "Monday: Push (Chest, Shoulders & Triceps)",
+    "Tuesday: Pull (Back, Rear Delts & Biceps)",
+    "Wednesday: Legs + Core",
+    "Thursday: 5 to 10 KM Cardio + Mobility",
+    "Friday: Upper Body",
+    "Saturday: Athletic Conditioning + Core",
+    "Sunday: Recovery & System Reset"
   ],
   fat_burning: ["HIIT Cardio", "Lower Body Conditioning", "5-10 KM Cardio & Complete Rest", "Upper Body Circuit", "Full Body Shred", "HIIT Endurance", "5-10 KM Running or Walking"],
   body_transformation: ["Upper Body Strength", "Lower Body Strength", "5-10 KM Cardio & Complete Rest", "Full Body Hypertrophy", "HIIT Cardio", "Core + Conditioning", "Recovery"],
@@ -263,7 +284,7 @@ interface Premium90DayState {
   assignedCoach?: string;
 }
 
-export default function Premium90DayChallenge() {
+export default function Premium90DayChallenge({ initialChallengeId }: { initialChallengeId?: string } = {}) {
   const { 
     user, 
     exercises, 
@@ -284,8 +305,16 @@ export default function Premium90DayChallenge() {
     const handleOverridesChanged = () => {
       setScheduleOverridesVersion(v => v + 1);
     };
+    const unsub = subscribeScheduleOverrides(() => {
+      setScheduleOverridesVersion(v => v + 1);
+    });
     window.addEventListener("fit_schedule_overrides_updated", handleOverridesChanged);
-    return () => window.removeEventListener("fit_schedule_overrides_updated", handleOverridesChanged);
+    window.addEventListener("fit_program_schedule_overrides_updated", handleOverridesChanged);
+    return () => {
+      unsub();
+      window.removeEventListener("fit_schedule_overrides_updated", handleOverridesChanged);
+      window.removeEventListener("fit_program_schedule_overrides_updated", handleOverridesChanged);
+    };
   }, []);
 
 
@@ -325,6 +354,12 @@ export default function Premium90DayChallenge() {
     setShowSwitchChallengeModal(false);
   };
 
+  useEffect(() => {
+    if (initialChallengeId && dbState && dbState.challengeId !== initialChallengeId) {
+      handleSwitchChallenge(initialChallengeId);
+    }
+  }, [initialChallengeId, dbState?.challengeId]);
+
   const loadChallengeData = async (uid: string): Promise<Premium90DayState | null> => {
     if (!uid || typeof uid !== "string" || !uid.trim()) return null;
     try {
@@ -333,7 +368,7 @@ export default function Premium90DayChallenge() {
       if (docSnap.exists()) {
         const data = docSnap.data() as Premium90DayState;
         if (!data.challengeId) {
-          data.challengeId = "immortal_90";
+          data.challengeId = initialChallengeId || "immortal_90";
         }
         localStorage.setItem(getLocalChallengeKey(uid), JSON.stringify(data));
         return data;
@@ -346,7 +381,7 @@ export default function Premium90DayChallenge() {
       try {
         const data = JSON.parse(cached);
         if (!data.challengeId) {
-          data.challengeId = "immortal_90";
+          data.challengeId = initialChallengeId || "immortal_90";
         }
         return data;
       } catch (e) {
@@ -583,8 +618,8 @@ export default function Premium90DayChallenge() {
     const enginePlan = getWorkoutForProgramAndDay(progToQuery, dayNum, undefined, { fitnessLevel: athleteLevel });
     const isCardioDay = !!enginePlan.meta.isCardioOnly;
 
-    const exercisesWithDetails = enginePlan.exercises.slice(0, 10).map((ex, idx) => {
-      const isCardio = isCardioDay || ex.muscleGroup?.includes("Cardio") || ex.category.includes("Cardio") || ex.category.includes("Running") || ex.category.includes("Walking");
+    const exercisesWithDetails = (enginePlan.exercises || []).map((ex, idx) => {
+      const isCardio = isCardioDay || ex.muscleGroup?.includes("Cardio") || ex.category?.includes("Cardio") || ex.category?.includes("Running") || ex.category?.includes("Walking");
       const calBurn = isCardio ? 460 : Math.round(setsMultiplier * 75);
 
       const eqStr = Array.isArray(ex.equipment) ? ex.equipment.join(" ").toLowerCase() : String(ex.equipment || "").toLowerCase();
@@ -599,13 +634,15 @@ export default function Premium90DayChallenge() {
         weightRec = "Moderate Dumbbells";
       }
 
+      const mediaUrl = (ex as any).customMediaUrl !== undefined ? (ex as any).customMediaUrl : (ex.gifUrl !== undefined ? ex.gifUrl : "");
+
       return {
         id: ex.id || `${progToQuery}_d${dayNum}_ex_${idx + 1}`,
         name: ex.exerciseName || (ex as any).name,
         category: ex.category,
         muscleGroups: ex.muscleGroup,
-        gifUrl: (ex as any).gifUrl,
-        customMediaUrl: (ex as any).gifUrl,
+        gifUrl: mediaUrl,
+        customMediaUrl: mediaUrl,
         equipment: Array.isArray(ex.equipment) ? ex.equipment : (ex.equipment ? [ex.equipment] : ["Bodyweight"]),
         sets: isCardio ? 1 : (ex.sets || setsMultiplier),
         reps: ex.reps || repScheme,
@@ -894,12 +931,16 @@ export default function Premium90DayChallenge() {
   const activeDisplayDay = browsingDay ?? (dbState?.currentDay || 1);
   const isViewingToday = !browsingDay || browsingDay === dbState?.currentDay;
 
-  // Active workout object calculations
-  const todayWorkoutDetail = (dbState && dbState.onboarding) 
-    ? getDailyWorkoutDetail(activeDisplayDay, dbState.challengeId) 
-    : getDailyWorkoutDetail(activeDisplayDay, "immortal_90");
+  // Active workout object calculations (re-evaluates automatically on admin schedule override edits)
+  const todayWorkoutDetail = React.useMemo(() => {
+    return (dbState && dbState.onboarding) 
+      ? getDailyWorkoutDetail(activeDisplayDay, dbState.challengeId) 
+      : getDailyWorkoutDetail(activeDisplayDay, initialChallengeId || "immortal_90");
+  }, [dbState, activeDisplayDay, scheduleOverridesVersion, initialChallengeId]);
 
-  const previewWorkoutDetail = getDailyWorkoutDetail(previewDay, "immortal_90");
+  const previewWorkoutDetail = React.useMemo(() => {
+    return getDailyWorkoutDetail(previewDay, initialChallengeId || "immortal_90");
+  }, [previewDay, scheduleOverridesVersion, initialChallengeId]);
 
   // User Exercise Swapper State (when users lack equipment or want an alternative from the same category)
   const [swappingExerciseItem, setSwappingExerciseItem] = useState<{ exercise: any; index: number } | null>(null);
@@ -965,7 +1006,7 @@ export default function Premium90DayChallenge() {
   const overallProgressPercentage = Math.round((totalCompletedCount / 90) * 100);
   const totalCaloriesBurned = dbState?.workoutHistory?.reduce((acc, curr) => acc + curr.caloriesBurned, 0) || 0;
   const totalMinutesTrained = dbState?.workoutHistory?.reduce((acc, curr) => acc + curr.durationMinutes, 0) || 0;
-  const activeChallengeName = PREMIUM_CHALLENGES.find(c => c.id === dbState?.challengeId)?.title || "90 Day Lean Muscle Challenge";
+  const activeChallengeName = PREMIUM_CHALLENGES.find(c => c.id === (dbState?.challengeId || initialChallengeId || "immortal_90"))?.title || "90 Day Lean Muscle Challenge";
 
   // Recharts formatted data
   const chartData = dbState?.bodyMeasurements?.map(m => ({
@@ -1847,14 +1888,14 @@ export default function Premium90DayChallenge() {
                                         </div>
                                       </div>
 
-                                      {/* HD Giphy loop representation */}
-                                      <div className="relative w-full rounded-xl workout-media-frameless flex items-center justify-center">
-                                        <WorkoutVisual 
+                                      {/* Frameless Media Representation */}
+                                      <div className="relative w-full aspect-video rounded-xl workout-media-frameless flex items-center justify-center overflow-hidden">
+                                        <UnifiedExerciseMedia 
                                           exerciseId={ex.id} 
                                           exerciseName={ex.name} 
-                                          customMediaUrl={(ex as any).gifUrl}
-                                          isCard={true} 
-                                          className="w-full"
+                                          mediaUrl={(ex as any).customMediaUrl !== undefined ? (ex as any).customMediaUrl : (ex as any).gifUrl}
+                                          className="w-full h-full object-contain workout-gif-display"
+                                          fallbackType="dumbbell"
                                         />
                                       </div>
 

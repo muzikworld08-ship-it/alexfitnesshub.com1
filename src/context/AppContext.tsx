@@ -126,6 +126,46 @@ export const DEFAULT_PROGRAM_PROGRESS: Record<string, ProgramProgressItem> = {
     completedWorkoutIds: [],
     totalWorkouts: 180,
     progressPercent: 0
+  },
+  "home_180": {
+    programId: "home_180",
+    programTitle: "180 Days Home Workout Challenge",
+    category: "No-Equipment Calisthenics",
+    imageUrl: "https://raw.githubusercontent.com/muzikworld08-ship-it/image/refs/heads/main/Gemini_Generated_Image_mufztbmufztbmufz%20(1).jfif",
+    viewName: "home-workout-challenge",
+    enrolled: false,
+    hasJoined: false,
+    enrolledByUser: false,
+    enrolledAt: new Date().toISOString(),
+    currentDay: 1,
+    currentWeek: 1,
+    currentWorkoutIndex: 0,
+    lastStoppedWorkoutName: "Day 1: Upper Kinetic Foundation & Core Stability",
+    lastStoppedWorkoutId: "hw-d1-ex1",
+    lastStoppedAt: new Date().toISOString(),
+    completedWorkoutIds: [],
+    totalWorkouts: 180,
+    progressPercent: 0
+  },
+  "posture_vitality": {
+    programId: "posture_vitality",
+    programTitle: "Posture Correction Challenge",
+    category: "Biomechanics & Decompression",
+    imageUrl: "https://raw.githubusercontent.com/muzikworld08-ship-it/image/refs/heads/main/Gemini_Generated_Image_i9962i9962i9962i.jfif",
+    viewName: "posture-vitality",
+    enrolled: false,
+    hasJoined: false,
+    enrolledByUser: false,
+    enrolledAt: new Date().toISOString(),
+    currentDay: 1,
+    currentWeek: 1,
+    currentWorkoutIndex: 0,
+    lastStoppedWorkoutName: "Day 1: Spinal Decompression & Upper Thoracic Opening",
+    lastStoppedWorkoutId: "pv-d1-ex1",
+    lastStoppedAt: new Date().toISOString(),
+    completedWorkoutIds: [],
+    totalWorkouts: 30,
+    progressPercent: 0
   }
 };
 
@@ -2587,10 +2627,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     if (item.viewName) {
       setView(item.viewName);
-    } else if (programId === "90_day_immortal") {
+    } else if (programId === "90_day_immortal" || programId === "immortal_90") {
       setView("challenges");
+    } else if (programId === "women_confidence") {
+      setView("women-confidence");
     } else if (programId === "belly_fat_shred") {
       setView("belly-fat-shred");
+    } else if (programId.includes("home_180") || programId === "home_workout_challenge") {
+      setView("home-workout-challenge");
+    } else if (programId === "posture_vitality") {
+      setView("posture-vitality");
     } else if (programId === "lifestyle_academy") {
       setView("lifestyle-academy");
     } else {
@@ -2599,9 +2645,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [programProgress]);
 
   const getActiveEnrolledPrograms = useCallback((): ProgramProgressItem[] => {
-    return Object.values(programProgress)
-      .filter(p => p.enrolled && (p.hasJoined || p.enrolledByUser || (p.completedWorkoutIds && p.completedWorkoutIds.length > 0) || (p.progressPercent && p.progressPercent > 0)))
-      .sort((a, b) => new Date(b.lastStoppedAt || 0).getTime() - new Date(a.lastStoppedAt || 0).getTime());
+    return Object.values(programProgress || {})
+      .filter(p => Boolean(p && p.enrolled && (p.hasJoined || p.enrolledByUser || (p.completedWorkoutIds && p.completedWorkoutIds.length > 0) || (p.progressPercent && p.progressPercent > 0))))
+      .sort((a, b) => new Date(b?.lastStoppedAt || 0).getTime() - new Date(a?.lastStoppedAt || 0).getTime());
   }, [programProgress]);
 
   const setWorkoutFilters = useCallback((filters: Partial<WorkoutLibraryFilters>) => {

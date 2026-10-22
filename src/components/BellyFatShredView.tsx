@@ -343,7 +343,7 @@ const getWorkoutForWeekAndDay = (
     const cleanName = (ex.exerciseName || (ex as any).name || "").trim();
     if (!cleanName) continue;
     const lower = cleanName.toLowerCase();
-    if (ex.gifUrl) {
+    if (ex.gifUrl !== undefined) {
       exerciseMediaMap[lower] = ex.gifUrl;
     }
     exercisesList.push(cleanName);
@@ -465,7 +465,7 @@ const BoldDrillCard: React.FC<BoldDrillCardProps> = ({
 }) => {
   const details = parseDrillDetails(drill, sectionType);
   const authentic = resolveAuthenticExercise(details.libName || details.name, customGifUrl);
-  const finalMediaUrl = customGifUrl || authentic.gifUrl;
+  const finalMediaUrl = customGifUrl !== undefined ? customGifUrl : authentic.gifUrl;
 
   return (
     <div
@@ -478,8 +478,9 @@ const BoldDrillCard: React.FC<BoldDrillCardProps> = ({
       {/* Frameless Edge-to-Edge Bold Media Header */}
       <div className="relative w-full aspect-[16/10] workout-media-frameless flex items-center justify-center overflow-hidden">
         <UnifiedExerciseMedia
-          exerciseName={authentic.name}
+          exerciseName={details.name || authentic.name}
           mediaUrl={finalMediaUrl}
+          fallbackType="dumbbell"
           className="w-full h-full object-contain workout-gif-display workout-gif-bold group-hover:scale-105 transition-transform duration-500"
         />
 

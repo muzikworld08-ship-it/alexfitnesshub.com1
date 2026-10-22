@@ -37,7 +37,6 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
   const { cartCount, setIsCartOpen } = useStore();
   const { isInstalled, isInstallable, isIOS } = usePWAInstall();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [reminderSchedule, setReminderSchedule] = useState<WorkoutReminderSchedule>(() => getSavedReminderSchedule());
   const [notificationPerm, setNotificationPerm] = useState<string>(() => getNotificationPermission());
@@ -80,6 +79,8 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     "home-challenge": "180 Day Home Workout Challenge",
     "women-confidence": "Women Confidence Program",
     "belly-fat-shred": "Belly Fat Shred System",
+    "posture-vitality": "Posture Correction Challenge",
+    "posture_vitality": "Posture Correction Challenge",
     "daily-plan": "My Daily Plan",
     "coach": "AI Fitness Coach",
     "dashboard": "Athlete Performance Desk",
@@ -97,7 +98,6 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
 
   const handleCustomNav = (targetView: string, subview?: string, elementId?: string) => {
     setIsMenuOpen(false);
-    setIsDropdownOpen(false);
     
     if (targetView === "pricing") {
       setView("pricing");
@@ -121,7 +121,6 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
 
   const handleFreeInteractiveNav = (tabId: "trajectory" | "community" | "calibration" | "habits") => {
     setIsMenuOpen(false);
-    setIsDropdownOpen(false);
     setView("home");
     
     if (typeof window !== "undefined") {
@@ -146,6 +145,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     { id: "daily-plan", label: "My Daily Plan", desc: "Personalized daily schedule & drills", icon: Calendar, color: "text-red-600 bg-red-50" },
     { id: "women-confidence", label: "Women Confidence Program", desc: "Full 180-Day progressive transformation", icon: Heart, color: "text-rose-600 bg-rose-50" },
     { id: "belly-fat-shred", label: "Belly Fat Shred System", desc: "5-Month core & metabolic shredding protocol", icon: Flame, color: "text-orange-600 bg-orange-50" },
+    { id: "posture-vitality", label: "Posture Correction Challenge", desc: "Spinal decompression, core bracing & structural realignment", icon: Activity, color: "text-teal-600 bg-teal-50" },
     { id: "lifestyle-academy", label: "Programs & Academy", desc: "12-Week structured physique splits", icon: BookOpen, color: "text-blue-600 bg-blue-50" },
     { id: "progress-tracker", label: "Progress & Activity Tracker", desc: "Workouts, cardio, water intake, meals & 7-day reports", icon: Activity, color: "text-emerald-600 bg-emerald-50" },
     { id: "store", label: "ALEXFITNESSHUB Store", desc: "Premium fitness apparel, pump covers & collections", icon: ShoppingBag, color: "text-red-600 bg-red-50" },
@@ -187,202 +187,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
             </a>
           </div>
 
-          {/* Desktop & Tablet Navigation Quick Bar */}
-          <nav className="hidden md:flex items-center gap-1 lg:gap-2 mx-2">
-            {/* Immortal 90 Flagship */}
-            <button
-              onClick={() => handleCustomNav("challenges")}
-              className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
-                currentView === "challenges" || currentView === "immortal-90"
-                  ? "bg-[#E53935] text-white shadow-md shadow-red-500/25 ring-2 ring-red-300"
-                  : "text-slate-800 hover:text-[#E53935] hover:bg-red-50/80 border border-slate-200/80"
-              }`}
-              title="Immortal 90-Day Challenge Hub"
-            >
-              <Award className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>Immortal 90</span>
-              <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-mono font-bold">90D</span>
-            </button>
-
-            {/* Challenge Engine Hub */}
-            <button
-              onClick={() => handleCustomNav("challenge-engine")}
-              className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
-                currentView === "challenge-engine"
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/25 ring-2 ring-indigo-300"
-                  : "text-slate-800 hover:text-indigo-600 hover:bg-indigo-50/80 border border-slate-200/80"
-              }`}
-              title="Challenge Engine & Split Architecture Hub"
-            >
-              <Layers className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-              <span>Challenge Engine</span>
-            </button>
-
-            {/* 180D Home Challenge (Large screens) */}
-            <button
-              onClick={() => handleCustomNav("home-workout-challenge")}
-              className={`hidden lg:flex px-2.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider items-center gap-1.5 transition-all cursor-pointer ${
-                currentView === "home-workout-challenge"
-                  ? "bg-amber-600 text-white shadow-md shadow-amber-600/25"
-                  : "text-slate-700 hover:text-amber-600 hover:bg-amber-50/80 border border-transparent hover:border-amber-200"
-              }`}
-              title="180 Day Home Workout Challenge"
-            >
-              <Dumbbell className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span>180D Home</span>
-            </button>
-
-            {/* Programs Dropdown */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="px-2.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-700 hover:text-[#E53935] hover:bg-slate-50 flex items-center gap-1 transition-all cursor-pointer border border-transparent hover:border-slate-200"
-                aria-expanded={isDropdownOpen}
-              >
-                <span>Programs</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isDropdownOpen ? "rotate-180 text-red-600" : "text-slate-400"}`} />
-              </button>
-
-              <AnimatePresence>
-                {isDropdownOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute left-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 overflow-hidden"
-                  >
-                    <div className="text-[10px] font-mono font-black uppercase text-slate-400 px-3 py-1.5 border-b border-slate-100">
-                      FLAGSHIP ATHLETE PROGRAMS
-                    </div>
-                    <div className="space-y-1 mt-1">
-                      <button
-                        onClick={() => handleCustomNav("challenges")}
-                        className="w-full text-left p-2 rounded-xl hover:bg-red-50 flex items-center gap-2.5 transition-all cursor-pointer text-slate-800"
-                      >
-                        <div className="p-1.5 rounded-lg bg-red-100 text-red-600">
-                          <Award className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                            Immortal 90-Day Challenge
-                            <span className="text-[9px] bg-red-500 text-white px-1 rounded font-mono font-bold">HOT</span>
-                          </div>
-                          <div className="text-[10px] text-slate-500">7-day rolling split & hypertrophy protocol</div>
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => handleCustomNav("challenge-engine")}
-                        className="w-full text-left p-2 rounded-xl hover:bg-indigo-50 flex items-center gap-2.5 transition-all cursor-pointer text-slate-800"
-                      >
-                        <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-600">
-                          <Layers className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900">Challenge Engine Hub</div>
-                          <div className="text-[10px] text-slate-500">All programs & schedule architect</div>
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => handleCustomNav("home-workout-challenge")}
-                        className="w-full text-left p-2 rounded-xl hover:bg-amber-50 flex items-center gap-2.5 transition-all cursor-pointer text-slate-800"
-                      >
-                        <div className="p-1.5 rounded-lg bg-amber-100 text-amber-600">
-                          <Dumbbell className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900">180 Day Home Workout</div>
-                          <div className="text-[10px] text-slate-500">Zero equipment bodyweight transformation</div>
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => handleCustomNav("women-confidence")}
-                        className="w-full text-left p-2 rounded-xl hover:bg-rose-50 flex items-center gap-2.5 transition-all cursor-pointer text-slate-800"
-                      >
-                        <div className="p-1.5 rounded-lg bg-rose-100 text-rose-600">
-                          <Heart className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900">Women Confidence Program</div>
-                          <div className="text-[10px] text-slate-500">Full 180-Day glute & tone split</div>
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => handleCustomNav("belly-fat-shred")}
-                        className="w-full text-left p-2 rounded-xl hover:bg-orange-50 flex items-center gap-2.5 transition-all cursor-pointer text-slate-800"
-                      >
-                        <div className="p-1.5 rounded-lg bg-orange-100 text-orange-600">
-                          <Flame className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900">Belly Fat Shred System</div>
-                          <div className="text-[10px] text-slate-500">Core conditioning & metabolic burn</div>
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => handleCustomNav("workout-generator")}
-                        className="w-full text-left p-2 rounded-xl hover:bg-indigo-50 flex items-center gap-2.5 transition-all cursor-pointer text-slate-800"
-                      >
-                        <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-600">
-                          <Sparkles className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900">AI Workout Generator</div>
-                          <div className="text-[10px] text-slate-500">Custom routine generated in seconds</div>
-                        </div>
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Tracker */}
-            <button
-              onClick={() => handleCustomNav("progress-tracker")}
-              className={`hidden xl:flex px-2.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider items-center gap-1.5 transition-all cursor-pointer ${
-                currentView === "progress-tracker"
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25"
-                  : "text-slate-700 hover:text-emerald-600 hover:bg-emerald-50/80 border border-transparent hover:border-emerald-200"
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span>Tracker</span>
-            </button>
-
-            {/* Store */}
-            <button
-              onClick={() => handleCustomNav("store")}
-              className={`hidden xl:flex px-2.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider items-center gap-1.5 transition-all cursor-pointer ${
-                currentView === "store"
-                  ? "bg-red-600 text-white shadow-md shadow-red-600/25"
-                  : "text-slate-700 hover:text-[#E53935] hover:bg-red-50/80 border border-transparent hover:border-red-200"
-              }`}
-            >
-              <ShoppingBag className="w-3.5 h-3.5 text-red-500 shrink-0" />
-              <span>Store</span>
-            </button>
-
-            {/* Admin Console Direct Link (if admin) */}
-            {(user?.role === "admin" || (user?.email && isEmailAdmin(user.email))) && (
-              <button
-                onClick={() => handleCustomNav("admin")}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider text-red-700 bg-red-100 hover:bg-red-200 border border-red-300 flex items-center gap-1 transition-all cursor-pointer shrink-0"
-                title="Open Admin Management Console"
-              >
-                <Shield className="w-3.5 h-3.5 text-red-600 shrink-0" />
-                <span>Admin</span>
-              </button>
-            )}
-          </nav>
-
-          {/* Spacer */}
+          {/* Flexible spacer between logo and controls */}
           <div className="flex-1" />
 
           {/* Right Control Bar (Only Sign In and Hamburger Menu button) */}

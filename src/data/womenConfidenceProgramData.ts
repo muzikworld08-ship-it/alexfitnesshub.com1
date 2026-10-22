@@ -379,7 +379,7 @@ export function getDailyWorkoutForDay(
 
   const exercises: WomenDailyExercise[] = (enginePlan.exercises || []).map((ex: any, idx: number) => {
     const exName = (ex.exerciseName || ex.name || "").trim();
-    const mediaUrl = ex.customMediaUrl || ex.gifUrl || ex.imageUrl || "";
+    const mediaUrl = ex.customMediaUrl !== undefined ? ex.customMediaUrl : (ex.gifUrl !== undefined ? ex.gifUrl : (ex.imageUrl || ""));
     return {
       id: ex.id || `wc_d${safeDay}_ex${idx + 1}`,
       name: exName,

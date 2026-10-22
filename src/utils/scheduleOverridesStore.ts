@@ -52,6 +52,55 @@ function initFromCache() {
 // Initialize on module load
 initFromCache();
 
+let isHydratingFromServer = false;
+
+/**
+ * Fetch authoritative schedule overrides from server endpoint /api/admin/programs/overrides.
+ * Hydrates store, writes to local cache, and notifies all UI subscribers.
+ */
+export async function refreshScheduleOverridesFromServer(): Promise<Record<string, any>> {
+  if (typeof window === "undefined") return getScheduleOverrides();
+  if (isHydratingFromServer) return getScheduleOverrides();
+  isHydratingFromServer = true;
+
+  try {
+    const res = await fetch("/api/admin/programs/overrides");
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.overrides && typeof data.overrides === "object" && Object.keys(data.overrides).length > 0) {
+        setScheduleOverridesFromRemote(data.overrides);
+        return data.overrides;
+      }
+    }
+  } catch (err) {
+    console.warn("[ScheduleOverridesStore] Notice fetching schedule overrides from server:", err);
+  } finally {
+    isHydratingFromServer = false;
+  }
+  return getScheduleOverrides();
+}
+
+// Automatically sync latest overrides from server on client startup
+if (typeof window !== "undefined") {
+  setTimeout(() => {
+    refreshScheduleOverridesFromServer();
+  }, 50);
+
+  // Cross-tab sync for schedule overrides
+  window.addEventListener("storage", (e) => {
+    if (e.key === STORAGE_KEY && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (parsed && typeof parsed === "object") {
+          memoryOverrides = parsed;
+          currentSource = "cache";
+          notifySubscribers();
+        }
+      } catch {}
+    }
+  });
+}
+
 function notifySubscribers() {
   const current = getScheduleOverrides();
   subscribers.forEach((cb) => {

@@ -113,6 +113,7 @@ interface SectionErrorBoundaryProps {
   children?: ReactNode;
   fallbackTitle?: string;
   onReset?: () => void;
+  resetKey?: any;
 }
 
 interface SectionErrorBoundaryState {
@@ -134,6 +135,13 @@ export class SectionErrorBoundary extends React.Component<SectionErrorBoundaryPr
     console.error("[Section Render Error - SectionErrorBoundary]:", error, errorInfo);
   }
 
+  public componentDidUpdate(prevProps: SectionErrorBoundaryProps) {
+    // Automatically clear error boundary state when view/route or children change
+    if (this.state.hasError && (prevProps.resetKey !== this.props.resetKey || prevProps.children !== this.props.children)) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
+
   private handleRetry = () => {
     this.setState({ hasError: false, error: null });
     if (this.props.onReset) {
@@ -141,34 +149,63 @@ export class SectionErrorBoundary extends React.Component<SectionErrorBoundaryPr
     }
   };
 
+  private handleClearCacheAndReload = () => {
+    try {
+      if (typeof window !== "undefined") {
+        if ("caches" in window) {
+          caches.keys().then((keys) => {
+            keys.forEach((k) => caches.delete(k));
+          });
+        }
+        window.location.reload();
+      }
+    } catch {
+      window.location.reload();
+    }
+  };
+
+  private handleGoHome = () => {
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
+  };
+
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="max-w-4xl mx-auto my-8 p-6 sm:p-8 bg-white border border-slate-200 rounded-3xl shadow-sm text-center space-y-4 font-sans">
+        <div className="max-w-4xl mx-auto my-8 p-6 sm:p-8 bg-white border border-slate-200 rounded-3xl shadow-sm text-center space-y-5 font-sans">
           <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600">
             <AlertTriangle className="w-6 h-6" />
           </div>
-          <div className="space-y-1">
-            <h3 className="text-base font-black text-slate-900 tracking-tight">
+          <div className="space-y-1.5">
+            <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
               {this.props.fallbackTitle || "Workout Temporarily Unavailable"}
             </h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
               Workout temporarily unavailable. Your progress is safe. Please try again.
             </p>
           </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
+
+          {/* Action buttons: never leave the user trapped */}
+          <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
             <button
               onClick={this.handleRetry}
-              className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+              className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reload Routine</span>
             </button>
             <button
-              onClick={() => window.location.reload()}
-              className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+              onClick={this.handleGoHome}
+              className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
             >
-              Refresh Application
+              Return to Home
+            </button>
+            <button
+              onClick={this.handleClearCacheAndReload}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border border-slate-200"
+            >
+              Clear Cache & Refresh
             </button>
           </div>
         </div>

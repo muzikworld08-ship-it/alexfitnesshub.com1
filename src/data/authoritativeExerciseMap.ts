@@ -53,51 +53,32 @@ export function resolveAuthenticExercise(
 
   const cleanLower = cleanName.toLowerCase();
 
-  // 1. Check Canonical Exercises database for exact authentic GIF match or alias match
-  let canonicalMatch = CANONICAL_EXERCISES.find(e => 
-    e.name.toLowerCase().trim() === cleanLower ||
-    isExerciseMatch(cleanName, e.name)
-  );
-
-  // If no direct or alias match, look for smart non-conflicting substring match in CANONICAL_EXERCISES
-  if (!canonicalMatch) {
-    canonicalMatch = CANONICAL_EXERCISES.find(e => {
-      const eLower = e.name.toLowerCase().trim();
-      if (areExercisesConflicting(cleanLower, eLower)) return false;
-      return cleanLower.includes(eLower) || eLower.includes(cleanLower);
-    });
+  // Check if exercise was deleted in localStorage
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const rawDel = window.localStorage.getItem("fit_deleted_exercises");
+      if (rawDel) {
+        const deletedArr = JSON.parse(rawDel);
+        if (Array.isArray(deletedArr)) {
+          const isDeleted = deletedArr.some((d: any) => {
+            const dName = typeof d === "string" ? d : d?.name;
+            const dId = typeof d === "object" ? d?.id : null;
+            return (dName && cleanLower === String(dName).toLowerCase().trim()) || (dId && cleanLower === String(dId).toLowerCase().trim());
+          });
+          if (isDeleted) {
+            return {
+              name: cleanName,
+              gifUrl: "",
+              muscleGroup: targetCat
+            };
+          }
+        }
+      }
+    } catch {}
   }
 
-  // If still no canonical match, look for non-conflicting token match in CANONICAL_EXERCISES
-  if (!canonicalMatch) {
-    const tokens = cleanLower.split(/[\s-]+/).filter(t => t.length > 3 && !["with", "hold", "deep", "high", "tempo", "dynamic", "kinetic", "calisthenic"].includes(t));
-    if (tokens.length > 0) {
-      canonicalMatch = CANONICAL_EXERCISES.find(e => {
-        const eLower = e.name.toLowerCase().trim();
-        if (areExercisesConflicting(cleanLower, eLower)) return false;
-        return tokens.some(t => eLower.includes(t));
-      });
-    }
-  }
-
-  if (canonicalMatch) {
-    if (canonicalMatch.gifUrl && !mediaUrl) {
-      mediaUrl = canonicalMatch.gifUrl;
-    }
-    if (canonicalMatch.category) {
-      targetCat = canonicalMatch.category;
-    }
-  }
-
-  // 2. If fallbackGifUrl was provided, only keep it if it does NOT conflict with cleanName
-  if (fallbackGifUrl && isMediaUrlConflictingWithExercise(cleanName, fallbackGifUrl)) {
-    // Discard conflicting media (e.g. bench press GIF for back squat)
-    mediaUrl = canonicalMatch?.gifUrl || "";
-  } else if (fallbackGifUrl && !mediaUrl) {
-    mediaUrl = fallbackGifUrl;
-  }
-
-  // 3. Check active Admin-added exercises in localStorage
+  // 1. Check active Admin-added exercises in localStorage FIRST (admin custom exercises and overrides take precedence)
+  let adminExerciseFound = false;
   if (typeof window !== "undefined" && window.localStorage) {
     try {
       const stored = window.localStorage.getItem("fit_exercises");
@@ -106,32 +87,73 @@ export function resolveAuthenticExercise(
         if (Array.isArray(list)) {
           const match = list.find((e: any) => {
             if (!e.name) return false;
-            // Never match an exercise with a conflicting name
             if (areExercisesConflicting(cleanName, e.name)) return false;
             return isExerciseMatch(cleanName, e.name) || 
+                   cleanLower === e.name.toLowerCase().trim() ||
                    cleanLower.includes(e.name.toLowerCase()) || 
                    e.name.toLowerCase().includes(cleanLower);
           });
           if (match) {
-            const candidateMedia = match.customMediaUrl || match.gifUrl || match.imageUrl;
-            if (candidateMedia && !isMediaUrlConflictingWithExercise(cleanName, candidateMedia)) {
-              mediaUrl = candidateMedia;
-            }
+            adminExerciseFound = true;
             if (match.category) targetCat = match.category;
+            // If admin explicitly set media to empty or deleted, respect it!
+            if (match.gifUrl === "" || match.customMediaUrl === "" || match.mediaDeleted) {
+              mediaUrl = "";
+            } else {
+              const candidateMedia = match.customMediaUrl || match.gifUrl || match.imageUrl;
+              if (candidateMedia && !isMediaUrlConflictingWithExercise(cleanName, candidateMedia)) {
+                mediaUrl = candidateMedia;
+              }
+            }
           }
         }
       }
     } catch {}
   }
 
-  // 4. Check bundled admin schedule overrides if mediaUrl is still empty
-  if (!mediaUrl && canonicalMatch?.gifUrl) {
-    mediaUrl = canonicalMatch.gifUrl;
-  }
+  // 2. Check Canonical Exercises database for exact authentic GIF match or alias match
+  if (!adminExerciseFound || !mediaUrl) {
+    let canonicalMatch = CANONICAL_EXERCISES.find(e => 
+      e.name.toLowerCase().trim() === cleanLower ||
+      isExerciseMatch(cleanName, e.name)
+    );
 
-  // 5. Final safety check: if mediaUrl still conflicts with cleanName, fallback to canonical
-  if (mediaUrl && isMediaUrlConflictingWithExercise(cleanName, mediaUrl)) {
-    mediaUrl = canonicalMatch?.gifUrl || "";
+    // If no direct or alias match, look for smart non-conflicting substring match in CANONICAL_EXERCISES
+    if (!canonicalMatch) {
+      canonicalMatch = CANONICAL_EXERCISES.find(e => {
+        const eLower = e.name.toLowerCase().trim();
+        if (areExercisesConflicting(cleanLower, eLower)) return false;
+        return cleanLower.includes(eLower) || eLower.includes(cleanLower);
+      });
+    }
+
+    // If still no canonical match, look for non-conflicting token match in CANONICAL_EXERCISES
+    if (!canonicalMatch) {
+      const tokens = cleanLower.split(/[\s-]+/).filter(t => t.length > 3 && !["with", "hold", "deep", "high", "tempo", "dynamic", "kinetic", "calisthenic"].includes(t));
+      if (tokens.length > 0) {
+        canonicalMatch = CANONICAL_EXERCISES.find(e => {
+          const eLower = e.name.toLowerCase().trim();
+          if (areExercisesConflicting(cleanLower, eLower)) return false;
+          return tokens.some(t => eLower.includes(t));
+        });
+      }
+    }
+
+    if (canonicalMatch) {
+      if (canonicalMatch.gifUrl && !mediaUrl && fallbackGifUrl !== "") {
+        mediaUrl = canonicalMatch.gifUrl;
+      }
+      if (canonicalMatch.category && targetCat === "General") {
+        targetCat = canonicalMatch.category;
+      }
+    }
+
+    // If fallbackGifUrl was provided, check conflict
+    if (fallbackGifUrl && isMediaUrlConflictingWithExercise(cleanName, fallbackGifUrl)) {
+      mediaUrl = canonicalMatch?.gifUrl || "";
+    } else if (fallbackGifUrl && !mediaUrl) {
+      mediaUrl = fallbackGifUrl;
+    }
   }
 
   return {

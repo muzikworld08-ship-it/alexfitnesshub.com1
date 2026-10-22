@@ -253,7 +253,26 @@ export function getWorkoutForProgramAndDay(
 
   // 1. Check admin schedule overrides from centralized store (Memory -> localStorage cache -> Bundled defaults)
   const allOverrides = getScheduleOverrides();
-  const progOverrides = allOverrides[normId] || allOverrides[programId] || (track ? allOverrides[`${normId}_${track}`] : undefined);
+  const trackKey = track ? `${normId}_${track}` : null;
+  const progOverrides = (trackKey && allOverrides[trackKey]) || allOverrides[programId] || allOverrides[normId];
+
+  // Retrieve any deleted exercises recorded by admin
+  let deletedSet = new Set<string>();
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const rawDel = window.localStorage.getItem("fit_deleted_exercises");
+      if (rawDel) {
+        const parsed = JSON.parse(rawDel);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((x: any) => {
+            if (typeof x === "string") deletedSet.add(x.toLowerCase().trim());
+            if (x && typeof x === "object" && x.name) deletedSet.add(String(x.name).toLowerCase().trim());
+            if (x && typeof x === "object" && x.id) deletedSet.add(String(x.id).toLowerCase().trim());
+          });
+        }
+      }
+    } catch {}
+  }
 
   if (progOverrides) {
     const dayOverride = progOverrides[String(safeDay)] || progOverrides[`cycle_${cycleDay}`];
@@ -279,7 +298,15 @@ export function getWorkoutForProgramAndDay(
         chosenExercises = dayOverride.levels?.beginner || dayOverride.beginnerExercises || dayOverride.levels?.intermediate || dayOverride.intermediateExercises || dayOverride.levels?.advanced || dayOverride.advancedExercises || dayOverride.exercises || [];
       }
 
-      if (Array.isArray(chosenExercises) && chosenExercises.length > 0) {
+      // Filter out any explicitly deleted exercises
+      const sanitizedChosen = (Array.isArray(chosenExercises) ? chosenExercises : []).filter((ex: any) => {
+        const idStr = String(ex.id || "").toLowerCase().trim();
+        const nameStr = String(ex.exerciseName || ex.name || "").toLowerCase().trim();
+        if (deletedSet.has(idStr) || deletedSet.has(nameStr)) return false;
+        return true;
+      });
+
+      if (sanitizedChosen.length > 0) {
         return {
           meta: {
             dayNumber: safeDay,
@@ -299,7 +326,7 @@ export function getWorkoutForProgramAndDay(
             ],
             coachingNotes: dayOverride.coachingNotes || `${dayOverride.category || "Workout"} - execute with strict form.`
           },
-          exercises: chosenExercises
+          exercises: sanitizedChosen
         };
       }
     }

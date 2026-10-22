@@ -303,8 +303,8 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
     exercises
   } = useApp();
 
-  const activeJoinedPrograms = getActiveEnrolledPrograms().filter(p => 
-    p.enrolled && (p.hasJoined || p.enrolledByUser || (p.completedWorkoutIds && p.completedWorkoutIds.length > 0) || (p.progressPercent && p.progressPercent > 0))
+  const activeJoinedPrograms = (getActiveEnrolledPrograms ? getActiveEnrolledPrograms() : []).filter(p => 
+    Boolean(p && p.enrolled && (p.hasJoined || p.enrolledByUser || (p.completedWorkoutIds && p.completedWorkoutIds.length > 0) || (p.progressPercent && p.progressPercent > 0)))
   );
 
   const { products, setSelectedProductForDetail, setIsCartOpen, addToCart, buyNow } = useStore();
@@ -1538,17 +1538,17 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
               <div className="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left">
                 <div className="flex items-center justify-between">
                   <span className="text-[8px] font-mono font-black text-[#D32F2F] bg-red-50 px-2 py-0.5 rounded uppercase">
-                    {heroSlides[currentSlide].eyebrow}
+                    {heroSlides[currentSlide]?.eyebrow || "PHYSIQUE SPECIALIZATION"}
                   </span>
                   <span className="text-[8px] font-mono font-black tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full uppercase">
                     PRO CLINICAL TRACKER
                   </span>
                 </div>
                 <h4 className="text-sm font-sans font-black text-slate-900 uppercase mt-2">
-                  {heroSlides[currentSlide].wordOne} {heroSlides[currentSlide].wordTwo}
+                  {heroSlides[currentSlide]?.wordOne || "FORGE"} {heroSlides[currentSlide]?.wordTwo || "ATHLETICISM"}
                 </h4>
                 <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                  {heroSlides[currentSlide].desc}
+                  {heroSlides[currentSlide]?.desc || "Experience world-class body sculpting."}
                 </p>
               </div>
 
@@ -2109,8 +2109,8 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
           {/* Programs Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {PROGRAMS.map((program) => {
-              const totalDays = program.schedule.length;
-              const isBellyFat = program.id === "5-month-belly-fat";
+              const totalDays = (program.schedule && program.schedule.length) || 7;
+              const isBellyFat = program.id === "5-month-belly-fat" || program.id === "belly_fat_shred";
 
               // Comprehensive Primary Outcomes & Benefits Dictionary
               const programBenefits: Record<string, { label: string; desc: string }[]> = {
@@ -2311,12 +2311,12 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                         Curriculum Structure ({totalDays} Phased Rotations):
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {program.schedule.slice(0, 3).map((sch, sIdx) => (
+                        {(program.schedule || []).slice(0, 3).map((sch, sIdx) => (
                           <span
                             key={sIdx}
                             className="px-2 py-0.5 rounded-md bg-slate-100 text-[9px] font-mono text-slate-600 border border-slate-200/60"
                           >
-                            {sch.focus.split(":")[0]}
+                            {(sch.focus || sch.day || "Day").split(":")[0]}
                           </span>
                         ))}
                         {totalDays > 3 && (
@@ -2332,25 +2332,27 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                   <div className="p-6 sm:p-7 pt-0">
                     <button
                       onClick={() => {
-                        if (isBellyFat) {
+                        if (isBellyFat || program.id === "belly_fat_shred") {
                           setView("belly-fat-shred");
-                        } else if (program.id === "women-confidence-180") {
+                        } else if (program.id === "women-confidence-180" || program.id === "women_confidence") {
                           setView("women-confidence");
-                        } else if (program.id === "home-workout-challenge-180") {
+                        } else if (program.id === "home-workout-challenge-180" || program.id === "home_180" || program.id === "home-workout-challenge") {
                           setView("home-workout-challenge");
-                        } else if (program.id === "30-day-challenge" || program.id === "7-day-quick-burn" || program.id === "athletic-conditioning-hybrid") {
+                        } else if (program.id === "immortal_90" || program.id === "challenges" || program.id === "30-day-challenge" || program.id === "7-day-quick-burn" || program.id === "athletic-conditioning-hybrid") {
                           setView("challenges");
+                        } else if (program.id === "lifestyle_academy" || program.id === "lifestyle-academy") {
+                          setView("lifestyle-academy");
                         } else {
                           setView("library");
                         }
                       }}
                       className={`w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
-                        isBellyFat
+                        isBellyFat || program.id === "belly_fat_shred"
                           ? "bg-[#D32F2F] hover:bg-[#B71C1C] text-white shadow-[#D32F2F]/20"
                           : "bg-[#1C1C1C] hover:bg-[#C0392B] text-white"
                       }`}
                     >
-                      <span>{isBellyFat ? "Launch 5-Month Melt" : "Start This Program"}</span>
+                      <span>{isBellyFat || program.id === "belly_fat_shred" ? "Launch 5-Month Melt" : "Start This Program"}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -2658,7 +2660,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                     {/* Stars & Location Banner */}
                     <div className="flex items-center justify-between">
                       <div className="flex gap-0.5 text-amber-500">
-                        {[...Array(review.rating)].map((_, i) => (
+                        {[...Array(Math.max(1, Math.min(5, Math.round(Number(review.rating) || 5))))].map((_, i) => (
                           <Star key={i} className="w-3.5 h-3.5 fill-current" />
                         ))}
                       </div>

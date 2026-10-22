@@ -24,6 +24,7 @@ export type AppView =
   | "belly-fat-shred"
   | "women-confidence"
   | "home-workout-challenge"
+  | "posture-vitality"
   | "lifestyle-academy"
   | "pricing"
   | "store"
@@ -67,6 +68,7 @@ export const VIEW_TO_PATH_MAP: Record<string, string> = {
   "belly-fat-shred": "/belly-fat-shred",
   "women-confidence": "/women-confidence",
   "home-workout-challenge": "/home-workout-challenge",
+  "posture-vitality": "/posture-vitality",
   "lifestyle-academy": "/lifestyle-academy",
   pricing: "/pricing",
   store: "/store",
@@ -146,8 +148,12 @@ export const PATH_TO_VIEW_MAP: Record<string, string> = {
   "/home-challenge": "home-workout-challenge",
   "/premium/home-workout-challenge": "home-workout-challenge",
   "/lifestyle-academy": "lifestyle-academy",
-  "/posture-vitality": "lifestyle-academy",
-  "/reclaim-posture": "lifestyle-academy",
+  "/posture-vitality": "posture-vitality",
+  "/posture_vitality": "posture-vitality",
+  "/posture-challenge": "posture-vitality",
+  "/posture-correction": "posture-vitality",
+  "/posture": "posture-vitality",
+  "/reclaim-posture": "posture-vitality",
   "/pricing": "pricing",
   "/premium/pricing": "pricing",
   "/store": "store",

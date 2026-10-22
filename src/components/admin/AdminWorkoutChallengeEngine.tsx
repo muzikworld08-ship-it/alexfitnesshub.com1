@@ -350,17 +350,37 @@ export default function AdminWorkoutChallengeEngine() {
     const seenGifs = new Set<string>();
     const deduplicated: ChallengeExerciseItem[] = [];
 
+    // Check if any exercises were marked deleted
+    let deletedSet = new Set<string>();
+    if (typeof window !== "undefined" && window.localStorage) {
+      try {
+        const rawDel = window.localStorage.getItem("fit_deleted_exercises");
+        if (rawDel) {
+          const arr = JSON.parse(rawDel);
+          if (Array.isArray(arr)) {
+            arr.forEach((d: any) => {
+              if (typeof d === "string") deletedSet.add(d.toLowerCase().trim());
+              if (d && typeof d === "object" && d.name) deletedSet.add(String(d.name).toLowerCase().trim());
+              if (d && typeof d === "object" && d.id) deletedSet.add(String(d.id).toLowerCase().trim());
+            });
+          }
+        }
+      } catch {}
+    }
+
     for (const ex of rawList) {
       const name = (ex.exerciseName || (ex as any).name || "").trim();
       if (!name) continue;
       const lower = name.toLowerCase();
       if (seenNames.has(lower)) continue;
+      if (deletedSet.has(lower) || (ex.id && deletedSet.has(String(ex.id).toLowerCase().trim()))) continue;
       seenNames.add(lower);
 
-      let gif = ex.gifUrl;
-      if (!gif || seenGifs.has(gif)) {
+      let gif = ex.gifUrl !== undefined ? ex.gifUrl : ((ex as any).customMediaUrl !== undefined ? (ex as any).customMediaUrl : undefined);
+      if (gif === undefined) {
         gif = getExerciseGifUrl(name, ex.category, seenGifs);
-      } else {
+      }
+      if (gif) {
         seenGifs.add(gif);
       }
 
@@ -368,8 +388,8 @@ export default function AdminWorkoutChallengeEngine() {
         ...ex,
         name,
         exerciseName: name,
-        gifUrl: gif,
-        imageUrl: gif
+        gifUrl: gif || "",
+        imageUrl: gif || ""
       });
     }
 
@@ -421,10 +441,11 @@ export default function AdminWorkoutChallengeEngine() {
       if (seenNames.has(lower)) continue;
       seenNames.add(lower);
 
-      let gif = ex.gifUrl;
-      if (!gif || seenGifs.has(gif)) {
+      let gif = ex.gifUrl !== undefined ? ex.gifUrl : ((ex as any).customMediaUrl !== undefined ? (ex as any).customMediaUrl : undefined);
+      if (gif === undefined) {
         gif = getExerciseGifUrl(name, ex.category, seenGifs);
-      } else {
+      }
+      if (gif) {
         seenGifs.add(gif);
       }
 
@@ -432,8 +453,8 @@ export default function AdminWorkoutChallengeEngine() {
         ...ex,
         name,
         exerciseName: name,
-        gifUrl: gif,
-        imageUrl: gif
+        gifUrl: gif || "",
+        imageUrl: gif || ""
       });
     }
 
@@ -450,10 +471,6 @@ export default function AdminWorkoutChallengeEngine() {
       nextLevels.advanced = sanitizedExercises;
     }
 
-    const baselineList = (existingDayData.exercises && Array.isArray(existingDayData.exercises) && existingDayData.exercises.length > 0)
-      ? existingDayData.exercises
-      : (baseDayPlan.exercises || []);
-
     const updatedDayData = {
       ...existingDayData,
       title: splitTitle,
@@ -461,7 +478,7 @@ export default function AdminWorkoutChallengeEngine() {
       focus: splitCategory,
       isCardioOnly: cardioState.isCardio,
       cardioDistance: cardioState.distance,
-      exercises: targetTier === "all" ? sanitizedExercises : baselineList,
+      exercises: sanitizedExercises,
       levels: nextLevels,
       beginnerExercises: targetTier === "beginner" ? sanitizedExercises : (existingDayData.beginnerExercises || nextLevels.beginner),
       intermediateExercises: targetTier === "intermediate" ? sanitizedExercises : (existingDayData.intermediateExercises || nextLevels.intermediate),
@@ -727,7 +744,24 @@ export default function AdminWorkoutChallengeEngine() {
     setIsDeleting(true);
 
     try {
-      const updated = activeExercises.filter((ex: ChallengeExerciseItem) => ex.id !== targetToDelete.id);
+      const targetId = targetToDelete.id;
+      const targetName = (targetToDelete.exerciseName || (targetToDelete as any).name || "").toLowerCase().trim();
+      const updated = activeExercises.filter((ex: ChallengeExerciseItem) => {
+        if (ex.id === targetId) return false;
+        const n = (ex.exerciseName || (ex as any).name || "").toLowerCase().trim();
+        return n !== targetName;
+      });
+
+      // Record in fit_deleted_exercises to prevent resurrection across all views
+      try {
+        const rawDel = localStorage.getItem("fit_deleted_exercises");
+        const arr = rawDel ? JSON.parse(rawDel) : [];
+        if (targetName && !arr.includes(targetName)) {
+          arr.push(targetName);
+          localStorage.setItem("fit_deleted_exercises", JSON.stringify(arr));
+        }
+      } catch {}
+
       await handleReorderExercises(updated, selectedDifficultyLevel);
 
       setSaveSuccessMsg(`Permanently removed "${targetToDelete.exerciseName}" from ${selectedDifficultyLevel === "all" ? "routine" : selectedDifficultyLevel.toUpperCase() + " routine"}.`);

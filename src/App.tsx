@@ -247,7 +247,10 @@ function FitnessAppContent() {
         "immortal-90": "Immortal 90-Day Challenge",
         "challenge-engine": "Challenge Engine Hub",
         "90-day-immortal": "Immortal 90-Day Challenge",
-        "90_day_immortal": "Immortal 90-Day Challenge",
+        "posture-vitality": "Posture Correction Challenge",
+        "posture_vitality": "Posture Correction Challenge",
+        "posture-challenge": "Posture Correction Challenge",
+        "posture-correction": "Posture Correction Challenge",
         "daily-plan": "My Daily Plan",
         "coach": "AI Fitness Coach",
         "dashboard": "Athlete Performance Desk",
@@ -420,6 +423,10 @@ function FitnessAppContent() {
       "challenge-engine": "Challenge Engine Hub",
       "90-day-immortal": "Immortal 90-Day Challenge",
       "90_day_immortal": "Immortal 90-Day Challenge",
+      "posture-vitality": "Posture Correction Challenge",
+      "posture_vitality": "Posture Correction Challenge",
+      "posture-challenge": "Posture Correction Challenge",
+      "posture-correction": "Posture Correction Challenge",
       "daily-plan": "My Daily Plan",
       "coach": "AI Fitness Coach",
       "dashboard": "Athlete Performance Desk",
@@ -632,7 +639,7 @@ function FitnessAppContent() {
             className="w-full max-w-full flex-grow flex flex-col min-w-0 overflow-x-hidden"
           >
             <React.Suspense fallback={renderSkeletonForView(currentView)}>
-              <SectionErrorBoundary fallbackTitle="Module Temporarily Unavailable">
+              <SectionErrorBoundary key={currentView} resetKey={currentView} fallbackTitle="Module Temporarily Unavailable">
               {currentView === "home" && (
                 <HomeView setView={handleSetView} onOpenAuth={() => handleSetView("login")} />
               )}
@@ -681,8 +688,8 @@ function FitnessAppContent() {
               {currentView === "women-confidence" && (
                 <WomenConfidenceProgram />
               )}
-              {["challenges", "immortal-90", "immortal_90", "90-day-immortal", "90_day_immortal", "immortal", "immortal-challenge", "flagship-90"].includes(currentView) && (
-                <FitnessChallenges />
+              {["challenges", "immortal-90", "immortal_90", "90-day-immortal", "90_day_immortal", "immortal", "immortal-challenge", "flagship-90", "posture-vitality", "posture_vitality", "posture-challenge", "posture-correction", "posture"].includes(currentView) && (
+                <FitnessChallenges initialChallengeId={currentView.includes("posture") ? "posture_vitality" : "immortal_90"} />
               )}
               {["challenge-engine", "workout-engine", "admin-challenge-engine"].includes(currentView) && (
                 (user?.role === "admin" || (user?.email && isEmailAdmin(user.email))) ? (

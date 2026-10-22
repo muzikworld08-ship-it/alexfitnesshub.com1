@@ -39,18 +39,25 @@ export default function ContinueProgramTracker({ compact = false, onNavigate }: 
     user?.freeTrialStatus === "active"
   );
 
-  const activePrograms = getActiveEnrolledPrograms().filter(p => 
-    p.enrolled && (p.hasJoined || p.enrolledByUser || (p.completedWorkoutIds && p.completedWorkoutIds.length > 0) || (p.progressPercent && p.progressPercent > 0))
+  const activePrograms = (getActiveEnrolledPrograms ? getActiveEnrolledPrograms() : []).filter(p => 
+    Boolean(p && p.enrolled && (p.hasJoined || p.enrolledByUser || (p.completedWorkoutIds && p.completedWorkoutIds.length > 0) || (p.progressPercent && p.progressPercent > 0)))
   );
 
   // Only show the continue section to users that have joined a particular exercise or program
   if (activePrograms.length === 0) {
     return null;
   }
-
   const handleResume = (item: ProgramProgressItem) => {
     if (onNavigate) {
-      onNavigate(item.viewName || (item.programId === "90_day_immortal" ? "challenges" : item.programId === "belly_fat_shred" ? "belly-fat-shred" : "lifestyle-academy"));
+      const targetView = item.viewName || (
+        item.programId === "90_day_immortal" || item.programId === "immortal_90" ? "challenges" :
+        item.programId === "women_confidence" ? "women-confidence" :
+        item.programId === "belly_fat_shred" ? "belly-fat-shred" :
+        item.programId.includes("home_180") ? "home-workout-challenge" :
+        item.programId === "posture_vitality" ? "posture-vitality" :
+        "lifestyle-academy"
+      );
+      onNavigate(targetView);
     } else {
       resumeProgram(item.programId);
     }

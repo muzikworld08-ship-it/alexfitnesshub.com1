@@ -117,9 +117,6 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
     }
   };
 
-  // Local state for sidebar visibility on mobile
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
   // Active workspace tab out of the 13 sections
   // Defaulting to "workouts"
   const [activeTab, setActiveTab] = useState<string>("workouts");
@@ -153,221 +150,67 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
     }
   }, [user, isPremium]);
 
-  // Navigation Items defined with strict categories matching the required sections
-  const menuCategories = [
-    {
-      title: "Digital Stationery & Orders",
-      items: [
-        { id: "digital-products", label: "My Digital Products", icon: FileText, desc: "Purchased Printable PDFs" },
-      ]
-    },
-    {
-      title: "Physical Performance",
-      items: [
-        { id: "workouts", label: "Workouts Library", icon: Dumbbell, desc: "Gym & Home Programs" },
-        { id: "routines", label: "Routines & Sets", icon: Activity, desc: "Progressive Overload" },
-        { id: "plan", label: "My Daily Plan", icon: Calendar, desc: "Splits & Recovery" },
-        { id: "saved", label: "Saved Exercises", icon: Star, desc: "Personal Catalog" },
-      ]
-    },
-    {
-      title: "Active Coaching",
-      items: [
-        { id: "coach", label: "AI Sports Coach", icon: MessageSquare, desc: "24/7 Personal Guidance" },
-        { id: "nutrition", label: "Nutrition Planner", icon: ChefHat, desc: "Macros & Caloric Targets" },
-        { id: "videos", label: "Workout Videos", icon: Tv, desc: "Premium Form Catalog" },
-        { id: "handbook", label: "Science Handbook", icon: BookOpen, desc: "Hypertrophy Guides" },
-      ]
-    },
-    {
-      title: "Biometrics & Analytics",
-      items: [
-        { id: "progress-tracker", label: "Progress & Activity Tracker", icon: Activity, desc: "Workouts, Cardio, Water & Meals" },
-        { id: "reports", label: "Weekly Audits", icon: Award, desc: "AI Progress Insights" },
-        { id: "calibration", label: "Calibration Desk", icon: Clock, desc: "Physiological Metrics" },
-        { id: "trajectory", label: "Weight Trajectory", icon: Scale, desc: "Recomposition Slopes" },
-        { id: "habits", label: "Habit Tracker", icon: CheckCircle, desc: "Routine Compliance" },
-        { id: "todos", label: "Realtime Todos", icon: CheckCircle2, desc: "Supabase & Firebase Sync" },
-      ]
-    },
-    {
-      title: "Social Interaction",
-      items: [
-        { id: "community", label: "Athlete Community", icon: Users, desc: "Group Training Hub" },
-      ]
-    }
-  ];
-
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-screen text-slate-900 w-full max-w-full overflow-x-hidden">
-      
-      {/* Main Workspace Layout (Sidebar Left, Workspace Content Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 relative w-full max-w-full min-w-0">
-        
-        {/* ==========================================
-            DESKTOP SIDEBAR / MOBILE SLIDE-OUT PANEL
-            ========================================== */}
-        <div className={`
-          fixed inset-y-0 left-0 z-50 w-72 bg-white p-6 border-r border-slate-100 shadow-2xl transition-transform duration-300 transform lg:transform-none lg:static lg:z-auto lg:shadow-none lg:p-0 lg:border-r-0 lg:bg-transparent lg:col-span-3
-          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-        `}>
-          {/* Close button for Mobile Sidebar */}
-          <div className="lg:hidden flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-[#D32F2F]" />
-              <span className="text-xs font-sans font-black text-slate-900 uppercase tracking-wider">MASTER DESK</span>
-            </div>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-1.5 text-slate-500 hover:text-black cursor-pointer">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Miniature Active User Profile Container */}
-          <div className="p-4 bg-slate-50 text-slate-900 rounded-2xl border border-slate-250 mb-6 flex items-center gap-3 shadow-sm">
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleProfilePicUpload} 
-              accept="image/*" 
-              className="hidden" 
-            />
-            <div 
-              onClick={() => fileInputRef.current?.click()}
-              className="relative w-10 h-10 rounded-full group cursor-pointer overflow-hidden shadow-md flex items-center justify-center shrink-0 border border-slate-250 bg-slate-100"
-              title="Click to upload/change profile photo"
-            >
-              {user?.photoURL && user.photoURL.trim() !== "" ? (
-                <img src={user.photoURL} alt={user.displayName || "User"} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-tr from-[#D32F2F] to-[#B71C1C] flex items-center justify-center text-white font-black text-sm uppercase">
-                  {user?.displayName ? user.displayName[0] : "A"}
-                </div>
-              )}
-              {/* Overlay on hover */}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[8px] text-white font-black uppercase tracking-wider transition-opacity duration-150">
-                Edit
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-screen text-slate-900 w-full max-w-full overflow-x-hidden space-y-6">
+      {/* Athlete Profile Header Strip */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleProfilePicUpload} 
+            accept="image/*" 
+            className="hidden" 
+          />
+          <div 
+            onClick={() => fileInputRef.current?.click()}
+            className="relative w-11 h-11 rounded-full group cursor-pointer overflow-hidden shadow-sm flex items-center justify-center shrink-0 border border-slate-200 bg-slate-100"
+            title="Click to upload/change profile photo"
+          >
+            {user?.photoURL && user.photoURL.trim() !== "" ? (
+              <img src={user.photoURL} alt={user.displayName || "User"} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-tr from-[#D32F2F] to-[#B71C1C] flex items-center justify-center text-white font-black text-sm uppercase">
+                {user?.displayName ? user.displayName[0] : "A"}
               </div>
+            )}
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[8px] text-white font-black uppercase tracking-wider transition-opacity duration-150">
+              Edit
             </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-xs font-black truncate uppercase tracking-tight font-sans leading-none text-slate-900">
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm sm:text-base font-black truncate uppercase tracking-tight font-sans text-slate-900">
                 {user?.displayName || "Elite Athlete"}
-              </h4>
-              <p className="text-[9px] text-slate-500 truncate mt-1 leading-none font-mono">
-                {user?.email}
-              </p>
+              </h2>
               {isPremium ? (
-                <span className="inline-flex items-center gap-0.5 text-[8px] font-black uppercase text-amber-700 bg-amber-50 border border-amber-200/50 px-1.5 py-0.5 rounded-md mt-2">
+                <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
                   👑 Premium Active
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-0.5 text-[8px] font-black uppercase text-slate-700 bg-slate-100 border border-slate-200/50 px-1.5 py-0.5 rounded-md mt-2">
+                <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
                   ⭐ Free Plan
                 </span>
               )}
-
-              {/* Theme Selector inside settings card */}
-              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[8px] font-sans font-black uppercase tracking-wider text-slate-400">Theme</span>
-                <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200">
-                  <button 
-                    onClick={() => setTheme("light")}
-                    className={`px-2 py-0.5 rounded text-[8px] font-black uppercase cursor-pointer transition-all ${
-                      theme === "light" 
-                        ? "bg-white text-[#D32F2F] shadow-xs" 
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    Light
-                  </button>
-                  <button 
-                    onClick={() => setTheme("dark")}
-                    className={`px-2 py-0.5 rounded text-[8px] font-black uppercase cursor-pointer transition-all ${
-                      theme === "dark" 
-                        ? "bg-[#D32F2F] text-white shadow-xs" 
-                        : "text-slate-500 hover:text-slate-200"
-                    }`}
-                  >
-                    Dark
-                  </button>
-                </div>
-              </div>
-
-              {/* Reset Settings & Start New */}
-              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[8px] font-sans font-black uppercase tracking-wider text-slate-400">Settings</span>
-                <button
-                  type="button"
-                  onClick={() => setShowResetModal(true)}
-                  className="px-2 py-1 rounded text-[8px] font-black uppercase tracking-wider text-slate-700 hover:text-[#D32F2F] bg-slate-100 hover:bg-red-50 border border-slate-200 transition-all cursor-pointer flex items-center gap-1"
-                  title="Reset settings, calibration targets and filters to fresh defaults without deleting your data"
-                >
-                  <RotateCcw className="w-2.5 h-2.5 text-[#D32F2F]" />
-                  <span>Reset & Start New</span>
-                </button>
-              </div>
             </div>
-          </div>
-
-          {/* Quick Consistency Streak Indicator in Sidebar */}
-          <div className="mb-4">
-            <ConsistencyStreakCounter compact={true} onNavigate={setView} />
-          </div>
-
-          {/* Categorized Navigation Sidebar List */}
-          <div className="space-y-5 overflow-y-auto max-h-[70vh] scrollbar-none pr-1">
-            {menuCategories.map((cat, idx) => (
-              <div key={idx} className="space-y-1.5">
-                <span className="text-[8px] font-sans font-black uppercase tracking-widest text-slate-400 block px-2">
-                  {cat.title}
-                </span>
-                
-                <div className="space-y-1">
-                  {cat.items.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = activeTab === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          setActiveTab(item.id);
-                          setIsSidebarOpen(false); // Close sidebar on mobile select
-                        }}
-                        className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left border cursor-pointer transition-all duration-150 ${
-                          isActive
-                            ? "bg-[#D32F2F] text-white border-[#D32F2F] shadow-md scale-[1.01]"
-                            : "bg-white border-slate-100 hover:border-slate-200 text-slate-700"
-                        }`}
-                      >
-                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-sans font-black uppercase tracking-wide leading-none">
-                            {item.label}
-                          </p>
-                          <p className={`text-[8px] mt-0.5 truncate ${isActive ? "text-white/80" : "text-slate-400"}`}>
-                            {item.desc}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+            <p className="text-[10px] sm:text-xs text-slate-500 truncate font-mono mt-0.5">
+              {user?.email}
+            </p>
           </div>
         </div>
 
-        {/* Backdrop overlay for mobile sidebar */}
-        {isSidebarOpen && (
-          <div 
-            onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden"
-          />
-        )}
-
-        {/* ==========================================
-            MAIN ACTIVE WORKSPACE CONTENT COLUMN
-            ========================================== */}
-        <div className="lg:col-span-9 space-y-6 w-full max-w-full min-w-0">
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowResetModal(true)}
+            className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-700 hover:text-[#D32F2F] bg-slate-100 hover:bg-red-50 border border-slate-200 transition-all cursor-pointer flex items-center gap-1.5"
+            title="Reset settings, calibration targets and filters to fresh defaults without deleting your data"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-[#D32F2F]" />
+            <span>Reset Settings</span>
+          </button>
+        </div>
+      </div>
           
           {/* Expiry Notification Banner */}
           {showExpiryAlert && (
@@ -637,7 +480,6 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
               )}
             </AnimatePresence>
           </div>
-        </div>
 
         {/* Reset Settings Confirmation Modal */}
         <AnimatePresence>
@@ -706,8 +548,6 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
             </div>
           )}
         </AnimatePresence>
-
-      </div>
     </div>
   );
 }
@@ -1797,7 +1637,6 @@ function TrajectoryView({
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
