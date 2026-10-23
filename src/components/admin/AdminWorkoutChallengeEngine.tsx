@@ -214,6 +214,12 @@ export default function AdminWorkoutChallengeEngine() {
   }, []);
 
   useEffect(() => {
+    // Heal any stale fit_deleted_exercises that may have suppressed exercises in the browser
+    if (typeof window !== "undefined" && window.localStorage) {
+      try {
+        window.localStorage.removeItem("fit_deleted_exercises");
+      } catch {}
+    }
     refreshOverrides();
   }, [refreshOverrides]);
 
@@ -259,7 +265,8 @@ export default function AdminWorkoutChallengeEngine() {
   // Check if override exists for this day or cycle
   const currentDayOverride = useMemo(() => {
     const normId = normalizeProgramId(selectedProgramId);
-    const progOverrides = serverOverrides[selectedProgramId] || serverOverrides[normId] || (adminTrack ? serverOverrides[`${normId}_${adminTrack}`] : {}) || {};
+    const trackKey = adminTrack ? `${normId}_${adminTrack}` : null;
+    const progOverrides = (trackKey && serverOverrides[trackKey]) || serverOverrides[selectedProgramId] || serverOverrides[normId] || {};
     const cycleKey = `cycle_${((effectiveDayNumber - 1) % 7) + 1}`;
     return progOverrides[String(effectiveDayNumber)] || progOverrides[cycleKey] || null;
   }, [serverOverrides, selectedProgramId, effectiveDayNumber, adminTrack]);
@@ -268,22 +275,26 @@ export default function AdminWorkoutChallengeEngine() {
   const tierCounts = useMemo(() => {
     const override = currentDayOverride;
     const base = baseDayPlan.exercises || [];
-    const allCount = (override && Array.isArray(override.exercises)) ? override.exercises.length : base.length;
-    const beginnerCount = (override?.levels?.beginner && Array.isArray(override.levels.beginner))
-      ? override.levels.beginner.length
-      : ((override?.beginnerExercises && Array.isArray(override.beginnerExercises)) ? override.beginnerExercises.length : 0);
-    const intermediateCount = (override?.levels?.intermediate && Array.isArray(override.levels.intermediate))
-      ? override.levels.intermediate.length
-      : ((override?.intermediateExercises && Array.isArray(override.intermediateExercises)) ? override.intermediateExercises.length : 0);
-    const advancedCount = (override?.levels?.advanced && Array.isArray(override.levels.advanced))
-      ? override.levels.advanced.length
-      : ((override?.advancedExercises && Array.isArray(override.advancedExercises)) ? override.advancedExercises.length : 0);
+    const allCount = (override && Array.isArray(override.exercises) && override.exercises.length > 0)
+      ? override.exercises.length
+      : base.length;
+
+    const getTierCount = (tier: "beginner" | "intermediate" | "advanced") => {
+      if (override?.levels?.[tier] && Array.isArray(override.levels[tier]) && override.levels[tier].length > 0) {
+        return override.levels[tier].length;
+      }
+      const tierExKey = `${tier}Exercises` as "beginnerExercises" | "intermediateExercises" | "advancedExercises";
+      if (override?.[tierExKey] && Array.isArray(override[tierExKey]) && override[tierExKey].length > 0) {
+        return override[tierExKey].length;
+      }
+      return allCount;
+    };
 
     return {
       all: allCount,
-      beginner: beginnerCount,
-      intermediate: intermediateCount,
-      advanced: advancedCount
+      beginner: getTierCount("beginner"),
+      intermediate: getTierCount("intermediate"),
+      advanced: getTierCount("advanced")
     };
   }, [currentDayOverride, baseDayPlan]);
 
@@ -310,38 +321,24 @@ export default function AdminWorkoutChallengeEngine() {
   const activeExercises = useMemo(() => {
     let rawList: ChallengeExerciseItem[] = [];
 
-    if (selectedDifficultyLevel === "beginner") {
-      if (currentDayOverride?.levels?.beginner && Array.isArray(currentDayOverride.levels.beginner)) {
-        rawList = currentDayOverride.levels.beginner;
-      } else if (currentDayOverride?.beginnerExercises && Array.isArray(currentDayOverride.beginnerExercises)) {
-        rawList = currentDayOverride.beginnerExercises;
-      } else {
-        rawList = (currentDayOverride && Array.isArray(currentDayOverride.exercises))
-          ? currentDayOverride.exercises
-          : (baseDayPlan.exercises || []);
+    const getTierList = (tier: "beginner" | "intermediate" | "advanced") => {
+      if (currentDayOverride?.levels?.[tier] && Array.isArray(currentDayOverride.levels[tier]) && currentDayOverride.levels[tier].length > 0) {
+        return currentDayOverride.levels[tier];
       }
-    } else if (selectedDifficultyLevel === "intermediate") {
-      if (currentDayOverride?.levels?.intermediate && Array.isArray(currentDayOverride.levels.intermediate)) {
-        rawList = currentDayOverride.levels.intermediate;
-      } else if (currentDayOverride?.intermediateExercises && Array.isArray(currentDayOverride.intermediateExercises)) {
-        rawList = currentDayOverride.intermediateExercises;
-      } else {
-        rawList = (currentDayOverride && Array.isArray(currentDayOverride.exercises))
-          ? currentDayOverride.exercises
-          : (baseDayPlan.exercises || []);
+      const tierExKey = `${tier}Exercises` as "beginnerExercises" | "intermediateExercises" | "advancedExercises";
+      if (currentDayOverride?.[tierExKey] && Array.isArray(currentDayOverride[tierExKey]) && currentDayOverride[tierExKey].length > 0) {
+        return currentDayOverride[tierExKey];
       }
-    } else if (selectedDifficultyLevel === "advanced") {
-      if (currentDayOverride?.levels?.advanced && Array.isArray(currentDayOverride.levels.advanced)) {
-        rawList = currentDayOverride.levels.advanced;
-      } else if (currentDayOverride?.advancedExercises && Array.isArray(currentDayOverride.advancedExercises)) {
-        rawList = currentDayOverride.advancedExercises;
-      } else {
-        rawList = (currentDayOverride && Array.isArray(currentDayOverride.exercises))
-          ? currentDayOverride.exercises
-          : (baseDayPlan.exercises || []);
-      }
+      // If tier is not separately customized, inherit the baseline workouts
+      return (currentDayOverride && Array.isArray(currentDayOverride.exercises) && currentDayOverride.exercises.length > 0)
+        ? currentDayOverride.exercises
+        : (baseDayPlan.exercises || []);
+    };
+
+    if (selectedDifficultyLevel === "beginner" || selectedDifficultyLevel === "intermediate" || selectedDifficultyLevel === "advanced") {
+      rawList = getTierList(selectedDifficultyLevel);
     } else {
-      rawList = (currentDayOverride && Array.isArray(currentDayOverride.exercises))
+      rawList = (currentDayOverride && Array.isArray(currentDayOverride.exercises) && currentDayOverride.exercises.length > 0)
         ? currentDayOverride.exercises
         : (baseDayPlan.exercises || []);
     }
@@ -350,30 +347,12 @@ export default function AdminWorkoutChallengeEngine() {
     const seenGifs = new Set<string>();
     const deduplicated: ChallengeExerciseItem[] = [];
 
-    // Check if any exercises were marked deleted
-    let deletedSet = new Set<string>();
-    if (typeof window !== "undefined" && window.localStorage) {
-      try {
-        const rawDel = window.localStorage.getItem("fit_deleted_exercises");
-        if (rawDel) {
-          const arr = JSON.parse(rawDel);
-          if (Array.isArray(arr)) {
-            arr.forEach((d: any) => {
-              if (typeof d === "string") deletedSet.add(d.toLowerCase().trim());
-              if (d && typeof d === "object" && d.name) deletedSet.add(String(d.name).toLowerCase().trim());
-              if (d && typeof d === "object" && d.id) deletedSet.add(String(d.id).toLowerCase().trim());
-            });
-          }
-        }
-      } catch {}
-    }
-
     for (const ex of rawList) {
+      if (!ex) continue;
       const name = (ex.exerciseName || (ex as any).name || "").trim();
       if (!name) continue;
       const lower = name.toLowerCase();
       if (seenNames.has(lower)) continue;
-      if (deletedSet.has(lower) || (ex.id && deletedSet.has(String(ex.id).toLowerCase().trim()))) continue;
       seenNames.add(lower);
 
       let gif = ex.gifUrl !== undefined ? ex.gifUrl : ((ex as any).customMediaUrl !== undefined ? (ex as any).customMediaUrl : undefined);
@@ -471,6 +450,10 @@ export default function AdminWorkoutChallengeEngine() {
       nextLevels.advanced = sanitizedExercises;
     }
 
+    const baselineExercises = targetTier === "all"
+      ? sanitizedExercises
+      : (existingDayData.exercises || baseDayPlan.exercises || []);
+
     const updatedDayData = {
       ...existingDayData,
       title: splitTitle,
@@ -478,11 +461,14 @@ export default function AdminWorkoutChallengeEngine() {
       focus: splitCategory,
       isCardioOnly: cardioState.isCardio,
       cardioDistance: cardioState.distance,
-      exercises: sanitizedExercises,
+      cardioType: cardioState.type,
+      cardioGuidelines: cardioState.guidelines,
+      estimatedDuration: cardioState.durationMinutes,
+      exercises: baselineExercises,
       levels: nextLevels,
-      beginnerExercises: targetTier === "beginner" ? sanitizedExercises : (existingDayData.beginnerExercises || nextLevels.beginner),
-      intermediateExercises: targetTier === "intermediate" ? sanitizedExercises : (existingDayData.intermediateExercises || nextLevels.intermediate),
-      advancedExercises: targetTier === "advanced" ? sanitizedExercises : (existingDayData.advancedExercises || nextLevels.advanced),
+      beginnerExercises: targetTier === "beginner" ? sanitizedExercises : (existingDayData.beginnerExercises || nextLevels.beginner || baselineExercises),
+      intermediateExercises: targetTier === "intermediate" ? sanitizedExercises : (existingDayData.intermediateExercises || nextLevels.intermediate || baselineExercises),
+      advancedExercises: targetTier === "advanced" ? sanitizedExercises : (existingDayData.advancedExercises || nextLevels.advanced || baselineExercises),
     };
 
     // Optimistic UI update
@@ -738,7 +724,7 @@ export default function AdminWorkoutChallengeEngine() {
     }
   };
 
-  // Delete Only (Permanently remove workout)
+  // Delete Only (Permanently remove workout from this routine)
   const handleDeleteOnly = async () => {
     if (!targetToDelete) return;
     setIsDeleting(true);
@@ -747,20 +733,10 @@ export default function AdminWorkoutChallengeEngine() {
       const targetId = targetToDelete.id;
       const targetName = (targetToDelete.exerciseName || (targetToDelete as any).name || "").toLowerCase().trim();
       const updated = activeExercises.filter((ex: ChallengeExerciseItem) => {
-        if (ex.id === targetId) return false;
+        if (targetId && ex.id && ex.id === targetId) return false;
         const n = (ex.exerciseName || (ex as any).name || "").toLowerCase().trim();
         return n !== targetName;
       });
-
-      // Record in fit_deleted_exercises to prevent resurrection across all views
-      try {
-        const rawDel = localStorage.getItem("fit_deleted_exercises");
-        const arr = rawDel ? JSON.parse(rawDel) : [];
-        if (targetName && !arr.includes(targetName)) {
-          arr.push(targetName);
-          localStorage.setItem("fit_deleted_exercises", JSON.stringify(arr));
-        }
-      } catch {}
 
       await handleReorderExercises(updated, selectedDifficultyLevel);
 
@@ -853,7 +829,7 @@ export default function AdminWorkoutChallengeEngine() {
       reps: selectedDifficultyLevel === "beginner" ? "10-12 reps" : (selectedDifficultyLevel === "advanced" ? "6-8 heavy reps" : "8-10 reps")
     }));
 
-    handleReorderExercises(copied);
+    handleReorderExercises(copied, selectedDifficultyLevel);
     setSaveSuccessMsg(`Copied ${copied.length} baseline drills into ${formattedTierName} routine!`);
     setTimeout(() => setSaveSuccessMsg(null), 3000);
   };
@@ -861,7 +837,7 @@ export default function AdminWorkoutChallengeEngine() {
   // Start a fresh blank routine for the active tier
   const handleStartBlankActiveTier = () => {
     if (selectedDifficultyLevel === "all") return;
-    handleReorderExercises([]);
+    handleReorderExercises([], selectedDifficultyLevel);
     setSaveSuccessMsg(`Started blank routine for ${selectedDifficultyLevel.toUpperCase()}! Click "+ Add Exercise Drill" to add drills.`);
     setTimeout(() => setSaveSuccessMsg(null), 3000);
   };
@@ -899,9 +875,9 @@ export default function AdminWorkoutChallengeEngine() {
           : "Execute with strict biomechanics and progressive overload.",
         exercises: selectedDifficultyLevel === "all" ? (cardioState.isCardio ? [] : activeExercises) : baselineList,
         levels: nextLevels,
-        beginnerExercises: selectedDifficultyLevel === "beginner" ? activeExercises : (currentDayOverride?.beginnerExercises || nextLevels.beginner),
-        intermediateExercises: selectedDifficultyLevel === "intermediate" ? activeExercises : (currentDayOverride?.intermediateExercises || nextLevels.intermediate),
-        advancedExercises: selectedDifficultyLevel === "advanced" ? activeExercises : (currentDayOverride?.advancedExercises || nextLevels.advanced),
+        beginnerExercises: selectedDifficultyLevel === "beginner" ? activeExercises : (currentDayOverride?.beginnerExercises || nextLevels.beginner || baselineList),
+        intermediateExercises: selectedDifficultyLevel === "intermediate" ? activeExercises : (currentDayOverride?.intermediateExercises || nextLevels.intermediate || baselineList),
+        advancedExercises: selectedDifficultyLevel === "advanced" ? activeExercises : (currentDayOverride?.advancedExercises || nextLevels.advanced || baselineList),
       };
 
       const token = await auth.currentUser?.getIdToken().catch(() => null);

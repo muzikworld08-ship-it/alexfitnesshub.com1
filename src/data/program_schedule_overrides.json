@@ -1,6 +1,6 @@
 {
   "immortal_90": {
-    "cycle_1": {
+    "1": {
       "title": "Monday: Push",
       "category": "Chest, shoulders and triceps",
       "focus": "Chest, shoulders and triceps",
@@ -32,7 +32,7 @@
             "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
             "Retract and depress shoulder blades, driving upper back into the bench pad.",
             "Inhale deeply, unrack the bar, and pull it directly over your chest.",
-            "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45°).",
+            "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45\u00b0).",
             "Press bar forcefully back to start position while exhaling at peak."
           ],
           "coachingCues": [
@@ -61,7 +61,7 @@
           "restTime": "75s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
           "instructions": [
-            "Set adjustable bench to a 30° to 45° incline.",
+            "Set adjustable bench to a 30\u00b0 to 45\u00b0 incline.",
             "Kick dumbbells to shoulders and plant feet firmly on the floor.",
             "Press dumbbells upward in an arc without clanking the weights together.",
             "Focus contraction on clavicular head (upper chest) at the peak.",
@@ -183,7 +183,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
           "instructions": [
             "Lie flat on bench holding EZ-curl bar directly above shoulders.",
-            "Angle upper arms slightly back (approx 10°) to keep tension on triceps.",
+            "Angle upper arms slightly back (approx 10\u00b0) to keep tension on triceps.",
             "Lower bar smoothly toward hairline by bending elbows only.",
             "Extend elbows forcefully back to starting angle.",
             "Avoid flaring elbows outward during press."
@@ -241,7 +241,7 @@
             ],
             "difficulty": "Beginner",
             "sets": 3,
-            "reps": "8-10 reps",
+            "reps": "15-20 reps",
             "restTime": "45s",
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
             "instructions": [
@@ -299,9 +299,9 @@
             "equipment": [
               "Cable"
             ],
-            "difficulty": "Beginner",
+            "difficulty": "Intermediate",
             "sets": 3,
-            "reps": "10-12 reps",
+            "reps": "12-15 reps",
             "restTime": "60s",
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
             "instructions": [
@@ -331,7 +331,7 @@
             ],
             "difficulty": "Beginner",
             "sets": 3,
-            "reps": "10-12 reps",
+            "reps": "12-15 reps",
             "restTime": "60s",
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
             "instructions": [
@@ -359,8 +359,8 @@
               "Dumbbells"
             ],
             "difficulty": "Beginner",
-            "sets": 3,
-            "reps": "10-12 reps",
+            "sets": 4,
+            "reps": "12-15 reps",
             "restTime": "60s",
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
             "instructions": [
@@ -400,7 +400,7 @@
               "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
               "Retract and depress shoulder blades, driving upper back into the bench pad.",
               "Inhale deeply, unrack the bar, and pull it directly over your chest.",
-              "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45°).",
+              "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45\u00b0).",
               "Press bar forcefully back to start position while exhaling at peak."
             ],
             "coachingCues": [
@@ -429,225 +429,11 @@
             "restTime": "75s",
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
             "instructions": [
-              "Set adjustable bench to a 30° to 45° incline.",
+              "Set adjustable bench to a 30\u00b0 to 45\u00b0 incline.",
               "Kick dumbbells to shoulders and plant feet firmly on the floor.",
               "Press dumbbells upward in an arc without clanking the weights together.",
               "Focus contraction on clavicular head (upper chest) at the peak.",
               "Lower under control over a 3-second eccentric tempo."
-            ],
-            "coachingCues": [
-              "Maintain neutral spine",
-              "Breathe smoothly",
-              "Control concentric and eccentric tempo"
-            ]
-          },
-          {
-            "id": "ex_cable_chest_flyes",
-            "exerciseName": "Cable Standing Chest Flyes",
-            "category": "Chest",
-            "muscleGroup": [
-              "Chest",
-              "Pectoralis Major"
-            ],
-            "equipment": [
-              "Cable"
-            ],
-            "difficulty": "Intermediate",
-            "sets": 3,
-            "reps": "12 reps",
-            "restTime": "60s",
-            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
-            "instructions": [
-              "Set dual cable pulleys at chest height with D-handles attached.",
-              "Take one step forward into a staggered stance with chest tall.",
-              "Bring hands together in a wide arc like hugging a massive barrel.",
-              "Squeeze pectorals intensely at midpoint for 1 full second.",
-              "Control weights back under continuous cable tension."
-            ],
-            "coachingCues": [
-              "Maintain neutral spine",
-              "Breathe smoothly",
-              "Control concentric and eccentric tempo"
-            ]
-          },
-          {
-            "id": "ex_triceps_rope_pushdown",
-            "exerciseName": "Triceps Cable Rope Pushdown",
-            "category": "Triceps",
-            "muscleGroup": [
-              "Triceps",
-              "Lateral Head",
-              "Long Head"
-            ],
-            "equipment": [
-              "Cable"
-            ],
-            "difficulty": "Beginner",
-            "sets": 3,
-            "reps": "12 reps",
-            "restTime": "60s",
-            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
-            "instructions": [
-              "Attach rope to high pulley, grasp handles with neutral grip.",
-              "Pin elbows tightly against your ribcage.",
-              "Push down until arms are fully locked out.",
-              "Spread rope ends apart at bottom for peak triceps contraction.",
-              "Control ascent back to chest height without moving elbows forward."
-            ],
-            "coachingCues": [
-              "Maintain neutral spine",
-              "Breathe smoothly",
-              "Control concentric and eccentric tempo"
-            ]
-          },
-          {
-            "id": "ex_skull_crushers",
-            "exerciseName": "EZ-Bar Lying Skull Crushers",
-            "category": "Triceps",
-            "muscleGroup": [
-              "Triceps",
-              "Long Head",
-              "Medial Head"
-            ],
-            "equipment": [
-              "Barbell",
-              "Bench"
-            ],
-            "difficulty": "Intermediate",
-            "sets": 3,
-            "reps": "10 reps",
-            "restTime": "75s",
-            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
-            "instructions": [
-              "Lie flat on bench holding EZ-curl bar directly above shoulders.",
-              "Angle upper arms slightly back (approx 10°) to keep tension on triceps.",
-              "Lower bar smoothly toward hairline by bending elbows only.",
-              "Extend elbows forcefully back to starting angle.",
-              "Avoid flaring elbows outward during press."
-            ],
-            "coachingCues": [
-              "Maintain neutral spine",
-              "Breathe smoothly",
-              "Control concentric and eccentric tempo"
-            ]
-          },
-          {
-            "id": "ex_dumbbell_lateral_raises",
-            "exerciseName": "Standing Dumbbell Lateral Raises",
-            "category": "Shoulders",
-            "muscleGroup": [
-              "Shoulders",
-              "Lateral Deltoids"
-            ],
-            "equipment": [
-              "Dumbbells"
-            ],
-            "difficulty": "Beginner",
-            "sets": 4,
-            "reps": "12 reps",
-            "restTime": "60s",
-            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
-            "instructions": [
-              "Hold dumbbells at sides with soft bend in elbows.",
-              "Lean forward slightly from hips (approx 10 degrees).",
-              "Raise arms out laterally until elbows are at shoulder height.",
-              "Lead with elbows rather than hands to isolate side delts.",
-              "Control descent smoothly over 2 seconds without using momentum."
-            ],
-            "coachingCues": [
-              "Maintain neutral spine",
-              "Breathe smoothly",
-              "Control concentric and eccentric tempo"
-            ]
-          }
-        ],
-        "advanced": [
-          {
-            "id": "ex_barbell_bench_press",
-            "exerciseName": "Barbell Flat Bench Press",
-            "category": "Chest",
-            "muscleGroup": [
-              "Chest",
-              "Triceps",
-              "Anterior Deltoids"
-            ],
-            "equipment": [
-              "Barbell",
-              "Bench"
-            ],
-            "difficulty": "Intermediate",
-            "sets": 4,
-            "reps": "6-8 reps",
-            "restTime": "90s",
-            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-BENCH-PRESS.gif",
-            "instructions": [
-              "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
-              "Retract and depress shoulder blades, driving upper back into the bench pad.",
-              "Inhale deeply, unrack the bar, and pull it directly over your chest.",
-              "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45°).",
-              "Press bar forcefully back to start position while exhaling at peak."
-            ],
-            "coachingCues": [
-              "Maintain neutral spine",
-              "Breathe smoothly",
-              "Control concentric and eccentric tempo"
-            ]
-          },
-          {
-            "id": "ex_incline_dumbbell_press",
-            "exerciseName": "Incline Dumbbell Bench Press",
-            "category": "Chest",
-            "muscleGroup": [
-              "Chest",
-              "Upper Chest",
-              "Triceps",
-              "Shoulders"
-            ],
-            "equipment": [
-              "Dumbbells",
-              "Bench"
-            ],
-            "difficulty": "Intermediate",
-            "sets": 4,
-            "reps": "8-10 reps",
-            "restTime": "75s",
-            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
-            "instructions": [
-              "Set adjustable bench to a 30° to 45° incline.",
-              "Kick dumbbells to shoulders and plant feet firmly on the floor.",
-              "Press dumbbells upward in an arc without clanking the weights together.",
-              "Focus contraction on clavicular head (upper chest) at the peak.",
-              "Lower under control over a 3-second eccentric tempo."
-            ],
-            "coachingCues": [
-              "Maintain neutral spine",
-              "Breathe smoothly",
-              "Control concentric and eccentric tempo"
-            ]
-          },
-          {
-            "id": "ex_chest_dips",
-            "exerciseName": "Parallel Bar Chest Dips",
-            "category": "Chest",
-            "muscleGroup": [
-              "Chest",
-              "Triceps",
-              "Anterior Deltoids"
-            ],
-            "equipment": [
-              "Bodyweight"
-            ],
-            "difficulty": "Advanced",
-            "sets": 4,
-            "reps": "10-12 reps",
-            "restTime": "75s",
-            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Chest-Dip.gif",
-            "instructions": [
-              "Suspend yourself on parallel dip bars with straight arms.",
-              "Lean forward 20-30 degrees and tuck chin slightly to shift emphasis onto lower chest.",
-              "Lower smoothly until elbows reach 90 degrees.",
-              "Drive hands down into bars and press up to lockout.",
-              "Maintain forward lean throughout entire set."
             ],
             "coachingCues": [
               "Maintain neutral spine",
@@ -685,6 +471,36 @@
             ]
           },
           {
+            "id": "ex_triceps_rope_pushdown",
+            "exerciseName": "Triceps Cable Rope Pushdown",
+            "category": "Triceps",
+            "muscleGroup": [
+              "Triceps",
+              "Lateral Head",
+              "Long Head"
+            ],
+            "equipment": [
+              "Cable"
+            ],
+            "difficulty": "Beginner",
+            "sets": 3,
+            "reps": "12-15 reps",
+            "restTime": "60s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
+            "instructions": [
+              "Attach rope to high pulley, grasp handles with neutral grip.",
+              "Pin elbows tightly against your ribcage.",
+              "Push down until arms are fully locked out.",
+              "Spread rope ends apart at bottom for peak triceps contraction.",
+              "Control ascent back to chest height without moving elbows forward."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
             "id": "ex_skull_crushers",
             "exerciseName": "EZ-Bar Lying Skull Crushers",
             "category": "Triceps",
@@ -698,13 +514,13 @@
               "Bench"
             ],
             "difficulty": "Intermediate",
-            "sets": 4,
-            "reps": "8-10 reps",
+            "sets": 3,
+            "reps": "10-12 reps",
             "restTime": "75s",
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
             "instructions": [
               "Lie flat on bench holding EZ-curl bar directly above shoulders.",
-              "Angle upper arms slightly back (approx 10°) to keep tension on triceps.",
+              "Angle upper arms slightly back (approx 10\u00b0) to keep tension on triceps.",
               "Lower bar smoothly toward hairline by bending elbows only.",
               "Extend elbows forcefully back to starting angle.",
               "Avoid flaring elbows outward during press."
@@ -716,29 +532,60 @@
             ]
           },
           {
-            "id": "ex_close_grip_bench",
-            "exerciseName": "Close-Grip Barbell Bench Press",
-            "category": "Triceps",
+            "id": "ex_dumbbell_lateral_raises",
+            "exerciseName": "Standing Dumbbell Lateral Raises",
+            "category": "Shoulders",
             "muscleGroup": [
-              "Triceps",
+              "Shoulders",
+              "Lateral Deltoids"
+            ],
+            "equipment": [
+              "Dumbbells"
+            ],
+            "difficulty": "Beginner",
+            "sets": 4,
+            "reps": "12-15 reps",
+            "restTime": "60s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
+            "instructions": [
+              "Hold dumbbells at sides with soft bend in elbows.",
+              "Lean forward slightly from hips (approx 10 degrees).",
+              "Raise arms out laterally until elbows are at shoulder height.",
+              "Lead with elbows rather than hands to isolate side delts.",
+              "Control descent smoothly over 2 seconds without using momentum."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          }
+        ],
+        "advanced": [
+          {
+            "id": "ex_barbell_bench_press",
+            "exerciseName": "Barbell Flat Bench Press",
+            "category": "Chest",
+            "muscleGroup": [
               "Chest",
-              "Shoulders"
+              "Triceps",
+              "Anterior Deltoids"
             ],
             "equipment": [
               "Barbell",
               "Bench"
             ],
             "difficulty": "Intermediate",
-            "sets": 3,
+            "sets": 4,
             "reps": "8-10 reps",
             "restTime": "90s",
-            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Close-Grip-Bench-Press.gif",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-BENCH-PRESS.gif",
             "instructions": [
-              "Grip barbell shoulder-width apart without excessively narrow wrist bend.",
-              "Keep elbows tucked directly along torso during descent.",
-              "Touch lower sternum and press forcefully with triceps.",
-              "Lock out at top and squeeze triceps horseshoes.",
-              "Maintain steady foot plant on the floor."
+              "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
+              "Retract and depress shoulder blades, driving upper back into the bench pad.",
+              "Inhale deeply, unrack the bar, and pull it directly over your chest.",
+              "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45\u00b0).",
+              "Press bar forcefully back to start position while exhaling at peak."
             ],
             "coachingCues": [
               "Maintain neutral spine",
@@ -747,29 +594,180 @@
             ]
           },
           {
-            "id": "ex_overhead_military_press",
-            "exerciseName": "Barbell Overhead Military Press",
+            "id": "ex_incline_dumbbell_press",
+            "exerciseName": "Incline Dumbbell Bench Press",
+            "category": "Chest",
+            "muscleGroup": [
+              "Chest",
+              "Upper Chest",
+              "Triceps",
+              "Shoulders"
+            ],
+            "equipment": [
+              "Dumbbells",
+              "Bench"
+            ],
+            "difficulty": "Intermediate",
+            "sets": 3,
+            "reps": "10-12 reps",
+            "restTime": "75s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
+            "instructions": [
+              "Set adjustable bench to a 30\u00b0 to 45\u00b0 incline.",
+              "Kick dumbbells to shoulders and plant feet firmly on the floor.",
+              "Press dumbbells upward in an arc without clanking the weights together.",
+              "Focus contraction on clavicular head (upper chest) at the peak.",
+              "Lower under control over a 3-second eccentric tempo."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_cable_chest_flyes",
+            "exerciseName": "Cable Standing Chest Flyes",
+            "category": "Chest",
+            "muscleGroup": [
+              "Chest",
+              "Pectoralis Major"
+            ],
+            "equipment": [
+              "Cable"
+            ],
+            "difficulty": "Intermediate",
+            "sets": 3,
+            "reps": "12-15 reps",
+            "restTime": "60s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
+            "instructions": [
+              "Set dual cable pulleys at chest height with D-handles attached.",
+              "Take one step forward into a staggered stance with chest tall.",
+              "Bring hands together in a wide arc like hugging a massive barrel.",
+              "Squeeze pectorals intensely at midpoint for 1 full second.",
+              "Control weights back under continuous cable tension."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_standard_pushups",
+            "exerciseName": "Strict Calisthenic Push-Ups",
+            "category": "Chest",
+            "muscleGroup": [
+              "Chest",
+              "Core",
+              "Triceps",
+              "Shoulders"
+            ],
+            "equipment": [
+              "Bodyweight"
+            ],
+            "difficulty": "Beginner",
+            "sets": 3,
+            "reps": "15-20 reps",
+            "restTime": "45s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
+            "instructions": [
+              "Set hands slightly wider than shoulders in high plank position.",
+              "Lock glutes and pull navel into spine to maintain rigid plank line.",
+              "Lower chest smoothly until touching or hovering 1 inch from floor.",
+              "Press floor away with palms and flare lats at top.",
+              "Maintain steady breathing: inhale on descent, exhale on press."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_triceps_rope_pushdown",
+            "exerciseName": "Triceps Cable Rope Pushdown",
+            "category": "Triceps",
+            "muscleGroup": [
+              "Triceps",
+              "Lateral Head",
+              "Long Head"
+            ],
+            "equipment": [
+              "Cable"
+            ],
+            "difficulty": "Beginner",
+            "sets": 3,
+            "reps": "12-15 reps",
+            "restTime": "60s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
+            "instructions": [
+              "Attach rope to high pulley, grasp handles with neutral grip.",
+              "Pin elbows tightly against your ribcage.",
+              "Push down until arms are fully locked out.",
+              "Spread rope ends apart at bottom for peak triceps contraction.",
+              "Control ascent back to chest height without moving elbows forward."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_skull_crushers",
+            "exerciseName": "EZ-Bar Lying Skull Crushers",
+            "category": "Triceps",
+            "muscleGroup": [
+              "Triceps",
+              "Long Head",
+              "Medial Head"
+            ],
+            "equipment": [
+              "Barbell",
+              "Bench"
+            ],
+            "difficulty": "Intermediate",
+            "sets": 3,
+            "reps": "10-12 reps",
+            "restTime": "75s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
+            "instructions": [
+              "Lie flat on bench holding EZ-curl bar directly above shoulders.",
+              "Angle upper arms slightly back (approx 10\u00b0) to keep tension on triceps.",
+              "Lower bar smoothly toward hairline by bending elbows only.",
+              "Extend elbows forcefully back to starting angle.",
+              "Avoid flaring elbows outward during press."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_dumbbell_lateral_raises",
+            "exerciseName": "Standing Dumbbell Lateral Raises",
             "category": "Shoulders",
             "muscleGroup": [
               "Shoulders",
-              "Deltoids",
-              "Triceps",
-              "Upper Chest"
+              "Lateral Deltoids"
             ],
             "equipment": [
-              "Barbell"
+              "Dumbbells"
             ],
-            "difficulty": "Intermediate",
+            "difficulty": "Beginner",
             "sets": 4,
-            "reps": "8-10 reps",
-            "restTime": "90s",
-            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Military-Press.gif",
+            "reps": "12-15 reps",
+            "restTime": "60s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
             "instructions": [
-              "Rest bar across clavicles with overhand grip just outside shoulders.",
-              "Squeeze glutes and brace core to prevent lumbar hyperextension.",
-              "Press bar straight upward in vertical trajectory.",
-              "Bring head forward under bar once bar clears forehead.",
-              "Lock out overhead and control bar back down to collarbones."
+              "Hold dumbbells at sides with soft bend in elbows.",
+              "Lean forward slightly from hips (approx 10 degrees).",
+              "Raise arms out laterally until elbows are at shoulder height.",
+              "Lead with elbows rather than hands to isolate side delts.",
+              "Control descent smoothly over 2 seconds without using momentum."
             ],
             "coachingCues": [
               "Maintain neutral spine",
@@ -795,7 +793,7 @@
           ],
           "difficulty": "Beginner",
           "sets": 3,
-          "reps": "8-10 reps",
+          "reps": "15-20 reps",
           "restTime": "45s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
           "instructions": [
@@ -853,9 +851,9 @@
           "equipment": [
             "Cable"
           ],
-          "difficulty": "Beginner",
+          "difficulty": "Intermediate",
           "sets": 3,
-          "reps": "10-12 reps",
+          "reps": "12-15 reps",
           "restTime": "60s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
           "instructions": [
@@ -885,7 +883,7 @@
           ],
           "difficulty": "Beginner",
           "sets": 3,
-          "reps": "10-12 reps",
+          "reps": "12-15 reps",
           "restTime": "60s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
           "instructions": [
@@ -913,8 +911,8 @@
             "Dumbbells"
           ],
           "difficulty": "Beginner",
-          "sets": 3,
-          "reps": "10-12 reps",
+          "sets": 4,
+          "reps": "12-15 reps",
           "restTime": "60s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
           "instructions": [
@@ -954,7 +952,7 @@
             "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
             "Retract and depress shoulder blades, driving upper back into the bench pad.",
             "Inhale deeply, unrack the bar, and pull it directly over your chest.",
-            "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45°).",
+            "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45\u00b0).",
             "Press bar forcefully back to start position while exhaling at peak."
           ],
           "coachingCues": [
@@ -983,225 +981,11 @@
           "restTime": "75s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
           "instructions": [
-            "Set adjustable bench to a 30° to 45° incline.",
+            "Set adjustable bench to a 30\u00b0 to 45\u00b0 incline.",
             "Kick dumbbells to shoulders and plant feet firmly on the floor.",
             "Press dumbbells upward in an arc without clanking the weights together.",
             "Focus contraction on clavicular head (upper chest) at the peak.",
             "Lower under control over a 3-second eccentric tempo."
-          ],
-          "coachingCues": [
-            "Maintain neutral spine",
-            "Breathe smoothly",
-            "Control concentric and eccentric tempo"
-          ]
-        },
-        {
-          "id": "ex_cable_chest_flyes",
-          "exerciseName": "Cable Standing Chest Flyes",
-          "category": "Chest",
-          "muscleGroup": [
-            "Chest",
-            "Pectoralis Major"
-          ],
-          "equipment": [
-            "Cable"
-          ],
-          "difficulty": "Intermediate",
-          "sets": 3,
-          "reps": "12 reps",
-          "restTime": "60s",
-          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
-          "instructions": [
-            "Set dual cable pulleys at chest height with D-handles attached.",
-            "Take one step forward into a staggered stance with chest tall.",
-            "Bring hands together in a wide arc like hugging a massive barrel.",
-            "Squeeze pectorals intensely at midpoint for 1 full second.",
-            "Control weights back under continuous cable tension."
-          ],
-          "coachingCues": [
-            "Maintain neutral spine",
-            "Breathe smoothly",
-            "Control concentric and eccentric tempo"
-          ]
-        },
-        {
-          "id": "ex_triceps_rope_pushdown",
-          "exerciseName": "Triceps Cable Rope Pushdown",
-          "category": "Triceps",
-          "muscleGroup": [
-            "Triceps",
-            "Lateral Head",
-            "Long Head"
-          ],
-          "equipment": [
-            "Cable"
-          ],
-          "difficulty": "Beginner",
-          "sets": 3,
-          "reps": "12 reps",
-          "restTime": "60s",
-          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
-          "instructions": [
-            "Attach rope to high pulley, grasp handles with neutral grip.",
-            "Pin elbows tightly against your ribcage.",
-            "Push down until arms are fully locked out.",
-            "Spread rope ends apart at bottom for peak triceps contraction.",
-            "Control ascent back to chest height without moving elbows forward."
-          ],
-          "coachingCues": [
-            "Maintain neutral spine",
-            "Breathe smoothly",
-            "Control concentric and eccentric tempo"
-          ]
-        },
-        {
-          "id": "ex_skull_crushers",
-          "exerciseName": "EZ-Bar Lying Skull Crushers",
-          "category": "Triceps",
-          "muscleGroup": [
-            "Triceps",
-            "Long Head",
-            "Medial Head"
-          ],
-          "equipment": [
-            "Barbell",
-            "Bench"
-          ],
-          "difficulty": "Intermediate",
-          "sets": 3,
-          "reps": "10 reps",
-          "restTime": "75s",
-          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
-          "instructions": [
-            "Lie flat on bench holding EZ-curl bar directly above shoulders.",
-            "Angle upper arms slightly back (approx 10°) to keep tension on triceps.",
-            "Lower bar smoothly toward hairline by bending elbows only.",
-            "Extend elbows forcefully back to starting angle.",
-            "Avoid flaring elbows outward during press."
-          ],
-          "coachingCues": [
-            "Maintain neutral spine",
-            "Breathe smoothly",
-            "Control concentric and eccentric tempo"
-          ]
-        },
-        {
-          "id": "ex_dumbbell_lateral_raises",
-          "exerciseName": "Standing Dumbbell Lateral Raises",
-          "category": "Shoulders",
-          "muscleGroup": [
-            "Shoulders",
-            "Lateral Deltoids"
-          ],
-          "equipment": [
-            "Dumbbells"
-          ],
-          "difficulty": "Beginner",
-          "sets": 4,
-          "reps": "12 reps",
-          "restTime": "60s",
-          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
-          "instructions": [
-            "Hold dumbbells at sides with soft bend in elbows.",
-            "Lean forward slightly from hips (approx 10 degrees).",
-            "Raise arms out laterally until elbows are at shoulder height.",
-            "Lead with elbows rather than hands to isolate side delts.",
-            "Control descent smoothly over 2 seconds without using momentum."
-          ],
-          "coachingCues": [
-            "Maintain neutral spine",
-            "Breathe smoothly",
-            "Control concentric and eccentric tempo"
-          ]
-        }
-      ],
-      "advancedExercises": [
-        {
-          "id": "ex_barbell_bench_press",
-          "exerciseName": "Barbell Flat Bench Press",
-          "category": "Chest",
-          "muscleGroup": [
-            "Chest",
-            "Triceps",
-            "Anterior Deltoids"
-          ],
-          "equipment": [
-            "Barbell",
-            "Bench"
-          ],
-          "difficulty": "Intermediate",
-          "sets": 4,
-          "reps": "6-8 reps",
-          "restTime": "90s",
-          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-BENCH-PRESS.gif",
-          "instructions": [
-            "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
-            "Retract and depress shoulder blades, driving upper back into the bench pad.",
-            "Inhale deeply, unrack the bar, and pull it directly over your chest.",
-            "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45°).",
-            "Press bar forcefully back to start position while exhaling at peak."
-          ],
-          "coachingCues": [
-            "Maintain neutral spine",
-            "Breathe smoothly",
-            "Control concentric and eccentric tempo"
-          ]
-        },
-        {
-          "id": "ex_incline_dumbbell_press",
-          "exerciseName": "Incline Dumbbell Bench Press",
-          "category": "Chest",
-          "muscleGroup": [
-            "Chest",
-            "Upper Chest",
-            "Triceps",
-            "Shoulders"
-          ],
-          "equipment": [
-            "Dumbbells",
-            "Bench"
-          ],
-          "difficulty": "Intermediate",
-          "sets": 4,
-          "reps": "8-10 reps",
-          "restTime": "75s",
-          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
-          "instructions": [
-            "Set adjustable bench to a 30° to 45° incline.",
-            "Kick dumbbells to shoulders and plant feet firmly on the floor.",
-            "Press dumbbells upward in an arc without clanking the weights together.",
-            "Focus contraction on clavicular head (upper chest) at the peak.",
-            "Lower under control over a 3-second eccentric tempo."
-          ],
-          "coachingCues": [
-            "Maintain neutral spine",
-            "Breathe smoothly",
-            "Control concentric and eccentric tempo"
-          ]
-        },
-        {
-          "id": "ex_chest_dips",
-          "exerciseName": "Parallel Bar Chest Dips",
-          "category": "Chest",
-          "muscleGroup": [
-            "Chest",
-            "Triceps",
-            "Anterior Deltoids"
-          ],
-          "equipment": [
-            "Bodyweight"
-          ],
-          "difficulty": "Advanced",
-          "sets": 4,
-          "reps": "10-12 reps",
-          "restTime": "75s",
-          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Chest-Dip.gif",
-          "instructions": [
-            "Suspend yourself on parallel dip bars with straight arms.",
-            "Lean forward 20-30 degrees and tuck chin slightly to shift emphasis onto lower chest.",
-            "Lower smoothly until elbows reach 90 degrees.",
-            "Drive hands down into bars and press up to lockout.",
-            "Maintain forward lean throughout entire set."
           ],
           "coachingCues": [
             "Maintain neutral spine",
@@ -1239,6 +1023,36 @@
           ]
         },
         {
+          "id": "ex_triceps_rope_pushdown",
+          "exerciseName": "Triceps Cable Rope Pushdown",
+          "category": "Triceps",
+          "muscleGroup": [
+            "Triceps",
+            "Lateral Head",
+            "Long Head"
+          ],
+          "equipment": [
+            "Cable"
+          ],
+          "difficulty": "Beginner",
+          "sets": 3,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
+          "instructions": [
+            "Attach rope to high pulley, grasp handles with neutral grip.",
+            "Pin elbows tightly against your ribcage.",
+            "Push down until arms are fully locked out.",
+            "Spread rope ends apart at bottom for peak triceps contraction.",
+            "Control ascent back to chest height without moving elbows forward."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
           "id": "ex_skull_crushers",
           "exerciseName": "EZ-Bar Lying Skull Crushers",
           "category": "Triceps",
@@ -1252,13 +1066,13 @@
             "Bench"
           ],
           "difficulty": "Intermediate",
-          "sets": 4,
-          "reps": "8-10 reps",
+          "sets": 3,
+          "reps": "10-12 reps",
           "restTime": "75s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
           "instructions": [
             "Lie flat on bench holding EZ-curl bar directly above shoulders.",
-            "Angle upper arms slightly back (approx 10°) to keep tension on triceps.",
+            "Angle upper arms slightly back (approx 10\u00b0) to keep tension on triceps.",
             "Lower bar smoothly toward hairline by bending elbows only.",
             "Extend elbows forcefully back to starting angle.",
             "Avoid flaring elbows outward during press."
@@ -1270,60 +1084,27 @@
           ]
         },
         {
-          "id": "ex_close_grip_bench",
-          "exerciseName": "Close-Grip Barbell Bench Press",
-          "category": "Triceps",
-          "muscleGroup": [
-            "Triceps",
-            "Chest",
-            "Shoulders"
-          ],
-          "equipment": [
-            "Barbell",
-            "Bench"
-          ],
-          "difficulty": "Intermediate",
-          "sets": 3,
-          "reps": "8-10 reps",
-          "restTime": "90s",
-          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Close-Grip-Bench-Press.gif",
-          "instructions": [
-            "Grip barbell shoulder-width apart without excessively narrow wrist bend.",
-            "Keep elbows tucked directly along torso during descent.",
-            "Touch lower sternum and press forcefully with triceps.",
-            "Lock out at top and squeeze triceps horseshoes.",
-            "Maintain steady foot plant on the floor."
-          ],
-          "coachingCues": [
-            "Maintain neutral spine",
-            "Breathe smoothly",
-            "Control concentric and eccentric tempo"
-          ]
-        },
-        {
-          "id": "ex_overhead_military_press",
-          "exerciseName": "Barbell Overhead Military Press",
+          "id": "ex_dumbbell_lateral_raises",
+          "exerciseName": "Standing Dumbbell Lateral Raises",
           "category": "Shoulders",
           "muscleGroup": [
             "Shoulders",
-            "Deltoids",
-            "Triceps",
-            "Upper Chest"
+            "Lateral Deltoids"
           ],
           "equipment": [
-            "Barbell"
+            "Dumbbells"
           ],
-          "difficulty": "Intermediate",
+          "difficulty": "Beginner",
           "sets": 4,
-          "reps": "8-10 reps",
-          "restTime": "90s",
-          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Military-Press.gif",
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
           "instructions": [
-            "Rest bar across clavicles with overhand grip just outside shoulders.",
-            "Squeeze glutes and brace core to prevent lumbar hyperextension.",
-            "Press bar straight upward in vertical trajectory.",
-            "Bring head forward under bar once bar clears forehead.",
-            "Lock out overhead and control bar back down to collarbones."
+            "Hold dumbbells at sides with soft bend in elbows.",
+            "Lean forward slightly from hips (approx 10 degrees).",
+            "Raise arms out laterally until elbows are at shoulder height.",
+            "Lead with elbows rather than hands to isolate side delts.",
+            "Control descent smoothly over 2 seconds without using momentum."
           ],
           "coachingCues": [
             "Maintain neutral spine",
@@ -1332,12 +1113,1550 @@
           ]
         }
       ],
-      "guidelines": [
-        "Focus: Chest, shoulders and triceps.",
-        "Controlled tempo on both eccentric and concentric phases.",
-        "Rest fully between working sets."
+      "advancedExercises": [
+        {
+          "id": "ex_barbell_bench_press",
+          "exerciseName": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Triceps",
+            "Anterior Deltoids"
+          ],
+          "equipment": [
+            "Barbell",
+            "Bench"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 4,
+          "reps": "8-10 reps",
+          "restTime": "90s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-BENCH-PRESS.gif",
+          "instructions": [
+            "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
+            "Retract and depress shoulder blades, driving upper back into the bench pad.",
+            "Inhale deeply, unrack the bar, and pull it directly over your chest.",
+            "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45\u00b0).",
+            "Press bar forcefully back to start position while exhaling at peak."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_incline_dumbbell_press",
+          "exerciseName": "Incline Dumbbell Bench Press",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Upper Chest",
+            "Triceps",
+            "Shoulders"
+          ],
+          "equipment": [
+            "Dumbbells",
+            "Bench"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 3,
+          "reps": "10-12 reps",
+          "restTime": "75s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
+          "instructions": [
+            "Set adjustable bench to a 30\u00b0 to 45\u00b0 incline.",
+            "Kick dumbbells to shoulders and plant feet firmly on the floor.",
+            "Press dumbbells upward in an arc without clanking the weights together.",
+            "Focus contraction on clavicular head (upper chest) at the peak.",
+            "Lower under control over a 3-second eccentric tempo."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_cable_chest_flyes",
+          "exerciseName": "Cable Standing Chest Flyes",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Pectoralis Major"
+          ],
+          "equipment": [
+            "Cable"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 3,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
+          "instructions": [
+            "Set dual cable pulleys at chest height with D-handles attached.",
+            "Take one step forward into a staggered stance with chest tall.",
+            "Bring hands together in a wide arc like hugging a massive barrel.",
+            "Squeeze pectorals intensely at midpoint for 1 full second.",
+            "Control weights back under continuous cable tension."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_standard_pushups",
+          "exerciseName": "Strict Calisthenic Push-Ups",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Core",
+            "Triceps",
+            "Shoulders"
+          ],
+          "equipment": [
+            "Bodyweight"
+          ],
+          "difficulty": "Beginner",
+          "sets": 3,
+          "reps": "15-20 reps",
+          "restTime": "45s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
+          "instructions": [
+            "Set hands slightly wider than shoulders in high plank position.",
+            "Lock glutes and pull navel into spine to maintain rigid plank line.",
+            "Lower chest smoothly until touching or hovering 1 inch from floor.",
+            "Press floor away with palms and flare lats at top.",
+            "Maintain steady breathing: inhale on descent, exhale on press."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_triceps_rope_pushdown",
+          "exerciseName": "Triceps Cable Rope Pushdown",
+          "category": "Triceps",
+          "muscleGroup": [
+            "Triceps",
+            "Lateral Head",
+            "Long Head"
+          ],
+          "equipment": [
+            "Cable"
+          ],
+          "difficulty": "Beginner",
+          "sets": 3,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
+          "instructions": [
+            "Attach rope to high pulley, grasp handles with neutral grip.",
+            "Pin elbows tightly against your ribcage.",
+            "Push down until arms are fully locked out.",
+            "Spread rope ends apart at bottom for peak triceps contraction.",
+            "Control ascent back to chest height without moving elbows forward."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_skull_crushers",
+          "exerciseName": "EZ-Bar Lying Skull Crushers",
+          "category": "Triceps",
+          "muscleGroup": [
+            "Triceps",
+            "Long Head",
+            "Medial Head"
+          ],
+          "equipment": [
+            "Barbell",
+            "Bench"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 3,
+          "reps": "10-12 reps",
+          "restTime": "75s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
+          "instructions": [
+            "Lie flat on bench holding EZ-curl bar directly above shoulders.",
+            "Angle upper arms slightly back (approx 10\u00b0) to keep tension on triceps.",
+            "Lower bar smoothly toward hairline by bending elbows only.",
+            "Extend elbows forcefully back to starting angle.",
+            "Avoid flaring elbows outward during press."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_dumbbell_lateral_raises",
+          "exerciseName": "Standing Dumbbell Lateral Raises",
+          "category": "Shoulders",
+          "muscleGroup": [
+            "Shoulders",
+            "Lateral Deltoids"
+          ],
+          "equipment": [
+            "Dumbbells"
+          ],
+          "difficulty": "Beginner",
+          "sets": 4,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
+          "instructions": [
+            "Hold dumbbells at sides with soft bend in elbows.",
+            "Lean forward slightly from hips (approx 10 degrees).",
+            "Raise arms out laterally until elbows are at shoulder height.",
+            "Lead with elbows rather than hands to isolate side delts.",
+            "Control descent smoothly over 2 seconds without using momentum."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        }
+      ]
+    },
+    "cycle_1": {
+      "title": "Monday: Push",
+      "category": "Chest, shoulders and triceps",
+      "focus": "Chest, shoulders and triceps",
+      "isCardioOnly": false,
+      "cardioDistance": "",
+      "isRestDay": false,
+      "estimatedDuration": "45-60 mins",
+      "estimatedCalories": 480,
+      "exercises": [
+        {
+          "id": "ex_barbell_bench_press",
+          "exerciseName": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Triceps",
+            "Anterior Deltoids"
+          ],
+          "equipment": [
+            "Barbell",
+            "Bench"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 4,
+          "reps": "8-10 reps",
+          "restTime": "90s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-BENCH-PRESS.gif",
+          "instructions": [
+            "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
+            "Retract and depress shoulder blades, driving upper back into the bench pad.",
+            "Inhale deeply, unrack the bar, and pull it directly over your chest.",
+            "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45\u00b0).",
+            "Press bar forcefully back to start position while exhaling at peak."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_incline_dumbbell_press",
+          "exerciseName": "Incline Dumbbell Bench Press",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Upper Chest",
+            "Triceps",
+            "Shoulders"
+          ],
+          "equipment": [
+            "Dumbbells",
+            "Bench"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 3,
+          "reps": "10-12 reps",
+          "restTime": "75s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
+          "instructions": [
+            "Set adjustable bench to a 30\u00b0 to 45\u00b0 incline.",
+            "Kick dumbbells to shoulders and plant feet firmly on the floor.",
+            "Press dumbbells upward in an arc without clanking the weights together.",
+            "Focus contraction on clavicular head (upper chest) at the peak.",
+            "Lower under control over a 3-second eccentric tempo."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_cable_chest_flyes",
+          "exerciseName": "Cable Standing Chest Flyes",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Pectoralis Major"
+          ],
+          "equipment": [
+            "Cable"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 3,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
+          "instructions": [
+            "Set dual cable pulleys at chest height with D-handles attached.",
+            "Take one step forward into a staggered stance with chest tall.",
+            "Bring hands together in a wide arc like hugging a massive barrel.",
+            "Squeeze pectorals intensely at midpoint for 1 full second.",
+            "Control weights back under continuous cable tension."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_standard_pushups",
+          "exerciseName": "Strict Calisthenic Push-Ups",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Core",
+            "Triceps",
+            "Shoulders"
+          ],
+          "equipment": [
+            "Bodyweight"
+          ],
+          "difficulty": "Beginner",
+          "sets": 3,
+          "reps": "15-20 reps",
+          "restTime": "45s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
+          "instructions": [
+            "Set hands slightly wider than shoulders in high plank position.",
+            "Lock glutes and pull navel into spine to maintain rigid plank line.",
+            "Lower chest smoothly until touching or hovering 1 inch from floor.",
+            "Press floor away with palms and flare lats at top.",
+            "Maintain steady breathing: inhale on descent, exhale on press."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_triceps_rope_pushdown",
+          "exerciseName": "Triceps Cable Rope Pushdown",
+          "category": "Triceps",
+          "muscleGroup": [
+            "Triceps",
+            "Lateral Head",
+            "Long Head"
+          ],
+          "equipment": [
+            "Cable"
+          ],
+          "difficulty": "Beginner",
+          "sets": 3,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
+          "instructions": [
+            "Attach rope to high pulley, grasp handles with neutral grip.",
+            "Pin elbows tightly against your ribcage.",
+            "Push down until arms are fully locked out.",
+            "Spread rope ends apart at bottom for peak triceps contraction.",
+            "Control ascent back to chest height without moving elbows forward."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_skull_crushers",
+          "exerciseName": "EZ-Bar Lying Skull Crushers",
+          "category": "Triceps",
+          "muscleGroup": [
+            "Triceps",
+            "Long Head",
+            "Medial Head"
+          ],
+          "equipment": [
+            "Barbell",
+            "Bench"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 3,
+          "reps": "10-12 reps",
+          "restTime": "75s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
+          "instructions": [
+            "Lie flat on bench holding EZ-curl bar directly above shoulders.",
+            "Angle upper arms slightly back (approx 10\u00b0) to keep tension on triceps.",
+            "Lower bar smoothly toward hairline by bending elbows only.",
+            "Extend elbows forcefully back to starting angle.",
+            "Avoid flaring elbows outward during press."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_dumbbell_lateral_raises",
+          "exerciseName": "Standing Dumbbell Lateral Raises",
+          "category": "Shoulders",
+          "muscleGroup": [
+            "Shoulders",
+            "Lateral Deltoids"
+          ],
+          "equipment": [
+            "Dumbbells"
+          ],
+          "difficulty": "Beginner",
+          "sets": 4,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
+          "instructions": [
+            "Hold dumbbells at sides with soft bend in elbows.",
+            "Lean forward slightly from hips (approx 10 degrees).",
+            "Raise arms out laterally until elbows are at shoulder height.",
+            "Lead with elbows rather than hands to isolate side delts.",
+            "Control descent smoothly over 2 seconds without using momentum."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        }
       ],
-      "coachingNotes": "Chest, shoulders and triceps - strict execution, no bouncing, lock into the mind-muscle connection."
+      "levels": {
+        "beginner": [
+          {
+            "id": "ex_standard_pushups",
+            "exerciseName": "Strict Calisthenic Push-Ups",
+            "category": "Chest",
+            "muscleGroup": [
+              "Chest",
+              "Core",
+              "Triceps",
+              "Shoulders"
+            ],
+            "equipment": [
+              "Bodyweight"
+            ],
+            "difficulty": "Beginner",
+            "sets": 3,
+            "reps": "15-20 reps",
+            "restTime": "45s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
+            "instructions": [
+              "Set hands slightly wider than shoulders in high plank position.",
+              "Lock glutes and pull navel into spine to maintain rigid plank line.",
+              "Lower chest smoothly until touching or hovering 1 inch from floor.",
+              "Press floor away with palms and flare lats at top.",
+              "Maintain steady breathing: inhale on descent, exhale on press."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_incline_pushups",
+            "exerciseName": "Incline Calisthenic Push-Ups",
+            "category": "Chest",
+            "muscleGroup": [
+              "Chest",
+              "Lower Chest",
+              "Triceps",
+              "Shoulders"
+            ],
+            "equipment": [
+              "Bodyweight",
+              "Chair"
+            ],
+            "difficulty": "Beginner",
+            "sets": 3,
+            "reps": "10-12 reps",
+            "restTime": "45s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Push-Up.gif",
+            "instructions": [
+              "Place hands on elevated surface wider than shoulders.",
+              "Lower chest smoothly toward bench.",
+              "Press firmly away to contract chest.",
+              "Excellent regression and warm-up drill for horizontal push volume."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_cable_chest_flyes",
+            "exerciseName": "Cable Standing Chest Flyes",
+            "category": "Chest",
+            "muscleGroup": [
+              "Chest",
+              "Pectoralis Major"
+            ],
+            "equipment": [
+              "Cable"
+            ],
+            "difficulty": "Intermediate",
+            "sets": 3,
+            "reps": "12-15 reps",
+            "restTime": "60s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
+            "instructions": [
+              "Set dual cable pulleys at chest height with D-handles attached.",
+              "Take one step forward into a staggered stance with chest tall.",
+              "Bring hands together in a wide arc like hugging a massive barrel.",
+              "Squeeze pectorals intensely at midpoint for 1 full second.",
+              "Control weights back under continuous cable tension."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_triceps_rope_pushdown",
+            "exerciseName": "Triceps Cable Rope Pushdown",
+            "category": "Triceps",
+            "muscleGroup": [
+              "Triceps",
+              "Lateral Head",
+              "Long Head"
+            ],
+            "equipment": [
+              "Cable"
+            ],
+            "difficulty": "Beginner",
+            "sets": 3,
+            "reps": "12-15 reps",
+            "restTime": "60s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
+            "instructions": [
+              "Attach rope to high pulley, grasp handles with neutral grip.",
+              "Pin elbows tightly against your ribcage.",
+              "Push down until arms are fully locked out.",
+              "Spread rope ends apart at bottom for peak triceps contraction.",
+              "Control ascent back to chest height without moving elbows forward."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_dumbbell_lateral_raises",
+            "exerciseName": "Standing Dumbbell Lateral Raises",
+            "category": "Shoulders",
+            "muscleGroup": [
+              "Shoulders",
+              "Lateral Deltoids"
+            ],
+            "equipment": [
+              "Dumbbells"
+            ],
+            "difficulty": "Beginner",
+            "sets": 4,
+            "reps": "12-15 reps",
+            "restTime": "60s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
+            "instructions": [
+              "Hold dumbbells at sides with soft bend in elbows.",
+              "Lean forward slightly from hips (approx 10 degrees).",
+              "Raise arms out laterally until elbows are at shoulder height.",
+              "Lead with elbows rather than hands to isolate side delts.",
+              "Control descent smoothly over 2 seconds without using momentum."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          }
+        ],
+        "intermediate": [
+          {
+            "id": "ex_barbell_bench_press",
+            "exerciseName": "Barbell Flat Bench Press",
+            "category": "Chest",
+            "muscleGroup": [
+              "Chest",
+              "Triceps",
+              "Anterior Deltoids"
+            ],
+            "equipment": [
+              "Barbell",
+              "Bench"
+            ],
+            "difficulty": "Intermediate",
+            "sets": 4,
+            "reps": "8-10 reps",
+            "restTime": "90s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-BENCH-PRESS.gif",
+            "instructions": [
+              "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
+              "Retract and depress shoulder blades, driving upper back into the bench pad.",
+              "Inhale deeply, unrack the bar, and pull it directly over your chest.",
+              "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45\u00b0).",
+              "Press bar forcefully back to start position while exhaling at peak."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_incline_dumbbell_press",
+            "exerciseName": "Incline Dumbbell Bench Press",
+            "category": "Chest",
+            "muscleGroup": [
+              "Chest",
+              "Upper Chest",
+              "Triceps",
+              "Shoulders"
+            ],
+            "equipment": [
+              "Dumbbells",
+              "Bench"
+            ],
+            "difficulty": "Intermediate",
+            "sets": 3,
+            "reps": "10-12 reps",
+            "restTime": "75s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
+            "instructions": [
+              "Set adjustable bench to a 30\u00b0 to 45\u00b0 incline.",
+              "Kick dumbbells to shoulders and plant feet firmly on the floor.",
+              "Press dumbbells upward in an arc without clanking the weights together.",
+              "Focus contraction on clavicular head (upper chest) at the peak.",
+              "Lower under control over a 3-second eccentric tempo."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_cable_chest_flyes",
+            "exerciseName": "Cable Standing Chest Flyes",
+            "category": "Chest",
+            "muscleGroup": [
+              "Chest",
+              "Pectoralis Major"
+            ],
+            "equipment": [
+              "Cable"
+            ],
+            "difficulty": "Intermediate",
+            "sets": 3,
+            "reps": "12-15 reps",
+            "restTime": "60s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
+            "instructions": [
+              "Set dual cable pulleys at chest height with D-handles attached.",
+              "Take one step forward into a staggered stance with chest tall.",
+              "Bring hands together in a wide arc like hugging a massive barrel.",
+              "Squeeze pectorals intensely at midpoint for 1 full second.",
+              "Control weights back under continuous cable tension."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_triceps_rope_pushdown",
+            "exerciseName": "Triceps Cable Rope Pushdown",
+            "category": "Triceps",
+            "muscleGroup": [
+              "Triceps",
+              "Lateral Head",
+              "Long Head"
+            ],
+            "equipment": [
+              "Cable"
+            ],
+            "difficulty": "Beginner",
+            "sets": 3,
+            "reps": "12-15 reps",
+            "restTime": "60s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
+            "instructions": [
+              "Attach rope to high pulley, grasp handles with neutral grip.",
+              "Pin elbows tightly against your ribcage.",
+              "Push down until arms are fully locked out.",
+              "Spread rope ends apart at bottom for peak triceps contraction.",
+              "Control ascent back to chest height without moving elbows forward."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_skull_crushers",
+            "exerciseName": "EZ-Bar Lying Skull Crushers",
+            "category": "Triceps",
+            "muscleGroup": [
+              "Triceps",
+              "Long Head",
+              "Medial Head"
+            ],
+            "equipment": [
+              "Barbell",
+              "Bench"
+            ],
+            "difficulty": "Intermediate",
+            "sets": 3,
+            "reps": "10-12 reps",
+            "restTime": "75s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
+            "instructions": [
+              "Lie flat on bench holding EZ-curl bar directly above shoulders.",
+              "Angle upper arms slightly back (approx 10\u00b0) to keep tension on triceps.",
+              "Lower bar smoothly toward hairline by bending elbows only.",
+              "Extend elbows forcefully back to starting angle.",
+              "Avoid flaring elbows outward during press."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_dumbbell_lateral_raises",
+            "exerciseName": "Standing Dumbbell Lateral Raises",
+            "category": "Shoulders",
+            "muscleGroup": [
+              "Shoulders",
+              "Lateral Deltoids"
+            ],
+            "equipment": [
+              "Dumbbells"
+            ],
+            "difficulty": "Beginner",
+            "sets": 4,
+            "reps": "12-15 reps",
+            "restTime": "60s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
+            "instructions": [
+              "Hold dumbbells at sides with soft bend in elbows.",
+              "Lean forward slightly from hips (approx 10 degrees).",
+              "Raise arms out laterally until elbows are at shoulder height.",
+              "Lead with elbows rather than hands to isolate side delts.",
+              "Control descent smoothly over 2 seconds without using momentum."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          }
+        ],
+        "advanced": [
+          {
+            "id": "ex_barbell_bench_press",
+            "exerciseName": "Barbell Flat Bench Press",
+            "category": "Chest",
+            "muscleGroup": [
+              "Chest",
+              "Triceps",
+              "Anterior Deltoids"
+            ],
+            "equipment": [
+              "Barbell",
+              "Bench"
+            ],
+            "difficulty": "Intermediate",
+            "sets": 4,
+            "reps": "8-10 reps",
+            "restTime": "90s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-BENCH-PRESS.gif",
+            "instructions": [
+              "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
+              "Retract and depress shoulder blades, driving upper back into the bench pad.",
+              "Inhale deeply, unrack the bar, and pull it directly over your chest.",
+              "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45\u00b0).",
+              "Press bar forcefully back to start position while exhaling at peak."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_incline_dumbbell_press",
+            "exerciseName": "Incline Dumbbell Bench Press",
+            "category": "Chest",
+            "muscleGroup": [
+              "Chest",
+              "Upper Chest",
+              "Triceps",
+              "Shoulders"
+            ],
+            "equipment": [
+              "Dumbbells",
+              "Bench"
+            ],
+            "difficulty": "Intermediate",
+            "sets": 3,
+            "reps": "10-12 reps",
+            "restTime": "75s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
+            "instructions": [
+              "Set adjustable bench to a 30\u00b0 to 45\u00b0 incline.",
+              "Kick dumbbells to shoulders and plant feet firmly on the floor.",
+              "Press dumbbells upward in an arc without clanking the weights together.",
+              "Focus contraction on clavicular head (upper chest) at the peak.",
+              "Lower under control over a 3-second eccentric tempo."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_cable_chest_flyes",
+            "exerciseName": "Cable Standing Chest Flyes",
+            "category": "Chest",
+            "muscleGroup": [
+              "Chest",
+              "Pectoralis Major"
+            ],
+            "equipment": [
+              "Cable"
+            ],
+            "difficulty": "Intermediate",
+            "sets": 3,
+            "reps": "12-15 reps",
+            "restTime": "60s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
+            "instructions": [
+              "Set dual cable pulleys at chest height with D-handles attached.",
+              "Take one step forward into a staggered stance with chest tall.",
+              "Bring hands together in a wide arc like hugging a massive barrel.",
+              "Squeeze pectorals intensely at midpoint for 1 full second.",
+              "Control weights back under continuous cable tension."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_standard_pushups",
+            "exerciseName": "Strict Calisthenic Push-Ups",
+            "category": "Chest",
+            "muscleGroup": [
+              "Chest",
+              "Core",
+              "Triceps",
+              "Shoulders"
+            ],
+            "equipment": [
+              "Bodyweight"
+            ],
+            "difficulty": "Beginner",
+            "sets": 3,
+            "reps": "15-20 reps",
+            "restTime": "45s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
+            "instructions": [
+              "Set hands slightly wider than shoulders in high plank position.",
+              "Lock glutes and pull navel into spine to maintain rigid plank line.",
+              "Lower chest smoothly until touching or hovering 1 inch from floor.",
+              "Press floor away with palms and flare lats at top.",
+              "Maintain steady breathing: inhale on descent, exhale on press."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_triceps_rope_pushdown",
+            "exerciseName": "Triceps Cable Rope Pushdown",
+            "category": "Triceps",
+            "muscleGroup": [
+              "Triceps",
+              "Lateral Head",
+              "Long Head"
+            ],
+            "equipment": [
+              "Cable"
+            ],
+            "difficulty": "Beginner",
+            "sets": 3,
+            "reps": "12-15 reps",
+            "restTime": "60s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
+            "instructions": [
+              "Attach rope to high pulley, grasp handles with neutral grip.",
+              "Pin elbows tightly against your ribcage.",
+              "Push down until arms are fully locked out.",
+              "Spread rope ends apart at bottom for peak triceps contraction.",
+              "Control ascent back to chest height without moving elbows forward."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_skull_crushers",
+            "exerciseName": "EZ-Bar Lying Skull Crushers",
+            "category": "Triceps",
+            "muscleGroup": [
+              "Triceps",
+              "Long Head",
+              "Medial Head"
+            ],
+            "equipment": [
+              "Barbell",
+              "Bench"
+            ],
+            "difficulty": "Intermediate",
+            "sets": 3,
+            "reps": "10-12 reps",
+            "restTime": "75s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
+            "instructions": [
+              "Lie flat on bench holding EZ-curl bar directly above shoulders.",
+              "Angle upper arms slightly back (approx 10\u00b0) to keep tension on triceps.",
+              "Lower bar smoothly toward hairline by bending elbows only.",
+              "Extend elbows forcefully back to starting angle.",
+              "Avoid flaring elbows outward during press."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          },
+          {
+            "id": "ex_dumbbell_lateral_raises",
+            "exerciseName": "Standing Dumbbell Lateral Raises",
+            "category": "Shoulders",
+            "muscleGroup": [
+              "Shoulders",
+              "Lateral Deltoids"
+            ],
+            "equipment": [
+              "Dumbbells"
+            ],
+            "difficulty": "Beginner",
+            "sets": 4,
+            "reps": "12-15 reps",
+            "restTime": "60s",
+            "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
+            "instructions": [
+              "Hold dumbbells at sides with soft bend in elbows.",
+              "Lean forward slightly from hips (approx 10 degrees).",
+              "Raise arms out laterally until elbows are at shoulder height.",
+              "Lead with elbows rather than hands to isolate side delts.",
+              "Control descent smoothly over 2 seconds without using momentum."
+            ],
+            "coachingCues": [
+              "Maintain neutral spine",
+              "Breathe smoothly",
+              "Control concentric and eccentric tempo"
+            ]
+          }
+        ]
+      },
+      "beginnerExercises": [
+        {
+          "id": "ex_standard_pushups",
+          "exerciseName": "Strict Calisthenic Push-Ups",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Core",
+            "Triceps",
+            "Shoulders"
+          ],
+          "equipment": [
+            "Bodyweight"
+          ],
+          "difficulty": "Beginner",
+          "sets": 3,
+          "reps": "15-20 reps",
+          "restTime": "45s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
+          "instructions": [
+            "Set hands slightly wider than shoulders in high plank position.",
+            "Lock glutes and pull navel into spine to maintain rigid plank line.",
+            "Lower chest smoothly until touching or hovering 1 inch from floor.",
+            "Press floor away with palms and flare lats at top.",
+            "Maintain steady breathing: inhale on descent, exhale on press."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_incline_pushups",
+          "exerciseName": "Incline Calisthenic Push-Ups",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Lower Chest",
+            "Triceps",
+            "Shoulders"
+          ],
+          "equipment": [
+            "Bodyweight",
+            "Chair"
+          ],
+          "difficulty": "Beginner",
+          "sets": 3,
+          "reps": "10-12 reps",
+          "restTime": "45s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Push-Up.gif",
+          "instructions": [
+            "Place hands on elevated surface wider than shoulders.",
+            "Lower chest smoothly toward bench.",
+            "Press firmly away to contract chest.",
+            "Excellent regression and warm-up drill for horizontal push volume."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_cable_chest_flyes",
+          "exerciseName": "Cable Standing Chest Flyes",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Pectoralis Major"
+          ],
+          "equipment": [
+            "Cable"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 3,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
+          "instructions": [
+            "Set dual cable pulleys at chest height with D-handles attached.",
+            "Take one step forward into a staggered stance with chest tall.",
+            "Bring hands together in a wide arc like hugging a massive barrel.",
+            "Squeeze pectorals intensely at midpoint for 1 full second.",
+            "Control weights back under continuous cable tension."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_triceps_rope_pushdown",
+          "exerciseName": "Triceps Cable Rope Pushdown",
+          "category": "Triceps",
+          "muscleGroup": [
+            "Triceps",
+            "Lateral Head",
+            "Long Head"
+          ],
+          "equipment": [
+            "Cable"
+          ],
+          "difficulty": "Beginner",
+          "sets": 3,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
+          "instructions": [
+            "Attach rope to high pulley, grasp handles with neutral grip.",
+            "Pin elbows tightly against your ribcage.",
+            "Push down until arms are fully locked out.",
+            "Spread rope ends apart at bottom for peak triceps contraction.",
+            "Control ascent back to chest height without moving elbows forward."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_dumbbell_lateral_raises",
+          "exerciseName": "Standing Dumbbell Lateral Raises",
+          "category": "Shoulders",
+          "muscleGroup": [
+            "Shoulders",
+            "Lateral Deltoids"
+          ],
+          "equipment": [
+            "Dumbbells"
+          ],
+          "difficulty": "Beginner",
+          "sets": 4,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
+          "instructions": [
+            "Hold dumbbells at sides with soft bend in elbows.",
+            "Lean forward slightly from hips (approx 10 degrees).",
+            "Raise arms out laterally until elbows are at shoulder height.",
+            "Lead with elbows rather than hands to isolate side delts.",
+            "Control descent smoothly over 2 seconds without using momentum."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        }
+      ],
+      "intermediateExercises": [
+        {
+          "id": "ex_barbell_bench_press",
+          "exerciseName": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Triceps",
+            "Anterior Deltoids"
+          ],
+          "equipment": [
+            "Barbell",
+            "Bench"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 4,
+          "reps": "8-10 reps",
+          "restTime": "90s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-BENCH-PRESS.gif",
+          "instructions": [
+            "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
+            "Retract and depress shoulder blades, driving upper back into the bench pad.",
+            "Inhale deeply, unrack the bar, and pull it directly over your chest.",
+            "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45\u00b0).",
+            "Press bar forcefully back to start position while exhaling at peak."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_incline_dumbbell_press",
+          "exerciseName": "Incline Dumbbell Bench Press",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Upper Chest",
+            "Triceps",
+            "Shoulders"
+          ],
+          "equipment": [
+            "Dumbbells",
+            "Bench"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 3,
+          "reps": "10-12 reps",
+          "restTime": "75s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
+          "instructions": [
+            "Set adjustable bench to a 30\u00b0 to 45\u00b0 incline.",
+            "Kick dumbbells to shoulders and plant feet firmly on the floor.",
+            "Press dumbbells upward in an arc without clanking the weights together.",
+            "Focus contraction on clavicular head (upper chest) at the peak.",
+            "Lower under control over a 3-second eccentric tempo."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_cable_chest_flyes",
+          "exerciseName": "Cable Standing Chest Flyes",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Pectoralis Major"
+          ],
+          "equipment": [
+            "Cable"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 3,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
+          "instructions": [
+            "Set dual cable pulleys at chest height with D-handles attached.",
+            "Take one step forward into a staggered stance with chest tall.",
+            "Bring hands together in a wide arc like hugging a massive barrel.",
+            "Squeeze pectorals intensely at midpoint for 1 full second.",
+            "Control weights back under continuous cable tension."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_triceps_rope_pushdown",
+          "exerciseName": "Triceps Cable Rope Pushdown",
+          "category": "Triceps",
+          "muscleGroup": [
+            "Triceps",
+            "Lateral Head",
+            "Long Head"
+          ],
+          "equipment": [
+            "Cable"
+          ],
+          "difficulty": "Beginner",
+          "sets": 3,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
+          "instructions": [
+            "Attach rope to high pulley, grasp handles with neutral grip.",
+            "Pin elbows tightly against your ribcage.",
+            "Push down until arms are fully locked out.",
+            "Spread rope ends apart at bottom for peak triceps contraction.",
+            "Control ascent back to chest height without moving elbows forward."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_skull_crushers",
+          "exerciseName": "EZ-Bar Lying Skull Crushers",
+          "category": "Triceps",
+          "muscleGroup": [
+            "Triceps",
+            "Long Head",
+            "Medial Head"
+          ],
+          "equipment": [
+            "Barbell",
+            "Bench"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 3,
+          "reps": "10-12 reps",
+          "restTime": "75s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
+          "instructions": [
+            "Lie flat on bench holding EZ-curl bar directly above shoulders.",
+            "Angle upper arms slightly back (approx 10\u00b0) to keep tension on triceps.",
+            "Lower bar smoothly toward hairline by bending elbows only.",
+            "Extend elbows forcefully back to starting angle.",
+            "Avoid flaring elbows outward during press."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_dumbbell_lateral_raises",
+          "exerciseName": "Standing Dumbbell Lateral Raises",
+          "category": "Shoulders",
+          "muscleGroup": [
+            "Shoulders",
+            "Lateral Deltoids"
+          ],
+          "equipment": [
+            "Dumbbells"
+          ],
+          "difficulty": "Beginner",
+          "sets": 4,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
+          "instructions": [
+            "Hold dumbbells at sides with soft bend in elbows.",
+            "Lean forward slightly from hips (approx 10 degrees).",
+            "Raise arms out laterally until elbows are at shoulder height.",
+            "Lead with elbows rather than hands to isolate side delts.",
+            "Control descent smoothly over 2 seconds without using momentum."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        }
+      ],
+      "advancedExercises": [
+        {
+          "id": "ex_barbell_bench_press",
+          "exerciseName": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Triceps",
+            "Anterior Deltoids"
+          ],
+          "equipment": [
+            "Barbell",
+            "Bench"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 4,
+          "reps": "8-10 reps",
+          "restTime": "90s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-BENCH-PRESS.gif",
+          "instructions": [
+            "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
+            "Retract and depress shoulder blades, driving upper back into the bench pad.",
+            "Inhale deeply, unrack the bar, and pull it directly over your chest.",
+            "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45\u00b0).",
+            "Press bar forcefully back to start position while exhaling at peak."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_incline_dumbbell_press",
+          "exerciseName": "Incline Dumbbell Bench Press",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Upper Chest",
+            "Triceps",
+            "Shoulders"
+          ],
+          "equipment": [
+            "Dumbbells",
+            "Bench"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 3,
+          "reps": "10-12 reps",
+          "restTime": "75s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
+          "instructions": [
+            "Set adjustable bench to a 30\u00b0 to 45\u00b0 incline.",
+            "Kick dumbbells to shoulders and plant feet firmly on the floor.",
+            "Press dumbbells upward in an arc without clanking the weights together.",
+            "Focus contraction on clavicular head (upper chest) at the peak.",
+            "Lower under control over a 3-second eccentric tempo."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_cable_chest_flyes",
+          "exerciseName": "Cable Standing Chest Flyes",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Pectoralis Major"
+          ],
+          "equipment": [
+            "Cable"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 3,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
+          "instructions": [
+            "Set dual cable pulleys at chest height with D-handles attached.",
+            "Take one step forward into a staggered stance with chest tall.",
+            "Bring hands together in a wide arc like hugging a massive barrel.",
+            "Squeeze pectorals intensely at midpoint for 1 full second.",
+            "Control weights back under continuous cable tension."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_standard_pushups",
+          "exerciseName": "Strict Calisthenic Push-Ups",
+          "category": "Chest",
+          "muscleGroup": [
+            "Chest",
+            "Core",
+            "Triceps",
+            "Shoulders"
+          ],
+          "equipment": [
+            "Bodyweight"
+          ],
+          "difficulty": "Beginner",
+          "sets": 3,
+          "reps": "15-20 reps",
+          "restTime": "45s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
+          "instructions": [
+            "Set hands slightly wider than shoulders in high plank position.",
+            "Lock glutes and pull navel into spine to maintain rigid plank line.",
+            "Lower chest smoothly until touching or hovering 1 inch from floor.",
+            "Press floor away with palms and flare lats at top.",
+            "Maintain steady breathing: inhale on descent, exhale on press."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_triceps_rope_pushdown",
+          "exerciseName": "Triceps Cable Rope Pushdown",
+          "category": "Triceps",
+          "muscleGroup": [
+            "Triceps",
+            "Lateral Head",
+            "Long Head"
+          ],
+          "equipment": [
+            "Cable"
+          ],
+          "difficulty": "Beginner",
+          "sets": 3,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
+          "instructions": [
+            "Attach rope to high pulley, grasp handles with neutral grip.",
+            "Pin elbows tightly against your ribcage.",
+            "Push down until arms are fully locked out.",
+            "Spread rope ends apart at bottom for peak triceps contraction.",
+            "Control ascent back to chest height without moving elbows forward."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_skull_crushers",
+          "exerciseName": "EZ-Bar Lying Skull Crushers",
+          "category": "Triceps",
+          "muscleGroup": [
+            "Triceps",
+            "Long Head",
+            "Medial Head"
+          ],
+          "equipment": [
+            "Barbell",
+            "Bench"
+          ],
+          "difficulty": "Intermediate",
+          "sets": 3,
+          "reps": "10-12 reps",
+          "restTime": "75s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
+          "instructions": [
+            "Lie flat on bench holding EZ-curl bar directly above shoulders.",
+            "Angle upper arms slightly back (approx 10\u00b0) to keep tension on triceps.",
+            "Lower bar smoothly toward hairline by bending elbows only.",
+            "Extend elbows forcefully back to starting angle.",
+            "Avoid flaring elbows outward during press."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        },
+        {
+          "id": "ex_dumbbell_lateral_raises",
+          "exerciseName": "Standing Dumbbell Lateral Raises",
+          "category": "Shoulders",
+          "muscleGroup": [
+            "Shoulders",
+            "Lateral Deltoids"
+          ],
+          "equipment": [
+            "Dumbbells"
+          ],
+          "difficulty": "Beginner",
+          "sets": 4,
+          "reps": "12-15 reps",
+          "restTime": "60s",
+          "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
+          "instructions": [
+            "Hold dumbbells at sides with soft bend in elbows.",
+            "Lean forward slightly from hips (approx 10 degrees).",
+            "Raise arms out laterally until elbows are at shoulder height.",
+            "Lead with elbows rather than hands to isolate side delts.",
+            "Control descent smoothly over 2 seconds without using momentum."
+          ],
+          "coachingCues": [
+            "Maintain neutral spine",
+            "Breathe smoothly",
+            "Control concentric and eccentric tempo"
+          ]
+        }
+      ]
     },
     "cycle_2": {
       "title": "Tuesday: Pull",
@@ -1368,7 +2687,7 @@
           "restTime": "90s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bent-Over-Row.gif",
           "instructions": [
-            "Hinge at hips with flat back, knees slightly bent, torso at 45°.",
+            "Hinge at hips with flat back, knees slightly bent, torso at 45\u00b0.",
             "Grip bar slightly wider than shoulder-width with overhand grip.",
             "Drive elbows back toward ceiling, pulling bar to belly button.",
             "Squeeze shoulder blades together forcefully at top.",
@@ -1523,7 +2842,7 @@
           "restTime": "60s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Hammer-Curl.gif",
           "instructions": [
-            "Sit back on 45° incline bench with arms hanging down.",
+            "Sit back on 45\u00b0 incline bench with arms hanging down.",
             "Maintain neutral grip (palms facing inward) throughout.",
             "Curl weights without moving upper arms forward.",
             "Contract peak bicep and forearm muscles.",
@@ -1650,7 +2969,7 @@
             "restTime": "60s",
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Hammer-Curl.gif",
             "instructions": [
-              "Sit back on 45° incline bench with arms hanging down.",
+              "Sit back on 45\u00b0 incline bench with arms hanging down.",
               "Maintain neutral grip (palms facing inward) throughout.",
               "Curl weights without moving upper arms forward.",
               "Contract peak bicep and forearm muscles.",
@@ -1683,7 +3002,7 @@
             "restTime": "90s",
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bent-Over-Row.gif",
             "instructions": [
-              "Hinge at hips with flat back, knees slightly bent, torso at 45°.",
+              "Hinge at hips with flat back, knees slightly bent, torso at 45\u00b0.",
               "Grip bar slightly wider than shoulder-width with overhand grip.",
               "Drive elbows back toward ceiling, pulling bar to belly button.",
               "Squeeze shoulder blades together forcefully at top.",
@@ -1807,7 +3126,7 @@
             "restTime": "60s",
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Hammer-Curl.gif",
             "instructions": [
-              "Sit back on 45° incline bench with arms hanging down.",
+              "Sit back on 45\u00b0 incline bench with arms hanging down.",
               "Maintain neutral grip (palms facing inward) throughout.",
               "Curl weights without moving upper arms forward.",
               "Contract peak bicep and forearm muscles.",
@@ -1871,7 +3190,7 @@
             "restTime": "90s",
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bent-Over-Row.gif",
             "instructions": [
-              "Hinge at hips with flat back, knees slightly bent, torso at 45°.",
+              "Hinge at hips with flat back, knees slightly bent, torso at 45\u00b0.",
               "Grip bar slightly wider than shoulder-width with overhand grip.",
               "Drive elbows back toward ceiling, pulling bar to belly button.",
               "Squeeze shoulder blades together forcefully at top.",
@@ -1995,7 +3314,7 @@
             "restTime": "60s",
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Hammer-Curl.gif",
             "instructions": [
-              "Sit back on 45° incline bench with arms hanging down.",
+              "Sit back on 45\u00b0 incline bench with arms hanging down.",
               "Maintain neutral grip (palms facing inward) throughout.",
               "Curl weights without moving upper arms forward.",
               "Contract peak bicep and forearm muscles.",
@@ -2122,7 +3441,7 @@
           "restTime": "60s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Hammer-Curl.gif",
           "instructions": [
-            "Sit back on 45° incline bench with arms hanging down.",
+            "Sit back on 45\u00b0 incline bench with arms hanging down.",
             "Maintain neutral grip (palms facing inward) throughout.",
             "Curl weights without moving upper arms forward.",
             "Contract peak bicep and forearm muscles.",
@@ -2155,7 +3474,7 @@
           "restTime": "90s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bent-Over-Row.gif",
           "instructions": [
-            "Hinge at hips with flat back, knees slightly bent, torso at 45°.",
+            "Hinge at hips with flat back, knees slightly bent, torso at 45\u00b0.",
             "Grip bar slightly wider than shoulder-width with overhand grip.",
             "Drive elbows back toward ceiling, pulling bar to belly button.",
             "Squeeze shoulder blades together forcefully at top.",
@@ -2279,7 +3598,7 @@
           "restTime": "60s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Hammer-Curl.gif",
           "instructions": [
-            "Sit back on 45° incline bench with arms hanging down.",
+            "Sit back on 45\u00b0 incline bench with arms hanging down.",
             "Maintain neutral grip (palms facing inward) throughout.",
             "Curl weights without moving upper arms forward.",
             "Contract peak bicep and forearm muscles.",
@@ -2343,7 +3662,7 @@
           "restTime": "90s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bent-Over-Row.gif",
           "instructions": [
-            "Hinge at hips with flat back, knees slightly bent, torso at 45°.",
+            "Hinge at hips with flat back, knees slightly bent, torso at 45\u00b0.",
             "Grip bar slightly wider than shoulder-width with overhand grip.",
             "Drive elbows back toward ceiling, pulling bar to belly button.",
             "Squeeze shoulder blades together forcefully at top.",
@@ -2467,7 +3786,7 @@
           "restTime": "60s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Hammer-Curl.gif",
           "instructions": [
-            "Sit back on 45° incline bench with arms hanging down.",
+            "Sit back on 45\u00b0 incline bench with arms hanging down.",
             "Maintain neutral grip (palms facing inward) throughout.",
             "Curl weights without moving upper arms forward.",
             "Contract peak bicep and forearm muscles.",
@@ -2520,7 +3839,7 @@
           "instructions": [
             "Step under barbell and rest across upper trapezius muscles.",
             "Step back, set feet shoulder-width with toes slightly turned out.",
-            "Take deep diaphragmatic breath into abdomen, brace core 360°.",
+            "Take deep diaphragmatic breath into abdomen, brace core 360\u00b0.",
             "Sit hips down and back until hip crease is level with knees.",
             "Drive feet into floor and stand up forcefully, exhaling past midpoint."
           ],
@@ -2612,7 +3931,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Press.gif",
           "instructions": [
             "Plant feet shoulder-width on center of footplate.",
-            "Lower sled smoothly until thighs are near chest (approx 90° angle).",
+            "Lower sled smoothly until thighs are near chest (approx 90\u00b0 angle).",
             "Press through heels and mid-foot to drive carriage upward.",
             "Never hyperextend or forcefully lock knees at top.",
             "Keep lower back glued firmly against back pad throughout."
@@ -2901,7 +4220,7 @@
             "instructions": [
               "Step under barbell and rest across upper trapezius muscles.",
               "Step back, set feet shoulder-width with toes slightly turned out.",
-              "Take deep diaphragmatic breath into abdomen, brace core 360°.",
+              "Take deep diaphragmatic breath into abdomen, brace core 360\u00b0.",
               "Sit hips down and back until hip crease is level with knees.",
               "Drive feet into floor and stand up forcefully, exhaling past midpoint."
             ],
@@ -2993,7 +4312,7 @@
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Press.gif",
             "instructions": [
               "Plant feet shoulder-width on center of footplate.",
-              "Lower sled smoothly until thighs are near chest (approx 90° angle).",
+              "Lower sled smoothly until thighs are near chest (approx 90\u00b0 angle).",
               "Press through heels and mid-foot to drive carriage upward.",
               "Never hyperextend or forcefully lock knees at top.",
               "Keep lower back glued firmly against back pad throughout."
@@ -3124,7 +4443,7 @@
             "instructions": [
               "Step under barbell and rest across upper trapezius muscles.",
               "Step back, set feet shoulder-width with toes slightly turned out.",
-              "Take deep diaphragmatic breath into abdomen, brace core 360°.",
+              "Take deep diaphragmatic breath into abdomen, brace core 360\u00b0.",
               "Sit hips down and back until hip crease is level with knees.",
               "Drive feet into floor and stand up forcefully, exhaling past midpoint."
             ],
@@ -3185,7 +4504,7 @@
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Press.gif",
             "instructions": [
               "Plant feet shoulder-width on center of footplate.",
-              "Lower sled smoothly until thighs are near chest (approx 90° angle).",
+              "Lower sled smoothly until thighs are near chest (approx 90\u00b0 angle).",
               "Press through heels and mid-foot to drive carriage upward.",
               "Never hyperextend or forcefully lock knees at top.",
               "Keep lower back glued firmly against back pad throughout."
@@ -3505,7 +4824,7 @@
           "instructions": [
             "Step under barbell and rest across upper trapezius muscles.",
             "Step back, set feet shoulder-width with toes slightly turned out.",
-            "Take deep diaphragmatic breath into abdomen, brace core 360°.",
+            "Take deep diaphragmatic breath into abdomen, brace core 360\u00b0.",
             "Sit hips down and back until hip crease is level with knees.",
             "Drive feet into floor and stand up forcefully, exhaling past midpoint."
           ],
@@ -3597,7 +4916,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Press.gif",
           "instructions": [
             "Plant feet shoulder-width on center of footplate.",
-            "Lower sled smoothly until thighs are near chest (approx 90° angle).",
+            "Lower sled smoothly until thighs are near chest (approx 90\u00b0 angle).",
             "Press through heels and mid-foot to drive carriage upward.",
             "Never hyperextend or forcefully lock knees at top.",
             "Keep lower back glued firmly against back pad throughout."
@@ -3728,7 +5047,7 @@
           "instructions": [
             "Step under barbell and rest across upper trapezius muscles.",
             "Step back, set feet shoulder-width with toes slightly turned out.",
-            "Take deep diaphragmatic breath into abdomen, brace core 360°.",
+            "Take deep diaphragmatic breath into abdomen, brace core 360\u00b0.",
             "Sit hips down and back until hip crease is level with knees.",
             "Drive feet into floor and stand up forcefully, exhaling past midpoint."
           ],
@@ -3789,7 +5108,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Press.gif",
           "instructions": [
             "Plant feet shoulder-width on center of footplate.",
-            "Lower sled smoothly until thighs are near chest (approx 90° angle).",
+            "Lower sled smoothly until thighs are near chest (approx 90\u00b0 angle).",
             "Press through heels and mid-foot to drive carriage upward.",
             "Never hyperextend or forcefully lock knees at top.",
             "Keep lower back glued firmly against back pad throughout."
@@ -5024,7 +6343,7 @@
           "restTime": "75s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
           "instructions": [
-            "Set adjustable bench to a 30° to 45° incline.",
+            "Set adjustable bench to a 30\u00b0 to 45\u00b0 incline.",
             "Kick dumbbells to shoulders and plant feet firmly on the floor.",
             "Press dumbbells upward in an arc without clanking the weights together.",
             "Focus contraction on clavicular head (upper chest) at the peak.",
@@ -5055,7 +6374,7 @@
           "restTime": "90s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bent-Over-Row.gif",
           "instructions": [
-            "Hinge at hips with flat back, knees slightly bent, torso at 45°.",
+            "Hinge at hips with flat back, knees slightly bent, torso at 45\u00b0.",
             "Grip bar slightly wider than shoulder-width with overhand grip.",
             "Drive elbows back toward ceiling, pulling bar to belly button.",
             "Squeeze shoulder blades together forcefully at top.",
@@ -5089,7 +6408,7 @@
             "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
             "Retract and depress shoulder blades, driving upper back into the bench pad.",
             "Inhale deeply, unrack the bar, and pull it directly over your chest.",
-            "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45°).",
+            "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45\u00b0).",
             "Press bar forcefully back to start position while exhaling at peak."
           ],
           "coachingCues": [
@@ -5394,7 +6713,7 @@
             "restTime": "75s",
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
             "instructions": [
-              "Set adjustable bench to a 30° to 45° incline.",
+              "Set adjustable bench to a 30\u00b0 to 45\u00b0 incline.",
               "Kick dumbbells to shoulders and plant feet firmly on the floor.",
               "Press dumbbells upward in an arc without clanking the weights together.",
               "Focus contraction on clavicular head (upper chest) at the peak.",
@@ -5425,7 +6744,7 @@
             "restTime": "90s",
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bent-Over-Row.gif",
             "instructions": [
-              "Hinge at hips with flat back, knees slightly bent, torso at 45°.",
+              "Hinge at hips with flat back, knees slightly bent, torso at 45\u00b0.",
               "Grip bar slightly wider than shoulder-width with overhand grip.",
               "Drive elbows back toward ceiling, pulling bar to belly button.",
               "Squeeze shoulder blades together forcefully at top.",
@@ -5581,7 +6900,7 @@
               "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
               "Retract and depress shoulder blades, driving upper back into the bench pad.",
               "Inhale deeply, unrack the bar, and pull it directly over your chest.",
-              "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45°).",
+              "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45\u00b0).",
               "Press bar forcefully back to start position while exhaling at peak."
             ],
             "coachingCues": [
@@ -5609,7 +6928,7 @@
             "restTime": "90s",
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bent-Over-Row.gif",
             "instructions": [
-              "Hinge at hips with flat back, knees slightly bent, torso at 45°.",
+              "Hinge at hips with flat back, knees slightly bent, torso at 45\u00b0.",
               "Grip bar slightly wider than shoulder-width with overhand grip.",
               "Drive elbows back toward ceiling, pulling bar to belly button.",
               "Squeeze shoulder blades together forcefully at top.",
@@ -5733,7 +7052,7 @@
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
             "instructions": [
               "Lie flat on bench holding EZ-curl bar directly above shoulders.",
-              "Angle upper arms slightly back (approx 10°) to keep tension on triceps.",
+              "Angle upper arms slightly back (approx 10\u00b0) to keep tension on triceps.",
               "Lower bar smoothly toward hairline by bending elbows only.",
               "Extend elbows forcefully back to starting angle.",
               "Avoid flaring elbows outward during press."
@@ -5920,7 +7239,7 @@
           "restTime": "75s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
           "instructions": [
-            "Set adjustable bench to a 30° to 45° incline.",
+            "Set adjustable bench to a 30\u00b0 to 45\u00b0 incline.",
             "Kick dumbbells to shoulders and plant feet firmly on the floor.",
             "Press dumbbells upward in an arc without clanking the weights together.",
             "Focus contraction on clavicular head (upper chest) at the peak.",
@@ -5951,7 +7270,7 @@
           "restTime": "90s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bent-Over-Row.gif",
           "instructions": [
-            "Hinge at hips with flat back, knees slightly bent, torso at 45°.",
+            "Hinge at hips with flat back, knees slightly bent, torso at 45\u00b0.",
             "Grip bar slightly wider than shoulder-width with overhand grip.",
             "Drive elbows back toward ceiling, pulling bar to belly button.",
             "Squeeze shoulder blades together forcefully at top.",
@@ -6107,7 +7426,7 @@
             "Grip the barbell slightly wider than shoulder-width with wrists stacked.",
             "Retract and depress shoulder blades, driving upper back into the bench pad.",
             "Inhale deeply, unrack the bar, and pull it directly over your chest.",
-            "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45°).",
+            "Lower bar smoothly to mid-chest while tucking elbows slightly (approx 45\u00b0).",
             "Press bar forcefully back to start position while exhaling at peak."
           ],
           "coachingCues": [
@@ -6135,7 +7454,7 @@
           "restTime": "90s",
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bent-Over-Row.gif",
           "instructions": [
-            "Hinge at hips with flat back, knees slightly bent, torso at 45°.",
+            "Hinge at hips with flat back, knees slightly bent, torso at 45\u00b0.",
             "Grip bar slightly wider than shoulder-width with overhand grip.",
             "Drive elbows back toward ceiling, pulling bar to belly button.",
             "Squeeze shoulder blades together forcefully at top.",
@@ -6259,7 +7578,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
           "instructions": [
             "Lie flat on bench holding EZ-curl bar directly above shoulders.",
-            "Angle upper arms slightly back (approx 10°) to keep tension on triceps.",
+            "Angle upper arms slightly back (approx 10\u00b0) to keep tension on triceps.",
             "Lower bar smoothly toward hairline by bending elbows only.",
             "Extend elbows forcefully back to starting angle.",
             "Avoid flaring elbows outward during press."
@@ -10213,7 +11532,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
           "instructions": [
             "Back flat against sturdy wall with feet shoulder-width apart.",
-            "Slide down until thighs are parallel to ground (90° at knee and hip).",
+            "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
             "Knees track directly over ankles, not forward past toes.",
             "Breathe rhythmically and resist leaning forward with torso."
           ],
@@ -10465,7 +11784,7 @@
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
             "instructions": [
               "Back flat against sturdy wall with feet shoulder-width apart.",
-              "Slide down until thighs are parallel to ground (90° at knee and hip).",
+              "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
               "Knees track directly over ankles, not forward past toes.",
               "Breathe rhythmically and resist leaning forward with torso."
             ],
@@ -10652,7 +11971,7 @@
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
             "instructions": [
               "Back flat against sturdy wall with feet shoulder-width apart.",
-              "Slide down until thighs are parallel to ground (90° at knee and hip).",
+              "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
               "Knees track directly over ankles, not forward past toes.",
               "Breathe rhythmically and resist leaning forward with torso."
             ],
@@ -10872,7 +12191,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
           "instructions": [
             "Back flat against sturdy wall with feet shoulder-width apart.",
-            "Slide down until thighs are parallel to ground (90° at knee and hip).",
+            "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
             "Knees track directly over ankles, not forward past toes.",
             "Breathe rhythmically and resist leaning forward with torso."
           ],
@@ -11059,7 +12378,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
           "instructions": [
             "Back flat against sturdy wall with feet shoulder-width apart.",
-            "Slide down until thighs are parallel to ground (90° at knee and hip).",
+            "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
             "Knees track directly over ankles, not forward past toes.",
             "Breathe rhythmically and resist leaning forward with torso."
           ],
@@ -16491,7 +17810,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
           "instructions": [
             "Back flat against sturdy wall with feet shoulder-width apart.",
-            "Slide down until thighs are parallel to ground (90° at knee and hip).",
+            "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
             "Knees track directly over ankles, not forward past toes.",
             "Breathe rhythmically and resist leaning forward with torso."
           ],
@@ -16743,7 +18062,7 @@
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
             "instructions": [
               "Back flat against sturdy wall with feet shoulder-width apart.",
-              "Slide down until thighs are parallel to ground (90° at knee and hip).",
+              "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
               "Knees track directly over ankles, not forward past toes.",
               "Breathe rhythmically and resist leaning forward with torso."
             ],
@@ -16930,7 +18249,7 @@
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
             "instructions": [
               "Back flat against sturdy wall with feet shoulder-width apart.",
-              "Slide down until thighs are parallel to ground (90° at knee and hip).",
+              "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
               "Knees track directly over ankles, not forward past toes.",
               "Breathe rhythmically and resist leaning forward with torso."
             ],
@@ -17150,7 +18469,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
           "instructions": [
             "Back flat against sturdy wall with feet shoulder-width apart.",
-            "Slide down until thighs are parallel to ground (90° at knee and hip).",
+            "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
             "Knees track directly over ankles, not forward past toes.",
             "Breathe rhythmically and resist leaning forward with torso."
           ],
@@ -17337,7 +18656,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
           "instructions": [
             "Back flat against sturdy wall with feet shoulder-width apart.",
-            "Slide down until thighs are parallel to ground (90° at knee and hip).",
+            "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
             "Knees track directly over ankles, not forward past toes.",
             "Breathe rhythmically and resist leaning forward with torso."
           ],
@@ -23034,7 +24353,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
           "instructions": [
             "Back flat against sturdy wall with feet shoulder-width apart.",
-            "Slide down until thighs are parallel to ground (90° at knee and hip).",
+            "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
             "Knees track directly over ankles, not forward past toes.",
             "Breathe rhythmically and resist leaning forward with torso."
           ],
@@ -23189,7 +24508,7 @@
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
             "instructions": [
               "Back flat against sturdy wall with feet shoulder-width apart.",
-              "Slide down until thighs are parallel to ground (90° at knee and hip).",
+              "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
               "Knees track directly over ankles, not forward past toes.",
               "Breathe rhythmically and resist leaning forward with torso."
             ],
@@ -23343,7 +24662,7 @@
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
             "instructions": [
               "Back flat against sturdy wall with feet shoulder-width apart.",
-              "Slide down until thighs are parallel to ground (90° at knee and hip).",
+              "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
               "Knees track directly over ankles, not forward past toes.",
               "Breathe rhythmically and resist leaning forward with torso."
             ],
@@ -23497,7 +24816,7 @@
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
             "instructions": [
               "Back flat against sturdy wall with feet shoulder-width apart.",
-              "Slide down until thighs are parallel to ground (90° at knee and hip).",
+              "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
               "Knees track directly over ankles, not forward past toes.",
               "Breathe rhythmically and resist leaning forward with torso."
             ],
@@ -23652,7 +24971,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
           "instructions": [
             "Back flat against sturdy wall with feet shoulder-width apart.",
-            "Slide down until thighs are parallel to ground (90° at knee and hip).",
+            "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
             "Knees track directly over ankles, not forward past toes.",
             "Breathe rhythmically and resist leaning forward with torso."
           ],
@@ -23806,7 +25125,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
           "instructions": [
             "Back flat against sturdy wall with feet shoulder-width apart.",
-            "Slide down until thighs are parallel to ground (90° at knee and hip).",
+            "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
             "Knees track directly over ankles, not forward past toes.",
             "Breathe rhythmically and resist leaning forward with torso."
           ],
@@ -23960,7 +25279,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
           "instructions": [
             "Back flat against sturdy wall with feet shoulder-width apart.",
-            "Slide down until thighs are parallel to ground (90° at knee and hip).",
+            "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
             "Knees track directly over ankles, not forward past toes.",
             "Breathe rhythmically and resist leaning forward with torso."
           ],
@@ -29949,7 +31268,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
           "instructions": [
             "Back flat against sturdy wall with feet shoulder-width apart.",
-            "Slide down until thighs are parallel to ground (90° at knee and hip).",
+            "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
             "Knees track directly over ankles, not forward past toes.",
             "Breathe rhythmically and resist leaning forward with torso."
           ],
@@ -30104,7 +31423,7 @@
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
             "instructions": [
               "Back flat against sturdy wall with feet shoulder-width apart.",
-              "Slide down until thighs are parallel to ground (90° at knee and hip).",
+              "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
               "Knees track directly over ankles, not forward past toes.",
               "Breathe rhythmically and resist leaning forward with torso."
             ],
@@ -30258,7 +31577,7 @@
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
             "instructions": [
               "Back flat against sturdy wall with feet shoulder-width apart.",
-              "Slide down until thighs are parallel to ground (90° at knee and hip).",
+              "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
               "Knees track directly over ankles, not forward past toes.",
               "Breathe rhythmically and resist leaning forward with torso."
             ],
@@ -30412,7 +31731,7 @@
             "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
             "instructions": [
               "Back flat against sturdy wall with feet shoulder-width apart.",
-              "Slide down until thighs are parallel to ground (90° at knee and hip).",
+              "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
               "Knees track directly over ankles, not forward past toes.",
               "Breathe rhythmically and resist leaning forward with torso."
             ],
@@ -30567,7 +31886,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
           "instructions": [
             "Back flat against sturdy wall with feet shoulder-width apart.",
-            "Slide down until thighs are parallel to ground (90° at knee and hip).",
+            "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
             "Knees track directly over ankles, not forward past toes.",
             "Breathe rhythmically and resist leaning forward with torso."
           ],
@@ -30721,7 +32040,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
           "instructions": [
             "Back flat against sturdy wall with feet shoulder-width apart.",
-            "Slide down until thighs are parallel to ground (90° at knee and hip).",
+            "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
             "Knees track directly over ankles, not forward past toes.",
             "Breathe rhythmically and resist leaning forward with torso."
           ],
@@ -30875,7 +32194,7 @@
           "gifUrl": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
           "instructions": [
             "Back flat against sturdy wall with feet shoulder-width apart.",
-            "Slide down until thighs are parallel to ground (90° at knee and hip).",
+            "Slide down until thighs are parallel to ground (90\u00b0 at knee and hip).",
             "Knees track directly over ankles, not forward past toes.",
             "Breathe rhythmically and resist leaning forward with torso."
           ],
