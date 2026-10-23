@@ -727,11 +727,14 @@ export default function AdminWorkoutChallengeEngine() {
   // Delete Only (Permanently remove workout from this routine)
   const handleDeleteOnly = async () => {
     if (!targetToDelete) return;
+    const target = targetToDelete;
+    // Dismiss modal immediately so user sees deletion take effect without hanging
+    setTargetToDelete(null);
     setIsDeleting(true);
 
     try {
-      const targetId = targetToDelete.id;
-      const targetName = (targetToDelete.exerciseName || (targetToDelete as any).name || "").toLowerCase().trim();
+      const targetId = target.id;
+      const targetName = (target.exerciseName || (target as any).name || "").toLowerCase().trim();
       const updated = activeExercises.filter((ex: ChallengeExerciseItem) => {
         if (targetId && ex.id && ex.id === targetId) return false;
         const n = (ex.exerciseName || (ex as any).name || "").toLowerCase().trim();
@@ -740,9 +743,8 @@ export default function AdminWorkoutChallengeEngine() {
 
       await handleReorderExercises(updated, selectedDifficultyLevel);
 
-      setSaveSuccessMsg(`Permanently removed "${targetToDelete.exerciseName}" from ${selectedDifficultyLevel === "all" ? "routine" : selectedDifficultyLevel.toUpperCase() + " routine"}.`);
+      setSaveSuccessMsg(`Permanently removed "${target.exerciseName}" from ${selectedDifficultyLevel === "all" ? "routine" : selectedDifficultyLevel.toUpperCase() + " routine"}.`);
       setTimeout(() => setSaveSuccessMsg(null), 3000);
-      setTargetToDelete(null);
     } catch (err: any) {
       console.error("Delete only error:", err);
       alert("Failed to delete workout: " + (err?.message || "Unknown error"));

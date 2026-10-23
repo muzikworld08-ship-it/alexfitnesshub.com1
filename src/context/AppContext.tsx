@@ -987,9 +987,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
           if (apiData.success && Array.isArray(apiData.deletedExerciseIds)) {
             serverDeletedIds = apiData.deletedExerciseIds;
-            try {
-              localStorage.setItem("fit_deleted_exercises", JSON.stringify(serverDeletedIds));
-            } catch {}
           }
         } catch (sErr) {
           console.warn("Server overrides fetch warning:", sErr);
@@ -1063,16 +1060,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         } catch {}
 
         const activeDeletedIds = new Set<string>([...serverDeletedIds, ...firestoreDeletedIds]);
-        try {
-          const cachedDeleted = localStorage.getItem("fit_deleted_exercises");
-          if (cachedDeleted) {
-            const parsed = JSON.parse(cachedDeleted);
-            if (Array.isArray(parsed)) parsed.forEach((id: string) => activeDeletedIds.add(id));
-          }
-        } catch {}
 
         setExercisesState(prev => {
-          const baseList = [...EXERCISES].filter(e => !activeDeletedIds.has(e.id) && !activeDeletedIds.has(e.name?.toLowerCase().trim()));
+          const baseList = [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES].filter(e => !activeDeletedIds.has(e.id) && !activeDeletedIds.has(e.name?.toLowerCase().trim()));
           const mapped = baseList.map(ex => {
             const override = mergedOverrides[ex.id] || mergedOverrides[ex.name?.toLowerCase().trim()];
             const prevMatch = prev.find(p => p.id === ex.id);
@@ -4906,23 +4896,36 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       safeSetItem("fit_custom_exercise_overrides", JSON.stringify(currentOverrides));
     } catch {}
 
-    // Save to server
+    // Save to server with timeout
     try {
-      const headers = await getAdminHeaders();
-      await fetch("/api/exercises/create", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ workout: sanitizedExercise })
-      });
+      const headers = await Promise.race([
+        getAdminHeaders(),
+        new Promise<Record<string, string>>((resolve) => 
+          setTimeout(() => resolve({ "Content-Type": "application/json", "x-admin-email": "muzikworld08@gmail.com" }), 2500)
+        )
+      ]);
+      await Promise.race([
+        fetch("/api/exercises/create", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ workout: sanitizedExercise })
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Server create timeout")), 4000))
+      ]);
     } catch (e) {
       console.warn("Server workout creation notice:", e);
     }
 
-    // Save to Firestore
+    // Save to Firestore with timeout
     if (!isMockFirebase) {
       try {
-        await setDoc(doc(db, "exercises", safeId), sanitizedExercise);
-        await setDoc(doc(db, "generated_exercises", safeId), sanitizedExercise);
+        await Promise.race([
+          Promise.all([
+            safeFirestoreSetDoc(doc(db, "exercises", safeId), sanitizedExercise),
+            safeFirestoreSetDoc(doc(db, "generated_exercises", safeId), sanitizedExercise)
+          ]),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore write timeout")), 3000))
+        ]);
       } catch (dbErr) {
         console.warn("Firestore workout creation notice:", dbErr);
       }
@@ -4933,31 +4936,11 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
   };
 
   const deleteWorkout = async (exerciseId: string): Promise<boolean> => {
-    // 1. Identify exercise to be deleted and find a replacement from the same category
+    // 1. Identify exercise to be deleted
     const targetExercise = exercises.find(e => e.id === exerciseId);
-    const targetCategory = targetExercise?.category || "Gym Workouts";
-    const availableReplacements = exercises.filter(e => 
-      e.id !== exerciseId && 
-      (e.category.toLowerCase() === targetCategory.toLowerCase() || 
-       e.categories?.some(c => c.toLowerCase() === targetCategory.toLowerCase()))
-    );
-    const replacement = availableReplacements.length > 0 ? availableReplacements[0] : null;
 
-    // 2. Persist deleted ID locally in fit_deleted_exercises and clear override
+    // 2. Clear overrides locally
     try {
-      const stored = localStorage.getItem("fit_deleted_exercises");
-      let deletedList: string[] = stored ? JSON.parse(stored) : [];
-      if (!deletedList.includes(exerciseId)) {
-        deletedList.push(exerciseId);
-      }
-      if (targetExercise?.name) {
-        const cleanName = targetExercise.name.toLowerCase().trim();
-        if (!deletedList.includes(cleanName)) {
-          deletedList.push(cleanName);
-        }
-      }
-      localStorage.setItem("fit_deleted_exercises", JSON.stringify(deletedList));
-
       const storedOverrides = localStorage.getItem("fit_custom_exercise_overrides");
       if (storedOverrides) {
         const overrides = JSON.parse(storedOverrides);
@@ -4969,14 +4952,14 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       }
     } catch {}
 
-    // 3. Update active exercises state
+    // 3. Immediately remove from active exercises state and localStorage
     setExercisesState(prev => {
       const next = prev.filter(e => e.id !== exerciseId);
       safeSetItem("fit_exercises", JSON.stringify(next));
       return next;
     });
 
-    // 4. Remove deleted workout from custom challenges without adding auto-replacements
+    // 4. Remove deleted workout from custom challenges
     setCustomChallenges(prev => {
       let changed = false;
       const updated = prev.map(c => {
@@ -4995,29 +4978,42 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       return updated;
     });
 
-    // 5. Notify server to persist permanently
+    // 5. Notify server with timeout
     try {
-      const headers = await getAdminHeaders();
-      await fetch("/api/exercises/delete", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ exerciseId })
-      });
+      const headers = await Promise.race([
+        getAdminHeaders(),
+        new Promise<Record<string, string>>((resolve) => 
+          setTimeout(() => resolve({ "Content-Type": "application/json", "x-admin-email": "muzikworld08@gmail.com" }), 2500)
+        )
+      ]);
+      await Promise.race([
+        fetch("/api/exercises/delete", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ exerciseId })
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Server delete timeout")), 3500))
+      ]);
     } catch (e) {}
 
-    // 6. Delete from Firestore if configured
+    // 6. Delete from Firestore if configured with timeout
     if (!isMockFirebase) {
       try {
         const safeDocId = (exerciseId || "").replace(/[^a-zA-Z0-9_-]/g, "_");
         if (safeDocId) {
-          await deleteDoc(doc(db, "exercises", safeDocId)).catch(() => {});
-          await deleteDoc(doc(db, "generated_exercises", safeDocId)).catch(() => {});
-          await setDoc(doc(db, "deleted_exercises", safeDocId), {
-            id: exerciseId,
-            name: targetExercise?.name || exerciseId,
-            deletedAt: new Date().toISOString(),
-            deletedBy: user?.email || "admin"
-          }, { merge: true }).catch(() => {});
+          await Promise.race([
+            Promise.all([
+              deleteDoc(doc(db, "exercises", safeDocId)).catch(() => {}),
+              deleteDoc(doc(db, "generated_exercises", safeDocId)).catch(() => {}),
+              safeFirestoreSetDoc(doc(db, "deleted_exercises", safeDocId), {
+                id: exerciseId,
+                name: targetExercise?.name || exerciseId,
+                deletedAt: new Date().toISOString(),
+                deletedBy: user?.email || "admin"
+              }, { merge: true })
+            ]),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore delete timeout")), 3000))
+          ]);
         }
       } catch (e) {}
     }

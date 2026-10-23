@@ -44,7 +44,7 @@
     "stripe": "^22.5.0",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
-    "tsx": "^4.23.12",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.2.1"
   },

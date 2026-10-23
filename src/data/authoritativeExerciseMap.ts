@@ -53,30 +53,6 @@ export function resolveAuthenticExercise(
 
   const cleanLower = cleanName.toLowerCase();
 
-  // Check if exercise was deleted in localStorage
-  if (typeof window !== "undefined" && window.localStorage) {
-    try {
-      const rawDel = window.localStorage.getItem("fit_deleted_exercises");
-      if (rawDel) {
-        const deletedArr = JSON.parse(rawDel);
-        if (Array.isArray(deletedArr)) {
-          const isDeleted = deletedArr.some((d: any) => {
-            const dName = typeof d === "string" ? d : d?.name;
-            const dId = typeof d === "object" ? d?.id : null;
-            return (dName && cleanLower === String(dName).toLowerCase().trim()) || (dId && cleanLower === String(dId).toLowerCase().trim());
-          });
-          if (isDeleted) {
-            return {
-              name: cleanName,
-              gifUrl: "",
-              muscleGroup: targetCat
-            };
-          }
-        }
-      }
-    } catch {}
-  }
-
   // 1. Check active Admin-added exercises in localStorage FIRST (admin custom exercises and overrides take precedence)
   let adminExerciseFound = false;
   if (typeof window !== "undefined" && window.localStorage) {
@@ -96,14 +72,9 @@ export function resolveAuthenticExercise(
           if (match) {
             adminExerciseFound = true;
             if (match.category) targetCat = match.category;
-            // If admin explicitly set media to empty or deleted, respect it!
-            if (match.gifUrl === "" || match.customMediaUrl === "" || match.mediaDeleted) {
-              mediaUrl = "";
-            } else {
-              const candidateMedia = match.customMediaUrl || match.gifUrl || match.imageUrl;
-              if (candidateMedia && !isMediaUrlConflictingWithExercise(cleanName, candidateMedia)) {
-                mediaUrl = candidateMedia;
-              }
+            const candidateMedia = match.customMediaUrl || match.gifUrl || match.imageUrl;
+            if (candidateMedia && !isMediaUrlConflictingWithExercise(cleanName, candidateMedia)) {
+              mediaUrl = candidateMedia;
             }
           }
         }
@@ -112,7 +83,7 @@ export function resolveAuthenticExercise(
   }
 
   // 2. Check Canonical Exercises database for exact authentic GIF match or alias match
-  if (!adminExerciseFound || !mediaUrl) {
+  if (!mediaUrl) {
     let canonicalMatch = CANONICAL_EXERCISES.find(e => 
       e.name.toLowerCase().trim() === cleanLower ||
       isExerciseMatch(cleanName, e.name)
@@ -140,7 +111,7 @@ export function resolveAuthenticExercise(
     }
 
     if (canonicalMatch) {
-      if (canonicalMatch.gifUrl && !mediaUrl && fallbackGifUrl !== "") {
+      if (canonicalMatch.gifUrl) {
         mediaUrl = canonicalMatch.gifUrl;
       }
       if (canonicalMatch.category && targetCat === "General") {
@@ -149,9 +120,7 @@ export function resolveAuthenticExercise(
     }
 
     // If fallbackGifUrl was provided, check conflict
-    if (fallbackGifUrl && isMediaUrlConflictingWithExercise(cleanName, fallbackGifUrl)) {
-      mediaUrl = canonicalMatch?.gifUrl || "";
-    } else if (fallbackGifUrl && !mediaUrl) {
+    if (fallbackGifUrl && !isMediaUrlConflictingWithExercise(cleanName, fallbackGifUrl)) {
       mediaUrl = fallbackGifUrl;
     }
   }

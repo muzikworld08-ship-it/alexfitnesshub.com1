@@ -736,7 +736,10 @@ async function getServerFirestoreDoc(collectionName: string, docId: string, user
   // 3. Fallback to standard Firebase Web SDK
   try {
     const docRef = doc(db, collectionName, docId);
-    const snap = await getDoc(docRef);
+    const snap = await Promise.race([
+      getDoc(docRef),
+      new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Server Firestore getDoc timeout")), 3500))
+    ]);
     return {
       exists: snap.exists(),
       data: () => snap.data()
@@ -969,7 +972,10 @@ async function setServerFirestoreDoc(collectionName: string, docId: string, data
   }
   try {
     const docRef = doc(db, collectionName, docId);
-    await setDoc(docRef, data, { merge });
+    await Promise.race([
+      setDoc(docRef, data, { merge }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Server Firestore setDoc timeout")), 3500))
+    ]);
     console.log(`[Server Firestore Web SDK Write OK] Successfully wrote ${collectionName}/${docId} via Web SDK`);
     return { success: true };
   } catch (err: any) {

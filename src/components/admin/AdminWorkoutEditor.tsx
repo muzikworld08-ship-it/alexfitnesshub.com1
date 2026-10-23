@@ -150,10 +150,12 @@ export default function AdminWorkoutEditor() {
 
   const handleConfirmDeleteWorkout = async () => {
     if (!deleteModalTarget) return;
+    const targetId = deleteModalTarget.id;
+    // Dismiss modal immediately so the UI remains fast and responsive
+    setDeleteModalTarget(null);
     setIsDeletingWorkout(true);
     try {
-      await deleteWorkout(deleteModalTarget.id);
-      setDeleteModalTarget(null);
+      await deleteWorkout(targetId);
     } catch (e: any) {
       console.error("Failed deleting workout:", e);
       alert("Error deleting workout: " + (e?.message || "Internal server error"));
