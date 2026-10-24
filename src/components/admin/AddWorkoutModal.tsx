@@ -9,12 +9,12 @@ import UnifiedExerciseMedia from "../UnifiedExerciseMedia";
 interface AddWorkoutModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddExercise: (newExercise: ChallengeExerciseItem, targetTier?: "Beginner" | "Intermediate" | "Advanced" | "All") => void;
+  onAddExercise: (newExercise: ChallengeExerciseItem, targetTier?: "Beginner" | "Intermediate" | "Advanced") => void;
   libraryExercises: Exercise[];
   programId: string;
   dayNumber: number;
   currentExercises?: ChallengeExerciseItem[];
-  targetDifficulty?: "Beginner" | "Intermediate" | "Advanced" | "All";
+  targetDifficulty?: "Beginner" | "Intermediate" | "Advanced";
 }
 
 const CATEGORY_FILTERS = [
@@ -53,13 +53,13 @@ export default function AddWorkoutModal({
   programId,
   dayNumber,
   currentExercises = [],
-  targetDifficulty = "All"
+  targetDifficulty = "Beginner"
 }: AddWorkoutModalProps) {
   const [activeTab, setActiveTab] = useState<"library" | "custom">("library");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [activeTier, setActiveTier] = useState<"Beginner" | "Intermediate" | "Advanced" | "All">(
-    targetDifficulty || "All"
+  const [activeTier, setActiveTier] = useState<"Beginner" | "Intermediate" | "Advanced">(
+    targetDifficulty || "Beginner"
   );
   const [difficultyFilter, setDifficultyFilter] = useState<string>("All");
 
@@ -76,9 +76,7 @@ export default function AddWorkoutModal({
   React.useEffect(() => {
     if (targetDifficulty) {
       setActiveTier(targetDifficulty);
-      if (targetDifficulty !== "All") {
-        setCustomDifficulty(targetDifficulty);
-      }
+      setCustomDifficulty(targetDifficulty);
     }
   }, [targetDifficulty, isOpen]);
 
@@ -88,7 +86,7 @@ export default function AddWorkoutModal({
   const [customMuscleGroup, setCustomMuscleGroup] = useState(isWomenProgram ? "Glutes, Hamstrings" : "");
   const [customEquipment, setCustomEquipment] = useState(isWomenProgram ? "Bodyweight / Dumbbells" : "Dumbbells");
   const [customDifficulty, setCustomDifficulty] = useState<"Beginner" | "Intermediate" | "Advanced">(
-    targetDifficulty && targetDifficulty !== "All" ? targetDifficulty : "Intermediate"
+    targetDifficulty || "Intermediate"
   );
   const [customSets, setCustomSets] = useState("3");
   const [customReps, setCustomReps] = useState("10-12 reps");
@@ -159,9 +157,7 @@ export default function AddWorkoutModal({
       return;
     }
 
-    const assignedDifficulty = activeTier && activeTier !== "All"
-      ? activeTier
-      : (ex.difficulty || "Intermediate");
+    const assignedDifficulty = activeTier || (ex.difficulty || "Intermediate");
 
     const defaultSets = assignedDifficulty === "Beginner" ? 3 : (assignedDifficulty === "Advanced" ? 4 : 3);
     const defaultReps = assignedDifficulty === "Beginner" ? "10-12 reps" : (assignedDifficulty === "Advanced" ? "6-8 heavy reps" : "8-10 reps");
@@ -272,7 +268,7 @@ export default function AddWorkoutModal({
       muscleGroup: muscles.length > 0 ? muscles : (isWomenProgram ? ["Glutes", "Core"] : ["Full Body"]),
       exerciseName: customName.trim(),
       equipment: [customEquipment],
-      difficulty: activeTier !== "All" ? activeTier : customDifficulty,
+      difficulty: activeTier,
       sets: parseInt(customSets) || 3,
       reps: customReps.trim() || "10-12 reps",
       duration: customDuration.trim() || "45s set",
@@ -323,17 +319,15 @@ export default function AddWorkoutModal({
                       ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
                       : activeTier === "Advanced"
                       ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
-                      : activeTier === "Intermediate"
-                      ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
-                      : "bg-neutral-800 text-neutral-300 border-neutral-700"
+                      : "bg-amber-500/20 text-amber-300 border-amber-500/30"
                   }`}>
-                    Adding to: {activeTier === "All" ? "All Levels (Baseline)" : `${activeTier} Category`}
+                    Adding to: {activeTier} Tier
                   </span>
                 </div>
                 <p className="text-xs text-neutral-400 mt-0.5">
                   {isWomenProgram 
                     ? `Assign a movement to Day ${dayNumber} (No heavy strongman/powerlifting movements).`
-                    : `Append a workout drill to Day ${dayNumber} of ${programId}. Select category/tier to manage exercises separately.`}
+                    : `Append a workout drill to Day ${dayNumber} of ${programId}. Select tier to manage exercises separately.`}
                 </p>
               </div>
             </div>
@@ -346,27 +340,13 @@ export default function AddWorkoutModal({
             </button>
           </div>
 
-          {/* Dedicated Category / Tier Selector Bar */}
+          {/* Dedicated Category / Tier Selector Bar (Beginner, Intermediate, Advanced) */}
           <div className="mt-4 p-2.5 rounded-2xl bg-neutral-950/80 border border-neutral-800 flex items-center justify-between gap-2.5 flex-wrap">
             <div className="flex items-center gap-2 text-xs font-bold text-neutral-300">
               <Layers className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>Target Category:</span>
+              <span>Target Tier:</span>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTier("All");
-                  setCustomDifficulty("Intermediate");
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                  activeTier === "All"
-                    ? "bg-neutral-800 text-white border border-neutral-600 shadow-xs"
-                    : "bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800"
-                }`}
-              >
-                <span>🌐 All Levels</span>
-              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -499,7 +479,7 @@ export default function AddWorkoutModal({
                         : "bg-neutral-950 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700"
                     }`}
                   >
-                    {diff === "All" ? "All Levels" : diff}
+                    {diff === "All" ? "All Difficulties" : diff}
                   </button>
                 ))}
               </div>
@@ -591,7 +571,7 @@ export default function AddWorkoutModal({
                                 title="This workout is already in this routine"
                               >
                                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                <span>Already in {activeTier !== "All" ? activeTier : "Workout"}</span>
+                                <span>Already in {activeTier}</span>
                               </button>
                             );
                           }
@@ -610,7 +590,7 @@ export default function AddWorkoutModal({
                               } text-white text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs`}
                             >
                               <Plus className="w-3.5 h-3.5" />
-                              <span>+ Add to {activeTier !== "All" ? activeTier : "Workout"}</span>
+                              <span>+ Add to {activeTier}</span>
                             </button>
                           );
                         })()}

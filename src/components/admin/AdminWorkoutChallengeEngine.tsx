@@ -113,8 +113,8 @@ export default function AdminWorkoutChallengeEngine() {
   const [selectedDayNumber, setSelectedDayNumber] = useState<number>(1);
   const [applyToAllCycleWeeks, setApplyToAllCycleWeeks] = useState<boolean>(true);
 
-  // Difficulty Level Tier (Beginner, Intermediate, Advanced, or All Levels)
-  const [selectedDifficultyLevel, setSelectedDifficultyLevel] = useState<"all" | "beginner" | "intermediate" | "advanced">("all");
+  // Difficulty Level Tier (Beginner, Intermediate, Advanced)
+  const [selectedDifficultyLevel, setSelectedDifficultyLevel] = useState<"beginner" | "intermediate" | "advanced">("beginner");
 
   // Overrides Cache
   const [serverOverrides, setServerOverrides] = useState<Record<string, any>>({});
@@ -244,7 +244,7 @@ export default function AdminWorkoutChallengeEngine() {
         name: customMatch.title || "Custom Challenge",
         totalDays: (customMatch as any).totalDays || (customMatch as any).durationDays || 90,
         category: customMatch.category || "Specialized Training",
-        targetAudience: "All Fitness Levels"
+        targetAudience: "Beginner to Advanced"
       };
     }
 
@@ -253,7 +253,7 @@ export default function AdminWorkoutChallengeEngine() {
       name: selectedProgramId.replace(/_/g, " ").toUpperCase(),
       totalDays: 90,
       category: "Specialized Training",
-      targetAudience: "All Athletes"
+      targetAudience: "Beginner to Advanced"
     };
   }, [selectedProgramId, allChallenges]);
 
@@ -271,11 +271,11 @@ export default function AdminWorkoutChallengeEngine() {
     return progOverrides[String(effectiveDayNumber)] || progOverrides[cycleKey] || null;
   }, [serverOverrides, selectedProgramId, effectiveDayNumber, adminTrack]);
 
-  // Tier counts per difficulty level
+  // Tier counts per difficulty level (Beginner, Intermediate, Advanced only)
   const tierCounts = useMemo(() => {
     const override = currentDayOverride;
     const base = baseDayPlan.exercises || [];
-    const allCount = (override && Array.isArray(override.exercises) && override.exercises.length > 0)
+    const fallbackCount = (override && Array.isArray(override.exercises) && override.exercises.length > 0)
       ? override.exercises.length
       : base.length;
 
@@ -287,11 +287,14 @@ export default function AdminWorkoutChallengeEngine() {
       if (override?.[tierExKey] && Array.isArray(override[tierExKey]) && override[tierExKey].length > 0) {
         return override[tierExKey].length;
       }
-      return allCount;
+      // If tier is intermediate or advanced and not customized, count beginner if beginner has drills
+      if (tier !== "beginner" && override?.levels?.beginner && Array.isArray(override.levels.beginner) && override.levels.beginner.length > 0) {
+        return override.levels.beginner.length;
+      }
+      return fallbackCount;
     };
 
     return {
-      all: allCount,
       beginner: getTierCount("beginner"),
       intermediate: getTierCount("intermediate"),
       advanced: getTierCount("advanced")
@@ -300,24 +303,13 @@ export default function AdminWorkoutChallengeEngine() {
 
   // Is the currently selected tier customized with its own distinct routine
   const isTierCustomized = useMemo(() => {
-    if (selectedDifficultyLevel === "all") return true;
     if (!currentDayOverride) return false;
-    if (selectedDifficultyLevel === "beginner") {
-      return (Array.isArray(currentDayOverride.levels?.beginner) && currentDayOverride.levels.beginner.length > 0)
-        || (Array.isArray(currentDayOverride.beginnerExercises) && currentDayOverride.beginnerExercises.length > 0);
-    }
-    if (selectedDifficultyLevel === "intermediate") {
-      return (Array.isArray(currentDayOverride.levels?.intermediate) && currentDayOverride.levels.intermediate.length > 0)
-        || (Array.isArray(currentDayOverride.intermediateExercises) && currentDayOverride.intermediateExercises.length > 0);
-    }
-    if (selectedDifficultyLevel === "advanced") {
-      return (Array.isArray(currentDayOverride.levels?.advanced) && currentDayOverride.levels.advanced.length > 0)
-        || (Array.isArray(currentDayOverride.advancedExercises) && currentDayOverride.advancedExercises.length > 0);
-    }
-    return false;
+    const lvl = currentDayOverride.levels?.[selectedDifficultyLevel];
+    const tierExKey = `${selectedDifficultyLevel}Exercises` as "beginnerExercises" | "intermediateExercises" | "advancedExercises";
+    return (Array.isArray(lvl) && lvl.length > 0) || (Array.isArray(currentDayOverride[tierExKey]) && currentDayOverride[tierExKey].length > 0);
   }, [currentDayOverride, selectedDifficultyLevel]);
 
-  // Active exercises list
+  // Active exercises list for currently selected tier
   const activeExercises = useMemo(() => {
     let rawList: ChallengeExerciseItem[] = [];
 
@@ -329,19 +321,21 @@ export default function AdminWorkoutChallengeEngine() {
       if (currentDayOverride?.[tierExKey] && Array.isArray(currentDayOverride[tierExKey]) && currentDayOverride[tierExKey].length > 0) {
         return currentDayOverride[tierExKey];
       }
-      // If tier is not separately customized, inherit the baseline workouts
+      // If tier is not separately customized, fall back to beginner or general exercises
+      if (tier !== "beginner") {
+        if (currentDayOverride?.levels?.beginner && Array.isArray(currentDayOverride.levels.beginner) && currentDayOverride.levels.beginner.length > 0) {
+          return currentDayOverride.levels.beginner;
+        }
+        if (currentDayOverride?.beginnerExercises && Array.isArray(currentDayOverride.beginnerExercises) && currentDayOverride.beginnerExercises.length > 0) {
+          return currentDayOverride.beginnerExercises;
+        }
+      }
       return (currentDayOverride && Array.isArray(currentDayOverride.exercises) && currentDayOverride.exercises.length > 0)
         ? currentDayOverride.exercises
         : (baseDayPlan.exercises || []);
     };
 
-    if (selectedDifficultyLevel === "beginner" || selectedDifficultyLevel === "intermediate" || selectedDifficultyLevel === "advanced") {
-      rawList = getTierList(selectedDifficultyLevel);
-    } else {
-      rawList = (currentDayOverride && Array.isArray(currentDayOverride.exercises) && currentDayOverride.exercises.length > 0)
-        ? currentDayOverride.exercises
-        : (baseDayPlan.exercises || []);
-    }
+    rawList = getTierList(selectedDifficultyLevel);
 
     const seenNames = new Set<string>();
     const seenGifs = new Set<string>();
@@ -407,7 +401,7 @@ export default function AdminWorkoutChallengeEngine() {
   };
 
   // Reorder Exercises Handler
-  const handleReorderExercises = async (newExercises: ChallengeExerciseItem[], forTier?: "all" | "beginner" | "intermediate" | "advanced") => {
+  const handleReorderExercises = async (newExercises: ChallengeExerciseItem[], forTier?: "beginner" | "intermediate" | "advanced") => {
     // Deduplicate exercises and GIFs to strictly enforce zero duplication
     const seenNames = new Set<string>();
     const seenGifs = new Set<string>();
@@ -450,9 +444,9 @@ export default function AdminWorkoutChallengeEngine() {
       nextLevels.advanced = sanitizedExercises;
     }
 
-    const baselineExercises = targetTier === "all"
+    const baselineExercises = targetTier === "beginner"
       ? sanitizedExercises
-      : (existingDayData.exercises || baseDayPlan.exercises || []);
+      : (nextLevels.beginner || existingDayData.beginnerExercises || existingDayData.exercises || baseDayPlan.exercises || []);
 
     const updatedDayData = {
       ...existingDayData,
@@ -466,9 +460,9 @@ export default function AdminWorkoutChallengeEngine() {
       estimatedDuration: cardioState.durationMinutes,
       exercises: baselineExercises,
       levels: nextLevels,
-      beginnerExercises: targetTier === "beginner" ? sanitizedExercises : (existingDayData.beginnerExercises || nextLevels.beginner || baselineExercises),
-      intermediateExercises: targetTier === "intermediate" ? sanitizedExercises : (existingDayData.intermediateExercises || nextLevels.intermediate || baselineExercises),
-      advancedExercises: targetTier === "advanced" ? sanitizedExercises : (existingDayData.advancedExercises || nextLevels.advanced || baselineExercises),
+      beginnerExercises: targetTier === "beginner" ? sanitizedExercises : (nextLevels.beginner || existingDayData.beginnerExercises || baselineExercises),
+      intermediateExercises: targetTier === "intermediate" ? sanitizedExercises : (nextLevels.intermediate || existingDayData.intermediateExercises || baselineExercises),
+      advancedExercises: targetTier === "advanced" ? sanitizedExercises : (nextLevels.advanced || existingDayData.advancedExercises || baselineExercises),
     };
 
     // Optimistic UI update
@@ -528,7 +522,7 @@ export default function AdminWorkoutChallengeEngine() {
           broadcastOverridesUpdated(next);
           return next;
         });
-        setSaveSuccessMsg(`Routine for ${targetTier === "all" ? "All Levels" : targetTier.toUpperCase()} re-arranged and manifested!`);
+        setSaveSuccessMsg(`Routine for ${targetTier.toUpperCase()} re-arranged and manifested!`);
         setTimeout(() => setSaveSuccessMsg(null), 3000);
       }
     } catch (err) {
@@ -592,11 +586,11 @@ export default function AdminWorkoutChallengeEngine() {
     setDragOverIndex(null);
   };
 
-  // Add Exercise Handler with Category/Tier routing
-  const handleAddExercise = (newEx: ChallengeExerciseItem, targetTier?: "Beginner" | "Intermediate" | "Advanced" | "All") => {
-    const activeTierTarget = (targetTier && targetTier !== "All"
-      ? targetTier.toLowerCase()
-      : selectedDifficultyLevel) as "all" | "beginner" | "intermediate" | "advanced";
+  // Add Exercise Handler with Category/Tier routing (Beginner, Intermediate, Advanced)
+  const handleAddExercise = (newEx: ChallengeExerciseItem, targetTier?: "Beginner" | "Intermediate" | "Advanced") => {
+    const activeTierTarget = (targetTier 
+      ? (targetTier.toLowerCase() as "beginner" | "intermediate" | "advanced")
+      : selectedDifficultyLevel);
 
     if (activeTierTarget !== selectedDifficultyLevel) {
       setSelectedDifficultyLevel(activeTierTarget);
@@ -636,9 +630,7 @@ export default function AdminWorkoutChallengeEngine() {
       assignedGif = getExerciseGifUrl(name, newEx.category, usedGifsInRoutine);
     }
 
-    const assignedDiff = activeTierTarget !== "all"
-      ? (activeTierTarget.charAt(0).toUpperCase() + activeTierTarget.slice(1)) as any
-      : (newEx.difficulty || "Intermediate");
+    const assignedDiff = (activeTierTarget.charAt(0).toUpperCase() + activeTierTarget.slice(1)) as any;
 
     const finalEx: ChallengeExerciseItem = {
       ...newEx,
@@ -651,7 +643,7 @@ export default function AdminWorkoutChallengeEngine() {
 
     const updated = [...currentTierExercises, finalEx];
     handleReorderExercises(updated, activeTierTarget);
-    setSaveSuccessMsg(`Added "${name}" to the ${activeTierTarget !== "all" ? activeTierTarget.toUpperCase() : "canonical"} routine!`);
+    setSaveSuccessMsg(`Added "${name}" to the ${activeTierTarget.toUpperCase()} routine!`);
     setTimeout(() => setSaveSuccessMsg(null), 3000);
   };
 
@@ -659,7 +651,7 @@ export default function AdminWorkoutChallengeEngine() {
   const handleSaveEditedExercise = (updatedEx: ChallengeExerciseItem) => {
     const updated = activeExercises.map(ex => ex.id === updatedEx.id ? updatedEx : ex);
     handleReorderExercises(updated, selectedDifficultyLevel);
-    setSaveSuccessMsg(`Updated parameters for "${updatedEx.exerciseName}" in ${selectedDifficultyLevel === "all" ? "routine" : selectedDifficultyLevel.toUpperCase()}!`);
+    setSaveSuccessMsg(`Updated parameters for "${updatedEx.exerciseName}" in ${selectedDifficultyLevel.toUpperCase()} routine!`);
     setTimeout(() => setSaveSuccessMsg(null), 3000);
     setEditingExercise(null);
   };
@@ -683,9 +675,7 @@ export default function AdminWorkoutChallengeEngine() {
         finalGif = getExerciseGifUrl(chosenName, chosenEx.category || targetToReplace.category, usedGifsInRoutine);
       }
 
-      const assignedDiff = selectedDifficultyLevel !== "all"
-        ? (selectedDifficultyLevel.charAt(0).toUpperCase() + selectedDifficultyLevel.slice(1)) as any
-        : (chosenEx.difficulty || targetToReplace.difficulty || "Intermediate");
+      const assignedDiff = (selectedDifficultyLevel.charAt(0).toUpperCase() + selectedDifficultyLevel.slice(1)) as any;
 
       const replacementItem: ChallengeExerciseItem = {
         id: `rep_${selectedProgramId}_${selectedDifficultyLevel}_d${effectiveDayNumber}_${Date.now()}`,
@@ -713,7 +703,7 @@ export default function AdminWorkoutChallengeEngine() {
       const updated = activeExercises.map((ex: ChallengeExerciseItem) => ex.id === targetToReplace.id ? replacementItem : ex);
       await handleReorderExercises(updated, selectedDifficultyLevel);
 
-      setSaveSuccessMsg(`Replaced "${targetToReplace.exerciseName}" with "${replacementItem.exerciseName}" in ${selectedDifficultyLevel === "all" ? "routine" : selectedDifficultyLevel.toUpperCase()}!`);
+      setSaveSuccessMsg(`Replaced "${targetToReplace.exerciseName}" with "${replacementItem.exerciseName}" in ${selectedDifficultyLevel.toUpperCase()} routine!`);
       setTimeout(() => setSaveSuccessMsg(null), 3500);
       setTargetToReplace(null);
     } catch (err: any) {
@@ -743,7 +733,7 @@ export default function AdminWorkoutChallengeEngine() {
 
       await handleReorderExercises(updated, selectedDifficultyLevel);
 
-      setSaveSuccessMsg(`Permanently removed "${target.exerciseName}" from ${selectedDifficultyLevel === "all" ? "routine" : selectedDifficultyLevel.toUpperCase() + " routine"}.`);
+      setSaveSuccessMsg(`Permanently removed "${target.exerciseName}" from ${selectedDifficultyLevel.toUpperCase()} routine.`);
       setTimeout(() => setSaveSuccessMsg(null), 3000);
     } catch (err: any) {
       console.error("Delete only error:", err);
@@ -815,30 +805,31 @@ export default function AdminWorkoutChallengeEngine() {
     }
   };
 
-  // Copy baseline exercises into the active tier
-  const handleCopyBaselineToActiveTier = () => {
-    if (selectedDifficultyLevel === "all") return;
-    const baseList = (currentDayOverride && Array.isArray(currentDayOverride.exercises) && currentDayOverride.exercises.length > 0)
-      ? currentDayOverride.exercises
-      : (baseDayPlan.exercises || []);
+  // Copy drills from another tier into the currently active tier
+  const handleCopyTier = (fromTier: "beginner" | "intermediate" | "advanced") => {
+    const sourceList = (currentDayOverride?.levels?.[fromTier] && Array.isArray(currentDayOverride.levels[fromTier]) && currentDayOverride.levels[fromTier].length > 0)
+      ? currentDayOverride.levels[fromTier]
+      : (currentDayOverride?.[`${fromTier}Exercises`] && Array.isArray(currentDayOverride[`${fromTier}Exercises`]) && currentDayOverride[`${fromTier}Exercises`].length > 0)
+      ? currentDayOverride[`${fromTier}Exercises`]
+      : activeExercises;
 
-    const formattedTierName = selectedDifficultyLevel.charAt(0).toUpperCase() + selectedDifficultyLevel.slice(1);
-    const copied: ChallengeExerciseItem[] = baseList.map(ex => ({
+    const formattedTarget = selectedDifficultyLevel.charAt(0).toUpperCase() + selectedDifficultyLevel.slice(1);
+    const copied: ChallengeExerciseItem[] = sourceList.map(ex => ({
       ...ex,
       id: `ex_${selectedProgramId}_${selectedDifficultyLevel}_d${effectiveDayNumber}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      difficulty: formattedTierName as any,
+      difficulty: formattedTarget as any,
       sets: selectedDifficultyLevel === "beginner" ? 3 : (selectedDifficultyLevel === "advanced" ? 4 : 3),
-      reps: selectedDifficultyLevel === "beginner" ? "10-12 reps" : (selectedDifficultyLevel === "advanced" ? "6-8 heavy reps" : "8-10 reps")
+      reps: selectedDifficultyLevel === "beginner" ? "10-12 reps" : (selectedDifficultyLevel === "advanced" ? "6-8 heavy reps" : "8-10 reps"),
+      restTime: selectedDifficultyLevel === "beginner" ? "60s" : (selectedDifficultyLevel === "advanced" ? "90s" : "45s")
     }));
 
     handleReorderExercises(copied, selectedDifficultyLevel);
-    setSaveSuccessMsg(`Copied ${copied.length} baseline drills into ${formattedTierName} routine!`);
+    setSaveSuccessMsg(`Copied ${copied.length} drills from ${fromTier.toUpperCase()} into ${formattedTarget} routine!`);
     setTimeout(() => setSaveSuccessMsg(null), 3000);
   };
 
   // Start a fresh blank routine for the active tier
   const handleStartBlankActiveTier = () => {
-    if (selectedDifficultyLevel === "all") return;
     handleReorderExercises([], selectedDifficultyLevel);
     setSaveSuccessMsg(`Started blank routine for ${selectedDifficultyLevel.toUpperCase()}! Click "+ Add Exercise Drill" to add drills.`);
     setTimeout(() => setSaveSuccessMsg(null), 3000);
@@ -850,17 +841,11 @@ export default function AdminWorkoutChallengeEngine() {
     try {
       const existingLevels = currentDayOverride?.levels || {};
       const nextLevels = { ...existingLevels };
-      if (selectedDifficultyLevel === "beginner") {
-        nextLevels.beginner = activeExercises;
-      } else if (selectedDifficultyLevel === "intermediate") {
-        nextLevels.intermediate = activeExercises;
-      } else if (selectedDifficultyLevel === "advanced") {
-        nextLevels.advanced = activeExercises;
-      }
+      nextLevels[selectedDifficultyLevel] = activeExercises;
 
-      const baselineList = (currentDayOverride?.exercises && Array.isArray(currentDayOverride.exercises) && currentDayOverride.exercises.length > 0)
-        ? currentDayOverride.exercises
-        : (baseDayPlan.exercises || []);
+      const baselineList = selectedDifficultyLevel === "beginner"
+        ? activeExercises
+        : (nextLevels.beginner || currentDayOverride?.exercises || baseDayPlan.exercises || []);
 
       const dayData = {
         title: splitTitle,
@@ -875,11 +860,11 @@ export default function AdminWorkoutChallengeEngine() {
         coachingNotes: cardioState.isCardio 
           ? `Admin Prescribed Cardio Engine: ${cardioState.distance} conversational pace.` 
           : "Execute with strict biomechanics and progressive overload.",
-        exercises: selectedDifficultyLevel === "all" ? (cardioState.isCardio ? [] : activeExercises) : baselineList,
+        exercises: cardioState.isCardio ? [] : baselineList,
         levels: nextLevels,
-        beginnerExercises: selectedDifficultyLevel === "beginner" ? activeExercises : (currentDayOverride?.beginnerExercises || nextLevels.beginner || baselineList),
-        intermediateExercises: selectedDifficultyLevel === "intermediate" ? activeExercises : (currentDayOverride?.intermediateExercises || nextLevels.intermediate || baselineList),
-        advancedExercises: selectedDifficultyLevel === "advanced" ? activeExercises : (currentDayOverride?.advancedExercises || nextLevels.advanced || baselineList),
+        beginnerExercises: selectedDifficultyLevel === "beginner" ? activeExercises : (nextLevels.beginner || currentDayOverride?.beginnerExercises || baselineList),
+        intermediateExercises: selectedDifficultyLevel === "intermediate" ? activeExercises : (nextLevels.intermediate || currentDayOverride?.intermediateExercises || baselineList),
+        advancedExercises: selectedDifficultyLevel === "advanced" ? activeExercises : (nextLevels.advanced || currentDayOverride?.advancedExercises || baselineList),
       };
 
       const token = await auth.currentUser?.getIdToken().catch(() => null);
@@ -1706,32 +1691,12 @@ export default function AdminWorkoutChallengeEngine() {
             </div>
           </div>
 
-          {/* Tier Category Selector Buttons */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-            <button
-              type="button"
-              onClick={() => setSelectedDifficultyLevel("all")}
-              className={`p-3 rounded-xl border text-left transition relative cursor-pointer flex items-center justify-between gap-2 ${
-                selectedDifficultyLevel === "all"
-                  ? "bg-neutral-800 border-neutral-500 text-white shadow-md shadow-neutral-950/50 ring-1 ring-neutral-400"
-                  : "bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700"
-              }`}
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black uppercase tracking-wider">🌐 All Levels</span>
-                </div>
-                <div className="text-[10px] text-neutral-400 truncate mt-0.5">Canonical Baseline</div>
-              </div>
-              <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-300 shrink-0">
-                {tierCounts.all} drills
-              </span>
-            </button>
-
+          {/* Tier Category Selector Buttons - ONLY Beginner, Intermediate, Advanced */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <button
               type="button"
               onClick={() => setSelectedDifficultyLevel("beginner")}
-              className={`p-3 rounded-xl border text-left transition relative cursor-pointer flex items-center justify-between gap-2 ${
+              className={`p-3.5 rounded-xl border text-left transition relative cursor-pointer flex items-center justify-between gap-2 ${
                 selectedDifficultyLevel === "beginner"
                   ? "bg-emerald-950/80 border-emerald-500 text-emerald-200 shadow-md shadow-emerald-950/50 ring-1 ring-emerald-400"
                   : "bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-emerald-300 hover:border-neutral-700"
@@ -1739,7 +1704,7 @@ export default function AdminWorkoutChallengeEngine() {
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0" />
                   <span className="text-xs font-black uppercase tracking-wider text-emerald-300">Beginner</span>
                 </div>
                 <div className="text-[10px] text-neutral-400 truncate mt-0.5">Form, Joint Prep & Toning</div>
@@ -1752,7 +1717,7 @@ export default function AdminWorkoutChallengeEngine() {
             <button
               type="button"
               onClick={() => setSelectedDifficultyLevel("intermediate")}
-              className={`p-3 rounded-xl border text-left transition relative cursor-pointer flex items-center justify-between gap-2 ${
+              className={`p-3.5 rounded-xl border text-left transition relative cursor-pointer flex items-center justify-between gap-2 ${
                 selectedDifficultyLevel === "intermediate"
                   ? "bg-amber-950/80 border-amber-500 text-amber-200 shadow-md shadow-amber-950/50 ring-1 ring-amber-400"
                   : "bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-amber-300 hover:border-neutral-700"
@@ -1760,7 +1725,7 @@ export default function AdminWorkoutChallengeEngine() {
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />
                   <span className="text-xs font-black uppercase tracking-wider text-amber-300">Intermediate</span>
                 </div>
                 <div className="text-[10px] text-neutral-400 truncate mt-0.5">Progressive Hypertrophy</div>
@@ -1773,7 +1738,7 @@ export default function AdminWorkoutChallengeEngine() {
             <button
               type="button"
               onClick={() => setSelectedDifficultyLevel("advanced")}
-              className={`p-3 rounded-xl border text-left transition relative cursor-pointer flex items-center justify-between gap-2 ${
+              className={`p-3.5 rounded-xl border text-left transition relative cursor-pointer flex items-center justify-between gap-2 ${
                 selectedDifficultyLevel === "advanced"
                   ? "bg-rose-950/80 border-rose-500 text-rose-200 shadow-md shadow-rose-950/50 ring-1 ring-rose-400"
                   : "bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-rose-300 hover:border-neutral-700"
@@ -1781,7 +1746,7 @@ export default function AdminWorkoutChallengeEngine() {
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-rose-400 shrink-0" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-400 shrink-0" />
                   <span className="text-xs font-black uppercase tracking-wider text-rose-300">Advanced</span>
                 </div>
                 <div className="text-[10px] text-neutral-400 truncate mt-0.5">High Volume & Compounds</div>
@@ -1793,23 +1758,35 @@ export default function AdminWorkoutChallengeEngine() {
           </div>
 
           {/* Tier Assistance Notice & Quick Copy Action */}
-          {selectedDifficultyLevel !== "all" && !isTierCustomized && (
+          {!isTierCustomized && (
             <div className="p-3 bg-neutral-900 rounded-xl border border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div className="flex items-center gap-2 text-xs text-neutral-300">
                 <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
                 <span>
-                  No separate <strong>{selectedDifficultyLevel.toUpperCase()}</strong> routine saved yet. Currently inheriting baseline workouts ({tierCounts.all} drills).
+                  No distinct <strong>{selectedDifficultyLevel.toUpperCase()}</strong> routine saved yet. Currently displaying {activeExercises.length} default drills.
                 </span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleCopyBaselineToActiveTier}
-                  className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-neutral-700"
-                >
-                  <Copy className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Copy Baseline to {selectedDifficultyLevel.toUpperCase()}</span>
-                </button>
+                {selectedDifficultyLevel !== "beginner" && (
+                  <button
+                    type="button"
+                    onClick={() => handleCopyTier("beginner")}
+                    className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-neutral-700"
+                  >
+                    <Copy className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Copy Beginner Drills</span>
+                  </button>
+                )}
+                {selectedDifficultyLevel === "advanced" && (
+                  <button
+                    type="button"
+                    onClick={() => handleCopyTier("intermediate")}
+                    className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-neutral-700"
+                  >
+                    <Copy className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Copy Intermediate Drills</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleStartBlankActiveTier}
@@ -1829,19 +1806,17 @@ export default function AdminWorkoutChallengeEngine() {
             <h4 className="text-sm font-black uppercase tracking-wider text-neutral-300 flex items-center gap-2 flex-wrap">
               <Dumbbell className="w-4 h-4 text-red-500" />
               <span>
-                {selectedDifficultyLevel === "all" ? "Prescribed Workout Routine" : `Prescribed ${selectedDifficultyLevel.toUpperCase()} Routine`} ({activeExercises.length} Drills)
+                Prescribed {selectedDifficultyLevel.toUpperCase()} Routine ({activeExercises.length} Drills)
               </span>
-              {selectedDifficultyLevel !== "all" && (
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-bold ${
-                  selectedDifficultyLevel === "beginner"
-                    ? "bg-emerald-950 text-emerald-300 border-emerald-500/40"
-                    : selectedDifficultyLevel === "advanced"
-                    ? "bg-rose-950 text-rose-300 border-rose-500/40"
-                    : "bg-amber-950 text-amber-300 border-amber-500/40"
-                }`}>
-                  {selectedDifficultyLevel.toUpperCase()} TIER
-                </span>
-              )}
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-bold ${
+                selectedDifficultyLevel === "beginner"
+                  ? "bg-emerald-950 text-emerald-300 border-emerald-500/40"
+                  : selectedDifficultyLevel === "advanced"
+                  ? "bg-rose-950 text-rose-300 border-rose-500/40"
+                  : "bg-amber-950 text-amber-300 border-amber-500/40"
+              }`}>
+                {selectedDifficultyLevel.toUpperCase()} TIER
+              </span>
             </h4>
             <div className="flex items-center gap-3">
               <span className="text-xs text-neutral-500 hidden md:inline">
@@ -1851,10 +1826,10 @@ export default function AdminWorkoutChallengeEngine() {
                 type="button"
                 onClick={() => setIsAddModalOpen(true)}
                 className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 active:scale-95 text-white text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-red-600/20 shrink-0"
-                title={`Add a new ${selectedDifficultyLevel !== "all" ? selectedDifficultyLevel : ""} workout drill to this routine`}
+                title={`Add a new ${selectedDifficultyLevel} workout drill to this routine`}
               >
                 <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>+ Add {selectedDifficultyLevel !== "all" ? (selectedDifficultyLevel.charAt(0).toUpperCase() + selectedDifficultyLevel.slice(1)) : "Exercise"} Drill</span>
+                <span>+ Add {selectedDifficultyLevel.charAt(0).toUpperCase() + selectedDifficultyLevel.slice(1)} Drill</span>
               </button>
             </div>
           </div>
@@ -1865,7 +1840,7 @@ export default function AdminWorkoutChallengeEngine() {
               <p className="text-sm text-neutral-400">
                 {cardioState.isCardio 
                   ? "This is a dedicated Cardio day. No heavy weight drills required." 
-                  : `No workouts currently assigned to this ${selectedDifficultyLevel !== "all" ? selectedDifficultyLevel : ""} day routine.`}
+                  : `No workouts currently assigned to this ${selectedDifficultyLevel} day routine.`}
               </p>
               <div className="flex items-center justify-center gap-2">
                 <button
@@ -1873,15 +1848,15 @@ export default function AdminWorkoutChallengeEngine() {
                   onClick={() => setIsAddModalOpen(true)}
                   className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black transition cursor-pointer"
                 >
-                  + Add {selectedDifficultyLevel !== "all" ? (selectedDifficultyLevel.charAt(0).toUpperCase() + selectedDifficultyLevel.slice(1)) : "Workout"} Drill
+                  + Add {selectedDifficultyLevel.charAt(0).toUpperCase() + selectedDifficultyLevel.slice(1)} Drill
                 </button>
-                {selectedDifficultyLevel !== "all" && (
+                {selectedDifficultyLevel !== "beginner" && (
                   <button
                     type="button"
-                    onClick={handleCopyBaselineToActiveTier}
+                    onClick={() => handleCopyTier("beginner")}
                     className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-bold transition cursor-pointer border border-neutral-700"
                   >
-                    Copy Baseline
+                    Copy Beginner Drills
                   </button>
                 )}
               </div>
@@ -2067,7 +2042,7 @@ export default function AdminWorkoutChallengeEngine() {
         programId={selectedProgramId}
         dayNumber={effectiveDayNumber}
         currentExercises={activeExercises}
-        targetDifficulty={selectedDifficultyLevel === "all" ? "All" : (selectedDifficultyLevel.charAt(0).toUpperCase() + selectedDifficultyLevel.slice(1)) as any}
+        targetDifficulty={(selectedDifficultyLevel.charAt(0).toUpperCase() + selectedDifficultyLevel.slice(1)) as "Beginner" | "Intermediate" | "Advanced"}
       />
 
       {/* 3. Edit Workout Drill Modal */}

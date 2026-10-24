@@ -1,5 +1,5 @@
 import { ProgramId, ProgramMetadata, ChallengeExerciseItem, DayWorkoutMeta, DayExecutionPlan } from "../types/challengeEngine";
-import { Exercise } from "./exercises";
+import { Exercise, getExerciseGifUrl } from "./exercises";
 import { buildDynamicDayPlan } from "../utils/dynamicWorkoutEngine";
 import { isExplicitlyMarkedWomenWorkout } from "./womenConfidenceProgramData";
 
@@ -259,52 +259,128 @@ export function getWorkoutForProgramAndDay(
   if (progOverrides) {
     const dayOverride = progOverrides[String(safeDay)] || progOverrides[`cycle_${cycleDay}`];
     if (dayOverride) {
-      let chosenExercises = Array.isArray(dayOverride.exercises) ? dayOverride.exercises : [];
+      // Determine requested fitness level: strictly "beginner" | "intermediate" | "advanced"
       const athleteLevelStr = (
         trackOrUser?.fitnessLevel || 
         trackOrUser?.difficulty || 
-        (typeof trackOrUser === "string" ? trackOrUser : "") ||
+        trackOrUser?.workoutExperience ||
+        (typeof customExercisesListOrTarget === "string" ? customExercisesListOrTarget : "") ||
         (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level") || "") : "")
       ).toLowerCase();
-      const requestedLevel = athleteLevelStr || "beginner";
 
-      if (requestedLevel.includes("beg") && (dayOverride.levels?.beginner?.length || dayOverride.beginnerExercises?.length)) {
-        chosenExercises = dayOverride.levels?.beginner || dayOverride.beginnerExercises;
-      } else if (requestedLevel.includes("adv") && (dayOverride.levels?.advanced?.length || dayOverride.advancedExercises?.length)) {
-        chosenExercises = dayOverride.levels?.advanced || dayOverride.advancedExercises;
-      } else if (requestedLevel.includes("inter") && (dayOverride.levels?.intermediate?.length || dayOverride.intermediateExercises?.length)) {
-        chosenExercises = dayOverride.levels?.intermediate || dayOverride.intermediateExercises;
+      let requestedTier: "beginner" | "intermediate" | "advanced" = "beginner";
+      if (athleteLevelStr.includes("adv")) {
+        requestedTier = "advanced";
+      } else if (athleteLevelStr.includes("inter")) {
+        requestedTier = "intermediate";
+      } else {
+        requestedTier = "beginner";
       }
 
-      if (!chosenExercises.length) {
-        chosenExercises = dayOverride.levels?.beginner || dayOverride.beginnerExercises || dayOverride.levels?.intermediate || dayOverride.intermediateExercises || dayOverride.levels?.advanced || dayOverride.advancedExercises || dayOverride.exercises || [];
+      const isRest = !!dayOverride.isRestDay;
+      const isCardio = !!dayOverride.isCardioOnly;
+
+      let chosenExercises: ChallengeExerciseItem[] = [];
+
+      if (!isRest && !isCardio) {
+        // Direct tier lookup in dayOverride.levels[requestedTier] or dayOverride[`${requestedTier}Exercises`]
+        const tierFromLevels = dayOverride.levels?.[requestedTier];
+        const tierFromLegacyKey = dayOverride[`${requestedTier}Exercises`];
+
+        if (Array.isArray(tierFromLevels) && tierFromLevels.length > 0) {
+          chosenExercises = tierFromLevels;
+        } else if (Array.isArray(tierFromLegacyKey) && tierFromLegacyKey.length > 0) {
+          chosenExercises = tierFromLegacyKey;
+        } else {
+          // Fallback hierarchy between tiers:
+          if (requestedTier === "advanced") {
+            chosenExercises = (dayOverride.levels?.intermediate && dayOverride.levels.intermediate.length > 0)
+              ? dayOverride.levels.intermediate
+              : (dayOverride.intermediateExercises && dayOverride.intermediateExercises.length > 0)
+              ? dayOverride.intermediateExercises
+              : (dayOverride.levels?.beginner && dayOverride.levels.beginner.length > 0)
+              ? dayOverride.levels.beginner
+              : (dayOverride.beginnerExercises && dayOverride.beginnerExercises.length > 0)
+              ? dayOverride.beginnerExercises
+              : (dayOverride.exercises || []);
+          } else if (requestedTier === "intermediate") {
+            chosenExercises = (dayOverride.levels?.beginner && dayOverride.levels.beginner.length > 0)
+              ? dayOverride.levels.beginner
+              : (dayOverride.beginnerExercises && dayOverride.beginnerExercises.length > 0)
+              ? dayOverride.beginnerExercises
+              : (dayOverride.levels?.advanced && dayOverride.levels.advanced.length > 0)
+              ? dayOverride.levels.advanced
+              : (dayOverride.exercises || []);
+          } else {
+            // Beginner
+            chosenExercises = (dayOverride.levels?.intermediate && dayOverride.levels.intermediate.length > 0)
+              ? dayOverride.levels.intermediate
+              : (dayOverride.levels?.advanced && dayOverride.levels.advanced.length > 0)
+              ? dayOverride.levels.advanced
+              : (dayOverride.exercises || []);
+          }
+        }
       }
 
-      const sanitizedChosen = Array.isArray(chosenExercises) ? chosenExercises : [];
+      // Deduplicate and sanitize drills to guarantee stable GIFs and correct tier difficulty
+      const seenNames = new Set<string>();
+      const seenGifs = new Set<string>();
+      const sanitizedChosen: ChallengeExerciseItem[] = [];
 
-      if (sanitizedChosen.length > 0) {
-        return {
-          meta: {
-            dayNumber: safeDay,
-            programId: normId as any,
-            title: dayOverride.title || `Day ${safeDay}: ${dayOverride.category || "Targeted Split"}`,
-            category: dayOverride.category || "Targeted Split",
-            targetMuscles: dayOverride.targetMuscles || ["Full Body"],
-            estimatedDuration: dayOverride.estimatedDuration || "45-60 mins",
-            estimatedCalories: dayOverride.estimatedCalories || 480,
-            isRestDay: !!dayOverride.isRestDay,
-            isCardioOnly: !!dayOverride.isCardioOnly,
-            cardioDistance: dayOverride.cardioDistance,
-            guidelines: dayOverride.guidelines || [
-              `Focus: ${dayOverride.category || "Workout Session"}.`,
-              "Progressive overload and deliberate tempo on every set.",
-              "Rest adequately between sets."
-            ],
-            coachingNotes: dayOverride.coachingNotes || `${dayOverride.category || "Workout"} - execute with strict form.`
-          },
-          exercises: sanitizedChosen
-        };
+      for (const ex of chosenExercises) {
+        if (!ex) continue;
+        const name = (ex.exerciseName || (ex as any).name || "").trim();
+        if (!name) continue;
+        const lower = name.toLowerCase();
+        if (seenNames.has(lower)) continue;
+        seenNames.add(lower);
+
+        let gif = ex.gifUrl !== undefined ? ex.gifUrl : ((ex as any).customMediaUrl !== undefined ? (ex as any).customMediaUrl : undefined);
+        if (!gif) {
+          gif = getExerciseGifUrl(name, ex.category, seenGifs);
+        }
+        if (gif) {
+          seenGifs.add(gif);
+        }
+
+        const tierCapitalized = (requestedTier.charAt(0).toUpperCase() + requestedTier.slice(1)) as "Beginner" | "Intermediate" | "Advanced";
+
+        sanitizedChosen.push({
+          ...ex,
+          name,
+          exerciseName: name,
+          difficulty: ex.difficulty || tierCapitalized,
+          sets: ex.sets || (requestedTier === "beginner" ? 3 : (requestedTier === "advanced" ? 4 : 3)),
+          reps: ex.reps || (requestedTier === "beginner" ? "10-12 reps" : (requestedTier === "advanced" ? "6-8 heavy reps" : "8-10 reps")),
+          restTime: ex.restTime || (requestedTier === "beginner" ? "60s" : (requestedTier === "advanced" ? "90s" : "45s")),
+          gifUrl: gif || "",
+          imageUrl: gif || ""
+        });
       }
+
+      // Return configured admin override verbatim - NEVER invent or inject extra drills
+      return {
+        meta: {
+          dayNumber: safeDay,
+          programId: normId as any,
+          title: dayOverride.title || `Day ${safeDay}: ${dayOverride.category || "Targeted Split"}`,
+          category: dayOverride.category || "Targeted Split",
+          targetMuscles: dayOverride.targetMuscles || ["Full Body"],
+          estimatedDuration: dayOverride.estimatedDuration || "45-60 mins",
+          estimatedCalories: dayOverride.estimatedCalories || 480,
+          isRestDay: isRest,
+          isCardioOnly: isCardio,
+          cardioDistance: dayOverride.cardioDistance,
+          cardioType: dayOverride.cardioType,
+          guidelines: dayOverride.guidelines || [
+            `Focus: ${dayOverride.category || "Workout Session"}.`,
+            "Progressive overload and deliberate tempo on every set.",
+            "Rest adequately between sets."
+          ],
+          coachingNotes: dayOverride.coachingNotes || `${dayOverride.category || "Workout"} - execute with strict form.`
+        },
+        exercises: sanitizedChosen
+      };
     }
   }
 

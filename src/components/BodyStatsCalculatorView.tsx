@@ -294,7 +294,7 @@ export default function BodyStatsCalculatorView() {
         badge: "Deep Visceral Melt",
         reason: "Targets visceral & lower abdominal fat through clinical Zone 2 cardio, progressive incline walking, and deep transverse core vacuum holds.",
         timeline: "150 Days",
-        difficulty: "All Levels",
+        difficulty: "Beginner",
       };
     }
     if (assessmentFocus === "women_curves") {
@@ -330,7 +330,7 @@ export default function BodyStatsCalculatorView() {
         badge: "High Adherence Home Recomp",
         reason: "High-density bodyweight & minimal equipment circuit designed to maximize post-exercise oxygen consumption (EPOC) with zero gym friction.",
         timeline: "30 Days",
-        difficulty: "All Levels",
+        difficulty: "Beginner",
       };
     }
     if (assessmentFocus === "muscle_building") {
@@ -353,7 +353,7 @@ export default function BodyStatsCalculatorView() {
       badge: "Rapid Calorie Deficit",
       reason: "Ultra-condensed 15-minute daily high-intensity bursts to kickstart metabolic fat burn for packed schedules.",
       timeline: "7 Days",
-      difficulty: "All Levels",
+      difficulty: "Beginner",
     };
   }, [assessmentFocus, assessmentGear, assessmentDays, assessmentExperience]);
 

@@ -8,7 +8,7 @@ interface EditWorkoutDrillModalProps {
   exercise: ChallengeExerciseItem | null;
   onClose: () => void;
   onSave: (updated: ChallengeExerciseItem) => void;
-  currentTier?: "all" | "beginner" | "intermediate" | "advanced";
+  currentTier?: "beginner" | "intermediate" | "advanced";
 }
 
 export default function EditWorkoutDrillModal({
@@ -16,7 +16,7 @@ export default function EditWorkoutDrillModal({
   exercise,
   onClose,
   onSave,
-  currentTier = "all"
+  currentTier = "beginner"
 }: EditWorkoutDrillModalProps) {
   if (!isOpen || !exercise) return null;
 
@@ -24,7 +24,7 @@ export default function EditWorkoutDrillModal({
   const [reps, setReps] = useState<string>(String(exercise.reps || "10-12 reps"));
   const [restTime, setRestTime] = useState<string>(exercise.restTime || "60s");
   const [difficulty, setDifficulty] = useState<"Beginner" | "Intermediate" | "Advanced">(
-    (exercise.difficulty as any) || (currentTier !== "all" ? (currentTier.charAt(0).toUpperCase() + currentTier.slice(1)) as any : "Intermediate")
+    (exercise.difficulty as any) || (currentTier.charAt(0).toUpperCase() + currentTier.slice(1)) as any
   );
   const [equipment, setEquipment] = useState<string>(
     Array.isArray(exercise.equipment) ? exercise.equipment.join(", ") : String(exercise.equipment || "Bodyweight")
@@ -42,7 +42,7 @@ export default function EditWorkoutDrillModal({
       setReps(String(exercise.reps || "10-12 reps"));
       setRestTime(exercise.restTime || "60s");
       setDifficulty(
-        (exercise.difficulty as any) || (currentTier !== "all" ? (currentTier.charAt(0).toUpperCase() + currentTier.slice(1)) as any : "Intermediate")
+        (exercise.difficulty as any) || (currentTier.charAt(0).toUpperCase() + currentTier.slice(1)) as any
       );
       setEquipment(
         Array.isArray(exercise.equipment) ? exercise.equipment.join(", ") : String(exercise.equipment || "Bodyweight")
@@ -81,7 +81,7 @@ export default function EditWorkoutDrillModal({
     { label: "6-8 peak overload", tier: "Advanced" },
     { label: "12-15 hypertrophy", tier: "Intermediate" },
     { label: "15-20 endurance", tier: "Beginner" },
-    { label: "30-45s isometric hold", tier: "All" }
+    { label: "30-45s isometric hold", tier: "Intermediate" }
   ];
 
   const REST_PRESETS = ["30s", "45s", "60s", "90s", "120s"];
