@@ -6,7 +6,7 @@ import {
   Calendar, Layers, AlertCircle
 } from "lucide-react";
 import { UserProfile } from "../../types";
-import { Exercise } from "../../data/exercises";
+import { Exercise, getExerciseGifUrl } from "../../data/exercises";
 
 interface AdminOverviewTabProps {
   exercises: Exercise[];
@@ -30,8 +30,9 @@ export default function AdminOverviewTab({
   const premiumAthletes = allSystemUsers.filter(u => u.subscriptionStatus === "premium").length;
   const freeAthletes = totalUsers - premiumAthletes;
   const totalWorkouts = exercises.length;
+  const totalWithGif = exercises.filter(e => !!(e.customMediaUrl || e.gifUrl || e.imageUrl || getExerciseGifUrl(e.name, e.category))).length;
+  const mediaCoveragePercent = totalWorkouts > 0 ? Math.round((totalWithGif / totalWorkouts) * 100) : 100;
   const totalCustomMedia = exercises.filter(e => !!e.customMediaUrl).length;
-  const mediaCoveragePercent = totalWorkouts > 0 ? Math.round((totalCustomMedia / totalWorkouts) * 100) : 0;
 
   // Active Flagship Programs
   const activeProgramsCount = 5;
@@ -658,7 +659,7 @@ export default function AdminOverviewTab({
             <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
               <div>
                 <span className="font-bold text-slate-900 block">Media & GIF Storage Catalog</span>
-                <span className="text-[10px] text-slate-500 font-mono">{totalCustomMedia} of {totalWorkouts} workouts mapped to high-definition demonstration GIFs</span>
+                <span className="text-[10px] text-slate-500 font-mono">{totalWithGif} of {totalWorkouts} workouts mapped to high-definition demonstration GIFs</span>
               </div>
               <span className="text-[9px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{mediaCoveragePercent}%</span>
             </div>
@@ -768,7 +769,7 @@ export default function AdminOverviewTab({
             </div>
             <p className="text-[11px] text-slate-600 font-medium">Cloud Storage & permanent asset manifest synchronizer active.</p>
             <span className="text-[9px] font-mono text-slate-400 block pt-1 border-t border-slate-200/60">
-              {totalCustomMedia} GIFs Active
+              {totalWithGif} GIFs Active
             </span>
           </div>
 

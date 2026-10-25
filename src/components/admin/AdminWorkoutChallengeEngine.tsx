@@ -24,7 +24,7 @@ import {
   setScheduleOverridesFromRemote, 
   setScheduleOverridesFromAdmin 
 } from "../../utils/scheduleOverridesStore";
-import { getExerciseGifUrl, Exercise } from "../../data/exercises";
+import { getExerciseGifUrl, Exercise, EXERCISES } from "../../data/exercises";
 import { ChallengeValidationService } from "../../services/challengeValidationService";
 import { useApp } from "../../context/AppContext";
 import { auth, db, safeFirestoreSetDoc } from "../../lib/firebase";
@@ -275,20 +275,20 @@ export default function AdminWorkoutChallengeEngine() {
   const tierCounts = useMemo(() => {
     const override = currentDayOverride;
     const base = baseDayPlan.exercises || [];
-    const fallbackCount = (override && Array.isArray(override.exercises) && override.exercises.length > 0)
+    const fallbackCount = (override && Array.isArray(override.exercises))
       ? override.exercises.length
       : base.length;
 
     const getTierCount = (tier: "beginner" | "intermediate" | "advanced") => {
-      if (override?.levels?.[tier] && Array.isArray(override.levels[tier]) && override.levels[tier].length > 0) {
+      if (override?.levels && tier in override.levels && Array.isArray(override.levels[tier])) {
         return override.levels[tier].length;
       }
       const tierExKey = `${tier}Exercises` as "beginnerExercises" | "intermediateExercises" | "advancedExercises";
-      if (override?.[tierExKey] && Array.isArray(override[tierExKey]) && override[tierExKey].length > 0) {
+      if (override && tierExKey in override && Array.isArray(override[tierExKey])) {
         return override[tierExKey].length;
       }
       // If tier is intermediate or advanced and not customized, count beginner if beginner has drills
-      if (tier !== "beginner" && override?.levels?.beginner && Array.isArray(override.levels.beginner) && override.levels.beginner.length > 0) {
+      if (tier !== "beginner" && override?.levels && "beginner" in override.levels && Array.isArray(override.levels.beginner)) {
         return override.levels.beginner.length;
       }
       return fallbackCount;
@@ -306,7 +306,7 @@ export default function AdminWorkoutChallengeEngine() {
     if (!currentDayOverride) return false;
     const lvl = currentDayOverride.levels?.[selectedDifficultyLevel];
     const tierExKey = `${selectedDifficultyLevel}Exercises` as "beginnerExercises" | "intermediateExercises" | "advancedExercises";
-    return (Array.isArray(lvl) && lvl.length > 0) || (Array.isArray(currentDayOverride[tierExKey]) && currentDayOverride[tierExKey].length > 0);
+    return Array.isArray(lvl) || (Array.isArray(currentDayOverride[tierExKey]) && currentDayOverride[tierExKey].length > 0);
   }, [currentDayOverride, selectedDifficultyLevel]);
 
   // Active exercises list for currently selected tier
@@ -314,23 +314,23 @@ export default function AdminWorkoutChallengeEngine() {
     let rawList: ChallengeExerciseItem[] = [];
 
     const getTierList = (tier: "beginner" | "intermediate" | "advanced") => {
-      if (currentDayOverride?.levels?.[tier] && Array.isArray(currentDayOverride.levels[tier]) && currentDayOverride.levels[tier].length > 0) {
+      if (currentDayOverride?.levels && tier in currentDayOverride.levels && Array.isArray(currentDayOverride.levels[tier])) {
         return currentDayOverride.levels[tier];
       }
       const tierExKey = `${tier}Exercises` as "beginnerExercises" | "intermediateExercises" | "advancedExercises";
-      if (currentDayOverride?.[tierExKey] && Array.isArray(currentDayOverride[tierExKey]) && currentDayOverride[tierExKey].length > 0) {
+      if (currentDayOverride && tierExKey in currentDayOverride && Array.isArray(currentDayOverride[tierExKey])) {
         return currentDayOverride[tierExKey];
       }
       // If tier is not separately customized, fall back to beginner or general exercises
       if (tier !== "beginner") {
-        if (currentDayOverride?.levels?.beginner && Array.isArray(currentDayOverride.levels.beginner) && currentDayOverride.levels.beginner.length > 0) {
+        if (currentDayOverride?.levels && "beginner" in currentDayOverride.levels && Array.isArray(currentDayOverride.levels.beginner)) {
           return currentDayOverride.levels.beginner;
         }
-        if (currentDayOverride?.beginnerExercises && Array.isArray(currentDayOverride.beginnerExercises) && currentDayOverride.beginnerExercises.length > 0) {
+        if (currentDayOverride && "beginnerExercises" in currentDayOverride && Array.isArray(currentDayOverride.beginnerExercises)) {
           return currentDayOverride.beginnerExercises;
         }
       }
-      return (currentDayOverride && Array.isArray(currentDayOverride.exercises) && currentDayOverride.exercises.length > 0)
+      return (currentDayOverride && Array.isArray(currentDayOverride.exercises))
         ? currentDayOverride.exercises
         : (baseDayPlan.exercises || []);
     };
@@ -465,18 +465,26 @@ export default function AdminWorkoutChallengeEngine() {
       advancedExercises: targetTier === "advanced" ? sanitizedExercises : (nextLevels.advanced || existingDayData.advancedExercises || baselineExercises),
     };
 
-    // Optimistic UI update
+    // Optimistic UI update across all program key aliases
+    const normId = normalizeProgramId(selectedProgramId);
+    const trackKey = adminTrack ? `${normId}_${adminTrack}` : null;
+    const targetProgKey = (selectedProgramId === "home_180" && adminTrack) 
+      ? `${selectedProgramId}_${adminTrack}` 
+      : selectedProgramId;
+    const keysToUpdate = Array.from(new Set([selectedProgramId, normId, trackKey, targetProgKey].filter(Boolean) as string[]));
+
     setServerOverrides(prev => {
       const next = { ...prev };
-      const pid = selectedProgramId;
-      if (!next[pid]) next[pid] = {};
       const dayKey = String(effectiveDayNumber);
       const cycleKey = `cycle_${((effectiveDayNumber - 1) % 7) + 1}`;
       
-      next[pid][dayKey] = updatedDayData;
-      if (viewMode === "cycle" || applyToAllCycleWeeks) {
-        next[pid][cycleKey] = updatedDayData;
-      }
+      keysToUpdate.forEach(key => {
+        if (!next[key]) next[key] = {};
+        next[key][dayKey] = updatedDayData;
+        if (viewMode === "cycle" || applyToAllCycleWeeks) {
+          next[key][cycleKey] = updatedDayData;
+        }
+      });
       broadcastOverridesUpdated(next);
       return next;
     });
@@ -487,10 +495,6 @@ export default function AdminWorkoutChallengeEngine() {
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
       headers["x-admin-email"] = adminEmail;
-
-      const targetProgKey = (selectedProgramId === "home_180" && adminTrack) 
-        ? `${selectedProgramId}_${adminTrack}` 
-        : selectedProgramId;
 
       const res = await fetch("/api/admin/programs/save-day-override", {
         method: "POST",
@@ -510,9 +514,7 @@ export default function AdminWorkoutChallengeEngine() {
       if (res.ok) {
         setServerOverrides(prev => {
           const next = { ...prev };
-          const pids = [selectedProgramId];
-          if (targetProgKey !== selectedProgramId) pids.push(targetProgKey);
-          pids.forEach(pid => {
+          keysToUpdate.forEach(pid => {
             if (!next[pid]) next[pid] = {};
             next[pid][String(effectiveDayNumber)] = updatedDayData;
             if (viewMode === "cycle" || applyToAllCycleWeeks) {
@@ -522,7 +524,7 @@ export default function AdminWorkoutChallengeEngine() {
           broadcastOverridesUpdated(next);
           return next;
         });
-        setSaveSuccessMsg(`Routine for ${targetTier.toUpperCase()} re-arranged and manifested!`);
+        setSaveSuccessMsg(`Routine for ${targetTier.toUpperCase()} manifested successfully!`);
         setTimeout(() => setSaveSuccessMsg(null), 3000);
       }
     } catch (err) {
@@ -743,60 +745,87 @@ export default function AdminWorkoutChallengeEngine() {
     }
   };
 
-  // Delete and Auto-Replace via Backend
+  // Delete and Auto-Replace via Dynamic Library Replacement (Instant & Resilient)
   const handleAutoReplace = async () => {
     if (!targetToDelete) return;
+    const target = targetToDelete;
+    setTargetToDelete(null);
     setIsDeleting(true);
 
     try {
-      const token = await auth.currentUser?.getIdToken().catch(() => null);
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
-      headers["x-admin-email"] = adminEmail;
+      const targetMuscle = Array.isArray(target.muscleGroup) ? target.muscleGroup[0] : (target.muscleGroup || "");
+      const targetCategory = target.category || "Gym Workouts";
+      const existingNames = new Set(activeExercises.map(e => (e.exerciseName || (e as any).name || "").toLowerCase().trim()));
 
-      const res = await fetch("/api/admin/programs/delete-and-replace", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          programId: selectedProgramId,
-          dayNumber: effectiveDayNumber,
-          cycleDay: ((effectiveDayNumber - 1) % 7) + 1,
-          applyToAllCycleWeeks: applyToAllCycleWeeks || viewMode === "cycle",
-          totalDays: currentProgramMeta.totalDays,
-          exerciseId: targetToDelete.id,
-          currentExercises: activeExercises,
-          categoryHint: targetToDelete.category,
-          muscleGroupHint: Array.isArray(targetToDelete.muscleGroup) ? targetToDelete.muscleGroup[0] : targetToDelete.muscleGroup
-        })
+      // Pick best matching candidate from libraryExercises or EXERCISES
+      const allPool = libraryExercises && libraryExercises.length > 0 ? libraryExercises : EXERCISES;
+      const candidate = allPool.find(e => {
+        if (!e || !e.name) return false;
+        const n = e.name.toLowerCase().trim();
+        if (n === (target.exerciseName || "").toLowerCase().trim() || existingNames.has(n)) return false;
+        const muscleMatch = e.muscleGroups?.some(m => targetMuscle && m.toLowerCase().includes(targetMuscle.toLowerCase()));
+        const catMatch = e.category && targetCategory && e.category.toLowerCase().includes(targetCategory.toLowerCase());
+        return muscleMatch || catMatch;
+      }) || allPool.find(e => {
+        if (!e || !e.name) return false;
+        const n = e.name.toLowerCase().trim();
+        return n !== (target.exerciseName || "").toLowerCase().trim() && !existingNames.has(n);
       });
 
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || "Failed to delete & auto-replace");
-
-      setServerOverrides(prev => {
-        const next = { ...prev };
-        const pid = selectedProgramId;
-        if (!next[pid]) next[pid] = {};
-        const dayKey = String(effectiveDayNumber);
-        const cycleKey = `cycle_${((effectiveDayNumber - 1) % 7) + 1}`;
-        next[pid][dayKey] = {
-          ...(next[pid][dayKey] || {}),
-          exercises: data.updatedExercises
+      if (candidate) {
+        const replacementItem: ChallengeExerciseItem = {
+          id: `drill_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          exerciseId: candidate.id,
+          name: candidate.name,
+          exerciseName: candidate.name,
+          category: candidate.category || target.category,
+          muscleGroup: Array.isArray(candidate.muscleGroups) ? candidate.muscleGroups : (Array.isArray(target.muscleGroup) ? target.muscleGroup : [String(target.muscleGroup || "Full Body")]),
+          equipment: Array.isArray(candidate.equipment) ? candidate.equipment : [String(candidate.equipment || target.equipment || "Bodyweight")],
+          gifUrl: candidate.customMediaUrl || candidate.gifUrl || candidate.imageUrl || getExerciseGifUrl(candidate.name, candidate.category),
+          imageUrl: candidate.customMediaUrl || candidate.imageUrl || candidate.gifUrl || getExerciseGifUrl(candidate.name, candidate.category),
+          sets: target.sets || 3,
+          reps: target.reps || "10-12",
+          duration: target.duration || "45s set",
+          instructions: candidate.instructions || target.instructions || [],
+          coachingCues: candidate.movementExecution ? [candidate.movementExecution] : (target.coachingCues || [])
         };
-        if (viewMode === "cycle" || applyToAllCycleWeeks) {
-          next[pid][cycleKey] = {
-            ...(next[pid][cycleKey] || {}),
-            exercises: data.updatedExercises
-          };
-        }
-        broadcastOverridesUpdated(next);
-        return next;
-      });
 
-      setSaveSuccessMsg(`Deleted "${targetToDelete.exerciseName}" and automatically substituted with "${data.replacementExercise?.exerciseName || "library drill"}".`);
-      setTimeout(() => setSaveSuccessMsg(null), 4000);
-      setTargetToDelete(null);
+        const updated = activeExercises.map((ex: ChallengeExerciseItem) => ex.id === target.id ? replacementItem : ex);
+        // Instant optimistic manifestation across all tier mappings
+        await handleReorderExercises(updated, selectedDifficultyLevel);
+
+        setSaveSuccessMsg(`Dynamically substituted "${target.exerciseName}" with "${replacementItem.exerciseName}" in ${selectedDifficultyLevel.toUpperCase()} routine!`);
+        setTimeout(() => setSaveSuccessMsg(null), 3500);
+
+        // Notify server in background
+        (async () => {
+          try {
+            const token = await auth.currentUser?.getIdToken().catch(() => null);
+            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            if (token) headers["Authorization"] = `Bearer ${token}`;
+            const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
+            headers["x-admin-email"] = adminEmail;
+
+            await fetch("/api/admin/programs/delete-and-replace", {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                programId: selectedProgramId,
+                dayNumber: effectiveDayNumber,
+                cycleDay: ((effectiveDayNumber - 1) % 7) + 1,
+                applyToAllCycleWeeks: applyToAllCycleWeeks || viewMode === "cycle",
+                totalDays: currentProgramMeta.totalDays,
+                exerciseId: target.id,
+                currentExercises: activeExercises,
+                categoryHint: target.category,
+                muscleGroupHint: targetMuscle
+              })
+            });
+          } catch (e) {}
+        })();
+      } else {
+        await handleDeleteOnly();
+      }
     } catch (err: any) {
       console.error("Auto-replace error:", err);
       alert("Failed to auto-replace: " + (err?.message || "Unknown error"));
@@ -2071,6 +2100,12 @@ export default function AdminWorkoutChallengeEngine() {
         isLoading={isDeleting}
         onConfirm={handleDeleteOnly}
         onDeleteOnly={handleDeleteOnly}
+        onAutoReplace={handleAutoReplace}
+        onChooseReplacement={() => {
+          const item = targetToDelete;
+          setTargetToDelete(null);
+          if (item) setTargetToReplace(item);
+        }}
         onCancel={() => setTargetToDelete(null)}
       />
     </div>

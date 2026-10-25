@@ -624,22 +624,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [exercises, setExercisesState] = useState<Exercise[]>(() => {
     try {
-      const PURGE_KEY = "fit_purge_v7_permanent_purge_all_149_workouts_2026_09_29";
-      if (typeof window !== "undefined" && window.localStorage) {
-        if (!window.localStorage.getItem(PURGE_KEY)) {
-          window.localStorage.removeItem("fit_exercises");
-          window.localStorage.removeItem("fit_custom_exercise_overrides");
-          window.localStorage.removeItem("fit_deleted_exercises");
-          window.localStorage.removeItem("fit_custom_challenges");
-          window.localStorage.removeItem("fit_workouts");
-          window.localStorage.removeItem("fit_custom_workouts");
-          window.localStorage.removeItem("fit_saved_workouts");
-          window.localStorage.removeItem("fit_programs_cache");
-          window.localStorage.setItem(PURGE_KEY, "true");
-          return [];
-        }
-      }
-
       let deletedSet = new Set<string>();
       try {
         const storedDel = localStorage.getItem("fit_deleted_exercises");
@@ -656,26 +640,77 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       } catch {}
 
-      const cached = localStorage.getItem("fit_exercises");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Strictly keep ONLY explicitly admin-added custom exercises that do NOT violate home equipment constraints
-          const cleanList = parsed.filter((ex: any) => {
-            if (!ex || !ex.name) return false;
-            const exName = (ex.name || "").toLowerCase().trim();
-            if (deletedSet.has(ex.id) || deletedSet.has(exName)) return false;
-            if (ex.isCustom !== true) return false;
-            if (isRestrictedHomeWorkout(ex).isViolating) return false;
-            const media = (ex.customMediaUrl || ex.gifUrl || ex.imageUrl || "").toLowerCase();
-            if (media.includes("hasaneyldrm/exercises-dataset")) return false;
-            return true;
-          });
-          return cleanList;
+      let cachedOverrides: Record<string, any> = {};
+      try {
+        const storedOverrides = localStorage.getItem("fit_custom_exercise_overrides");
+        if (storedOverrides) cachedOverrides = JSON.parse(storedOverrides);
+      } catch {}
+
+      const baseExercisePool = [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES];
+      const initialMap = new Map<string, Exercise>();
+
+      // 1. Populate base canonical exercises with cached media overrides
+      baseExercisePool.forEach(e => {
+        if (!e || !e.id) return;
+        const eName = (e.name || "").toLowerCase().trim();
+        if (deletedSet.has(e.id) || deletedSet.has(eName)) return;
+
+        const override = cachedOverrides[e.id] || cachedOverrides[eName];
+        let item: Exercise = { ...e };
+        if (override) {
+          item = {
+            ...item,
+            ...(override.customMediaUrl ? { customMediaUrl: override.customMediaUrl, customMediaType: override.customMediaType || "image" } : {}),
+            ...(override.id === e.id && override.isCustom && override.name ? { name: override.name } : {})
+          };
         }
-      }
-    } catch (e) {}
-    return [];
+        initialMap.set(e.id, item);
+      });
+
+      // 2. Merge any custom admin-created workouts from cached fit_exercises
+      try {
+        const cached = localStorage.getItem("fit_exercises");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) {
+            parsed.forEach((ex: any) => {
+              if (!ex || !ex.id || !ex.name) return;
+              const exName = (ex.name || "").toLowerCase().trim();
+              if (deletedSet.has(ex.id) || deletedSet.has(exName)) return;
+              if (ex.isCustom === true && !isRestrictedHomeWorkout(ex).isViolating) {
+                if (!initialMap.has(ex.id)) {
+                  initialMap.set(ex.id, ex);
+                }
+              }
+            });
+          }
+        }
+      } catch {}
+
+      // 3. Merge custom exercises from cachedOverrides
+      Object.keys(cachedOverrides).forEach(key => {
+        const val = cachedOverrides[key];
+        if (val && typeof val === "object" && val.name && val.isCustom === true && !deletedSet.has(key) && !isRestrictedHomeWorkout(val).isViolating) {
+          if (!initialMap.has(key)) {
+            initialMap.set(key, {
+              id: key,
+              category: "Gym Workouts",
+              difficulty: "Intermediate",
+              muscleGroups: ["Chest"],
+              equipment: ["Dumbbells"],
+              recommendedSets: "3-4",
+              recommendedReps: "10-12",
+              recommendedSetsReps: "3-4 Sets x 10-12 Reps",
+              ...val
+            } as Exercise);
+          }
+        }
+      });
+
+      return Array.from(initialMap.values());
+    } catch (e) {
+      return [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES];
+    }
   });
   const [customPrograms, setCustomPrograms] = useState<CustomProgram[]>([]);
   const [isBlockedUser, setIsBlockedUser] = useState(false);
@@ -1059,7 +1094,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem("fit_custom_exercise_overrides", JSON.stringify(mergedOverrides));
         } catch {}
 
-        const activeDeletedIds = new Set<string>([...serverDeletedIds, ...firestoreDeletedIds]);
+        let localDeleted: string[] = [];
+        try {
+          const raw = localStorage.getItem("fit_deleted_exercises");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) localDeleted = parsed;
+          }
+        } catch {}
+
+        const activeDeletedIds = new Set<string>([...serverDeletedIds, ...firestoreDeletedIds, ...localDeleted]);
 
         setExercisesState(prev => {
           const baseList = [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES].filter(e => !activeDeletedIds.has(e.id) && !activeDeletedIds.has(e.name?.toLowerCase().trim()));
@@ -4938,36 +4982,56 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
   const deleteWorkout = async (exerciseId: string): Promise<boolean> => {
     // 1. Identify exercise to be deleted
     const targetExercise = exercises.find(e => e.id === exerciseId);
+    const targetName = (targetExercise?.name || "").toLowerCase().trim();
 
-    // 2. Clear overrides locally
+    // 2. Immediately persist to localStorage "fit_deleted_exercises"
+    try {
+      let deletedList: string[] = [];
+      const storedDel = localStorage.getItem("fit_deleted_exercises");
+      if (storedDel) {
+        try {
+          const parsed = JSON.parse(storedDel);
+          if (Array.isArray(parsed)) deletedList = parsed;
+        } catch {}
+      }
+      if (!deletedList.includes(exerciseId)) deletedList.push(exerciseId);
+      if (targetName && !deletedList.includes(targetName)) deletedList.push(targetName);
+      safeSetItem("fit_deleted_exercises", JSON.stringify(deletedList));
+    } catch {}
+
+    // 3. Clear overrides locally
     try {
       const storedOverrides = localStorage.getItem("fit_custom_exercise_overrides");
       if (storedOverrides) {
         const overrides = JSON.parse(storedOverrides);
         delete overrides[exerciseId];
-        if (targetExercise?.name) {
-          delete overrides[targetExercise.name];
+        if (targetName) {
+          delete overrides[targetName];
         }
         localStorage.setItem("fit_custom_exercise_overrides", JSON.stringify(overrides));
       }
     } catch {}
 
-    // 3. Immediately remove from active exercises state and localStorage
+    // 4. Immediately remove from active exercises state and localStorage
     setExercisesState(prev => {
-      const next = prev.filter(e => e.id !== exerciseId);
+      const next = prev.filter(e => {
+        if (e.id === exerciseId) return false;
+        if (targetName && e.name.toLowerCase().trim() === targetName) return false;
+        return true;
+      });
       safeSetItem("fit_exercises", JSON.stringify(next));
       return next;
     });
 
-    // 4. Remove deleted workout from custom challenges
+    // 5. Remove deleted workout from custom challenges
     setCustomChallenges(prev => {
       let changed = false;
       const updated = prev.map(c => {
-        if (c.workouts && c.workouts.some(w => w.id === exerciseId)) {
+        if (c.workouts && c.workouts.some(w => w.id === exerciseId || (targetName && w.name?.toLowerCase().trim() === targetName))) {
           changed = true;
           return {
             ...c,
-            workouts: c.workouts.filter(w => w.id !== exerciseId)
+            workouts: c.workouts.filter(w => w.id !== exerciseId && (!targetName || w.name?.toLowerCase().trim() !== targetName))
           };
         }
         return c;
@@ -4978,31 +5042,27 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       return updated;
     });
 
-    // 5. Notify server with timeout
-    try {
-      const headers = await Promise.race([
-        getAdminHeaders(),
-        new Promise<Record<string, string>>((resolve) => 
-          setTimeout(() => resolve({ "Content-Type": "application/json", "x-admin-email": "muzikworld08@gmail.com" }), 2500)
-        )
-      ]);
-      await Promise.race([
-        fetch("/api/exercises/delete", {
+    // 6. Notify server and Firestore in background without blocking caller for instant delete speed
+    (async () => {
+      try {
+        const headers = await Promise.race([
+          getAdminHeaders(),
+          new Promise<Record<string, string>>((resolve) => 
+            setTimeout(() => resolve({ "Content-Type": "application/json", "x-admin-email": "muzikworld08@gmail.com" }), 1200)
+          )
+        ]);
+        await fetch("/api/exercises/delete", {
           method: "POST",
           headers,
-          body: JSON.stringify({ exerciseId })
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Server delete timeout")), 3500))
-      ]);
-    } catch (e) {}
+          body: JSON.stringify({ exerciseId, exerciseName: targetName })
+        });
+      } catch (e) {}
 
-    // 6. Delete from Firestore if configured with timeout
-    if (!isMockFirebase) {
-      try {
-        const safeDocId = (exerciseId || "").replace(/[^a-zA-Z0-9_-]/g, "_");
-        if (safeDocId) {
-          await Promise.race([
-            Promise.all([
+      if (!isMockFirebase) {
+        try {
+          const safeDocId = (exerciseId || "").replace(/[^a-zA-Z0-9_-]/g, "_");
+          if (safeDocId) {
+            await Promise.all([
               deleteDoc(doc(db, "exercises", safeDocId)).catch(() => {}),
               deleteDoc(doc(db, "generated_exercises", safeDocId)).catch(() => {}),
               safeFirestoreSetDoc(doc(db, "deleted_exercises", safeDocId), {
@@ -5011,12 +5071,12 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
                 deletedAt: new Date().toISOString(),
                 deletedBy: user?.email || "admin"
               }, { merge: true })
-            ]),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore delete timeout")), 3000))
-          ]);
-        }
-      } catch (e) {}
-    }
+            ]);
+          }
+        } catch (e) {}
+      }
+    })();
+
     return true;
   };
 

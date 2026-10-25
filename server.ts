@@ -4183,10 +4183,12 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
 
 // POST delete workout
 app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
-  const { exerciseId } = req.body;
-  if (!exerciseId) {
-    return res.status(400).json({ success: false, error: "exerciseId is required." });
+  const { exerciseId, exerciseName } = req.body;
+  if (!exerciseId && !exerciseName) {
+    return res.status(400).json({ success: false, error: "exerciseId or exerciseName is required." });
   }
+
+  const cleanName = (exerciseName || "").toLowerCase().trim();
 
   try {
     let overrides: Record<string, any> = {};
@@ -4199,8 +4201,16 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
       }
     }
 
-    if (overrides[exerciseId]) {
+    let overridesModified = false;
+    if (exerciseId && overrides[exerciseId]) {
       delete overrides[exerciseId];
+      overridesModified = true;
+    }
+    if (cleanName && overrides[cleanName]) {
+      delete overrides[cleanName];
+      overridesModified = true;
+    }
+    if (overridesModified) {
       fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
     }
 
@@ -4211,8 +4221,16 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
         const rawDel = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
         if (rawDel) deletedList = JSON.parse(rawDel);
       }
-      if (!deletedList.includes(exerciseId)) {
+      let delModified = false;
+      if (exerciseId && !deletedList.includes(exerciseId)) {
         deletedList.push(exerciseId);
+        delModified = true;
+      }
+      if (cleanName && !deletedList.includes(cleanName)) {
+        deletedList.push(cleanName);
+        delModified = true;
+      }
+      if (delModified) {
         fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(deletedList, null, 2), "utf-8");
       }
     } catch (writeDelErr) {
@@ -4220,22 +4238,24 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
     }
 
     // Mark deleted in Firestore or remove
-    try {
-      await setServerFirestoreDoc("exercises", exerciseId, {
-        id: exerciseId,
-        isDeleted: true,
-        deletedAt: new Date().toISOString()
-      }, true);
-    } catch (dbErr) {
-      console.warn(`[Firestore Delete Warning for ${exerciseId}]:`, dbErr);
+    if (exerciseId) {
+      try {
+        await setServerFirestoreDoc("exercises", exerciseId, {
+          id: exerciseId,
+          isDeleted: true,
+          deletedAt: new Date().toISOString()
+        }, true);
+      } catch (dbErr) {
+        console.warn(`[Firestore Delete Warning for ${exerciseId}]:`, dbErr);
+      }
     }
 
     await logAdminActivityOnFirebase(
       req.user?.email || "",
       req.user?.uid || "",
       "WORKOUT_DELETE",
-      `Admin permanently deleted workout ${exerciseId}`,
-      { exerciseId }
+      `Admin permanently deleted workout ${exerciseId || cleanName}`,
+      { exerciseId, exerciseName }
     );
 
     res.json({ success: true, message: "Workout permanently deleted successfully.", deletedExerciseId: exerciseId });
