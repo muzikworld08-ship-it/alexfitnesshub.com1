@@ -516,6 +516,8 @@ export function exerciseToChallengeItem(
     ],
     restTime: ex.restTime || "60s",
     gifUrl: mediaUrl,
+    imageUrl: mediaUrl,
+    customMediaUrl: mediaUrl,
     coachingCues: ex.movementExecution
       ? [ex.movementExecution]
       : ex.trainerTips
@@ -696,6 +698,177 @@ export const PROGRAM_SPLIT_DEFINITIONS: Record<string, (cycleDay: number, track?
       default:
         return { categoryTitle: "Sunday: Restorative Mobility & Rest", targetMuscles: ["Recovery", "Mobility"], isRestDay: true };
     }
+  },
+  lean_muscle: (cycleDay: number) => {
+    switch (cycleDay) {
+      case 1:
+        return { categoryTitle: "Monday: Chest & Triceps Hypertrophy", targetMuscles: ["Chest", "Triceps"] };
+      case 2:
+        return { categoryTitle: "Tuesday: Back & Biceps Overload", targetMuscles: ["Back", "Biceps"] };
+      case 3:
+        return { categoryTitle: "Wednesday: Quads, Hamstrings & Abs", targetMuscles: ["Quadriceps", "Hamstrings", "Glutes", "Abs"] };
+      case 4:
+        return { categoryTitle: "Thursday: Deltoids, Traps & Lateral Shoulders", targetMuscles: ["Shoulders", "Deltoids", "Traps"] };
+      case 5:
+        return { categoryTitle: "Friday: Upper Body Compound Overload", targetMuscles: ["Chest", "Back", "Arms", "Biceps", "Triceps"] };
+      case 6:
+        return { categoryTitle: "Saturday: Legs & Core Power", targetMuscles: ["Legs", "Calves", "Core", "Abs"] };
+      case 7:
+      default:
+        return { categoryTitle: "Sunday: System Recovery & Mobility", targetMuscles: ["Recovery", "Mobility"], isRestDay: true };
+    }
+  },
+  fat_burning: (cycleDay: number) => {
+    switch (cycleDay) {
+      case 1:
+        return { categoryTitle: "Monday: HIIT Cardio Intervals", targetMuscles: ["Cardio", "HIIT", "Core"], isCardioOnly: true, cardioDistance: "HIIT Cardio Intervals" };
+      case 2:
+        return { categoryTitle: "Tuesday: Lower Body Tone & Conditioning", targetMuscles: ["Quadriceps", "Hamstrings", "Glutes", "Calves"] };
+      case 3:
+        return { categoryTitle: "Wednesday: Aerobic Calorie Burn", targetMuscles: ["Cardio", "Running"], isCardioOnly: true, cardioDistance: "5.0 - 10.0 KM" };
+      case 4:
+        return { categoryTitle: "Thursday: Upper Body Circuit", targetMuscles: ["Chest", "Back", "Shoulders", "Arms"] };
+      case 5:
+        return { categoryTitle: "Friday: Full Body Shred", targetMuscles: ["Full Body", "HIIT", "Conditioning"] };
+      case 6:
+        return { categoryTitle: "Saturday: HIIT Endurance & Mobility", targetMuscles: ["Cardio", "Mobility", "Core"] };
+      case 7:
+      default:
+        return { categoryTitle: "Sunday: Recovery", targetMuscles: ["Recovery", "Rest"], isRestDay: true };
+    }
+  },
+  body_transformation: (cycleDay: number) => {
+    switch (cycleDay) {
+      case 1:
+        return { categoryTitle: "Monday: Upper Body Strength", targetMuscles: ["Chest", "Back", "Shoulders"] };
+      case 2:
+        return { categoryTitle: "Tuesday: Lower Body Strength", targetMuscles: ["Quadriceps", "Hamstrings", "Glutes"] };
+      case 3:
+        return { categoryTitle: "Wednesday: Core Armor & Mobility", targetMuscles: ["Core", "Abs", "Mobility"] };
+      case 4:
+        return { categoryTitle: "Thursday: Full Body Hypertrophy", targetMuscles: ["Full Body", "Chest", "Back", "Legs"] };
+      case 5:
+        return { categoryTitle: "Friday: HIIT Conditioning & Stamina", targetMuscles: ["Cardio", "HIIT", "Conditioning"] };
+      case 6:
+        return { categoryTitle: "Saturday: Core & Athletic Conditioning", targetMuscles: ["Core", "Abs", "Full Body"] };
+      case 7:
+      default:
+        return { categoryTitle: "Sunday: Recovery", targetMuscles: ["Recovery", "Rest"], isRestDay: true };
+    }
+  },
+  athletic_performance: (cycleDay: number) => {
+    switch (cycleDay) {
+      case 1:
+        return { categoryTitle: "Monday: Plyometrics & Sprint Speed", targetMuscles: ["Legs", "Calves", "Agility"] };
+      case 2:
+        return { categoryTitle: "Tuesday: Lower Body Explosive Power", targetMuscles: ["Quadriceps", "Glutes", "Hamstrings"] };
+      case 3:
+        return { categoryTitle: "Wednesday: Aerobic Capacity & Conditioning", targetMuscles: ["Cardio", "Stamina"], isCardioOnly: true, cardioDistance: "5.0 - 8.0 KM" };
+      case 4:
+        return { categoryTitle: "Thursday: Upper Body Rotational Power", targetMuscles: ["Chest", "Back", "Shoulders"] };
+      case 5:
+        return { categoryTitle: "Friday: Agility Vectors & Deep Core", targetMuscles: ["Core", "Abs", "Agility"] };
+      case 6:
+        return { categoryTitle: "Saturday: Endurance Running & Mobility", targetMuscles: ["Cardio", "Running", "Mobility"], isCardioOnly: true, cardioDistance: "5.0 - 10.0 KM" };
+      case 7:
+      default:
+        return { categoryTitle: "Sunday: Athletic System Reset", targetMuscles: ["Recovery", "Rest"], isRestDay: true };
+    }
+  },
+  strength_challenge: (cycleDay: number) => {
+    switch (cycleDay) {
+      case 1:
+        return { categoryTitle: "Monday: Heavy Squats & Lower Body", targetMuscles: ["Quadriceps", "Glutes", "Hamstrings", "Calves"] };
+      case 2:
+        return { categoryTitle: "Tuesday: Heavy Bench Press & Chest", targetMuscles: ["Chest", "Triceps", "Shoulders"] };
+      case 3:
+        return { categoryTitle: "Wednesday: Active Recovery & Joint Mobility", targetMuscles: ["Mobility", "Recovery"], isRestDay: true };
+      case 4:
+        return { categoryTitle: "Thursday: Deadlifts & Posterior Chain", targetMuscles: ["Back", "Lats", "Hamstrings", "Traps"] };
+      case 5:
+        return { categoryTitle: "Friday: Overhead Press & Shoulders", targetMuscles: ["Shoulders", "Deltoids", "Triceps"] };
+      case 6:
+        return { categoryTitle: "Saturday: Heavy Bracing & Core Citadel", targetMuscles: ["Core", "Abs", "Lower Back"] };
+      case 7:
+      default:
+        return { categoryTitle: "Sunday: Recovery & Central Nervous Reset", targetMuscles: ["Recovery", "Rest"], isRestDay: true };
+    }
+  },
+  home_fitness: (cycleDay: number) => {
+    switch (cycleDay) {
+      case 1:
+        return { categoryTitle: "Monday: Bodyweight Push & Full Body", targetMuscles: ["Chest", "Legs", "Core"] };
+      case 2:
+        return { categoryTitle: "Tuesday: Core Armor & Spinal Mobility", targetMuscles: ["Core", "Abs", "Mobility"] };
+      case 3:
+        return { categoryTitle: "Wednesday: Calisthenics HIIT Cardio", targetMuscles: ["Cardio", "HIIT", "Calisthenics"] };
+      case 4:
+        return { categoryTitle: "Thursday: Bodyweight Upper Body & Posture", targetMuscles: ["Chest", "Back", "Shoulders", "Triceps"] };
+      case 5:
+        return { categoryTitle: "Friday: Bodyweight Lower Body & Legs", targetMuscles: ["Quadriceps", "Glutes", "Hamstrings", "Calves"] };
+      case 6:
+        return { categoryTitle: "Saturday: Home Conditioning & Tone", targetMuscles: ["Full Body", "Core", "Conditioning"] };
+      case 7:
+      default:
+        return { categoryTitle: "Sunday: Rest & Mobility", targetMuscles: ["Recovery", "Rest"], isRestDay: true };
+    }
+  },
+  six_pack_core: (cycleDay: number) => {
+    switch (cycleDay) {
+      case 1:
+        return { categoryTitle: "Monday: Upper Abs & Oblique Definition", targetMuscles: ["Upper Abs", "Obliques", "Core"] };
+      case 2:
+        return { categoryTitle: "Tuesday: Lower Abs & Deep Pelvic Floor", targetMuscles: ["Lower Abs", "Transverse Core", "Abs"] };
+      case 3:
+        return { categoryTitle: "Wednesday: Cardio Burn & Core Endurance", targetMuscles: ["Cardio", "Abs", "Core"], isCardioOnly: true, cardioDistance: "Cardio + Abs Burn" };
+      case 4:
+        return { categoryTitle: "Thursday: Isometric Planks & Bracing", targetMuscles: ["Core", "Transverse Abdominis", "Stability"] };
+      case 5:
+        return { categoryTitle: "Friday: Rotational Core & Obliques", targetMuscles: ["Obliques", "Rotational Core", "Abs"] };
+      case 6:
+        return { categoryTitle: "Saturday: Full Core Citadel Circuit", targetMuscles: ["Abs", "Core", "Conditioning"] };
+      case 7:
+      default:
+        return { categoryTitle: "Sunday: Abdominal Recovery & Mobility", targetMuscles: ["Recovery", "Rest"], isRestDay: true };
+    }
+  },
+  cardio_calisthenics: (cycleDay: number) => {
+    switch (cycleDay) {
+      case 1:
+        return { categoryTitle: "Monday: Calisthenics Push & Dynamic Volume", targetMuscles: ["Chest", "Shoulders", "Triceps", "Calisthenics"] };
+      case 2:
+        return { categoryTitle: "Tuesday: Tactical Running & Cardio Test", targetMuscles: ["Cardio", "Running"], isCardioOnly: true, cardioDistance: "5.0 - 10.0 KM" };
+      case 3:
+        return { categoryTitle: "Wednesday: Calisthenics Pull & Back Armor", targetMuscles: ["Back", "Biceps", "Pull Ups", "Calisthenics"] };
+      case 4:
+        return { categoryTitle: "Thursday: Tactical Ruck & Core Bracing", targetMuscles: ["Core", "Abs", "Back", "Walking"], isCardioOnly: true, cardioDistance: "5.0 - 10.0 KM Ruck" };
+      case 5:
+        return { categoryTitle: "Friday: Calisthenics Lower Body Power", targetMuscles: ["Quadriceps", "Hamstrings", "Calves", "Glutes"] };
+      case 6:
+        return { categoryTitle: "Saturday: Military Fitness Benchmark", targetMuscles: ["Full Body", "Conditioning", "Cardio"] };
+      case 7:
+      default:
+        return { categoryTitle: "Sunday: Rest & Regenerative Mobility", targetMuscles: ["Recovery", "Mobility"], isRestDay: true };
+    }
+  },
+  gym_hypertrophy: (cycleDay: number) => {
+    switch (cycleDay) {
+      case 1:
+        return { categoryTitle: "Monday: Chest Hypertrophy & Density", targetMuscles: ["Chest", "Triceps"] };
+      case 2:
+        return { categoryTitle: "Tuesday: Lat Width & Back Thickness", targetMuscles: ["Back", "Biceps"] };
+      case 3:
+        return { categoryTitle: "Wednesday: Quad & Hamstring Growth", targetMuscles: ["Quadriceps", "Hamstrings", "Calves"] };
+      case 4:
+        return { categoryTitle: "Thursday: Shoulder Cannonball Delts", targetMuscles: ["Shoulders", "Traps"] };
+      case 5:
+        return { categoryTitle: "Friday: Arms & Arm Armor", targetMuscles: ["Biceps", "Triceps", "Forearms"] };
+      case 6:
+        return { categoryTitle: "Saturday: Full Body Hypertrophy Circuit", targetMuscles: ["Full Body", "Core"] };
+      case 7:
+      default:
+        return { categoryTitle: "Sunday: Muscular Recovery", targetMuscles: ["Recovery", "Rest"], isRestDay: true };
+    }
   }
 };
 
@@ -713,7 +886,19 @@ export function buildDynamicDayPlan(
   const cycleDay = ((safeDay - 1) % 7) + 1;
   const programKey = (programId || "immortal_90").toLowerCase().replace(/[^a-z0-9_]/g, "_");
 
-  const splitResolver = PROGRAM_SPLIT_DEFINITIONS[programKey] || PROGRAM_SPLIT_DEFINITIONS["immortal_90"];
+  // Dynamic split resolver for standard programs or custom challenges
+  const splitResolver = PROGRAM_SPLIT_DEFINITIONS[programKey] || ((cDay: number) => {
+    const defaultSplits: Record<number, SplitDefinition> = {
+      1: { categoryTitle: `Monday: Split 1 - Strength & Hypertrophy`, targetMuscles: ["Chest", "Shoulders", "Triceps"] },
+      2: { categoryTitle: `Tuesday: Split 2 - Pull & Core Power`, targetMuscles: ["Back", "Biceps", "Core"] },
+      3: { categoryTitle: `Wednesday: Split 3 - Lower Body & Legs`, targetMuscles: ["Quadriceps", "Hamstrings", "Glutes", "Calves"] },
+      4: { categoryTitle: `Thursday: Split 4 - Cardio & Conditioning`, targetMuscles: ["Cardio", "Stamina", "Mobility"], isCardioOnly: true, cardioDistance: "5.0 - 10.0 KM" },
+      5: { categoryTitle: `Friday: Split 5 - Upper Body Power`, targetMuscles: ["Chest", "Back", "Shoulders", "Arms"] },
+      6: { categoryTitle: `Saturday: Split 6 - Athletic Full Body`, targetMuscles: ["Full Body", "Conditioning", "Core"] },
+      7: { categoryTitle: `Sunday: Recovery & System Reset`, targetMuscles: ["Recovery", "Mobility", "Stretching"], isRestDay: true }
+    };
+    return defaultSplits[cDay] || defaultSplits[1];
+  });
   const splitDef = splitResolver(cycleDay, track);
 
   const isHomeProgram = programKey.includes("home") || programKey === "home_180";

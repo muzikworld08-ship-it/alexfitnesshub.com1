@@ -191,6 +191,9 @@ export async function saveExerciseMediaToDatabase(
       const mediaDocRef = doc(db, "exercise_media", exerciseId);
       await safeFirestoreSetDoc(mediaDocRef, {
         exerciseId,
+        customMediaUrl: mediaUrl,
+        gifUrl: mediaUrl,
+        imageUrl: mediaUrl,
         originalUrlOrBase64: mediaUrl,
         customMediaType: mediaType,
         updatedAt: timestamp
@@ -201,6 +204,8 @@ export async function saveExerciseMediaToDatabase(
       await safeFirestoreSetDoc(exDocRef, {
         id: exerciseId,
         customMediaUrl: mediaUrl,
+        gifUrl: mediaUrl,
+        imageUrl: mediaUrl,
         customMediaType: mediaType,
         updatedAt: timestamp
       }, { merge: true });
@@ -283,9 +288,12 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
       const mediaSnap = await getDocs(collection(db, "exercise_media"));
       mediaSnap.forEach((docSnap) => {
         const d = docSnap.data();
-        const url = d.originalUrlOrBase64 || d.customMediaUrl || d.url;
+        const url = d.customMediaUrl || d.gifUrl || d.imageUrl || d.originalUrlOrBase64 || d.url;
         if (url) {
           setEntry(docSnap.id, url, d.customMediaType === "video" ? "video" : "image");
+          if (d.exerciseName) {
+            setEntry(d.exerciseName.toLowerCase().trim(), url, d.customMediaType === "video" ? "video" : "image");
+          }
         }
       });
     } catch (e) {
@@ -296,8 +304,12 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
       const exSnap = await getDocs(collection(db, "exercises"));
       exSnap.forEach((docSnap) => {
         const d = docSnap.data();
-        if (d && d.customMediaUrl) {
-          setEntry(docSnap.id, d.customMediaUrl, d.customMediaType === "video" ? "video" : "image");
+        const url = d.customMediaUrl || d.gifUrl || d.imageUrl;
+        if (url) {
+          setEntry(docSnap.id, url, d.customMediaType === "video" ? "video" : "image");
+          if (d.name) {
+            setEntry(d.name.toLowerCase().trim(), url, d.customMediaType === "video" ? "video" : "image");
+          }
         }
       });
     } catch (e) {

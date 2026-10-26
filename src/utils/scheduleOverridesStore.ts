@@ -163,13 +163,20 @@ export function setScheduleOverridesFromRemote(
     ? cleanOverrides.overrides
     : cleanOverrides;
 
-  memoryOverrides = finalData;
+  // Deep merge to guarantee no program is wiped when receiving remote updates
+  const current = memoryOverrides || (DEFAULT_PROGRAM_SCHEDULE_OVERRIDES as Record<string, any>) || {};
+  const merged: Record<string, any> = { ...current };
+  for (const [k, v] of Object.entries(finalData)) {
+    merged[k] = { ...(current[k] || {}), ...(v as any) };
+  }
+
+  memoryOverrides = merged;
   currentSource = "remote";
   lastUpdatedAt = incomingIso;
 
   if (typeof window !== "undefined" && window.localStorage) {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(finalData));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
       window.localStorage.setItem(UPDATED_AT_KEY, incomingIso);
     } catch (e) {
       console.warn("[ScheduleOverridesStore] Failed to write localStorage cache:", e);
@@ -186,13 +193,20 @@ export function setScheduleOverridesFromRemote(
 export function setScheduleOverridesFromAdmin(data: Record<string, any>): void {
   if (!data || typeof data !== "object") return;
   const now = new Date().toISOString();
-  memoryOverrides = data;
+  // Deep merge to guarantee no program is wiped when an admin saves another program
+  const current = memoryOverrides || (DEFAULT_PROGRAM_SCHEDULE_OVERRIDES as Record<string, any>) || {};
+  const merged: Record<string, any> = { ...current };
+  for (const [k, v] of Object.entries(data)) {
+    merged[k] = { ...(current[k] || {}), ...(v as any) };
+  }
+
+  memoryOverrides = merged;
   currentSource = "remote";
   lastUpdatedAt = now;
 
   if (typeof window !== "undefined" && window.localStorage) {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
       window.localStorage.setItem(UPDATED_AT_KEY, now);
     } catch (e) {
       console.warn("[ScheduleOverridesStore] Failed to write localStorage cache:", e);

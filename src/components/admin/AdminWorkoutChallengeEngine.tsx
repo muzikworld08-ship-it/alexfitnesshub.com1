@@ -27,14 +27,16 @@ import {
 import { getExerciseGifUrl, Exercise, EXERCISES } from "../../data/exercises";
 import { ChallengeValidationService } from "../../services/challengeValidationService";
 import { useApp } from "../../context/AppContext";
+import { getChallengeWorkouts } from "../../data/challenges";
 import { auth, db, safeFirestoreSetDoc } from "../../lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { supabase, isSupabaseConfigured } from "../../utils/supabase/client";
 import DeleteWorkoutConfirmModal, { DeleteWorkoutTarget } from "./DeleteWorkoutConfirmModal";
 import ExerciseReplacementModal from "./ExerciseReplacementModal";
 import AddWorkoutModal from "./AddWorkoutModal";
 import EditWorkoutDrillModal from "./EditWorkoutDrillModal";
 import UnifiedExerciseMedia from "../UnifiedExerciseMedia";
+import { subscribeScheduleOverrides } from "../../utils/scheduleOverridesStore";
 
 interface CardioProtocolState {
   isCardio: boolean;
@@ -99,11 +101,92 @@ const PROGRAM_CANONICAL_SPLITS: Record<string, Record<number, { title: string; f
     5: { title: "Friday: Upper Back + Core", focus: "Upper Back + Core", muscles: ["Upper Back", "Core", "Abs", "Scapular", "Spine"], isCardio: false },
     6: { title: "Saturday: Full Body Mobility + Stability", focus: "Full Body Mobility + Stability", muscles: ["Full Body", "Mobility", "Stability", "Balance"], isCardio: false },
     7: { title: "Sunday: Recovery", focus: "Restorative Recovery", muscles: ["Recovery", "Rest", "Mobility", "Breathing"], isCardio: false }
+  },
+  lean_muscle: {
+    1: { title: "Monday: Chest & Triceps Hypertrophy", focus: "Chest & Triceps Hypertrophy", muscles: ["Chest", "Triceps"], isCardio: false },
+    2: { title: "Tuesday: Back & Biceps Overload", focus: "Back & Biceps Overload", muscles: ["Back", "Biceps"], isCardio: false },
+    3: { title: "Wednesday: Quads, Hamstrings & Abs", focus: "Quads, Hamstrings & Abs", muscles: ["Quadriceps", "Hamstrings", "Glutes", "Abs"], isCardio: false },
+    4: { title: "Thursday: Deltoids, Traps & Lateral Shoulders", focus: "Deltoids, Traps & Shoulders", muscles: ["Shoulders", "Deltoids", "Traps"], isCardio: false },
+    5: { title: "Friday: Upper Body Compound Overload", focus: "Upper Body Compound Overload", muscles: ["Chest", "Back", "Arms", "Biceps", "Triceps"], isCardio: false },
+    6: { title: "Saturday: Legs & Core Power", focus: "Legs & Core Power", muscles: ["Legs", "Calves", "Core", "Abs"], isCardio: false },
+    7: { title: "Sunday: System Recovery & Mobility", focus: "System Recovery & Mobility", muscles: ["Recovery", "Mobility"], isCardio: false }
+  },
+  fat_burning: {
+    1: { title: "Monday: HIIT Cardio Intervals", focus: "HIIT Cardio Intervals", muscles: ["Cardio", "HIIT", "Core"], isCardio: true, cardioKm: "HIIT Intervals" },
+    2: { title: "Tuesday: Lower Body Tone & Conditioning", focus: "Lower Body Tone & Conditioning", muscles: ["Quadriceps", "Hamstrings", "Glutes", "Calves"], isCardio: false },
+    3: { title: "Wednesday: Aerobic Calorie Burn", focus: "Aerobic Calorie Burn", muscles: ["Cardio", "Running"], isCardio: true, cardioKm: "5.0 - 10.0 KM" },
+    4: { title: "Thursday: Upper Body Circuit", focus: "Upper Body Circuit", muscles: ["Chest", "Back", "Shoulders", "Arms"], isCardio: false },
+    5: { title: "Friday: Full Body Shred", focus: "Full Body Shred", muscles: ["Full Body", "HIIT", "Conditioning"], isCardio: false },
+    6: { title: "Saturday: HIIT Endurance & Mobility", focus: "HIIT Endurance & Mobility", muscles: ["Cardio", "Mobility", "Core"], isCardio: true, cardioKm: "5.0 KM" },
+    7: { title: "Sunday: Recovery", focus: "Recovery & System Reset", muscles: ["Recovery", "Rest"], isCardio: false }
+  },
+  body_transformation: {
+    1: { title: "Monday: Upper Body Strength", focus: "Upper Body Strength", muscles: ["Chest", "Back", "Shoulders"], isCardio: false },
+    2: { title: "Tuesday: Lower Body Strength", focus: "Lower Body Strength", muscles: ["Quadriceps", "Hamstrings", "Glutes"], isCardio: false },
+    3: { title: "Wednesday: Core Armor & Mobility", focus: "Core Armor & Mobility", muscles: ["Core", "Abs", "Mobility"], isCardio: false },
+    4: { title: "Thursday: Full Body Hypertrophy", focus: "Full Body Hypertrophy", muscles: ["Full Body", "Chest", "Back", "Legs"], isCardio: false },
+    5: { title: "Friday: HIIT Conditioning & Stamina", focus: "HIIT Conditioning & Stamina", muscles: ["Cardio", "HIIT", "Conditioning"], isCardio: true, cardioKm: "HIIT Stamina" },
+    6: { title: "Saturday: Core & Athletic Conditioning", focus: "Core & Athletic Conditioning", muscles: ["Core", "Abs", "Full Body"], isCardio: false },
+    7: { title: "Sunday: Recovery", focus: "Active Recovery", muscles: ["Recovery", "Rest"], isCardio: false }
+  },
+  athletic_performance: {
+    1: { title: "Monday: Plyometrics & Sprint Speed", focus: "Plyometrics & Sprint Speed", muscles: ["Legs", "Calves", "Agility"], isCardio: false },
+    2: { title: "Tuesday: Lower Body Explosive Power", focus: "Lower Body Explosive Power", muscles: ["Quadriceps", "Glutes", "Hamstrings"], isCardio: false },
+    3: { title: "Wednesday: Aerobic Capacity & Conditioning", focus: "Aerobic Capacity & Conditioning", muscles: ["Cardio", "Stamina"], isCardio: true, cardioKm: "5.0 - 8.0 KM" },
+    4: { title: "Thursday: Upper Body Rotational Power", focus: "Upper Body Rotational Power", muscles: ["Chest", "Back", "Shoulders"], isCardio: false },
+    5: { title: "Friday: Agility Vectors & Deep Core", focus: "Agility Vectors & Deep Core", muscles: ["Core", "Abs", "Agility"], isCardio: false },
+    6: { title: "Saturday: Endurance Running & Mobility", focus: "Endurance Running & Mobility", muscles: ["Cardio", "Running", "Mobility"], isCardio: true, cardioKm: "5.0 - 10.0 KM" },
+    7: { title: "Sunday: Athletic System Reset", focus: "Athletic System Reset", muscles: ["Recovery", "Rest"], isCardio: false }
+  },
+  strength_challenge: {
+    1: { title: "Monday: Heavy Squats & Lower Body", focus: "Heavy Squats & Lower Body", muscles: ["Quadriceps", "Glutes", "Hamstrings", "Calves"], isCardio: false },
+    2: { title: "Tuesday: Heavy Bench Press & Chest", focus: "Heavy Bench Press & Chest", muscles: ["Chest", "Triceps", "Shoulders"], isCardio: false },
+    3: { title: "Wednesday: Active Recovery & Joint Mobility", focus: "Active Recovery & Joint Mobility", muscles: ["Mobility", "Recovery"], isCardio: false },
+    4: { title: "Thursday: Deadlifts & Posterior Chain", focus: "Deadlifts & Posterior Chain", muscles: ["Back", "Lats", "Hamstrings", "Traps"], isCardio: false },
+    5: { title: "Friday: Overhead Press & Shoulders", focus: "Overhead Press & Shoulders", muscles: ["Shoulders", "Deltoids", "Triceps"], isCardio: false },
+    6: { title: "Saturday: Heavy Bracing & Core Citadel", focus: "Heavy Bracing & Core Citadel", muscles: ["Core", "Abs", "Lower Back"], isCardio: false },
+    7: { title: "Sunday: Recovery & Central Nervous Reset", focus: "Recovery & Central Nervous Reset", muscles: ["Recovery", "Rest"], isCardio: false }
+  },
+  home_fitness: {
+    1: { title: "Monday: Bodyweight Push & Full Body", focus: "Bodyweight Push & Full Body", muscles: ["Chest", "Legs", "Core"], isCardio: false },
+    2: { title: "Tuesday: Core Armor & Spinal Mobility", focus: "Core Armor & Spinal Mobility", muscles: ["Core", "Abs", "Mobility"], isCardio: false },
+    3: { title: "Wednesday: Calisthenics HIIT Cardio", focus: "Calisthenics HIIT Cardio", muscles: ["Cardio", "HIIT", "Calisthenics"], isCardio: true, cardioKm: "Calisthenics HIIT" },
+    4: { title: "Thursday: Bodyweight Upper Body & Posture", focus: "Bodyweight Upper Body & Posture", muscles: ["Chest", "Back", "Shoulders", "Triceps"], isCardio: false },
+    5: { title: "Friday: Bodyweight Lower Body & Legs", focus: "Bodyweight Lower Body & Legs", muscles: ["Quadriceps", "Glutes", "Hamstrings", "Calves"], isCardio: false },
+    6: { title: "Saturday: Home Conditioning & Tone", focus: "Home Conditioning & Tone", muscles: ["Full Body", "Core", "Conditioning"], isCardio: false },
+    7: { title: "Sunday: Rest & Mobility", focus: "Rest & Mobility", muscles: ["Recovery", "Rest"], isCardio: false }
+  },
+  six_pack_core: {
+    1: { title: "Monday: Upper Abs & Oblique Definition", focus: "Upper Abs & Oblique Definition", muscles: ["Upper Abs", "Obliques", "Core"], isCardio: false },
+    2: { title: "Tuesday: Lower Abs & Deep Pelvic Floor", focus: "Lower Abs & Deep Pelvic Floor", muscles: ["Lower Abs", "Transverse Core", "Abs"], isCardio: false },
+    3: { title: "Wednesday: Cardio Burn & Core Endurance", focus: "Cardio Burn & Core Endurance", muscles: ["Cardio", "Abs", "Core"], isCardio: true, cardioKm: "Cardio + Abs Burn" },
+    4: { title: "Thursday: Isometric Planks & Bracing", focus: "Isometric Planks & Bracing", muscles: ["Core", "Transverse Abdominis", "Stability"], isCardio: false },
+    5: { title: "Friday: Rotational Core & Obliques", focus: "Rotational Core & Obliques", muscles: ["Obliques", "Rotational Core", "Abs"], isCardio: false },
+    6: { title: "Saturday: Full Core Citadel Circuit", focus: "Full Core Citadel Circuit", muscles: ["Abs", "Core", "Conditioning"], isCardio: false },
+    7: { title: "Sunday: Abdominal Recovery & Mobility", focus: "Abdominal Recovery & Mobility", muscles: ["Recovery", "Rest"], isCardio: false }
+  },
+  cardio_calisthenics: {
+    1: { title: "Monday: Calisthenics Push & Dynamic Volume", focus: "Calisthenics Push & Dynamic Volume", muscles: ["Chest", "Shoulders", "Triceps", "Calisthenics"], isCardio: false },
+    2: { title: "Tuesday: Tactical Running & Cardio Test", focus: "Tactical Running & Cardio Test", muscles: ["Cardio", "Running"], isCardio: true, cardioKm: "5.0 - 10.0 KM" },
+    3: { title: "Wednesday: Calisthenics Pull & Back Armor", focus: "Calisthenics Pull & Back Armor", muscles: ["Back", "Biceps", "Pull Ups", "Calisthenics"], isCardio: false },
+    4: { title: "Thursday: Tactical Ruck & Core Bracing", focus: "Tactical Ruck & Core Bracing", muscles: ["Core", "Abs", "Back", "Walking"], isCardio: true, cardioKm: "5.0 - 10.0 KM Ruck" },
+    5: { title: "Friday: Calisthenics Lower Body Power", focus: "Calisthenics Lower Body Power", muscles: ["Quadriceps", "Hamstrings", "Calves", "Glutes"], isCardio: false },
+    6: { title: "Saturday: Military Fitness Benchmark", focus: "Military Fitness Benchmark", muscles: ["Full Body", "Conditioning", "Cardio"], isCardio: false },
+    7: { title: "Sunday: Rest & Regenerative Mobility", focus: "Rest & Regenerative Mobility", muscles: ["Recovery", "Mobility"], isCardio: false }
+  },
+  lifestyle_academy: {
+    1: { title: "Monday: Posture Alignment & Posterior Chain", focus: "Posture Alignment & Posterior Chain", muscles: ["Upper Back", "Shoulders", "Mobility"], isCardio: false },
+    2: { title: "Tuesday: Hip Flexor Decompression & Reset", focus: "Hip Flexor Decompression & Reset", muscles: ["Hips", "Glutes", "Mobility"], isCardio: false },
+    3: { title: "Wednesday: Aerobic Circulation & Brisk Walking", focus: "Aerobic Circulation & Brisk Walking", muscles: ["Cardio", "Walking"], isCardio: true, cardioKm: "5.0 - 10.0 KM" },
+    4: { title: "Thursday: Chest Opening & Anterior Mobility", focus: "Chest Opening & Anterior Mobility", muscles: ["Chest", "Shoulders", "Mobility"], isCardio: false },
+    5: { title: "Friday: Spinal Decompression & Core Stability", focus: "Spinal Decompression & Core Stability", muscles: ["Core", "Spine", "Abs"], isCardio: false },
+    6: { title: "Saturday: Glute Activation & Kinetic Chain", focus: "Glute Activation & Kinetic Chain", muscles: ["Glutes", "Legs", "Hamstrings"], isCardio: false },
+    7: { title: "Sunday: Restorative Mobility & Rest", focus: "Restorative Mobility & Rest", muscles: ["Recovery", "Mobility"], isCardio: false }
   }
 };
 
 export default function AdminWorkoutChallengeEngine() {
-  const { exercises: libraryExercises, allChallenges, user, deleteWorkout } = useApp();
+  const { exercises: libraryExercises, allChallenges, user, deleteWorkout, uploadExerciseMedia } = useApp();
 
   // Selected Program & Mode
   const [selectedProgramId, setSelectedProgramId] = useState<string>("immortal_90");
@@ -116,12 +199,22 @@ export default function AdminWorkoutChallengeEngine() {
   // Difficulty Level Tier (Beginner, Intermediate, Advanced)
   const [selectedDifficultyLevel, setSelectedDifficultyLevel] = useState<"beginner" | "intermediate" | "advanced">("beginner");
 
-  // Overrides Cache
-  const [serverOverrides, setServerOverrides] = useState<Record<string, any>>({});
+  // Overrides Cache - initialize immediately from cached schedule store
+  const [serverOverrides, setServerOverrides] = useState<Record<string, any>>(() => getScheduleOverrides());
   const [isLoadingOverrides, setIsLoadingOverrides] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [isPurging, setIsPurging] = useState<boolean>(false);
+
+  // Subscribe to live schedule store updates
+  useEffect(() => {
+    const unsub = subscribeScheduleOverrides((updated) => {
+      if (updated && typeof updated === "object" && Object.keys(updated).length > 0) {
+        setServerOverrides(prev => ({ ...prev, ...updated }));
+      }
+    });
+    return () => unsub();
+  }, []);
 
   // Drag and Drop State
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -165,7 +258,7 @@ export default function AdminWorkoutChallengeEngine() {
       if (res.ok) {
         const data = await res.json();
         if (data.overrides && Object.keys(data.overrides).length > 0) {
-          setServerOverrides(data.overrides);
+          setServerOverrides(prev => ({ ...prev, ...data.overrides }));
           setScheduleOverridesFromRemote(data.overrides);
           loaded = true;
         }
@@ -174,31 +267,52 @@ export default function AdminWorkoutChallengeEngine() {
       console.warn("Notice fetching overrides from /api/admin/programs/overrides:", err);
     }
 
-    // Direct Firestore self-healing fallback
-    if (!loaded) {
-      try {
-        const snap = await getDoc(doc(db, "program_schedules", "overrides"));
-        if (snap.exists()) {
-          const d = snap.data();
-          if (d && d.overrides && Object.keys(d.overrides).length > 0) {
-            setServerOverrides(d.overrides);
-            setScheduleOverridesFromRemote(d.overrides);
-            loaded = true;
-            console.log("[Dual-Persist Recovery OK] Overrides recovered from Firestore program_schedules/overrides.");
+    // Direct Firestore self-healing: query all program_schedules documents
+    try {
+      const snap = await getDocs(collection(db, "program_schedules"));
+      if (!snap.empty) {
+        const firestoreOverrides: Record<string, any> = {};
+        snap.forEach(d => {
+          if (d.id === "overrides") return;
+          const docData = d.data();
+          if (docData && docData.schedule && typeof docData.schedule === "object") {
+            firestoreOverrides[d.id] = docData.schedule;
+          } else if (docData && typeof docData === "object") {
+            const { updatedAt, updatedBy, programId, ...cleanSchedule } = docData;
+            if (Object.keys(cleanSchedule).length > 0) {
+              firestoreOverrides[d.id] = cleanSchedule;
+            }
           }
+        });
+        if (Object.keys(firestoreOverrides).length > 0) {
+          setServerOverrides(prev => ({ ...prev, ...firestoreOverrides }));
+          setScheduleOverridesFromRemote(firestoreOverrides);
+          loaded = true;
+          console.log(`[Dual-Persist Recovery OK] Recovered ${Object.keys(firestoreOverrides).length} programs from Firestore program_schedules collection.`);
         }
-      } catch (e) {}
-    }
+      }
+    } catch (e) {}
 
     // Direct Supabase self-healing fallback
-    if (!loaded && isSupabaseConfigured) {
+    if (isSupabaseConfigured) {
       try {
-        const { data: sbData } = await supabase.from("program_schedules").select("*").eq("id", "overrides").maybeSingle();
-        if (sbData && sbData.data && Object.keys(sbData.data).length > 0) {
-          setServerOverrides(sbData.data);
-          setScheduleOverridesFromRemote(sbData.data);
-          loaded = true;
-          console.log("[Dual-Persist Recovery OK] Overrides recovered from Supabase program_schedules.");
+        const { data: sbData } = await supabase.from("program_schedules").select("*");
+        if (Array.isArray(sbData) && sbData.length > 0) {
+          const sbOverrides: Record<string, any> = {};
+          for (const item of sbData) {
+            if (item.id && item.data && typeof item.data === "object") {
+              if (item.id === "overrides") {
+                Object.assign(sbOverrides, item.data);
+              } else {
+                sbOverrides[item.id] = item.data;
+              }
+            }
+          }
+          if (Object.keys(sbOverrides).length > 0) {
+            setServerOverrides(prev => ({ ...prev, ...sbOverrides }));
+            setScheduleOverridesFromRemote(sbOverrides);
+            loaded = true;
+          }
         }
       } catch (e) {}
     }
@@ -207,7 +321,7 @@ export default function AdminWorkoutChallengeEngine() {
     if (!loaded) {
       try {
         const cached = getScheduleOverrides();
-        if (cached && typeof cached === "object") setServerOverrides(cached);
+        if (cached && typeof cached === "object") setServerOverrides(prev => ({ ...cached, ...prev }));
       } catch (e) {}
     }
     setIsLoadingOverrides(false);
@@ -259,8 +373,72 @@ export default function AdminWorkoutChallengeEngine() {
 
   // Base day plan from challenge engine
   const baseDayPlan = useMemo(() => {
+    // Check if selected program is a custom challenge in allChallenges
+    const customMatch = (allChallenges || []).find((c: any) => c.id === selectedProgramId || c.challengeId === selectedProgramId);
+    if (customMatch) {
+      // First check if an admin override already exists for this day/cycle
+      const progOverrides = serverOverrides[selectedProgramId];
+      const cycleKey = `cycle_${((effectiveDayNumber - 1) % 7) + 1}`;
+      if (progOverrides && (progOverrides[String(effectiveDayNumber)] || progOverrides[cycleKey])) {
+        return getWorkoutForProgramAndDay(selectedProgramId as ProgramId, effectiveDayNumber, undefined, adminTrack);
+      }
+
+      // If custom challenge has workouts attached to it
+      const challengeWorkouts = (customMatch.workouts && Array.isArray(customMatch.workouts) && customMatch.workouts.length > 0)
+        ? customMatch.workouts
+        : getChallengeWorkouts(customMatch, libraryExercises);
+
+      if (challengeWorkouts && challengeWorkouts.length > 0) {
+        const mappedDrills: ChallengeExerciseItem[] = challengeWorkouts.map((w: any, idx: number) => {
+          const wName = w.name || w.exerciseName || `Drill ${idx + 1}`;
+          const diff = (w.difficulty || "Beginner") as any;
+          const gif = w.gifUrl || w.customMediaUrl || w.imageUrl || getExerciseGifUrl(wName, w.category);
+          return {
+            id: w.id || `custom_${selectedProgramId}_ex_${idx + 1}`,
+            programId: selectedProgramId as any,
+            programName: customMatch.title || selectedProgramId,
+            dayNumber: effectiveDayNumber,
+            category: w.category || customMatch.category || "Specialized Training",
+            muscleGroup: w.muscleGroups || (w.muscleGroup ? [w.muscleGroup] : ["Full Body"]),
+            exerciseName: wName,
+            name: wName,
+            equipment: Array.isArray(w.equipment) ? w.equipment.join(", ") : String(w.equipment || "Bodyweight"),
+            difficulty: diff,
+            sets: typeof w.sets === "number" ? w.sets : (parseInt(String(w.sets)) || 3),
+            reps: String(w.reps || "10-12 reps"),
+            duration: w.duration || "45s",
+            instructions: w.instructions || ["Execute with precision, controlled tempo, and deliberate focus."],
+            restTime: w.restTime || "60s",
+            gifUrl: gif,
+            imageUrl: gif,
+            coachingCues: w.coachingCues || (w.movementExecution ? [w.movementExecution] : ["Full range of motion and core stability."])
+          };
+        });
+
+        return {
+          meta: {
+            dayNumber: effectiveDayNumber,
+            programId: selectedProgramId as any,
+            title: `Day ${effectiveDayNumber}: ${customMatch.title || "Custom Challenge"}`,
+            category: customMatch.category || "Specialized Training",
+            targetMuscles: [customMatch.category || "Full Body"],
+            estimatedDuration: "45-60 mins",
+            estimatedCalories: 450,
+            isRestDay: false,
+            isCardioOnly: false,
+            guidelines: [
+              `Focus: ${customMatch.title || "Custom Workout Session"}.`,
+              "Focus on progressive tension and strict movement mechanics."
+            ],
+            coachingNotes: `${customMatch.title} - complete each prescribed drill.`
+          },
+          exercises: mappedDrills
+        };
+      }
+    }
+
     return getWorkoutForProgramAndDay(selectedProgramId as ProgramId, effectiveDayNumber, undefined, adminTrack);
-  }, [selectedProgramId, effectiveDayNumber, adminTrack]);
+  }, [selectedProgramId, effectiveDayNumber, adminTrack, allChallenges, libraryExercises, serverOverrides]);
 
   // Check if override exists for this day or cycle
   const currentDayOverride = useMemo(() => {
@@ -465,18 +643,20 @@ export default function AdminWorkoutChallengeEngine() {
       advancedExercises: targetTier === "advanced" ? sanitizedExercises : (nextLevels.advanced || existingDayData.advancedExercises || baselineExercises),
     };
 
-    // Optimistic UI update across all program key aliases
-    const normId = normalizeProgramId(selectedProgramId);
-    const trackKey = adminTrack ? `${normId}_${adminTrack}` : null;
+    // Optimistic UI update across program key aliases
     const targetProgKey = (selectedProgramId === "home_180" && adminTrack) 
       ? `${selectedProgramId}_${adminTrack}` 
       : selectedProgramId;
-    const keysToUpdate = Array.from(new Set([selectedProgramId, normId, trackKey, targetProgKey].filter(Boolean) as string[]));
+    const trackKey = (selectedProgramId === "home_180" && adminTrack)
+      ? `${selectedProgramId}_${adminTrack}`
+      : null;
+    const keysToUpdate = Array.from(new Set([selectedProgramId, targetProgKey, trackKey].filter(Boolean) as string[]));
+
+    const dayKey = String(effectiveDayNumber);
+    const cycleKey = `cycle_${((effectiveDayNumber - 1) % 7) + 1}`;
 
     setServerOverrides(prev => {
       const next = { ...prev };
-      const dayKey = String(effectiveDayNumber);
-      const cycleKey = `cycle_${((effectiveDayNumber - 1) % 7) + 1}`;
       
       keysToUpdate.forEach(key => {
         if (!next[key]) next[key] = {};
@@ -489,11 +669,58 @@ export default function AdminWorkoutChallengeEngine() {
       return next;
     });
 
+    const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
+
+    // Direct dual-persistence to Firestore per-program document (<100KB, guaranteed safe under 1MB limit)
+    try {
+      const fullProgSchedule = {
+        ...(serverOverrides[selectedProgramId] || {}),
+        [dayKey]: updatedDayData,
+        ...(viewMode === "cycle" || applyToAllCycleWeeks ? { [cycleKey]: updatedDayData } : {})
+      };
+
+      safeFirestoreSetDoc(doc(db, "program_schedules", selectedProgramId), {
+        programId: selectedProgramId,
+        schedule: fullProgSchedule,
+        updatedAt: new Date().toISOString(),
+        updatedBy: adminEmail
+      }, { merge: true }).catch(() => {});
+
+      if (targetProgKey !== selectedProgramId) {
+        const fullTargetSchedule = {
+          ...(serverOverrides[targetProgKey] || {}),
+          [dayKey]: updatedDayData,
+          ...(viewMode === "cycle" || applyToAllCycleWeeks ? { [cycleKey]: updatedDayData } : {})
+        };
+        safeFirestoreSetDoc(doc(db, "program_schedules", targetProgKey), {
+          programId: targetProgKey,
+          schedule: fullTargetSchedule,
+          updatedAt: new Date().toISOString(),
+          updatedBy: adminEmail
+        }, { merge: true }).catch(() => {});
+      }
+    } catch (fsErr) {}
+
+    // Direct dual-persistence to Supabase
+    if (isSupabaseConfigured) {
+      const fullProgSchedule = {
+        ...(serverOverrides[selectedProgramId] || {}),
+        [dayKey]: updatedDayData,
+        ...(viewMode === "cycle" || applyToAllCycleWeeks ? { [cycleKey]: updatedDayData } : {})
+      };
+      Promise.resolve(
+        supabase.from("program_schedules").upsert({
+          id: selectedProgramId,
+          data: fullProgSchedule,
+          updated_at: new Date().toISOString()
+        })
+      ).catch(() => {});
+    }
+
     try {
       const token = await auth.currentUser?.getIdToken().catch(() => null);
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
       headers["x-admin-email"] = adminEmail;
 
       const res = await fetch("/api/admin/programs/save-day-override", {
@@ -653,6 +880,17 @@ export default function AdminWorkoutChallengeEngine() {
   const handleSaveEditedExercise = (updatedEx: ChallengeExerciseItem) => {
     const updated = activeExercises.map(ex => ex.id === updatedEx.id ? updatedEx : ex);
     handleReorderExercises(updated, selectedDifficultyLevel);
+
+    // Also persist custom media/GIF globally so it remains permanent across all views & exercises
+    if (updatedEx.gifUrl) {
+      try {
+        const rawName = updatedEx.exerciseName || (updatedEx as any).name || "";
+        const match = libraryExercises.find(e => (e.name || "").toLowerCase().trim() === rawName.toLowerCase().trim() || e.id === updatedEx.id);
+        const targetId = match?.id || updatedEx.id;
+        uploadExerciseMedia(targetId, updatedEx.gifUrl, "image");
+      } catch (e) {}
+    }
+
     setSaveSuccessMsg(`Updated parameters for "${updatedEx.exerciseName}" in ${selectedDifficultyLevel.toUpperCase()} routine!`);
     setTimeout(() => setSaveSuccessMsg(null), 3000);
     setEditingExercise(null);
@@ -937,26 +1175,23 @@ export default function AdminWorkoutChallengeEngine() {
         });
         broadcastOverridesUpdated(next);
 
-        // Direct client-side dual persistence to Firebase Firestore
+        // Direct client-side dual persistence to Firebase Firestore per-program document (<100KB, never exceeds 1MB doc limit)
         try {
-          safeFirestoreSetDoc(doc(db, "program_schedules", "overrides"), {
-            overrides: next,
-            updatedAt: new Date().toISOString(),
-            updatedBy: adminEmail
-          }, { merge: true }).catch((e) => console.warn("Notice updating program_schedules/overrides:", e));
-
-          safeFirestoreSetDoc(doc(db, "system_settings", "program_schedule_overrides"), {
-            ...next,
-            _updatedAt: new Date().toISOString(),
-            _updatedBy: adminEmail
-          }, { merge: true }).catch((e) => console.warn("Notice updating system_settings:", e));
-
           safeFirestoreSetDoc(doc(db, "program_schedules", selectedProgramId), {
             programId: selectedProgramId,
             schedule: next[selectedProgramId] || dayData,
             updatedAt: new Date().toISOString(),
             updatedBy: adminEmail
           }, { merge: true }).catch((e) => console.warn("Notice updating program doc:", e));
+
+          if (targetProgKey !== selectedProgramId) {
+            safeFirestoreSetDoc(doc(db, "program_schedules", targetProgKey), {
+              programId: targetProgKey,
+              schedule: next[targetProgKey] || dayData,
+              updatedAt: new Date().toISOString(),
+              updatedBy: adminEmail
+            }, { merge: true }).catch(() => {});
+          }
         } catch (fsErr) {
           console.warn("Direct Firestore dual-persistence notice:", fsErr);
         }
@@ -965,19 +1200,21 @@ export default function AdminWorkoutChallengeEngine() {
         if (isSupabaseConfigured) {
           Promise.resolve(
             supabase.from("program_schedules").upsert({
-              id: "overrides",
-              data: next,
-              updated_at: new Date().toISOString()
-            })
-          ).catch(() => {});
-
-          Promise.resolve(
-            supabase.from("program_schedules").upsert({
               id: selectedProgramId,
               data: next[selectedProgramId] || dayData,
               updated_at: new Date().toISOString()
             })
           ).catch(() => {});
+
+          if (targetProgKey !== selectedProgramId) {
+            Promise.resolve(
+              supabase.from("program_schedules").upsert({
+                id: targetProgKey,
+                data: next[targetProgKey] || dayData,
+                updated_at: new Date().toISOString()
+              })
+            ).catch(() => {});
+          }
         }
 
         return next;

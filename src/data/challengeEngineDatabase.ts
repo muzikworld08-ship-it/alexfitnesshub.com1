@@ -215,7 +215,7 @@ export function normalizeProgramId(rawId: string = ""): ProgramId {
   if (clean.includes("women") || clean === "women_confidence") return "women_confidence";
   if (clean.includes("lifestyle") || clean === "lifestyle_academy") return "lifestyle_academy";
   if (clean.includes("tactical") || clean.includes("military") || clean === "cardio_calisthenics") return "cardio_calisthenics";
-  return "immortal_90";
+  return (clean as ProgramId) || "immortal_90";
 }
 
 /**
@@ -254,7 +254,7 @@ export function getWorkoutForProgramAndDay(
   // 1. Check admin schedule overrides from centralized store (Memory -> localStorage cache -> Bundled defaults)
   const allOverrides = getScheduleOverrides();
   const trackKey = track ? `${normId}_${track}` : null;
-  const progOverrides = (trackKey && allOverrides[trackKey]) || allOverrides[programId] || allOverrides[normId];
+  const progOverrides = (trackKey && allOverrides[trackKey]) || allOverrides[programId] || (normId !== programId ? allOverrides[normId] : undefined);
 
   if (progOverrides) {
     const dayOverride = progOverrides[String(safeDay)] || progOverrides[`cycle_${cycleDay}`];
@@ -335,7 +335,21 @@ export function getWorkoutForProgramAndDay(
         if (seenNames.has(lower)) continue;
         seenNames.add(lower);
 
-        let gif = ex.gifUrl !== undefined ? ex.gifUrl : ((ex as any).customMediaUrl !== undefined ? (ex as any).customMediaUrl : undefined);
+        let customGifOverride: string | undefined = undefined;
+        if (typeof window !== "undefined" && window.localStorage) {
+          try {
+            const rawOvr = window.localStorage.getItem("fit_custom_exercise_overrides");
+            if (rawOvr) {
+              const ovrObj = JSON.parse(rawOvr);
+              const o = ovrObj[ex.id] || ovrObj[name] || ovrObj[lower];
+              if (o && (o.customMediaUrl || o.gifUrl || o.imageUrl)) {
+                customGifOverride = o.customMediaUrl || o.gifUrl || o.imageUrl;
+              }
+            }
+          } catch {}
+        }
+
+        let gif = customGifOverride || ex.gifUrl || (ex as any).customMediaUrl;
         if (!gif) {
           gif = getExerciseGifUrl(name, ex.category, seenGifs);
         }

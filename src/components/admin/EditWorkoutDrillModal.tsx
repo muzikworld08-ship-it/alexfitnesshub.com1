@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { X, Save, Dumbbell, Clock, ShieldCheck, Check, Sparkles, Layers } from "lucide-react";
+import { X, Save, Dumbbell, Clock, ShieldCheck, Check, Sparkles, Layers, Image as ImageIcon, RotateCcw, Link2, Eye } from "lucide-react";
 import { ChallengeExerciseItem } from "../../types/challengeEngine";
 import UnifiedExerciseMedia from "../UnifiedExerciseMedia";
+import { getExerciseGifUrl } from "../../data/exercises";
 
 interface EditWorkoutDrillModalProps {
   isOpen: boolean;
@@ -35,6 +36,9 @@ export default function EditWorkoutDrillModal({
   const [coachingCues, setCoachingCues] = useState<string>(
     exercise.coachingCues?.[0] || exercise.instructions?.[0] || "Execute with strict posture, full control, and controlled eccentric tempo."
   );
+  const [gifUrl, setGifUrl] = useState<string>(
+    exercise.gifUrl || exercise.imageUrl || (exercise as any).customMediaUrl || ""
+  );
 
   useEffect(() => {
     if (exercise) {
@@ -53,15 +57,30 @@ export default function EditWorkoutDrillModal({
       setCoachingCues(
         exercise.coachingCues?.[0] || exercise.instructions?.[0] || "Execute with strict posture, full control, and controlled eccentric tempo."
       );
+      setGifUrl(
+        exercise.gifUrl || exercise.imageUrl || (exercise as any).customMediaUrl || ""
+      );
     }
   }, [exercise, currentTier]);
+
+  const handleResetToDefaultGif = () => {
+    if (!exercise) return;
+    const name = exercise.exerciseName || (exercise as any).name || "";
+    const cat = exercise.category || "";
+    const canonical = getExerciseGifUrl(name, cat);
+    setGifUrl(canonical);
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!exercise) return;
 
+    const finalGif = gifUrl.trim() || exercise.gifUrl || exercise.imageUrl;
+
     const updated: ChallengeExerciseItem = {
       ...exercise,
+      gifUrl: finalGif,
+      imageUrl: finalGif,
       sets: Math.max(1, Math.min(10, Number(sets) || 3)),
       reps: reps.trim() || "10-12 reps",
       restTime: restTime.trim() || "60s",
@@ -97,7 +116,7 @@ export default function EditWorkoutDrillModal({
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-black text-white truncate">
-                Edit Drill Parameters
+                Edit Drill Parameters & Demonstration GIF
               </h3>
               <p className="text-xs text-neutral-400 truncate">
                 {exercise.exerciseName} • Tier: <span className="font-bold text-amber-400">{currentTier.toUpperCase()}</span>
@@ -117,11 +136,11 @@ export default function EditWorkoutDrillModal({
         <form onSubmit={handleSave} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
           {/* Media & Drill Overview */}
           <div className="flex items-center gap-4 p-3 rounded-2xl bg-neutral-950 border border-neutral-800">
-            <div className="w-16 h-16 rounded-xl bg-neutral-900 border border-neutral-800 overflow-hidden shrink-0">
+            <div className="w-20 h-20 rounded-xl bg-neutral-900 border border-neutral-800 overflow-hidden shrink-0 relative">
               <UnifiedExerciseMedia
                 exerciseId={exercise.id}
                 exerciseName={exercise.exerciseName}
-                mediaUrl={exercise.gifUrl}
+                mediaUrl={gifUrl || exercise.gifUrl}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -137,6 +156,38 @@ export default function EditWorkoutDrillModal({
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Demonstration GIF / Media URL Editor */}
+          <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800/90 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-neutral-300 flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
+                Demonstration GIF / Media URL
+              </label>
+              <button
+                type="button"
+                onClick={handleResetToDefaultGif}
+                className="text-[11px] text-neutral-400 hover:text-blue-400 flex items-center gap-1 transition cursor-pointer"
+                title="Reset to canonical library GIF"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset to Canonical GIF</span>
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                type="url"
+                value={gifUrl}
+                onChange={(e) => setGifUrl(e.target.value)}
+                placeholder="https://... or .gif / .mp4 URL"
+                className="w-full pl-8 pr-3 py-2 rounded-xl bg-neutral-900 border border-neutral-700 text-white text-xs font-mono focus:outline-none focus:border-blue-500"
+              />
+              <Link2 className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            </div>
+            <p className="text-[10px] text-neutral-500 leading-tight">
+              Paste any custom GIF, animated WebP, or demonstration image URL. Changes manifest across athlete schedules immediately.
+            </p>
           </div>
 
           {/* Difficulty Tier Radio Buttons */}

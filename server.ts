@@ -843,6 +843,19 @@ async function getServerFirestoreQuery(collectionName: string, fieldPath: string
   }
 }
 
+async function getServerFirestoreCollection(collectionName: string) {
+  try {
+    const snap = await getDocs(collection(db, collectionName));
+    return snap.docs.map(d => ({
+      id: d.id,
+      data: () => d.data()
+    }));
+  } catch (err: any) {
+    console.warn(`[Server Firestore Collection Read] Notice reading collection ${collectionName}:`, err?.message || err);
+    return [];
+  }
+}
+
 // Convert native javascript object to Firestore REST API document fields format
 function formatFirestoreRestFields(obj: any): any {
   const fields: any = {};
@@ -2640,6 +2653,30 @@ Ensure that the JSON is perfectly valid and matches the requested structure exac
 });
 
 
+// Helper to retrieve live exercise overrides from disk/cache
+function getExerciseDiskOverrides(): Record<string, any> {
+  try {
+    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
+      const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
+      if (raw) return JSON.parse(raw);
+    }
+  } catch {}
+  return {};
+}
+
+function applyExerciseOverride(ex: any): any {
+  if (!ex) return ex;
+  const overrides = getExerciseDiskOverrides();
+  const ov = overrides[ex.id] || overrides[ex.name?.toLowerCase().trim()];
+  if (!ov) return ex;
+  const mUrl = ov.customMediaUrl || ov.gifUrl || ov.imageUrl;
+  return {
+    ...ex,
+    ...ov,
+    ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+  };
+}
+
 // Helper to resolve an exercise name against the 237 admin-uploaded library strictly for metadata enrichment
 function resolveMasterExercise(name: string, categoryHint: string = ""): any {
   if (!name) return null;
@@ -2648,18 +2685,18 @@ function resolveMasterExercise(name: string, categoryHint: string = ""): any {
 
   // 1. Exact case-insensitive match
   let found = EXERCISES.find(e => e.name.toLowerCase().trim() === nameLower);
-  if (found) return found;
+  if (found) return applyExerciseOverride(found);
 
   // 2. Normalized alphanumeric match
   found = EXERCISES.find(e => e.name.toLowerCase().replace(/[^a-z0-9]/g, "") === nameNorm);
-  if (found) return found;
+  if (found) return applyExerciseOverride(found);
 
   // 3. Substring inclusion (high confidence only)
   found = EXERCISES.find(e => {
     const eNorm = e.name.toLowerCase().replace(/[^a-z0-9]/g, "");
     return (nameNorm.length >= 7 && eNorm.includes(nameNorm)) || (eNorm.length >= 7 && nameNorm.includes(eNorm));
   });
-  if (found) return found;
+  if (found) return applyExerciseOverride(found);
 
   // 4. Word tokens match (strict: requires high word overlap)
   const words = nameLower.split(/\s+/).filter(w => w.length > 2 && !["and", "with", "the", "for", "set", "reps"].includes(w));
@@ -2676,7 +2713,27 @@ function resolveMasterExercise(name: string, categoryHint: string = ""): any {
       bestMatch = ex;
     }
   }
-  if (bestScore >= 4 && bestMatch) return bestMatch;
+  if (bestScore >= 4 && bestMatch) return applyExerciseOverride(bestMatch);
+
+  // 5. Check if exercise exists directly in custom disk overrides
+  const diskOverrides = getExerciseDiskOverrides();
+  const directOverride = diskOverrides[nameLower] || diskOverrides[name];
+  if (directOverride && (directOverride.name || directOverride.customMediaUrl || directOverride.gifUrl)) {
+    const mUrl = directOverride.customMediaUrl || directOverride.gifUrl || directOverride.imageUrl;
+    return {
+      id: directOverride.id || `custom_${nameNorm}`,
+      name: directOverride.name || name,
+      category: directOverride.category || categoryHint || "Gym Workouts",
+      difficulty: directOverride.difficulty || "Intermediate",
+      muscleGroups: directOverride.muscleGroups || [],
+      equipment: directOverride.equipment || ["All"],
+      recommendedSets: directOverride.recommendedSets || "3-4",
+      recommendedReps: directOverride.recommendedReps || "10-12",
+      recommendedSetsReps: directOverride.recommendedSetsReps || "3-4 Sets x 10-12 Reps",
+      ...directOverride,
+      ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+    };
+  }
 
   // NEVER return EXERCISES[0] or an unrelated category match!
   // Returning null ensures the prescribed exercise name from the program schedule remains authentic.
@@ -3716,9 +3773,9 @@ app.get("/api/diagnostics/subscription-sync", async (req: any, res: any) => {
 
 
 // GET custom exercise media overrides and deleted exercise IDs
-app.get("/api/exercises/custom-media", (req, res) => {
+app.get("/api/exercises/custom-media", async (req, res) => {
   try {
-    let data = {};
+    let data: Record<string, any> = {};
     if (fs.existsSync(OVERRIDES_FILE_PATH)) {
       const rawData = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
       if (rawData) {
@@ -3731,6 +3788,66 @@ app.get("/api/exercises/custom-media", (req, res) => {
       }
     } else {
       fs.writeFileSync(OVERRIDES_FILE_PATH, "{}", "utf-8");
+    }
+
+    // Auto self-heal: if disk cache is empty, hydrate immediately from Firestore collections
+    if (Object.keys(data).length === 0) {
+      try {
+        const mediaDocs = await getServerFirestoreCollection("exercise_media");
+        mediaDocs.forEach(d => {
+          const docData = d.data();
+          const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl || docData?.originalUrlOrBase64;
+          if (mUrl) {
+            data[d.id] = {
+              ...(data[d.id] || {}),
+              ...docData,
+              customMediaUrl: mUrl,
+              gifUrl: mUrl,
+              imageUrl: mUrl,
+              customMediaType: docData.customMediaType || "image"
+            };
+            if (docData.exerciseName) {
+              const normName = docData.exerciseName.toLowerCase().trim();
+              data[normName] = {
+                ...(data[normName] || {}),
+                ...docData,
+                customMediaUrl: mUrl,
+                gifUrl: mUrl,
+                imageUrl: mUrl,
+                customMediaType: docData.customMediaType || "image"
+              };
+            }
+          }
+        });
+
+        const exDocs = await getServerFirestoreCollection("exercises");
+        exDocs.forEach(d => {
+          const docData = d.data();
+          const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
+          if (docData && (mUrl || docData.isCustom || docData.name)) {
+            data[d.id] = {
+              ...(data[d.id] || {}),
+              ...docData,
+              ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+            };
+            if (docData.name) {
+              const normName = docData.name.toLowerCase().trim();
+              data[normName] = {
+                ...(data[normName] || {}),
+                ...docData,
+                ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+              };
+            }
+          }
+        });
+
+        if (Object.keys(data).length > 0) {
+          fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(data, null, 2), "utf-8");
+          console.log(`[Auto Self-Heal] Successfully hydrated ${Object.keys(data).length} exercise overrides into local cache.`);
+        }
+      } catch (cloudErr) {
+        console.warn("[Auto Self-Heal] Notice during Firestore overrides hydration:", cloudErr);
+      }
     }
 
     let deletedExercises: string[] = [];
@@ -4002,11 +4119,16 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
         }
       }
 
-      // Save permanent HTTPS cloud URL to Firestore exercise_media backup
+      // Save permanent HTTPS cloud URL to Firestore exercise_media and exercises collections
       try {
+        const targetEx = EXERCISES.find(e => e.id === exerciseId);
         await setServerFirestoreDoc("exercise_media", exerciseId, {
           exerciseId,
+          exerciseName: targetEx?.name || exerciseId,
           customMediaUrl: customMediaUrl,
+          gifUrl: customMediaUrl,
+          imageUrl: customMediaUrl,
+          originalUrlOrBase64: customMediaUrl,
           customMediaType: customMediaType || "image",
           updatedAt: new Date().toISOString()
         }, false);
@@ -4014,6 +4136,8 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
         await setServerFirestoreDoc("exercises", exerciseId, {
           id: exerciseId,
           customMediaUrl: customMediaUrl,
+          gifUrl: customMediaUrl,
+          imageUrl: customMediaUrl,
           customMediaType: customMediaType || "image",
           updatedAt: new Date().toISOString()
         }, true);
@@ -4022,10 +4146,41 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
         console.error("[Firestore Media Backup Error]:", dbErr);
       }
 
-      overrides[exerciseId] = {
+      // Sync to Supabase exercise_media table if active
+      if (supabaseServer) {
+        try {
+          await supabaseServer.from("exercise_media").upsert({
+            exercise_id: exerciseId,
+            media_url: customMediaUrl,
+            media_type: customMediaType || "image",
+            updated_at: new Date().toISOString()
+          });
+          console.log(`[Supabase Media Backup OK] Upserted exercise media record for ${exerciseId}`);
+        } catch (sbErr) {
+          console.warn("[Supabase Media Backup Notice]:", sbErr);
+        }
+      }
+
+      const mediaPayload = {
         customMediaUrl,
+        gifUrl: customMediaUrl,
+        imageUrl: customMediaUrl,
         customMediaType: customMediaType || "image"
       };
+
+      overrides[exerciseId] = {
+        ...(overrides[exerciseId] || {}),
+        ...mediaPayload
+      };
+
+      const matchedEx = EXERCISES.find(e => e.id === exerciseId);
+      if (matchedEx && matchedEx.name) {
+        const normName = matchedEx.name.toLowerCase().trim();
+        overrides[normName] = {
+          ...(overrides[normName] || {}),
+          ...mediaPayload
+        };
+      }
     }
 
     fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
@@ -4065,8 +4220,10 @@ app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
       }
     }
 
+    const mediaVal = updates.customMediaUrl || updates.gifUrl || updates.imageUrl;
     const cleanUpdates = {
       ...updates,
+      ...(mediaVal ? { customMediaUrl: mediaVal, gifUrl: mediaVal, imageUrl: mediaVal } : {}),
       updatedAt: new Date().toISOString(),
       lastModifiedBy: req.user?.email || "admin"
     };
@@ -4076,14 +4233,34 @@ app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
       ...cleanUpdates
     };
 
+    if (cleanUpdates.name) {
+      const normName = cleanUpdates.name.toLowerCase().trim();
+      overrides[normName] = {
+        ...(overrides[normName] || {}),
+        ...cleanUpdates
+      };
+    }
+
     fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
 
-    // Sync to Firestore exercises collection
+    // Sync to Firestore exercises and exercise_media collections
     try {
       await setServerFirestoreDoc("exercises", exerciseId, {
         id: exerciseId,
         ...overrides[exerciseId]
       }, true);
+
+      if (mediaVal) {
+        await setServerFirestoreDoc("exercise_media", exerciseId, {
+          exerciseId,
+          exerciseName: cleanUpdates.name || exerciseId,
+          customMediaUrl: mediaVal,
+          gifUrl: mediaVal,
+          imageUrl: mediaVal,
+          customMediaType: cleanUpdates.customMediaType || "image",
+          updatedAt: new Date().toISOString()
+        }, true);
+      }
       console.log(`[Firestore OK] Updated exercise ${exerciseId} with new metadata.`);
     } catch (dbErr) {
       console.warn(`[Firestore Update Warning for exercise ${exerciseId}]:`, dbErr);
@@ -4342,27 +4519,53 @@ app.post("/api/store/products/delete", requireAdmin, async (req: any, res) => {
 
 async function fetchProgramOverridesFromCloud(): Promise<Record<string, any>> {
   try {
-    const snap = await getServerFirestoreDoc("system_settings", "program_schedule_overrides");
-    if (snap.exists) {
-      const data = snap.data();
-      if (data && typeof data === "object") {
-        const { _updatedAt, _updatedBy, ...actualOverrides } = data;
-        if (Object.keys(actualOverrides).length > 0) {
-          try {
-            let existing: Record<string, any> = {};
-            if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-              const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-              if (raw) existing = JSON.parse(raw);
-            }
-            const merged = { ...existing, ...actualOverrides };
-            fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(merged, null, 2), "utf-8");
-            console.log(`[Cloud Persistence] Loaded ${Object.keys(merged).length} program overrides from Firestore into cache.`);
-            return merged;
-          } catch (e) {
-            return actualOverrides;
-          }
+    let cloudOverrides: Record<string, any> = {};
+
+    // 1. Read all per-program documents from "program_schedules" collection
+    const progDocs = await getServerFirestoreCollection("program_schedules");
+    for (const d of progDocs) {
+      if (d.id === "overrides") continue;
+      const data = d.data();
+      if (data && data.schedule && typeof data.schedule === "object") {
+        cloudOverrides[d.id] = data.schedule;
+      } else if (data && typeof data === "object") {
+        const { updatedAt, updatedBy, programId, ...cleanSchedule } = data;
+        if (Object.keys(cleanSchedule).length > 0) {
+          cloudOverrides[d.id] = cleanSchedule;
         }
       }
+    }
+
+    // 2. Also check Supabase if active
+    if (supabaseServer) {
+      try {
+        const { data: sbList } = await supabaseServer.from("program_schedules").select("*");
+        if (Array.isArray(sbList)) {
+          for (const item of sbList) {
+            if (item.id === "overrides" && item.data) {
+              cloudOverrides = { ...item.data, ...cloudOverrides };
+            } else if (item.id && item.data) {
+              cloudOverrides[item.id] = item.data;
+            }
+          }
+        }
+      } catch (e: any) {
+        console.warn("[Cloud Persistence] Supabase read notice:", e?.message || e);
+      }
+    }
+
+    if (Object.keys(cloudOverrides).length > 0) {
+      let existing: Record<string, any> = {};
+      if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+        try {
+          const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+          if (raw) existing = JSON.parse(raw);
+        } catch (e) {}
+      }
+      const merged = { ...existing, ...cloudOverrides };
+      fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(merged, null, 2), "utf-8");
+      console.log(`[Cloud Persistence OK] Loaded ${Object.keys(merged).length} program overrides from Firestore into cache.`);
+      return merged;
     }
   } catch (err) {
     console.warn("[Cloud Persistence] Notice reading program_schedule_overrides from Firestore:", err);
@@ -4370,72 +4573,54 @@ async function fetchProgramOverridesFromCloud(): Promise<Record<string, any>> {
   return {};
 }
 
-async function persistProgramOverridesToCloud(overrides: Record<string, any>, userEmail: string = "admin") {
-  // 1. Write to local disk cache
+async function persistProgramOverridesToCloud(overrides: Record<string, any>, userEmail: string = "admin", specificKeys?: string[]) {
+  // 1. Write to local disk cache immediately
   try {
     fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(overrides, null, 2), "utf-8");
   } catch (e) {
     console.warn("[Cloud Persistence] Disk write notice:", e);
   }
 
-  // 2. Persist master overrides document to Firestore: system_settings/program_schedule_overrides
-  try {
-    await setServerFirestoreDoc("system_settings", "program_schedule_overrides", {
-      ...overrides,
-      _updatedAt: new Date().toISOString(),
-      _updatedBy: userEmail
-    }, true);
-    console.log("[Cloud Persistence] Persisted all program schedule overrides to Firestore system_settings.");
-  } catch (err) {
-    console.warn("[Cloud Persistence] Failed writing program_schedule_overrides to system_settings:", err);
-  }
+  const keysToPersist = specificKeys && specificKeys.length > 0 
+    ? specificKeys 
+    : Object.keys(overrides);
 
-  // 3. Persist master overrides to Firestore: program_schedules/overrides
+  // 2. Persist individual program documents in program_schedules collection concurrently (<100KB each, guaranteed under 1MB limit)
   try {
-    await setServerFirestoreDoc("program_schedules", "overrides", {
-      overrides: overrides,
-      updatedAt: new Date().toISOString(),
-      updatedBy: userEmail
-    }, true);
-    console.log("[Cloud Persistence] Persisted master overrides to Firestore program_schedules/overrides.");
-  } catch (err) {
-    console.warn("[Cloud Persistence] Failed writing to program_schedules/overrides:", err);
-  }
-
-  // 4. Persist individual program documents in program_schedules collection
-  try {
-    for (const [progId, progData] of Object.entries(overrides)) {
-      if (progData && typeof progData === "object") {
-        await setServerFirestoreDoc("program_schedules", progId, {
-          programId: progId,
-          schedule: progData,
-          updatedAt: new Date().toISOString(),
-          updatedBy: userEmail
-        }, true);
-      }
-    }
+    await Promise.all(
+      keysToPersist.map(async (progId) => {
+        const progData = overrides[progId];
+        if (progData && typeof progData === "object" && Object.keys(progData).length > 0) {
+          await setServerFirestoreDoc("program_schedules", progId, {
+            programId: progId,
+            schedule: progData,
+            updatedAt: new Date().toISOString(),
+            updatedBy: userEmail
+          }, true);
+        }
+      })
+    );
+    console.log(`[Cloud Persistence OK] Persisted ${keysToPersist.length} programs to Firestore program_schedules.`);
   } catch (err) {
     console.warn("[Cloud Persistence] Failed writing per-program documents to Firestore:", err);
   }
 
-  // 5. Persist to Supabase if active
+  // 3. Persist to Supabase if active
   if (supabaseServer) {
     try {
-      await supabaseServer.from("program_schedules").upsert({
-        id: "overrides",
-        data: overrides,
-        updated_at: new Date().toISOString()
-      });
-      for (const [progId, progData] of Object.entries(overrides)) {
-        if (progData && typeof progData === "object") {
-          await supabaseServer.from("program_schedules").upsert({
-            id: progId,
-            data: progData,
-            updated_at: new Date().toISOString()
-          });
-        }
-      }
-      console.log("[Cloud Persistence] Persisted overrides to Supabase program_schedules.");
+      await Promise.all(
+        keysToPersist.map(async (progId) => {
+          const progData = overrides[progId];
+          if (progData && typeof progData === "object") {
+            await supabaseServer.from("program_schedules").upsert({
+              id: progId,
+              data: progData,
+              updated_at: new Date().toISOString()
+            });
+          }
+        })
+      );
+      console.log(`[Cloud Persistence] Persisted ${keysToPersist.length} overrides to Supabase program_schedules.`);
     } catch (err: any) {
       console.warn("[Cloud Persistence] Supabase save notice:", err?.message || err);
     }
@@ -4448,56 +4633,29 @@ async function hydrateAllDataFromCloud() {
 
   // 1. Program Schedule Overrides
   try {
-    let cloudOverrides: Record<string, any> = {};
+    let cloudOverrides = await fetchProgramOverridesFromCloud();
 
-    // Try Firestore system_settings
-    try {
-      const snap = await getServerFirestoreDoc("system_settings", "program_schedule_overrides");
-      if (snap && snap.exists) {
-        const d = snap.data();
-        if (d && typeof d === "object") {
-          const { _updatedAt, _updatedBy, ...rest } = d;
-          cloudOverrides = { ...cloudOverrides, ...rest };
-        }
-      }
-    } catch (e) {
-      console.warn("[Cloud Hydration] Firestore system_settings notice:", e);
-    }
-
-    // Try Firestore program_schedules/overrides
-    try {
-      const snapOverrides = await getServerFirestoreDoc("program_schedules", "overrides");
-      if (snapOverrides && snapOverrides.exists) {
-        const d = snapOverrides.data();
-        if (d && d.overrides) {
-          cloudOverrides = { ...cloudOverrides, ...d.overrides };
-        }
-      }
-    } catch (e) {}
-
-    // Try Supabase if available
-    if (supabaseServer) {
-      try {
-        const { data: sbData } = await supabaseServer.from("program_schedules").select("*").eq("id", "overrides").maybeSingle();
-        if (sbData && sbData.data) {
-          cloudOverrides = { ...cloudOverrides, ...sbData.data };
-        }
-      } catch (e: any) {
-        console.warn("[Cloud Hydration] Supabase program_schedules notice:", e?.message || e);
-      }
-    }
-
-    if (Object.keys(cloudOverrides).length > 0) {
-      let diskOverrides: Record<string, any> = {};
+    // If cloud is empty on first deployment, seed all default program schedules to Firestore so they are never lost!
+    if (!cloudOverrides || Object.keys(cloudOverrides).length === 0) {
       if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
         try {
           const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-          if (raw) diskOverrides = JSON.parse(raw);
-        } catch (e) {}
+          if (raw) {
+            const diskData = JSON.parse(raw);
+            if (Object.keys(diskData).length > 0) {
+              console.log(`[Cloud Seeding] Seeding ${Object.keys(diskData).length} programs into Firestore program_schedules...`);
+              await persistProgramOverridesToCloud(diskData, "system_seed");
+              cloudOverrides = diskData;
+            }
+          }
+        } catch (seedErr) {
+          console.warn("[Cloud Seeding] Seed notice:", seedErr);
+        }
       }
-      const merged = { ...cloudOverrides, ...diskOverrides };
-      fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(merged, null, 2), "utf-8");
-      console.log(`[Cloud Hydration OK] Hydrated ${Object.keys(merged).length} program schedule overrides from Cloud into disk cache.`);
+    }
+
+    if (cloudOverrides && Object.keys(cloudOverrides).length > 0) {
+      console.log(`[Cloud Hydration OK] Hydrated and secured ${Object.keys(cloudOverrides).length} program schedules across Cloud Firestore.`);
     }
   } catch (err) {
     console.warn("[Cloud Hydration] Program overrides hydration notice:", err);
@@ -4505,24 +4663,120 @@ async function hydrateAllDataFromCloud() {
 
   // 2. Exercise Overrides & Catalog
   try {
-    const snapEx = await getServerFirestoreDoc("system_settings", "exercise_overrides");
-    if (snapEx && snapEx.exists) {
-      const d = snapEx.data();
-      if (d && typeof d === "object") {
-        const { _updatedAt, _updatedBy, ...rest } = d;
-        let existing: Record<string, any> = {};
-        if (fs.existsSync(OVERRIDES_FILE_PATH)) {
-          try {
-            const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
-            if (raw) existing = JSON.parse(raw);
-          } catch (e) {}
+    let cloudExerciseOverrides: Record<string, any> = {};
+
+    // 2a. Query Firestore 'exercise_media' collection
+    try {
+      const mediaDocs = await getServerFirestoreCollection("exercise_media");
+      for (const d of mediaDocs) {
+        const docData = d.data();
+        const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl || docData?.originalUrlOrBase64;
+        if (mUrl) {
+          const mediaEntry = {
+            customMediaUrl: mUrl,
+            gifUrl: mUrl,
+            imageUrl: mUrl,
+            customMediaType: docData.customMediaType || "image"
+          };
+          cloudExerciseOverrides[d.id] = {
+            ...(cloudExerciseOverrides[d.id] || {}),
+            ...docData,
+            ...mediaEntry
+          };
+          if (docData.exerciseName) {
+            const normName = docData.exerciseName.toLowerCase().trim();
+            cloudExerciseOverrides[normName] = {
+              ...(cloudExerciseOverrides[normName] || {}),
+              ...docData,
+              ...mediaEntry
+            };
+          }
         }
-        const mergedEx = { ...rest, ...existing };
-        fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(mergedEx, null, 2), "utf-8");
-        console.log(`[Cloud Hydration OK] Hydrated exercise overrides from Firestore.`);
+      }
+    } catch (mErr) {
+      console.warn("[Cloud Hydration] Notice reading exercise_media collection:", mErr);
+    }
+
+    // 2b. Query Firestore 'exercises' collection
+    try {
+      const exDocs = await getServerFirestoreCollection("exercises");
+      for (const d of exDocs) {
+        const docData = d.data();
+        const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
+        if (docData && (mUrl || docData.isCustom || docData.name)) {
+          cloudExerciseOverrides[d.id] = {
+            ...(cloudExerciseOverrides[d.id] || {}),
+            ...docData,
+            ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+          };
+          if (docData.name) {
+            const normName = docData.name.toLowerCase().trim();
+            cloudExerciseOverrides[normName] = {
+              ...(cloudExerciseOverrides[normName] || {}),
+              ...docData,
+              ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+            };
+          }
+        }
+      }
+    } catch (exErr) {
+      console.warn("[Cloud Hydration] Notice reading exercises collection:", exErr);
+    }
+
+    // 2c. Query Supabase exercise_media table if active
+    if (supabaseServer) {
+      try {
+        const { data: sbMedia } = await supabaseServer.from("exercise_media").select("*");
+        if (Array.isArray(sbMedia)) {
+          for (const row of sbMedia) {
+            if (row.exercise_id && row.media_url) {
+              const mediaEntry = {
+                customMediaUrl: row.media_url,
+                gifUrl: row.media_url,
+                imageUrl: row.media_url,
+                customMediaType: row.media_type || "image"
+              };
+              cloudExerciseOverrides[row.exercise_id] = {
+                ...(cloudExerciseOverrides[row.exercise_id] || {}),
+                ...mediaEntry
+              };
+            }
+          }
+        }
+      } catch (sbErr: any) {
+        console.warn("[Cloud Hydration] Supabase exercise_media notice:", sbErr?.message || sbErr);
       }
     }
-  } catch (err) {}
+
+    // 2d. Check legacy system_settings/exercise_overrides
+    try {
+      const snapEx = await getServerFirestoreDoc("system_settings", "exercise_overrides");
+      if (snapEx && snapEx.exists) {
+        const d = snapEx.data();
+        if (d && typeof d === "object") {
+          const { _updatedAt, _updatedBy, ...rest } = d;
+          cloudExerciseOverrides = { ...rest, ...cloudExerciseOverrides };
+        }
+      }
+    } catch (e) {}
+
+    // 2e. Merge with disk, ensuring cloud overrides take precedence over stale git/disk defaults
+    let existingDisk: Record<string, any> = {};
+    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
+      try {
+        const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
+        if (raw) existingDisk = JSON.parse(raw);
+      } catch (e) {}
+    }
+
+    const mergedEx = { ...existingDisk, ...cloudExerciseOverrides };
+    if (Object.keys(mergedEx).length > 0) {
+      fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(mergedEx, null, 2), "utf-8");
+      console.log(`[Cloud Hydration OK] Hydrated and secured ${Object.keys(mergedEx).length} exercise overrides from Cloud Firestore.`);
+    }
+  } catch (err) {
+    console.warn("[Cloud Hydration] Exercise overrides hydration error:", err);
+  }
 
   // 3. Custom Challenges
   try {
@@ -4692,8 +4946,8 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
       }
     });
 
-    // Persist to both local disk and Firestore cloud
-    await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin");
+    // Persist to both local disk and Firestore cloud (targeting modified keys for instant performance)
+    await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", targetKeys);
 
     await logAdminActivityOnFirebase(
       req.user?.email || "",

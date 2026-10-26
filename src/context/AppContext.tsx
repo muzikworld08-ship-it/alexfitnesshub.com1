@@ -658,9 +658,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const override = cachedOverrides[e.id] || cachedOverrides[eName];
         let item: Exercise = { ...e };
         if (override) {
+          const newMedia = override.customMediaUrl || override.gifUrl || override.imageUrl;
           item = {
             ...item,
-            ...(override.customMediaUrl ? { customMediaUrl: override.customMediaUrl, customMediaType: override.customMediaType || "image" } : {}),
+            ...(newMedia ? { customMediaUrl: newMedia, gifUrl: newMedia, imageUrl: newMedia, customMediaType: override.customMediaType || "image" } : {}),
             ...(override.id === e.id && override.isCustom && override.name ? { name: override.name } : {})
           };
         }
@@ -1121,10 +1122,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               };
             }
             if (override) {
+              const newMedia = override.customMediaUrl || override.gifUrl || override.imageUrl;
               finalEx = { 
                 ...finalEx, 
-                customMediaUrl: override.customMediaUrl || finalEx.customMediaUrl,
-                customMediaType: override.customMediaType || finalEx.customMediaType,
+                ...(newMedia ? { customMediaUrl: newMedia, gifUrl: newMedia, imageUrl: newMedia, customMediaType: override.customMediaType || finalEx.customMediaType } : {}),
                 ...(override.id === ex.id && override.isCustom && override.name ? { name: override.name } : {})
               };
             }
@@ -3989,6 +3990,8 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         return { 
           ...ex, 
           customMediaUrl: finalMediaUrl || undefined, 
+          gifUrl: finalMediaUrl || ex.gifUrl,
+          imageUrl: finalMediaUrl || ex.imageUrl,
           customMediaType: mediaType || undefined 
         };
       }
@@ -4005,14 +4008,28 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         try { currentOverrides = JSON.parse(storedOverridesStr); } catch {}
       }
       if (finalMediaUrl) {
-        currentOverrides[exerciseId] = {
-          ...(currentOverrides[exerciseId] || {}),
+        const overrideData = {
           customMediaUrl: finalMediaUrl,
+          gifUrl: finalMediaUrl,
+          imageUrl: finalMediaUrl,
           customMediaType: mediaType || "image"
         };
+        currentOverrides[exerciseId] = {
+          ...(currentOverrides[exerciseId] || {}),
+          ...overrideData
+        };
+        if (targetEx && targetEx.name) {
+          const normName = targetEx.name.toLowerCase().trim();
+          currentOverrides[normName] = {
+            ...(currentOverrides[normName] || {}),
+            ...overrideData
+          };
+        }
       } else {
         if (currentOverrides[exerciseId]) {
           delete currentOverrides[exerciseId].customMediaUrl;
+          delete currentOverrides[exerciseId].gifUrl;
+          delete currentOverrides[exerciseId].imageUrl;
           delete currentOverrides[exerciseId].customMediaType;
         }
       }
@@ -4038,10 +4055,24 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
           await setDoc(docRef, {
             id: mId,
             customMediaUrl: safeFirestoreUrl,
+            gifUrl: safeFirestoreUrl,
+            imageUrl: safeFirestoreUrl,
             customMediaType: mediaType || null,
             updatedAt: new Date().toISOString()
           }, { merge: true });
         }
+
+        const mediaDocRef = doc(db, "exercise_media", exerciseId);
+        await setDoc(mediaDocRef, {
+          exerciseId,
+          exerciseName: targetEx?.name || exerciseId,
+          customMediaUrl: safeFirestoreUrl,
+          gifUrl: safeFirestoreUrl,
+          imageUrl: safeFirestoreUrl,
+          customMediaType: mediaType || "image",
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+
         console.log(`Saved custom exercise media to Cloud Firestore across ${uniqueIds.length} exercise documents!`);
       } catch (err) {
         console.warn("Notice saving custom media to Cloud Firestore:", err);
@@ -4807,12 +4838,18 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
   const editExercise = async (exerciseId: string, updates: Partial<Exercise>): Promise<boolean> => {
     try {
+      const mediaVal = updates.customMediaUrl || updates.gifUrl || updates.imageUrl;
+      const normalizedUpdates: Partial<Exercise> = {
+        ...updates,
+        ...(mediaVal ? { customMediaUrl: mediaVal, gifUrl: mediaVal, imageUrl: mediaVal } : {})
+      };
+
       const updatedExercises = exercises.map(ex => {
         if (ex.id === exerciseId) {
-          const next = { ...ex, ...updates };
-          if (updates.recommendedSets || updates.recommendedReps) {
-            const nextSets = updates.recommendedSets || ex.recommendedSets || '3';
-            const nextReps = updates.recommendedReps || ex.recommendedReps || '10-12';
+          const next = { ...ex, ...normalizedUpdates };
+          if (normalizedUpdates.recommendedSets || normalizedUpdates.recommendedReps) {
+            const nextSets = normalizedUpdates.recommendedSets || ex.recommendedSets || '3';
+            const nextReps = normalizedUpdates.recommendedReps || ex.recommendedReps || '10-12';
             next.recommendedSets = nextSets;
             next.recommendedReps = nextReps;
             next.recommendedSetsReps = `${nextSets} Sets x ${nextReps} Reps`;
@@ -4824,14 +4861,22 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       setExercisesState(updatedExercises);
       safeSetItem("fit_exercises", JSON.stringify(updatedExercises));
 
-      // Cache override permanently in localStorage
+      // Cache override permanently in localStorage under ID and normalized name
       try {
         const storedOverrides = localStorage.getItem("fit_custom_exercise_overrides");
         const currentOverrides = storedOverrides ? JSON.parse(storedOverrides) : {};
         currentOverrides[exerciseId] = {
           ...(currentOverrides[exerciseId] || {}),
-          ...updates
+          ...normalizedUpdates
         };
+        const targetEx = exercises.find(e => e.id === exerciseId);
+        const normName = (normalizedUpdates.name || targetEx?.name || "").toLowerCase().trim();
+        if (normName) {
+          currentOverrides[normName] = {
+            ...(currentOverrides[normName] || {}),
+            ...normalizedUpdates
+          };
+        }
         safeSetItem("fit_custom_exercise_overrides", JSON.stringify(currentOverrides));
       } catch (oErr) {
         console.warn("Could not cache exercise override locally:", oErr);
@@ -4843,7 +4888,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         await fetch("/api/exercises/update", {
           method: "POST",
           headers,
-          body: JSON.stringify({ exerciseId, updates })
+          body: JSON.stringify({ exerciseId, updates: normalizedUpdates })
         });
       } catch (e) {
         console.warn("Server exercise update notice:", e);
@@ -4854,8 +4899,19 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         try {
           const safeDocId = (exerciseId || "").replace(/[^a-zA-Z0-9_-]/g, "_");
           if (safeDocId) {
-            const sanitizedUpdates = cleanFirestoreData({ id: safeDocId, ...updates });
+            const sanitizedUpdates = cleanFirestoreData({ id: safeDocId, ...normalizedUpdates });
             await setDoc(doc(db, "exercises", safeDocId), sanitizedUpdates, { merge: true });
+
+            if (mediaVal) {
+              await setDoc(doc(db, "exercise_media", safeDocId), {
+                exerciseId: safeDocId,
+                customMediaUrl: mediaVal,
+                gifUrl: mediaVal,
+                imageUrl: mediaVal,
+                customMediaType: normalizedUpdates.customMediaType || "image",
+                updatedAt: new Date().toISOString()
+              }, { merge: true });
+            }
           }
         } catch (dbErr) {
           console.warn("Firestore exercise update notice:", dbErr);
