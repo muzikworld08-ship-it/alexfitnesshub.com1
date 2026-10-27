@@ -3841,6 +3841,29 @@ app.get("/api/exercises/custom-media", async (req, res) => {
           }
         });
 
+        const genDocs = await getServerFirestoreCollection("generated_exercises");
+        genDocs.forEach(d => {
+          const docData = d.data();
+          const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
+          if (docData && (mUrl || docData.isCustom || docData.name)) {
+            data[d.id] = {
+              ...(data[d.id] || {}),
+              ...docData,
+              isCustom: true,
+              ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+            };
+            if (docData.name) {
+              const normName = docData.name.toLowerCase().trim();
+              data[normName] = {
+                ...(data[normName] || {}),
+                ...docData,
+                isCustom: true,
+                ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+              };
+            }
+          }
+        });
+
         if (Object.keys(data).length > 0) {
           fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(data, null, 2), "utf-8");
           console.log(`[Auto Self-Heal] Successfully hydrated ${Object.keys(data).length} exercise overrides into local cache.`);
@@ -4331,6 +4354,9 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
     }
 
     overrides[newId] = fullWorkout;
+    if (cleanName) {
+      overrides[cleanName] = fullWorkout;
+    }
     fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
 
     // Save to Firestore collections
@@ -4721,6 +4747,35 @@ async function hydrateAllDataFromCloud() {
       }
     } catch (exErr) {
       console.warn("[Cloud Hydration] Notice reading exercises collection:", exErr);
+    }
+
+    // 2b-2. Query Firestore 'generated_exercises' collection
+    try {
+      const genDocs = await getServerFirestoreCollection("generated_exercises");
+      for (const d of genDocs) {
+        const docData = d.data();
+        const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
+        if (docData && (mUrl || docData.isCustom || docData.name)) {
+          const entry = {
+            ...docData,
+            isCustom: true,
+            ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+          };
+          cloudExerciseOverrides[d.id] = {
+            ...(cloudExerciseOverrides[d.id] || {}),
+            ...entry
+          };
+          if (docData.name) {
+            const normName = docData.name.toLowerCase().trim();
+            cloudExerciseOverrides[normName] = {
+              ...(cloudExerciseOverrides[normName] || {}),
+              ...entry
+            };
+          }
+        }
+      }
+    } catch (genErr) {
+      console.warn("[Cloud Hydration] Notice reading generated_exercises collection:", genErr);
     }
 
     // 2c. Query Supabase exercise_media table if active

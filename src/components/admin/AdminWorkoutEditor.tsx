@@ -148,14 +148,16 @@ export default function AdminWorkoutEditor() {
   const [deleteModalTarget, setDeleteModalTarget] = useState<DeleteWorkoutTarget | null>(null);
   const [isDeletingWorkout, setIsDeletingWorkout] = useState(false);
 
-  const handleConfirmDeleteWorkout = async () => {
-    if (!deleteModalTarget) return;
-    const targetId = deleteModalTarget.id;
+  const handleConfirmDeleteWorkout = async (targetParam?: DeleteWorkoutTarget | null) => {
+    const target = targetParam || deleteModalTarget;
+    if (!target) return;
+    const targetId = target.id;
+    const targetName = target.name;
     // Dismiss modal immediately so the UI remains fast and responsive
     setDeleteModalTarget(null);
     setIsDeletingWorkout(true);
     try {
-      await deleteWorkout(targetId);
+      await deleteWorkout(targetId, targetName);
     } catch (e: any) {
       console.error("Failed deleting workout:", e);
       alert("Error deleting workout: " + (e?.message || "Internal server error"));
@@ -2299,7 +2301,8 @@ export default function AdminWorkoutEditor() {
         isOpen={!!deleteModalTarget}
         target={deleteModalTarget}
         isLoading={isDeletingWorkout}
-        onConfirm={handleConfirmDeleteWorkout}
+        onConfirm={() => handleConfirmDeleteWorkout(deleteModalTarget)}
+        onDeleteOnly={() => handleConfirmDeleteWorkout(deleteModalTarget)}
         onCancel={() => setDeleteModalTarget(null)}
       />
 

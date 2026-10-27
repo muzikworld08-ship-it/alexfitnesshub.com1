@@ -36,26 +36,23 @@ export default function DeleteWorkoutConfirmModal({
 }: DeleteWorkoutConfirmModalProps) {
   if (!isOpen || !target) return null;
 
-  // Ultra-fast instant action triggers: dismiss modal synchronously on click so UI has zero lag
+  // Direct action triggers: invoke delete/replace action directly so target data is preserved
   const handleTriggerAutoReplace = () => {
-    onCancel();
     if (onAutoReplace) {
-      setTimeout(() => onAutoReplace(), 0);
+      onAutoReplace();
     }
   };
 
   const handleTriggerDeleteOnly = () => {
-    onCancel();
     const action = onDeleteOnly || onConfirm;
     if (action) {
-      setTimeout(() => action(), 0);
+      action();
     }
   };
 
   const handleTriggerChooseReplacement = () => {
-    onCancel();
     if (onChooseReplacement) {
-      setTimeout(() => onChooseReplacement(), 0);
+      onChooseReplacement();
     }
   };
 

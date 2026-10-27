@@ -260,7 +260,7 @@ interface AppContextType {
   addExerciseToLibrary: (workout: Exercise) => Promise<void>;
   editExercise: (exerciseId: string, updates: Partial<Exercise>) => Promise<boolean>;
   addWorkout: (workout: Partial<Exercise>) => Promise<Exercise>;
-  deleteWorkout: (exerciseId: string) => Promise<boolean>;
+  deleteWorkout: (exerciseId: string, optionalName?: string) => Promise<boolean>;
 
   // Challenges Management
   customChallenges: PremiumChallenge[];
@@ -678,9 +678,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               if (!ex || !ex.id || !ex.name) return;
               const exName = (ex.name || "").toLowerCase().trim();
               if (deletedSet.has(ex.id) || deletedSet.has(exName)) return;
-              if (ex.isCustom === true && !isRestrictedHomeWorkout(ex).isViolating) {
+              const isBase = baseExercisePool.some(b => b.id === ex.id || b.name?.toLowerCase().trim() === exName);
+              if ((ex.isCustom === true || !isBase) && !isRestrictedHomeWorkout(ex).isViolating) {
                 if (!initialMap.has(ex.id)) {
-                  initialMap.set(ex.id, ex);
+                  initialMap.set(ex.id, { ...ex, isCustom: true });
                 }
               }
             });
@@ -691,19 +692,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // 3. Merge custom exercises from cachedOverrides
       Object.keys(cachedOverrides).forEach(key => {
         const val = cachedOverrides[key];
-        if (val && typeof val === "object" && val.name && val.isCustom === true && !deletedSet.has(key) && !isRestrictedHomeWorkout(val).isViolating) {
-          if (!initialMap.has(key)) {
-            initialMap.set(key, {
-              id: key,
-              category: "Gym Workouts",
-              difficulty: "Intermediate",
-              muscleGroups: ["Chest"],
-              equipment: ["Dumbbells"],
-              recommendedSets: "3-4",
-              recommendedReps: "10-12",
-              recommendedSetsReps: "3-4 Sets x 10-12 Reps",
-              ...val
-            } as Exercise);
+        if (val && typeof val === "object" && val.name && !deletedSet.has(key) && !isRestrictedHomeWorkout(val).isViolating) {
+          const valName = (val.name || "").toLowerCase().trim();
+          const isBase = baseExercisePool.some(b => b.id === key || b.name?.toLowerCase().trim() === valName);
+          if (val.isCustom === true || !isBase) {
+            if (!initialMap.has(key)) {
+              initialMap.set(key, {
+                id: key,
+                category: "Gym Workouts",
+                difficulty: "Intermediate",
+                muscleGroups: ["Chest"],
+                equipment: ["Dumbbells"],
+                recommendedSets: "3-4",
+                recommendedReps: "10-12",
+                recommendedSetsReps: "3-4 Sets x 10-12 Reps",
+                isCustom: true,
+                ...val
+              } as Exercise);
+            }
           }
         }
       });
@@ -939,16 +945,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           
           // Apply stored modifications and custom user-added exercises
           parsed.forEach(p => {
-            if (!p || !p.id || deletedIdsSet.has(p.id) || p.isCustom !== true || isRestrictedHomeWorkout(p).isViolating) return;
-            if (map.has(p.id)) {
-              const existing = map.get(p.id)!;
-              map.set(p.id, {
-                ...existing,
-                ...p,
-                isCustom: true
-              });
-            } else {
-              map.set(p.id, { ...p, isCustom: true });
+            if (!p || !p.id || deletedIdsSet.has(p.id) || isRestrictedHomeWorkout(p).isViolating) return;
+            const isBase = baseExercisePool.some(b => b.id === p.id || b.name?.toLowerCase().trim() === p.name?.toLowerCase().trim());
+            if (p.isCustom === true || !isBase) {
+              if (map.has(p.id)) {
+                const existing = map.get(p.id)!;
+                map.set(p.id, {
+                  ...existing,
+                  ...p,
+                  isCustom: true
+                });
+              } else {
+                map.set(p.id, { ...p, isCustom: true });
+              }
             }
           });
 
@@ -979,19 +988,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Also include any custom added workouts in cachedOverrides
     Object.keys(cachedOverrides).forEach(key => {
       const val = cachedOverrides[key];
-      if (val && typeof val === "object" && val.name && val.isCustom === true && !deletedIdsSet.has(key) && !isRestrictedHomeWorkout(val).isViolating) {
-        if (!initialList.some(i => i.id === key)) {
-          initialList.push({
-            id: key,
-            category: "Gym Workouts",
-            difficulty: "Intermediate",
-            muscleGroups: ["Chest"],
-            equipment: ["Dumbbells"],
-            recommendedSets: "3-4",
-            recommendedReps: "10-12",
-            recommendedSetsReps: "3-4 Sets x 10-12 Reps",
-            ...val
-          } as Exercise);
+      if (val && typeof val === "object" && val.name && !deletedIdsSet.has(key) && !isRestrictedHomeWorkout(val).isViolating) {
+        const valName = (val.name || "").toLowerCase().trim();
+        const isBase = baseExercisePool.some(b => b.id === key || b.name?.toLowerCase().trim() === valName);
+        if (val.isCustom === true || !isBase) {
+          if (!initialList.some(i => i.id === key)) {
+            initialList.push({
+              id: key,
+              category: "Gym Workouts",
+              difficulty: "Intermediate",
+              muscleGroups: ["Chest"],
+              equipment: ["Dumbbells"],
+              recommendedSets: "3-4",
+              recommendedReps: "10-12",
+              recommendedSetsReps: "3-4 Sets x 10-12 Reps",
+              isCustom: true,
+              ...val
+            } as Exercise);
+          }
         }
       }
     });
@@ -1144,33 +1158,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // Only custom exercises saved by admin in mergedOverrides
           Object.keys(mergedOverrides).forEach(key => {
             const val = mergedOverrides[key];
-            if (val && typeof val === "object" && val.name && val.isCustom === true && !activeDeletedIds.has(key) && !isRestrictedHomeWorkout(val).isViolating) {
-              if (!baseList.some(b => b.id === key)) {
-                customMap.set(key, {
-                  id: key,
-                  category: val.category || "Gym Workouts",
-                  difficulty: val.difficulty || "Intermediate",
-                  muscleGroups: val.muscleGroups || ["Chest"],
-                  equipment: val.equipment || ["Dumbbells"],
-                  recommendedSets: val.recommendedSets || "3-4",
-                  recommendedReps: val.recommendedReps || "10-12",
-                  recommendedSetsReps: `${val.recommendedSets || "3-4"} Sets x ${val.recommendedReps || "10-12"} Reps`,
-                  isCustom: true,
-                  ...val
-                } as Exercise);
+            if (val && typeof val === "object" && val.name && !activeDeletedIds.has(key) && !isRestrictedHomeWorkout(val).isViolating) {
+              const valName = (val.name || "").toLowerCase().trim();
+              const isBase = baseList.some(b => b.id === key || b.name?.toLowerCase().trim() === valName);
+              if (val.isCustom === true || !isBase) {
+                if (!baseList.some(b => b.id === key)) {
+                  customMap.set(key, {
+                    id: key,
+                    category: val.category || "Gym Workouts",
+                    difficulty: val.difficulty || "Intermediate",
+                    muscleGroups: val.muscleGroups || ["Chest"],
+                    equipment: val.equipment || ["Dumbbells"],
+                    recommendedSets: val.recommendedSets || "3-4",
+                    recommendedReps: val.recommendedReps || "10-12",
+                    recommendedSetsReps: `${val.recommendedSets || "3-4"} Sets x ${val.recommendedReps || "10-12"} Reps`,
+                    isCustom: true,
+                    ...val
+                  } as Exercise);
+                }
               }
             }
           });
 
           // Retain genuine admin-added custom exercises from in-memory state
           prev.forEach(p => {
-            if (p && p.id && p.isCustom === true && !activeDeletedIds.has(p.id)) {
-              const existing = customMap.get(p.id);
-              customMap.set(p.id, {
-                ...p,
-                ...(existing || {}),
-                isCustom: true
-              });
+            if (p && p.id && !activeDeletedIds.has(p.id)) {
+              const isBase = baseList.some(b => b.id === p.id);
+              if (p.isCustom === true || !isBase) {
+                const existing = customMap.get(p.id);
+                customMap.set(p.id, {
+                  ...p,
+                  ...(existing || {}),
+                  isCustom: true
+                });
+              }
             }
           });
 
@@ -1181,13 +1202,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               const parsedRaw = JSON.parse(rawStored) as Exercise[];
               if (Array.isArray(parsedRaw)) {
                 parsedRaw.forEach(p => {
-                  if (p && p.id && p.isCustom === true && !activeDeletedIds.has(p.id)) {
-                    const existing = customMap.get(p.id);
-                    customMap.set(p.id, {
-                      ...p,
-                      ...(existing || {}),
-                      isCustom: true
-                    });
+                  if (p && p.id && !activeDeletedIds.has(p.id)) {
+                    const isBase = baseList.some(b => b.id === p.id);
+                    if (p.isCustom === true || !isBase) {
+                      const existing = customMap.get(p.id);
+                      customMap.set(p.id, {
+                        ...p,
+                        ...(existing || {}),
+                        isCustom: true
+                      });
+                    }
                   }
                 });
               }
@@ -2892,6 +2916,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Hydrate saved workouts from Firestore
+    if (!isMockFirebase) {
+      getDoc(doc(db, "saved_workouts", uid))
+        .then((snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            if (Array.isArray(data?.workoutIds)) {
+              const normalized: string[] = Array.from(new Set(data.workoutIds.map((id: any) => normalizeExerciseId(String(id)))));
+              setSavedWorkouts(normalized);
+              safeSetItem(`fit_saves_${uid}`, JSON.stringify(normalized));
+            }
+          }
+        })
+        .catch((err) => console.warn("Failed to fetch saved_workouts from firestore:", err));
+    }
+
+    // Hydrate saved workouts from Supabase if configured
+    if (isSupabaseConfigured) {
+      Promise.resolve(
+        supabase
+          .from("saved_workouts")
+          .select("workout_ids")
+          .eq("user_id", uid)
+          .maybeSingle()
+      )
+        .then(({ data }: any) => {
+          if (data && Array.isArray(data.workout_ids)) {
+            const normalized: string[] = Array.from(new Set(data.workout_ids.map((id: any) => normalizeExerciseId(String(id)))));
+            setSavedWorkouts(normalized);
+            safeSetItem(`fit_saves_${uid}`, JSON.stringify(normalized));
+          }
+        })
+        .catch(() => {});
+    }
+
     const pLogs = localStorage.getItem(`fit_activity_${uid}`);
     if (pLogs) {
       try {
@@ -3329,6 +3388,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSavedWorkouts(nextSaves);
     safeSetItem(`fit_saves_${user.uid}`, JSON.stringify(nextSaves));
     syncSavedWorkoutsToSupabase(user.uid, nextSaves);
+
+    if (!isMockFirebase) {
+      safeFirestoreSetDoc(doc(db, "saved_workouts", user.uid), {
+        userId: user.uid,
+        workoutIds: nextSaves,
+        updatedAt: new Date().toISOString()
+      }, { merge: true }).catch(() => {});
+    }
   };
 
   const logWorkoutCompletion = async (exerciseId: string, reps: number, weight: number, notes?: string) => {
@@ -4978,7 +5045,8 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       benefits: workoutData.benefits || ["Increases functional power and muscular endurance."],
       trainerTips: workoutData.trainerTips || "Focus on intense mind-muscle connection and controlled tempo.",
       safetyNotes: workoutData.safetyNotes || "Warm up thoroughly before working sets.",
-      ...workoutData
+      ...workoutData,
+      isCustom: true
     };
 
     const sanitizedExercise = cleanFirestoreData(fullExercise);
@@ -4993,6 +5061,10 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       const storedOverrides = localStorage.getItem("fit_custom_exercise_overrides");
       const currentOverrides = storedOverrides ? JSON.parse(storedOverrides) : {};
       currentOverrides[safeId] = sanitizedExercise;
+      const cleanName = (sanitizedExercise.name || "").toLowerCase().trim();
+      if (cleanName) {
+        currentOverrides[cleanName] = sanitizedExercise;
+      }
       safeSetItem("fit_custom_exercise_overrides", JSON.stringify(currentOverrides));
     } catch {}
 
@@ -5035,10 +5107,10 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     return sanitizedExercise;
   };
 
-  const deleteWorkout = async (exerciseId: string): Promise<boolean> => {
+  const deleteWorkout = async (exerciseId: string, optionalName?: string): Promise<boolean> => {
     // 1. Identify exercise to be deleted
-    const targetExercise = exercises.find(e => e.id === exerciseId);
-    const targetName = (targetExercise?.name || "").toLowerCase().trim();
+    const targetExercise = exercises.find(e => e.id === exerciseId || (optionalName && e.name?.toLowerCase().trim() === optionalName.toLowerCase().trim()));
+    const targetName = (optionalName || targetExercise?.name || "").toLowerCase().trim();
 
     // 2. Immediately persist to localStorage "fit_deleted_exercises"
     try {
@@ -5050,8 +5122,12 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
           if (Array.isArray(parsed)) deletedList = parsed;
         } catch {}
       }
-      if (!deletedList.includes(exerciseId)) deletedList.push(exerciseId);
+      if (exerciseId && !deletedList.includes(exerciseId)) deletedList.push(exerciseId);
       if (targetName && !deletedList.includes(targetName)) deletedList.push(targetName);
+      if (optionalName) {
+        const cleanOpt = optionalName.toLowerCase().trim();
+        if (!deletedList.includes(cleanOpt)) deletedList.push(cleanOpt);
+      }
       safeSetItem("fit_deleted_exercises", JSON.stringify(deletedList));
     } catch {}
 
@@ -5060,10 +5136,9 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       const storedOverrides = localStorage.getItem("fit_custom_exercise_overrides");
       if (storedOverrides) {
         const overrides = JSON.parse(storedOverrides);
-        delete overrides[exerciseId];
-        if (targetName) {
-          delete overrides[targetName];
-        }
+        if (exerciseId) delete overrides[exerciseId];
+        if (targetName) delete overrides[targetName];
+        if (optionalName) delete overrides[optionalName.toLowerCase().trim()];
         localStorage.setItem("fit_custom_exercise_overrides", JSON.stringify(overrides));
       }
     } catch {}
@@ -5071,8 +5146,10 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     // 4. Immediately remove from active exercises state and localStorage
     setExercisesState(prev => {
       const next = prev.filter(e => {
-        if (e.id === exerciseId) return false;
-        if (targetName && e.name.toLowerCase().trim() === targetName) return false;
+        if (exerciseId && e.id === exerciseId) return false;
+        const eName = (e.name || "").toLowerCase().trim();
+        if (targetName && eName === targetName) return false;
+        if (optionalName && eName === optionalName.toLowerCase().trim()) return false;
         return true;
       });
       safeSetItem("fit_exercises", JSON.stringify(next));
@@ -5083,11 +5160,11 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     setCustomChallenges(prev => {
       let changed = false;
       const updated = prev.map(c => {
-        if (c.workouts && c.workouts.some(w => w.id === exerciseId || (targetName && w.name?.toLowerCase().trim() === targetName))) {
+        if (c.workouts && c.workouts.some(w => (exerciseId && w.id === exerciseId) || (targetName && w.name?.toLowerCase().trim() === targetName))) {
           changed = true;
           return {
             ...c,
-            workouts: c.workouts.filter(w => w.id !== exerciseId && (!targetName || w.name?.toLowerCase().trim() !== targetName))
+            workouts: c.workouts.filter(w => (!exerciseId || w.id !== exerciseId) && (!targetName || w.name?.toLowerCase().trim() !== targetName))
           };
         }
         return c;
@@ -5110,26 +5187,41 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         await fetch("/api/exercises/delete", {
           method: "POST",
           headers,
-          body: JSON.stringify({ exerciseId, exerciseName: targetName })
+          body: JSON.stringify({ exerciseId, exerciseName: targetName || optionalName })
         });
       } catch (e) {}
 
       if (!isMockFirebase) {
         try {
           const safeDocId = (exerciseId || "").replace(/[^a-zA-Z0-9_-]/g, "_");
+          const docsToDelete: Promise<any>[] = [];
           if (safeDocId) {
-            await Promise.all([
-              deleteDoc(doc(db, "exercises", safeDocId)).catch(() => {}),
-              deleteDoc(doc(db, "generated_exercises", safeDocId)).catch(() => {}),
-              safeFirestoreSetDoc(doc(db, "deleted_exercises", safeDocId), {
-                id: exerciseId,
-                name: targetExercise?.name || exerciseId,
-                deletedAt: new Date().toISOString(),
-                deletedBy: user?.email || "admin"
-              }, { merge: true })
-            ]);
+            docsToDelete.push(deleteDoc(doc(db, "exercises", safeDocId)).catch(() => {}));
+            docsToDelete.push(deleteDoc(doc(db, "generated_exercises", safeDocId)).catch(() => {}));
+            docsToDelete.push(deleteDoc(doc(db, "exercise_media", safeDocId)).catch(() => {}));
+            docsToDelete.push(safeFirestoreSetDoc(doc(db, "deleted_exercises", safeDocId), {
+              id: exerciseId,
+              name: targetExercise?.name || targetName || exerciseId,
+              deletedAt: new Date().toISOString(),
+              deletedBy: user?.email || "admin"
+            }, { merge: true }));
           }
+          if (targetName) {
+            const safeNameDoc = targetName.replace(/[^a-zA-Z0-9_-]/g, "_");
+            if (safeNameDoc && safeNameDoc !== safeDocId) {
+              docsToDelete.push(deleteDoc(doc(db, "exercises", safeNameDoc)).catch(() => {}));
+              docsToDelete.push(deleteDoc(doc(db, "exercise_media", safeNameDoc)).catch(() => {}));
+            }
+          }
+          await Promise.all(docsToDelete);
         } catch (e) {}
+      }
+
+      // Also remove from Supabase if configured
+      if (isSupabaseConfigured && exerciseId) {
+        try {
+          await supabase.from("exercise_media").delete().eq("exercise_id", exerciseId);
+        } catch (sbErr) {}
       }
     })();
 

@@ -376,13 +376,6 @@ export default function AdminWorkoutChallengeEngine() {
     // Check if selected program is a custom challenge in allChallenges
     const customMatch = (allChallenges || []).find((c: any) => c.id === selectedProgramId || c.challengeId === selectedProgramId);
     if (customMatch) {
-      // First check if an admin override already exists for this day/cycle
-      const progOverrides = serverOverrides[selectedProgramId];
-      const cycleKey = `cycle_${((effectiveDayNumber - 1) % 7) + 1}`;
-      if (progOverrides && (progOverrides[String(effectiveDayNumber)] || progOverrides[cycleKey])) {
-        return getWorkoutForProgramAndDay(selectedProgramId as ProgramId, effectiveDayNumber, undefined, adminTrack);
-      }
-
       // If custom challenge has workouts attached to it
       const challengeWorkouts = (customMatch.workouts && Array.isArray(customMatch.workouts) && customMatch.workouts.length > 0)
         ? customMatch.workouts
@@ -579,7 +572,11 @@ export default function AdminWorkoutChallengeEngine() {
   };
 
   // Reorder Exercises Handler
-  const handleReorderExercises = async (newExercises: ChallengeExerciseItem[], forTier?: "beginner" | "intermediate" | "advanced") => {
+  const handleReorderExercises = async (
+    newExercises: ChallengeExerciseItem[], 
+    forTier?: "beginner" | "intermediate" | "advanced",
+    explicitLevels?: { beginner?: ChallengeExerciseItem[]; intermediate?: ChallengeExerciseItem[]; advanced?: ChallengeExerciseItem[] }
+  ) => {
     // Deduplicate exercises and GIFs to strictly enforce zero duplication
     const seenNames = new Set<string>();
     const seenGifs = new Set<string>();
@@ -611,15 +608,17 @@ export default function AdminWorkoutChallengeEngine() {
 
     const existingDayData = currentDayOverride || {};
     const existingLevels = existingDayData.levels || {};
-    const nextLevels = { ...existingLevels };
+    const nextLevels = explicitLevels ? { ...existingLevels, ...explicitLevels } : { ...existingLevels };
     const targetTier = forTier || selectedDifficultyLevel;
 
-    if (targetTier === "beginner") {
-      nextLevels.beginner = sanitizedExercises;
-    } else if (targetTier === "intermediate") {
-      nextLevels.intermediate = sanitizedExercises;
-    } else if (targetTier === "advanced") {
-      nextLevels.advanced = sanitizedExercises;
+    if (!explicitLevels) {
+      if (targetTier === "beginner") {
+        nextLevels.beginner = sanitizedExercises;
+      } else if (targetTier === "intermediate") {
+        nextLevels.intermediate = sanitizedExercises;
+      } else if (targetTier === "advanced") {
+        nextLevels.advanced = sanitizedExercises;
+      }
     }
 
     const baselineExercises = targetTier === "beginner"
@@ -638,9 +637,9 @@ export default function AdminWorkoutChallengeEngine() {
       estimatedDuration: cardioState.durationMinutes,
       exercises: baselineExercises,
       levels: nextLevels,
-      beginnerExercises: targetTier === "beginner" ? sanitizedExercises : (nextLevels.beginner || existingDayData.beginnerExercises || baselineExercises),
-      intermediateExercises: targetTier === "intermediate" ? sanitizedExercises : (nextLevels.intermediate || existingDayData.intermediateExercises || baselineExercises),
-      advancedExercises: targetTier === "advanced" ? sanitizedExercises : (nextLevels.advanced || existingDayData.advancedExercises || baselineExercises),
+      beginnerExercises: nextLevels.beginner || (targetTier === "beginner" ? sanitizedExercises : (existingDayData.beginnerExercises || baselineExercises)),
+      intermediateExercises: nextLevels.intermediate || (targetTier === "intermediate" ? sanitizedExercises : (existingDayData.intermediateExercises || baselineExercises)),
+      advancedExercises: nextLevels.advanced || (targetTier === "advanced" ? sanitizedExercises : (existingDayData.advancedExercises || baselineExercises)),
     };
 
     // Optimistic UI update across program key aliases
@@ -872,6 +871,17 @@ export default function AdminWorkoutChallengeEngine() {
 
     const updated = [...currentTierExercises, finalEx];
     handleReorderExercises(updated, activeTierTarget);
+
+    // Persist custom media/GIF globally so it remains permanent across all views & exercises
+    if (assignedGif) {
+      try {
+        const rawName = name;
+        const match = libraryExercises.find(e => (e.name || "").toLowerCase().trim() === rawName.toLowerCase().trim() || e.id === (newEx.exerciseId || newEx.id));
+        const targetId = match?.id || finalEx.exerciseId || finalEx.id;
+        uploadExerciseMedia(targetId, assignedGif, "image");
+      } catch (e) {}
+    }
+
     setSaveSuccessMsg(`Added "${name}" to the ${activeTierTarget.toUpperCase()} routine!`);
     setTimeout(() => setSaveSuccessMsg(null), 3000);
   };
@@ -955,25 +965,41 @@ export default function AdminWorkoutChallengeEngine() {
   };
 
   // Delete Only (Permanently remove workout from this routine)
-  const handleDeleteOnly = async () => {
-    if (!targetToDelete) return;
-    const target = targetToDelete;
+  const handleDeleteOnly = async (targetParam?: any) => {
+    const target = targetParam || targetToDelete;
+    if (!target) return;
     // Dismiss modal immediately so user sees deletion take effect without hanging
     setTargetToDelete(null);
     setIsDeleting(true);
 
     try {
       const targetId = target.id;
-      const targetName = (target.exerciseName || (target as any).name || "").toLowerCase().trim();
-      const updated = activeExercises.filter((ex: ChallengeExerciseItem) => {
-        if (targetId && ex.id && ex.id === targetId) return false;
-        const n = (ex.exerciseName || (ex as any).name || "").toLowerCase().trim();
-        return n !== targetName;
-      });
+      const targetName = (target.exerciseName || target.name || "").toLowerCase().trim();
 
-      await handleReorderExercises(updated, selectedDifficultyLevel);
+      const filterOutTarget = (list: ChallengeExerciseItem[]) => {
+        if (!Array.isArray(list)) return [];
+        return list.filter((ex: ChallengeExerciseItem) => {
+          if (!ex) return false;
+          if (targetId && ex.id && ex.id === targetId) return false;
+          const n = (ex.exerciseName || (ex as any).name || "").toLowerCase().trim();
+          return n !== targetName;
+        });
+      };
 
-      setSaveSuccessMsg(`Permanently removed "${target.exerciseName}" from ${selectedDifficultyLevel.toUpperCase()} routine.`);
+      const updated = filterOutTarget(activeExercises);
+
+      // Clean across all tiers so deleted drill never re-emerges from tier fallback
+      const existingLevels = currentDayOverride?.levels || {};
+      const nextLevels: Record<string, ChallengeExerciseItem[]> = {
+        beginner: filterOutTarget(existingLevels.beginner || currentDayOverride?.beginnerExercises || activeExercises),
+        intermediate: filterOutTarget(existingLevels.intermediate || currentDayOverride?.intermediateExercises || activeExercises),
+        advanced: filterOutTarget(existingLevels.advanced || currentDayOverride?.advancedExercises || activeExercises),
+      };
+      nextLevels[selectedDifficultyLevel] = updated;
+
+      await handleReorderExercises(updated, selectedDifficultyLevel, nextLevels);
+
+      setSaveSuccessMsg(`Permanently removed "${target.exerciseName || target.name}" from ${selectedDifficultyLevel.toUpperCase()} routine.`);
       setTimeout(() => setSaveSuccessMsg(null), 3000);
     } catch (err: any) {
       console.error("Delete only error:", err);
@@ -984,9 +1010,9 @@ export default function AdminWorkoutChallengeEngine() {
   };
 
   // Delete and Auto-Replace via Dynamic Library Replacement (Instant & Resilient)
-  const handleAutoReplace = async () => {
-    if (!targetToDelete) return;
-    const target = targetToDelete;
+  const handleAutoReplace = async (targetParam?: any) => {
+    const target = targetParam || targetToDelete;
+    if (!target) return;
     setTargetToDelete(null);
     setIsDeleting(true);
 
@@ -1032,7 +1058,14 @@ export default function AdminWorkoutChallengeEngine() {
         // Instant optimistic manifestation across all tier mappings
         await handleReorderExercises(updated, selectedDifficultyLevel);
 
-        setSaveSuccessMsg(`Dynamically substituted "${target.exerciseName}" with "${replacementItem.exerciseName}" in ${selectedDifficultyLevel.toUpperCase()} routine!`);
+        // Ensure replacement GIF is permanent globally
+        if (replacementItem.gifUrl) {
+          try {
+            uploadExerciseMedia(replacementItem.exerciseId || replacementItem.id, replacementItem.gifUrl, "image");
+          } catch (e) {}
+        }
+
+        setSaveSuccessMsg(`Dynamically substituted "${target.exerciseName || target.name}" with "${replacementItem.exerciseName}" in ${selectedDifficultyLevel.toUpperCase()} routine!`);
         setTimeout(() => setSaveSuccessMsg(null), 3500);
 
         // Notify server in background
@@ -2335,9 +2368,9 @@ export default function AdminWorkoutChallengeEngine() {
           programName: selectedProgramId
         } : null}
         isLoading={isDeleting}
-        onConfirm={handleDeleteOnly}
-        onDeleteOnly={handleDeleteOnly}
-        onAutoReplace={handleAutoReplace}
+        onConfirm={() => handleDeleteOnly(targetToDelete)}
+        onDeleteOnly={() => handleDeleteOnly(targetToDelete)}
+        onAutoReplace={() => handleAutoReplace(targetToDelete)}
         onChooseReplacement={() => {
           const item = targetToDelete;
           setTargetToDelete(null);
