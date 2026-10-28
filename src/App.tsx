@@ -9,7 +9,6 @@ import HomeView from "./components/HomeView";
 import { TestimonialPopup } from "./components/TestimonialPopup";
 import DailyNotificationController from "./components/DailyNotificationController";
 import GlobalSkeletonLoader, { DashboardSkeleton, CardGridSkeleton, ListSkeleton } from "./components/SkeletonLoader";
-import GlobalTransitionOverlay from "./components/GlobalTransitionOverlay";
 import { preloadCriticalFitnessAssets } from "./utils/imageCache";
 import { WorkoutTimerProvider } from "./context/WorkoutTimerContext";
 import { StoreProvider, useStore } from "./context/StoreContext";

@@ -1,126 +1,111 @@
-# Unified Challenge Architecture & Admin Exercise Restructuring Plan
+# Unified UX Parity, Drill GIF Deletion & Codebase Cleanup Plan
 
-Restore seamless application loading across both mobile and desktop, purge legacy cached versions, eliminate all deprecated hardcoded workout libraries across the four flagship programs, and route all challenge programs (Immortal 90-Day, 180-Day Home, Women Confidence, and Belly Fat Shred System) through the Admin Manual Dashboard exercise structuring engine with verified high-definition GIFs and dynamic beginner-first assignment.
+A focused engineering plan to eliminate duplicate feature discrepancies across devices and accounts, permanently fix Cycle Day 1 drill deletion and uploaded GIF persistence, and scrub unneeded files and legacy mock code.
 
 ---
 
-## User Review & Critical Decisions
+### User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The following directions were confirmed during interactive clarification and form the foundation of this implementation:
-
-- **Immortal 90-Day Challenge Live Visibility**: Fully active and visible across both desktop and mobile navigation, powered by the modern Admin Manual Dashboard workout engine with zero missing-exercise errors.
-- **Unified Exercise & GIF Source of Truth**: All four challenge programs (Belly Fat Shred, 90 Days Immortal, 180 Days Home Workout, and Women Confidence) completely drop legacy hardcoded arrays and exclusively consume the Admin Manual Dashboard structuring schema with verified exercise GIFs and dynamic difficulty tiers.
-- **Beginner Athlete Onboarding Guarantee**: When a user registers or selects "Beginner", every program immediately selects and renders the verified beginner exercise drills and cadence defined in the admin structuring system.
-- **Global Cache Purge & Instant Version Synchronization**: Legacy service workers, browser HTTP caches, and stale local storage states across client devices will be aggressively invalidated and automatically refreshed upon deployment.
+> The following decisions incorporate the user's responses and verified platform configurations:
+> - **Removal of Mock Demo Hub**: Confirmed by user. The `#public-live-desk` mock playground section in `HomeView.tsx` and the `handleFreeInteractiveNav` interception in `Navbar.tsx` will be completely deleted. All users across mobile and desktop will navigate directly to authentic, production feature views (`/weight-trajectory`, `/daily-calibration-desk`, `/community`, etc.).
+> - **Unified Feature Parity Across Accounts & Devices**: Free, guest, and admin users will share a unified layout and full feature set. Duplicate nested sub-tab views inside `DashboardView.tsx` (which created conflicting desktop vs mobile interfaces) will be streamlined into single canonical routes.
+> - **Permanent Cycle Day 1 Drill & GIF Purge**: Clicking delete on any drill in Cycle Day 1 (or any day) will synchronously scrub the exercise and its uploaded GIF from local storage, `exercisesState`, disk overrides (`serverOverrides`), and cloud databases (Firestore `program_schedules`, `exercise_media`, `exercises`, `generated_exercises`, and Supabase).
 
 ---
 
-## 1. Overview & Core Concept
+### Exhaustive List of Files and Elements to Delete
 
-### What It Delivers
-A unified, zero-error athletic training platform where every program and performance desk draws from a single authoritative exercise repository and admin schedule override system:
-1. **Applet Stability & Zero-Error Boot**: Eliminates CSP conflicts, helmet header restrictions, and service worker caching deadlocks that caused the "failed to load the applet" error.
-2. **Old Workout Elimination**: Completely purges legacy hardcoded exercise lists from `canonicalExercises.ts`, `womenConfidenceProgramData.ts`, `bellyFatProgramData.ts`, `homeWorkoutChallengeData.ts`, and legacy fallback dictionaries.
-3. **Admin Dashboard Exercise Structuring**: Standardizes exercise schedules, rep schemes, rest periods, target muscle groups, and demo GIFs under the admin manual structuring system (`program_schedule_overrides.json`, local storage, and database persistence).
-4. **Beginner-First Default Progression**: Aligns onboarding profile creation (`workoutExperience: "beginner"` / `fitnessLevel: "Beginner"`) directly to the Beginner difficulty tier across all challenge views.
-5. **Universal Layout Synchronization**: Restructures the flagship programs and desks (Immortal 90-Day, Challenge Engine Hub, Athlete Performance Desk, 180 Day Home Workout, My Daily Plan, Women Confidence, Belly Fat Shred System, and Programs & Academy) with consistent typography, tabular metrics, and error boundaries.
+#### 1. Dead & Redundant Files to Delete
+- `src/components/GlobalTransitionOverlay.tsx`: Unused legacy transition overlay component; imported in `App.tsx` but never rendered or called in any active user flow.
+- `src/components/WorkoutLibrarySkeleton.tsx`: Unused standalone skeleton; completely duplicated by modular skeletons in `src/components/SkeletonLoader.tsx`.
+- `src/components/generator/ExerciseSwapperModal.tsx`: Legacy exercise swap modal that has been replaced by `src/components/UniversalExerciseSwapperModal.tsx`.
 
----
-
-## 2. User Experience & Visual Design
-
-### Key User Flows
-```
-┌────────────────────────┐      ┌─────────────────────────┐      ┌─────────────────────────┐
-│ User Opens App / PWA   │ ───► │ Version Check & Cache   │ ───► │ Onboarding / Sign-In    │
-│ (Desktop or Mobile)    │      │ Clean Purge If Stale    │      │ Select "Beginner" Level │
-└────────────────────────┘      └─────────────────────────┘      └─────────────────────────┘
-                                                                              │
-                                                                              ▼
-┌────────────────────────┐      ┌─────────────────────────┐      ┌─────────────────────────┐
-│ Workout Execution View │ ◄─── │ Challenge Program Hub   │ ◄─── │ Athlete Performance     │
-│ Verified Admin GIF,    │      │ Select 90-Day, 180-Day, │      │ Desk / Daily Plan View  │
-│ Reps, Sets & Rest      │      │ Belly Fat, or Women Conf│      │ Real Streaks & Metrics  │
-└────────────────────────┘      └─────────────────────────┘      └─────────────────────────┘
-```
-
-- **Seamless Loading Flow**: The applet boots without blocking on third-party external scripts. A lightweight cache synchronizer checks the deployed app version and flushes any obsolete service worker cache silently.
-- **Program Browsing Flow**: Users access all 8 flagship destinations from the navigation and Challenge Engine Hub. Every program immediately renders day-by-day workout cards with active animated exercise GIFs.
-- **Admin Structuring Flow**: The administrator uses `AdminWorkoutChallengeEngine` to configure exercises, reorder drills, edit sets/reps, and assign custom GIFs for Beginner, Intermediate, and Advanced tiers. All athlete views update instantly via synchronized state.
-
-### Visual Identity & Theme
-- **Dominant Neutral Field (60%)**: Deep slate/charcoal backdrop (`#090D16` / `#0F172A`) with high-contrast neutral borders (`rgba(255,255,255,0.08)`).
-- **Structural Surfaces (30%)**: Clean, un-nested cards (`#131B2E` / `#1E293B`) with single-elevation depth and consistent 12px outer radius.
-- **Accent Budget (10%)**: High-voltage electric emerald (`#10B981`) for active milestones and completions; crimson accent (`#F43F5E`) for high-intensity shred circuits.
-- **Typography**: Clean display sans (`Plus Jakarta Sans` / `Outfit`) for bold titles paired with `Plus Jakarta Sans` for body copy and monospace tabular figures (`font-mono tabular-nums`) for timers, reps, and sets.
-- **Zero-Pill Compliance**: Metadata (difficulty, target muscle, round duration) presented as clean unboxed text with subtle typographic separators (`·` or `|`), never garish pill chips.
+#### 2. Redundant Code Blocks & Discrepancy Drivers to Delete
+- `src/components/HomeView.tsx` (Lines 2868–3250): Delete the `#public-live-desk` "Dynamic Athlete Desk" section containing artificial mock demo tabs (`__activeDemoTab` state, synthetic metric buttons, and simulated progress bars) that confused mobile/guest visitors.
+- `src/components/Navbar.tsx`: Delete `handleFreeInteractiveNav` and `#public-live-desk` scroll triggers that intercepted guest/mobile clicks and prevented access to authentic application views.
+- `src/components/DashboardView.tsx`: Remove redundant child wrappers that embedded full-page views (`WorkoutLibrary`, `WorkoutVideos`, `NutritionView`, `CoachView`, `DailyPlanView`) within nested dashboard sub-tabs, eliminating layout bifurcation between mobile drawer and desktop sidebar.
+- `src/components/AdminAssetManager.tsx`: Delete hardcoded email lock (`alexfitnesshub@gmail.com`) that conflicted with the verified administrator email (`muzikworld08@gmail.com`).
 
 ---
 
-## 3. Key Product Decisions & Trade-Offs
+### 1. Overview & Core Concept
 
-### Decision 1: Eradicating Legacy Data Files vs. Adapting Them
-- **Chosen Approach**: Completely strip out legacy exercise dictionaries across `canonicalExercises.ts`, `womenConfidenceProgramData.ts`, `bellyFatProgramData.ts`, and `homeWorkoutChallengeData.ts`. Seed them directly from the Admin structuring schema.
-- **Why**: Legacy files contained hardcoded strings that bypassed the Admin dashboard, lacked valid GIF URLs, and created schema conflicts that caused client crashes.
-- **Alternatives Considered**: Keeping fallback arrays was rejected because athletes were seeing old uneditable drills instead of admin updates.
-
-### Decision 2: Cache Invalidation & Applet Boot Resilience
-- **Chosen Approach**: Implement an explicit cache-busting version token (`APP_VERSION_2026_V2`) in HTML and service worker registration, with an immediate `caches.delete()` trigger on startup if a version mismatch occurs. Relax helmet CSP to permit internal Vite dev assets and necessary font/media CDNs.
-- **Why**: Older service worker caches on client devices were serving outdated JavaScript bundles that threw uncaught runtime exceptions when connecting to new API responses.
-- **Alternatives Considered**: Waiting for browser default cache expiration leaves users with white screens for up to 24 hours.
-
-### Decision 3: Beginner Level Mapping
-- **Chosen Approach**: Standardize fitness level resolution in `dynamicWorkoutEngine.ts` and `challengeEngineDatabase.ts` so that newly registered users with `workoutExperience: "beginner"` or undefined levels default deterministically to the Admin "Beginner" exercise array.
-- **Why**: Previously, components fell back to "Intermediate", hiding the admin's beginner workout assignments.
+- **What It Does**: Unifies the athlete experience into a single, cohesive fitness and strength training platform where features, drill libraries, and analytics are identical regardless of device viewport (mobile, tablet, desktop) or account state. Solves the Cycle Day 1 drill deletion issue by ensuring drills and uploaded GIFs are permanently erased and never resurrected by day plan fallbacks.
+- **Target Audience**: Athletes and strength trainees tracking 90-day transformations, plus gym administrators configuring drills, GIFs, and routine cycles.
+- **Key Value**: Guarantees data integrity for drill management and eliminates user confusion caused by mock previews or dual feature sets.
 
 ---
 
-## 4. Technical Architecture & Data Strategy
+### 2. User Experience & Visual Design
+
+- **Canonical Navigation**: The navigation bar and mobile drawer provide direct, 1-to-1 routing to authentic views:
+  - 🏋️ **Workout Library & Engine**: `/workouts`, `/challenge-engine`, `/routine-hub`
+  - 📈 **Athlete Analytics**: `/weight-trajectory`, `/daily-calibration-desk`
+  - 🥗 **Nutrition & Hydration**: `/nutrition`
+  - 👥 **Community & Coaching**: `/community`, `/coach`
+- **Cycle Day 1 Drill Management UX**:
+  - In Admin Challenge Engine (`Cycle Day 1: Push`), clicking the trash icon opens the confirmation modal.
+  - Selecting "Delete Drill" immediately removes the drill from the active list across Beginner, Intermediate, and Advanced tiers.
+  - The drill and any custom uploaded GIF are immediately pruned from the media library and synced to the cloud.
+  - The UI updates instantly with an energetic confirmation toast, with no drill ghosting upon page reload.
+- **Visual Discipline & Polish**:
+  - Dark posture (`bg-zinc-950` to `bg-black`), high-contrast typographic hierarchy (Oswald / Inter display pairing), crisp athletic borders (`border-white/10`).
+  - No static pill tags or redundant badges. Clean tabular layout for drill sets, reps, and tempo cues.
+
+---
+
+### 3. Key Product Decisions & Trade-Offs
+
+- **Decision 1: Direct Cloud & Disk Write on Day Plan Deletions**
+  - *Chosen Approach*: When a drill is deleted from Cycle Day 1, update `serverOverrides["immortal_90"]["1"]` and `["cycle_1"]`, persist to disk via `/api/admin/programs/save-day`, and write the updated schedule directly to Firestore `program_schedules/immortal_90`.
+  - *Why*: Prevents default hardcoded day templates in `PROGRAM_CANONICAL_SPLITS` from resurrecting deleted exercises when a day plan is reloaded.
+- **Decision 2: Elimination of `#public-live-desk` Mock Playground**
+  - *Chosen Approach*: Delete the mock demo hub on the home page entirely and guide visitors straight into authentic, live tools.
+  - *Why*: Having a "demo" version of tools on the home page and a "real" version inside the dashboard created two conflicting feature sets that confused users across screen sizes.
+- **Decision 3: Dual-Keyed Custom Exercise Indexing**
+  - *Chosen Approach*: All custom drills and uploaded GIFs are indexed by both unique ID (e.g., `ex_1729000000`) and sanitized title (e.g., `incline_dumbbell_press`).
+  - *Why*: Ensures GIF uploads and media links persist even if a drill is referenced by name in one view and by UUID in another.
+
+---
+
+### 4. Technical Architecture & Data Strategy
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        Applet Client Entry Point                       │
-│      - Helmet CSP & Header Fixes (vite.middlewares & Express)          │
-│      - Service Worker Cache Purge & Version Sync Mechanism             │
-│      - Global Error Boundary with Self-Healing Reload                  │
+│                        UNIFIED ATHLETE FRONTEND                        │
+│   (Single responsive layout across Mobile, Tablet, and Desktop)        │
 └───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+       ┌────────────────────────────┼────────────────────────────┐
+       ▼                            ▼                            ▼
+┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
+│  Home & Workouts │      │ Daily Day Plan   │      │ Challenge Engine │
+│  (Live Engine)   │      │ (Cycle Day 1-7)  │      │ & Asset Manager  │
+└─────────┬────────┘      └─────────┬────────┘      └─────────┬────────┘
+          │                         │                         │
+          └─────────────────────────┼─────────────────────────┘
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│                   Admin Workout Challenge Engine                       │
-│    - Admin Program Structuring: immortal_90, home_180, women_conf,    │
-│      belly_fat_shred, posture_vitality                                 │
-│    - Difficulty Tiers: Beginner, Intermediate, Advanced                │
-│    - Verified Exercise Library with Working GIFs & Rest Timers         │
+│                        CENTRAL APP CONTEXT                             │
+│  - deleteWorkout(id, name): Scrubs state, local storage & cloud        │
+│  - uploadExerciseMedia(file): Persists GIF to Firestore & Supabase     │
+│  - serverOverrides: Caches day plan modifications across cycle keys    │
 └───────────────────────────────────┬────────────────────────────────────┘
-                                    │ Synchronizes Via
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│              challengeEngineDatabase & dynamicWorkoutEngine            │
-│    - getWorkoutForProgramAndDay(programId, day, difficultyLevel)       │
-│    - program_schedule_overrides.json (Persistent Backend Store)        │
-│    - Priority: Admin Override > Local Storage Override > Verified Seed │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │ Serves Live Data To
-                                    ▼
-┌───────────────────────┬───────────────────────┬────────────────────────┐
-│ Immortal 90-Day View  │ 180-Day Home Workout  │ Women Confidence &     │
-│ & Performance Desk    │ & Daily Plan Views    │ Belly Fat Shred Views  │
-└───────────────────────┴───────────────────────┴────────────────────────┘
+                                    │
+       ┌────────────────────────────┴────────────────────────────┐
+       ▼                                                         ▼
+┌───────────────────────────────────────┐       ┌────────────────────────────────┐
+│           EXPRESS SERVER              │       │       FIRESTORE CLOUD DB       │
+│  - POST /api/exercises/delete         │       │  - program_schedules           │
+│  - POST /api/admin/programs/save-day  │       │  - exercise_media              │
+│  - POST /api/exercises/upload-media   │       │  - generated_exercises         │
+└───────────────────────────────────────┘       └────────────────────────────────┘
 ```
 
-### Core Architecture Components
-1. **Boot Stability & Server Setup (`server.ts` & `index.html`)**:
-   - Align helmet CSP directives with Vite dev middleware and external font/media resources.
-   - Replace brittle inline Paystack scripts with safe asynchronous loaders and fallback guards.
-   - Embed an automatic version-busting script that unregisters obsolete workers and flushes cached assets.
-2. **Authoritative Workout Seed & Admin Overrides (`src/data/challengeEngineDatabase.ts`)**:
-   - Provide high-quality, verified exercise seeds with real animated GIFs for all 4 programs across all difficulty levels.
-   - Ensure `getWorkoutForProgramAndDay()` always succeeds and retrieves the exact admin schedule override.
-3. **Programs Restructuring**:
-   - **Immortal 90-Day Challenge (`src/components/Premium90DayChallenge.tsx`)**: Reconnect day resolver to query the admin schedule overrides with beginner resolution.
-   - **Belly Fat Shred System (`src/components/BellyFatShredView.tsx`)**: Remove old hardcoded fallback drills; wire `getWorkoutForProgramAndDay('belly_fat_shred', dayNumber, level)`.
-   - **180 Day Home Workout Challenge (`src/components/HomeWorkoutChallengeView.tsx`)**: Wire day generator to the admin manual engine.
-   - **Women Confidence Program (`src/components/WomenConfidenceProgramView.tsx`)**: Wire day generator to the admin manual engine.
-   - **Challenge Engine Hub & Athlete Performance Desk**: Ensure program cards, streaks, and drill previews reflect the new structured exercises.
+#### Verification Steps
+1. **Source Cleanup**: Verify removal of `GlobalTransitionOverlay.tsx`, `WorkoutLibrarySkeleton.tsx`, and `generator/ExerciseSwapperModal.tsx` without dangling imports.
+2. **Cycle Day 1 Deletion**: Delete a drill with an uploaded GIF in Cycle Day 1, reload the page, and verify the drill remains deleted and the GIF is removed from the media selector.
+3. **Cross-Device Parity**: Verify identical navigation and feature availability on mobile viewport (390px) and desktop viewport (1440px).
+4. **Build & Lint**: Run `compile_applet` and `lint_applet` to ensure zero compilation or type errors.

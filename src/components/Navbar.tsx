@@ -119,27 +119,9 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     }
   };
 
-  const handleFreeInteractiveNav = (tabId: "trajectory" | "community" | "calibration" | "habits") => {
-    setIsMenuOpen(false);
-    setView("home");
-    
-    if (typeof window !== "undefined") {
-      (window as any).__activeDemoTab = tabId;
-      window.dispatchEvent(new CustomEvent("set-demo-tab", { detail: tabId }));
-    }
-
-    setTimeout(() => {
-      const el = document.getElementById("public-live-desk");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }, 180);
-  };
-
   // Unified single drawer menu items rearranged in exact requested architecture
   const drawerMenuItems = [
     { id: "challenges", label: "Immortal 90-Day Challenge", desc: "Flagship 90-day hypertrophy, strength & 7-day split protocol", icon: Award, color: "text-red-600 bg-red-50", isHighlight: true },
-    { id: "challenge-engine", label: "Challenge Engine Hub", desc: "All challenge programs, protocols & workout architect", icon: Layers, color: "text-indigo-600 bg-indigo-50" },
     { id: "dashboard", label: "Athlete Performance Desk", desc: "Your metrics, streaks & performance reports", icon: Shield, color: "text-sky-600 bg-sky-50" },
     { id: "home-workout-challenge", label: "180 Day Home Workout Challenge", desc: "Zero equipment bodyweight transformation & 5KM cardio", icon: Dumbbell, color: "text-amber-600 bg-amber-50" },
     { id: "daily-plan", label: "My Daily Plan", desc: "Personalized daily schedule & drills", icon: Calendar, color: "text-red-600 bg-red-50" },
@@ -163,7 +145,9 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     ...((user?.role === "admin" || (user?.email && isEmailAdmin(user.email))) ? [
       { id: "admin", label: "Admin Management Console", desc: "System settings, analytics & user controls", icon: Shield, color: "text-red-700 bg-red-100" },
       { id: "challenge-engine", label: "Challenge Engine Architect", desc: "Manage 90-Day & all program vertical splits, tiers & drills", icon: Repeat, color: "text-amber-700 bg-amber-100" }
-    ] : [])
+    ] : [
+      { id: "challenge-engine", label: "Challenge Engine Hub", desc: "All challenge programs, protocols & workout architect", icon: Layers, color: "text-indigo-600 bg-indigo-50" }
+    ])
   ];
 
   return (

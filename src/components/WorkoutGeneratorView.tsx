@@ -19,7 +19,7 @@ import {
 } from "../services/dailyWorkoutAIService";
 import { EXERCISES, Exercise } from "../data/exercises";
 import LiveWorkoutPlayerModal from "./generator/LiveWorkoutPlayerModal";
-import ExerciseSwapperModal from "./generator/ExerciseSwapperModal";
+import UniversalExerciseSwapperModal from "./UniversalExerciseSwapperModal";
 import MasterLibraryBrowserModal from "./generator/MasterLibraryBrowserModal";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
 
@@ -1186,11 +1186,29 @@ export default function WorkoutGeneratorView({ setView }: WorkoutGeneratorViewPr
 
       {/* 2. Exercise Swapper Modal */}
       {exerciseToSwap && (
-        <ExerciseSwapperModal
-          currentExercise={exerciseToSwap}
-          programType={selectedProgram}
+        <UniversalExerciseSwapperModal
+          isOpen={Boolean(exerciseToSwap)}
+          currentExercise={exerciseToSwap ? {
+            ...exerciseToSwap,
+            reps: String(exerciseToSwap.reps || "10-12 reps")
+          } : null}
           onClose={() => setExerciseToSwap(null)}
-          onSwapSelected={handleApplySwap}
+          onSelectSwap={(newEx: Exercise) => {
+            const mappedItem: DailyWorkoutExerciseItem = {
+              id: newEx.id,
+              name: newEx.name,
+              targetMuscle: newEx.muscleGroups?.[0] || newEx.category || "Full Body",
+              equipment: newEx.equipment || ["Bodyweight"],
+              sets: exerciseToSwap.sets || 3,
+              reps: String(exerciseToSwap.reps || "10-12 reps"),
+              restSeconds: exerciseToSwap.restSeconds || 60,
+              difficulty: (exerciseToSwap.difficulty || "Intermediate") as any,
+              gifUrl: newEx.gifUrl || "",
+              instructions: newEx.instructions || [],
+              coachingCues: Array.isArray(newEx.instructions) && newEx.instructions.length > 0 ? newEx.instructions[0] : "Maintain controlled form throughout."
+            };
+            handleApplySwap(mappedItem);
+          }}
         />
       )}
 

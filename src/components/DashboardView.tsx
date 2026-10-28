@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useApp } from "../context/AppContext";
+import { useApp, checkIsUserPremium, isEmailAdmin } from "../context/AppContext";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   TrendingUp, Calendar, CheckCircle, Award, 
@@ -82,7 +82,7 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
     }
   };
 
-  const isPremium = user && (user.subscriptionStatus === "premium" || user.role === "admin");
+  const isPremium = checkIsUserPremium(user) || Boolean(user?.role === "admin" || (user?.email && isEmailAdmin(user.email)));
 
   const getSubscriptionExpiryDays = () => {
     if (!user || !user.subscriptionExpiry || user.subscriptionStatus !== "premium") return null;
@@ -295,7 +295,7 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
           {/* Main workspace section renderer */}
           <div className="transition-all duration-300 bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/60 shadow-sm min-h-[75vh] w-full max-w-full min-w-0">
             <AnimatePresence>
-              {!isPremium && ["plan", "coach", "nutrition", "videos", "handbook", "reports", "calibration", "trajectory", "habits", "community"].includes(activeTab) ? (
+              {!isPremium && ["handbook", "reports"].includes(activeTab) ? (
                 <motion.div
                   key="lock-card"
                   initial={{ opacity: 0, y: 4 }}

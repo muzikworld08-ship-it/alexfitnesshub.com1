@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Save, Dumbbell, Clock, ShieldCheck, Check, Sparkles, Layers, Image as ImageIcon, RotateCcw, Link2, Eye } from "lucide-react";
+import { X, Save, Dumbbell, Clock, ShieldCheck, Check, Sparkles, Layers, Image as ImageIcon, RotateCcw, Link2, Eye, Upload, Trash2, Loader2 } from "lucide-react";
 import { ChallengeExerciseItem } from "../../types/challengeEngine";
 import UnifiedExerciseMedia from "../UnifiedExerciseMedia";
 import { getExerciseGifUrl } from "../../data/exercises";
@@ -39,6 +39,8 @@ export default function EditWorkoutDrillModal({
   const [gifUrl, setGifUrl] = useState<string>(
     exercise.gifUrl || exercise.imageUrl || (exercise as any).customMediaUrl || ""
   );
+  const [isUploading, setIsUploading] = useState(false);
+  const [isGifCleared, setIsGifCleared] = useState(false);
 
   useEffect(() => {
     if (exercise) {
@@ -60,6 +62,7 @@ export default function EditWorkoutDrillModal({
       setGifUrl(
         exercise.gifUrl || exercise.imageUrl || (exercise as any).customMediaUrl || ""
       );
+      setIsGifCleared(false);
     }
   }, [exercise, currentTier]);
 
@@ -69,13 +72,45 @@ export default function EditWorkoutDrillModal({
     const cat = exercise.category || "";
     const canonical = getExerciseGifUrl(name, cat);
     setGifUrl(canonical);
+    setIsGifCleared(false);
+  };
+
+  const handleClearGif = () => {
+    setGifUrl("");
+    setIsGifCleared(true);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 25 * 1024 * 1024) {
+      alert("File is too large. Please select a GIF or video under 25MB.");
+      return;
+    }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (base64) {
+        setGifUrl(base64);
+        setIsGifCleared(false);
+      }
+      setIsUploading(false);
+    };
+    reader.onerror = () => {
+      alert("Failed to read file.");
+      setIsUploading(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!exercise) return;
 
-    const finalGif = gifUrl.trim() || exercise.gifUrl || exercise.imageUrl;
+    const finalGif = isGifCleared ? "" : (gifUrl.trim() || exercise.gifUrl || exercise.imageUrl || "");
 
     const updated: ChallengeExerciseItem = {
       ...exercise,
@@ -159,34 +194,59 @@ export default function EditWorkoutDrillModal({
           </div>
 
           {/* Demonstration GIF / Media URL Editor */}
-          <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800/90 space-y-2">
-            <div className="flex items-center justify-between">
+          <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800/90 space-y-2.5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <label className="text-xs font-bold text-neutral-300 flex items-center gap-1.5">
                 <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
-                Demonstration GIF / Media URL
+                Demonstration GIF / Media Asset
               </label>
-              <button
-                type="button"
-                onClick={handleResetToDefaultGif}
-                className="text-[11px] text-neutral-400 hover:text-blue-400 flex items-center gap-1 transition cursor-pointer"
-                title="Reset to canonical library GIF"
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span>Reset to Canonical GIF</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-950/60 border border-emerald-500/30 px-2 py-1 rounded-lg flex items-center gap-1 transition cursor-pointer">
+                  {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                  <span>{isUploading ? "Uploading..." : "Upload GIF / Video"}</span>
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    disabled={isUploading}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={handleClearGif}
+                  className="text-[11px] text-red-400 hover:text-red-300 bg-red-950/40 border border-red-900/40 px-2 py-1 rounded-lg flex items-center gap-1 transition cursor-pointer"
+                  title="Remove GIF from this drill"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Delete GIF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetToDefaultGif}
+                  className="text-[11px] text-neutral-400 hover:text-blue-400 bg-neutral-900 border border-neutral-800 px-2 py-1 rounded-lg flex items-center gap-1 transition cursor-pointer"
+                  title="Reset to canonical library GIF"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Canonical</span>
+                </button>
+              </div>
             </div>
             <div className="relative">
               <input
-                type="url"
+                type="text"
                 value={gifUrl}
-                onChange={(e) => setGifUrl(e.target.value)}
-                placeholder="https://... or .gif / .mp4 URL"
+                onChange={(e) => {
+                  setGifUrl(e.target.value);
+                  setIsGifCleared(false);
+                }}
+                placeholder="Paste URL or click Upload GIF above..."
                 className="w-full pl-8 pr-3 py-2 rounded-xl bg-neutral-900 border border-neutral-700 text-white text-xs font-mono focus:outline-none focus:border-blue-500"
               />
               <Link2 className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
             </div>
             <p className="text-[10px] text-neutral-500 leading-tight">
-              Paste any custom GIF, animated WebP, or demonstration image URL. Changes manifest across athlete schedules immediately.
+              Upload a local GIF/MP4 directly or paste an external URL. Click "Delete GIF" to clear and remove the media permanently.
             </p>
           </div>
 

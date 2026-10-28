@@ -621,9 +621,11 @@ export default function AdminWorkoutChallengeEngine() {
       }
     }
 
-    const baselineExercises = targetTier === "beginner"
-      ? sanitizedExercises
-      : (nextLevels.beginner || existingDayData.beginnerExercises || existingDayData.exercises || baseDayPlan.exercises || []);
+    const baselineExercises = explicitLevels
+      ? (nextLevels.beginner || sanitizedExercises)
+      : (targetTier === "beginner"
+        ? sanitizedExercises
+        : (nextLevels.beginner || existingDayData.beginnerExercises || existingDayData.exercises || baseDayPlan.exercises || []));
 
     const updatedDayData = {
       ...existingDayData,
@@ -892,12 +894,18 @@ export default function AdminWorkoutChallengeEngine() {
     handleReorderExercises(updated, selectedDifficultyLevel);
 
     // Also persist custom media/GIF globally so it remains permanent across all views & exercises
+    const rawName = updatedEx.exerciseName || (updatedEx as any).name || "";
+    const match = libraryExercises.find(e => (e.name || "").toLowerCase().trim() === rawName.toLowerCase().trim() || e.id === updatedEx.id);
+    const targetId = match?.id || updatedEx.id;
+
     if (updatedEx.gifUrl) {
       try {
-        const rawName = updatedEx.exerciseName || (updatedEx as any).name || "";
-        const match = libraryExercises.find(e => (e.name || "").toLowerCase().trim() === rawName.toLowerCase().trim() || e.id === updatedEx.id);
-        const targetId = match?.id || updatedEx.id;
         uploadExerciseMedia(targetId, updatedEx.gifUrl, "image");
+      } catch (e) {}
+    } else {
+      try {
+        uploadExerciseMedia(targetId, null, "image");
+        if (rawName) uploadExerciseMedia(rawName, null, "image");
       } catch (e) {}
     }
 
@@ -997,9 +1005,21 @@ export default function AdminWorkoutChallengeEngine() {
       };
       nextLevels[selectedDifficultyLevel] = updated;
 
+      // 1. Persist updated routine with drill removed
       await handleReorderExercises(updated, selectedDifficultyLevel, nextLevels);
 
-      setSaveSuccessMsg(`Permanently removed "${target.exerciseName || target.name}" from ${selectedDifficultyLevel.toUpperCase()} routine.`);
+      // 2. Permanently delete drill and custom GIF from global AppContext & databases
+      if (deleteWorkout) {
+        await deleteWorkout(targetId, target.exerciseName || target.name);
+      }
+      if (uploadExerciseMedia) {
+        try {
+          await uploadExerciseMedia(targetId, null, "image");
+          if (targetName) await uploadExerciseMedia(targetName, null, "image");
+        } catch {}
+      }
+
+      setSaveSuccessMsg(`Permanently removed "${target.exerciseName || target.name}" and purged its media.`);
       setTimeout(() => setSaveSuccessMsg(null), 3000);
     } catch (err: any) {
       console.error("Delete only error:", err);
