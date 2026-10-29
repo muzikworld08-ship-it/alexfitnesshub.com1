@@ -69,8 +69,28 @@ export async function refreshScheduleOverridesFromServer(): Promise<Record<strin
       const data = await res.json();
       if (data && data.overrides && typeof data.overrides === "object" && Object.keys(data.overrides).length > 0) {
         setScheduleOverridesFromRemote(data.overrides);
-        return data.overrides;
       }
+
+      // Also sync deleted exercises so client-side routine renders omit permanently deleted drills across devices
+      if (typeof window !== "undefined" && window.localStorage) {
+        try {
+          const delRes = await fetch("/api/exercises/deleted");
+          if (delRes.ok) {
+            const delData = await delRes.json();
+            if (delData?.deletedExercises && Array.isArray(delData.deletedExercises)) {
+              const existingRaw = window.localStorage.getItem("fit_deleted_exercises");
+              let existing: string[] = [];
+              if (existingRaw) {
+                try { existing = JSON.parse(existingRaw); } catch {}
+              }
+              const merged = Array.from(new Set([...existing, ...delData.deletedExercises]));
+              window.localStorage.setItem("fit_deleted_exercises", JSON.stringify(merged));
+            }
+          }
+        } catch {}
+      }
+
+      if (data?.overrides) return data.overrides;
     }
   } catch (err) {
     console.warn("[ScheduleOverridesStore] Notice fetching schedule overrides from server:", err);

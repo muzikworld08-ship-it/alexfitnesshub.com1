@@ -987,7 +987,7 @@ async function setServerFirestoreDoc(collectionName: string, docId: string, data
     const docRef = doc(db, collectionName, docId);
     await Promise.race([
       setDoc(docRef, data, { merge }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Server Firestore setDoc timeout")), 3500))
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Server Firestore setDoc timeout")), 10000))
     ]);
     console.log(`[Server Firestore Web SDK Write OK] Successfully wrote ${collectionName}/${docId} via Web SDK`);
     return { success: true };
@@ -4457,16 +4457,24 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
     }
 
     // Mark deleted in Firestore or remove
-    if (exerciseId) {
-      try {
+    const targetDocId = (exerciseId || cleanName.replace(/[^a-z0-9_-]/g, "_")).replace(/[\/\s]/g, "_");
+    try {
+      if (exerciseId) {
         await setServerFirestoreDoc("exercises", exerciseId, {
           id: exerciseId,
           isDeleted: true,
           deletedAt: new Date().toISOString()
         }, true);
-      } catch (dbErr) {
-        console.warn(`[Firestore Delete Warning for ${exerciseId}]:`, dbErr);
       }
+      await setServerFirestoreDoc("deleted_exercises", targetDocId, {
+        id: exerciseId || targetDocId,
+        name: exerciseName || cleanName,
+        deletedAt: new Date().toISOString(),
+        deletedBy: req.user?.email || "admin"
+      }, true);
+      console.log(`[Firestore OK] Recorded permanent deletion in deleted_exercises/${targetDocId}`);
+    } catch (dbErr) {
+      console.warn(`[Firestore Delete Warning for ${targetDocId}]:`, dbErr);
     }
 
     await logAdminActivityOnFirebase(
@@ -4898,8 +4906,45 @@ async function hydrateAllDataFromCloud() {
     console.warn("[Cloud Hydration] Supabase transfer notice:", transferErr);
   }
 
+  // 6. Hydrate deleted exercises from Firestore collection
+  try {
+    const deletedDocs = await getServerFirestoreCollection("deleted_exercises");
+    if (deletedDocs && deletedDocs.length > 0) {
+      let currentDeleted: string[] = [];
+      if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
+        try {
+          const raw = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
+          if (raw) currentDeleted = JSON.parse(raw);
+        } catch (e) {}
+      }
+      for (const d of deletedDocs) {
+        const dData = d.data();
+        if (dData?.id && !currentDeleted.includes(dData.id)) currentDeleted.push(dData.id);
+        if (dData?.name && !currentDeleted.includes(dData.name.toLowerCase().trim())) currentDeleted.push(dData.name.toLowerCase().trim());
+      }
+      fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(currentDeleted, null, 2), "utf-8");
+      console.log(`[Cloud Hydration OK] Hydrated ${deletedDocs.length} deleted exercise records from Firestore.`);
+    }
+  } catch (delHydrateErr) {
+    console.warn("[Cloud Hydration] Deleted exercises hydration notice:", delHydrateErr);
+  }
+
   console.log("[Cloud Hydration Complete] Render server boot state fully secured against data loss.");
 }
+
+// GET all permanently deleted exercises
+app.get("/api/exercises/deleted", (req, res) => {
+  try {
+    let deletedList: string[] = [];
+    if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
+      const raw = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
+      if (raw) deletedList = JSON.parse(raw);
+    }
+    res.json({ success: true, deletedExercises: deletedList });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, deletedExercises: [] });
+  }
+});
 
 // GET all program schedule overrides (with Firestore self-healing)
 app.get("/api/admin/programs/overrides", async (req, res) => {

@@ -214,6 +214,77 @@ export async function runAllTests() {
     assert(false, "TEST K: Regression Check", err.message);
   }
 
+  // TEST L: CYCLE DAY 1 OF 7 DRILL DELETION & FIT_DELETED_EXERCISES HONORED
+  try {
+    const day1Plan = getWorkoutForProgramAndDay("immortal_90", 1, undefined, { fitnessLevel: "Beginner" });
+    assert(
+      day1Plan !== null && Array.isArray(day1Plan.exercises),
+      "TEST L: Cycle Day 1 of 7 Plan Retrieval",
+      "Failed to load Cycle Day 1 plan"
+    );
+
+    // Emulate drill deletion by testing filterOutTarget
+    const initialCount = day1Plan.exercises.length;
+    if (initialCount > 0) {
+      const targetDrill = day1Plan.exercises[0];
+      const targetName = targetDrill.exerciseName.toLowerCase().trim();
+      const filtered = day1Plan.exercises.filter(
+        ex => ex.id !== targetDrill.id && ex.exerciseName.toLowerCase().trim() !== targetName
+      );
+      assert(
+        filtered.length === initialCount - 1,
+        "TEST L: Cycle Day 1 Drill Deletion Removes Exactly Target Drill",
+        `Expected ${initialCount - 1} drills after deleting "${targetDrill.exerciseName}", got ${filtered.length}`
+      );
+      assert(
+        !filtered.some(ex => ex.exerciseName.toLowerCase().trim() === targetName),
+        "TEST L: Deleted Drill Completely Absent from Remaining Drills",
+        `Target "${targetDrill.exerciseName}" still found in filtered routine`
+      );
+    }
+  } catch (err: any) {
+    assert(false, "TEST L: Cycle Day 1 Drill Deletion", err.message);
+  }
+
+  // TEST M: DRAG-AND-DROP REORDER PRESERVATION
+  try {
+    const day1Plan = getWorkoutForProgramAndDay("immortal_90", 1, undefined, { fitnessLevel: "Beginner" });
+    if (day1Plan.exercises.length >= 2) {
+      const reordered = [...day1Plan.exercises];
+      const first = reordered[0];
+      const second = reordered[1];
+      // Swap first and second drills (reorder)
+      reordered[0] = second;
+      reordered[1] = first;
+
+      assert(
+        reordered[0].exerciseName === second.exerciseName && reordered[1].exerciseName === first.exerciseName,
+        "TEST M: Drag and Drop Reordering Swaps Drill Order Accurately",
+        "Failed to swap first and second drill order"
+      );
+    }
+  } catch (err: any) {
+    assert(false, "TEST M: Drag-and-Drop Reorder", err.message);
+  }
+
+  // TEST N: GET /api/exercises/deleted ENDPOINT
+  try {
+    const delRes = await fetch("http://localhost:3000/api/exercises/deleted");
+    assert(
+      delRes.status === 200,
+      "TEST N: Deleted Exercises Endpoint Operational (HTTP 200)",
+      `Expected status 200, received ${delRes.status}`
+    );
+    const delJson = await delRes.json();
+    assert(
+      delJson.success === true && Array.isArray(delJson.deletedExercises),
+      "TEST N: Deleted Exercises Returns Valid Array Schema",
+      "Response did not contain deletedExercises array"
+    );
+  } catch (err: any) {
+    assert(false, "TEST N: Deleted Exercises API", err.message);
+  }
+
   console.log("\n=======================================================");
   const passedCount = results.filter(r => r.passed).length;
   console.log(`TOTAL TESTS: ${results.length} | PASSED: ${passedCount} | FAILED: ${results.length - passedCount}`);

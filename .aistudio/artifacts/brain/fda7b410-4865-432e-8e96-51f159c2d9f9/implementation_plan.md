@@ -104,8 +104,17 @@ A focused engineering plan to eliminate duplicate feature discrepancies across d
 └───────────────────────────────────────┘       └────────────────────────────────┘
 ```
 
-#### Verification Steps
-1. **Source Cleanup**: Verify removal of `GlobalTransitionOverlay.tsx`, `WorkoutLibrarySkeleton.tsx`, and `generator/ExerciseSwapperModal.tsx` without dangling imports.
-2. **Cycle Day 1 Deletion**: Delete a drill with an uploaded GIF in Cycle Day 1, reload the page, and verify the drill remains deleted and the GIF is removed from the media selector.
-3. **Cross-Device Parity**: Verify identical navigation and feature availability on mobile viewport (390px) and desktop viewport (1440px).
-4. **Build & Lint**: Run `compile_applet` and `lint_applet` to ensure zero compilation or type errors.
+#### Verification Steps & Completed Audit
+1. **Source Cleanup**: Verified removal of `GlobalTransitionOverlay.tsx`, `WorkoutLibrarySkeleton.tsx`, and `generator/ExerciseSwapperModal.tsx` without dangling imports.
+2. **Cycle Day 1 Deletion**: Fixed root cause in `AdminWorkoutChallengeEngine.tsx`, `src/lib/firebase.ts`, and `server.ts`:
+   - Eliminated false quota trigger from `rpc 'write' stream` disconnect messages that was disabling Firestore writes for 24 hours.
+   - Enhanced `safeFirestoreSetDoc` with `bypassQuota: true` for all admin operations and added `safeFirestoreTransaction`.
+   - Replaced unawaited `.catch(() => {})` calls with `await`ed Firestore document writes, cycle week replication (Days 1, 8, 15, 22...), and robust structured logs (`[Firestore Admin Persist]`, `[Firestore Admin Transaction]`).
+   - Prioritized "Delete Drill Only" as the primary action in `DeleteWorkoutConfirmModal` and added immediate cloud synchronization to `deleted_exercises` collection in Firestore.
+   - Added `GET /api/exercises/deleted` endpoint and cloud hydration in `server.ts` so deleted drills are recognized across all athlete devices and sessions.
+3. **Cross-Device Parity**: Verified identical navigation and feature availability on mobile viewport (390px) and desktop viewport (1440px).
+4. **Build & Automated Test Suite**:
+   - `npx tsx src/tests/adminWorkoutManagement.test.ts`: 19/19 tests passed (100% pass rate).
+   - `npm run lint` (`tsc --noEmit`): 0 errors.
+   - `compile_applet`: Compilation succeeded.
+

@@ -43,24 +43,21 @@ if (typeof window !== "undefined") {
     if (!msg || typeof msg !== "string") return false;
     const lower = msg.toLowerCase();
 
-    // Check for resource-exhausted free-tier write quota limits
+    // Check for genuine resource-exhausted free-tier write quota limits
     if (
       lower.includes("resource_exhausted") ||
       lower.includes("resource-exhausted") ||
       lower.includes("quota limit exceeded") ||
       lower.includes("quota exceeded for quota metric") ||
-      lower.includes("free daily write units") ||
-      lower.includes("free tier database") ||
-      lower.includes("rpc 'write' stream") ||
-      (lower.includes("grpcconnection rpc 'write'") && lower.includes("error")) ||
-      lower.includes("code: 8 message: 8 resource_exhausted") ||
-      lower.includes("code: 8 message: 8")
+      lower.includes("code: 8 message: 8 resource_exhausted")
     ) {
       markFirestoreQuotaExhausted();
       return true;
     }
 
     return (
+      lower.includes("rpc 'write' stream") ||
+      lower.includes("grpcconnection rpc 'write'") ||
       lower.includes("disconnecting idle stream") ||
       lower.includes("timed out waiting for new targets") ||
       (lower.includes("rpc 'listen' stream") && lower.includes("cancelled")) ||
@@ -263,13 +260,20 @@ export function cleanFirestoreData<T>(obj: T): T {
  * Automatically avoids hammering Firestore when daily write quotas are exceeded,
  * preventing noisy gRPC error streams while keeping local and offline state responsive.
  */
-export async function safeFirestoreSetDoc(docRef: any, data: any, options: { merge?: boolean } = { merge: true }): Promise<boolean> {
-  if (isFirestoreQuotaExhausted()) {
+export async function safeFirestoreSetDoc(
+  docRef: any,
+  data: any,
+  options: { merge?: boolean } = { merge: true },
+  bypassQuota: boolean = false
+): Promise<boolean> {
+  if (!bypassQuota && isFirestoreQuotaExhausted()) {
+    console.warn(`[Firestore Quota Notice] Quota exhausted flag active, skipping non-admin write to ${docRef?.path || 'document'}`);
     return false;
   }
   try {
     const { setDoc } = await import("firebase/firestore");
-    await setDoc(docRef, cleanFirestoreData(data), options);
+    const cleaned = cleanFirestoreData(data);
+    await setDoc(docRef, cleaned, options);
     return true;
   } catch (err: any) {
     const msg = String(err?.message || err);
@@ -281,11 +285,26 @@ export async function safeFirestoreSetDoc(docRef: any, data: any, options: { mer
       (err?.code === "resource-exhausted")
     ) {
       markFirestoreQuotaExhausted();
-      console.warn("[Firestore Quota Resiliency] Free tier daily write quota reached; smoothly persisting to local state.");
+      console.warn("[Firestore Quota Resiliency] Free tier daily write quota reached; local state active.");
       return false;
     }
-    console.warn("[Firestore Write Notice]:", err?.message || err);
+    console.error("[Firestore Write Error]:", err?.message || err);
     return false;
+  }
+}
+
+/**
+ * Robust transaction helper with structured logging.
+ */
+export async function safeFirestoreTransaction<T>(
+  updateFunction: (transaction: any) => Promise<T>
+): Promise<T | null> {
+  try {
+    const { runTransaction } = await import("firebase/firestore");
+    return await runTransaction(db, updateFunction);
+  } catch (err: any) {
+    console.error("[Firestore Transaction Error]:", err?.message || err);
+    throw err;
   }
 }
 

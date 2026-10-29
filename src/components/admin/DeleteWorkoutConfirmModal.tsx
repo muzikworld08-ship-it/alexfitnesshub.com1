@@ -150,54 +150,54 @@ export default function DeleteWorkoutConfirmModal({
               Choose your workout removal strategy:
             </p>
 
-            {/* 1. Dynamic Library Replacement (Recommended) */}
-            <button
-              type="button"
-              onClick={handleTriggerAutoReplace}
-              className="w-full text-left p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/60 to-emerald-900/30 border border-emerald-500/30 hover:border-emerald-500/60 hover:bg-emerald-950/80 transition-all group cursor-pointer shadow-lg shadow-emerald-950/20"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                    <Shuffle className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-black text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
-                      Dynamic Library Replacement
-                      <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-1.5 py-0.2 rounded font-bold">
-                        Recommended
-                      </span>
-                    </h5>
-                    <p className="text-[11px] text-neutral-300 mt-0.5">
-                      Instantly replaces with an authentic matching drill from library with GIF to preserve routine volume.
-                    </p>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-emerald-400 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
-              </div>
-            </button>
-
-            {/* 2. Delete Only (Instant Remove) */}
+            {/* 1. Delete Only (Instant Permanent Remove - Primary) */}
             <button
               type="button"
               onClick={handleTriggerDeleteOnly}
-              className="w-full text-left p-3.5 rounded-2xl bg-red-950/30 border border-red-900/40 hover:border-red-600/60 hover:bg-red-950/50 transition-all group cursor-pointer"
+              className="w-full text-left p-3.5 rounded-2xl bg-gradient-to-r from-red-950/70 to-red-900/40 border border-red-500/50 hover:border-red-500 hover:bg-red-950/90 transition-all group cursor-pointer shadow-lg shadow-red-950/30"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-red-900/40 text-red-400 flex items-center justify-center shrink-0">
-                    <Trash2 className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                    <Trash2 className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <h5 className="text-xs font-black text-red-300 uppercase tracking-wider">
+                    <h5 className="text-xs font-black text-red-200 uppercase tracking-wider flex items-center gap-1.5">
                       Delete Drill Only
+                      <span className="text-[10px] font-mono text-red-300 bg-red-950 px-1.5 py-0.2 rounded font-bold border border-red-800/50">
+                        Permanent
+                      </span>
                     </h5>
-                    <p className="text-[11px] text-neutral-400 mt-0.5">
-                      Permanently removes this drill from today's routine without replacing it.
+                    <p className="text-[11px] text-neutral-300 mt-0.5">
+                      Permanently removes this workout drill from this routine and purges its GIF demonstration.
                     </p>
                   </div>
                 </div>
-                <ArrowRight className="w-4 h-4 text-red-400 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
+                <ArrowRight className="w-4 h-4 text-red-400 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
+              </div>
+            </button>
+
+            {/* 2. Dynamic Library Replacement (Alternative) */}
+            <button
+              type="button"
+              onClick={handleTriggerAutoReplace}
+              className="w-full text-left p-3.5 rounded-2xl bg-neutral-950/60 border border-neutral-800 hover:border-emerald-500/50 hover:bg-emerald-950/30 transition-all group cursor-pointer"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-neutral-800 text-neutral-400 group-hover:text-emerald-400 group-hover:bg-emerald-950/50 flex items-center justify-center shrink-0 transition">
+                    <Shuffle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-black text-neutral-300 group-hover:text-emerald-300 uppercase tracking-wider">
+                      Auto-Replace with Matching Drill
+                    </h5>
+                    <p className="text-[11px] text-neutral-400 mt-0.5">
+                      Swaps this workout for an authentic matching exercise from the library with GIF.
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-neutral-500 group-hover:text-emerald-400 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
               </div>
             </button>
 

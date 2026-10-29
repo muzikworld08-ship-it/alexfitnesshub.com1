@@ -656,6 +656,9 @@ export default function AdminWorkoutChallengeEngine() {
 
     const dayKey = String(effectiveDayNumber);
     const cycleKey = `cycle_${((effectiveDayNumber - 1) % 7) + 1}`;
+    const isCycleSplitting = viewMode === "cycle" || applyToAllCycleWeeks;
+    const computedCycleDay = ((effectiveDayNumber - 1) % 7) + 1;
+    const totalProgDays = currentProgramMeta.totalDays || 90;
 
     setServerOverrides(prev => {
       const next = { ...prev };
@@ -663,8 +666,14 @@ export default function AdminWorkoutChallengeEngine() {
       keysToUpdate.forEach(key => {
         if (!next[key]) next[key] = {};
         next[key][dayKey] = updatedDayData;
-        if (viewMode === "cycle" || applyToAllCycleWeeks) {
+        if (isCycleSplitting) {
           next[key][cycleKey] = updatedDayData;
+          for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
+            next[key][String(d)] = {
+              ...updatedDayData,
+              dayNumber: d
+            };
+          }
         }
       });
       broadcastOverridesUpdated(next);
@@ -675,40 +684,86 @@ export default function AdminWorkoutChallengeEngine() {
 
     // Direct dual-persistence to Firestore per-program document (<100KB, guaranteed safe under 1MB limit)
     try {
-      const fullProgSchedule = {
+      const fullProgSchedule: Record<string, any> = {
         ...(serverOverrides[selectedProgramId] || {}),
-        [dayKey]: updatedDayData,
-        ...(viewMode === "cycle" || applyToAllCycleWeeks ? { [cycleKey]: updatedDayData } : {})
+        [dayKey]: updatedDayData
       };
 
-      safeFirestoreSetDoc(doc(db, "program_schedules", selectedProgramId), {
-        programId: selectedProgramId,
-        schedule: fullProgSchedule,
-        updatedAt: new Date().toISOString(),
-        updatedBy: adminEmail
-      }, { merge: true }).catch(() => {});
+      if (isCycleSplitting) {
+        fullProgSchedule[cycleKey] = updatedDayData;
+        for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
+          fullProgSchedule[String(d)] = {
+            ...updatedDayData,
+            dayNumber: d
+          };
+        }
+      }
 
-      if (targetProgKey !== selectedProgramId) {
-        const fullTargetSchedule = {
-          ...(serverOverrides[targetProgKey] || {}),
-          [dayKey]: updatedDayData,
-          ...(viewMode === "cycle" || applyToAllCycleWeeks ? { [cycleKey]: updatedDayData } : {})
-        };
-        safeFirestoreSetDoc(doc(db, "program_schedules", targetProgKey), {
-          programId: targetProgKey,
-          schedule: fullTargetSchedule,
+      console.log(`[Firestore Admin Persist] Attempting write to program_schedules/${selectedProgramId}`, {
+        programId: selectedProgramId,
+        dayKey,
+        cycleKey,
+        isCycleSplitting,
+        exerciseCount: sanitizedExercises.length,
+        tier: targetTier,
+        adminEmail
+      });
+
+      const fsWriteSuccess = await safeFirestoreSetDoc(
+        doc(db, "program_schedules", selectedProgramId),
+        {
+          programId: selectedProgramId,
+          schedule: fullProgSchedule,
           updatedAt: new Date().toISOString(),
           updatedBy: adminEmail
-        }, { merge: true }).catch(() => {});
+        },
+        { merge: true },
+        true // bypassQuota for authorized Admin operations
+      );
+
+      if (fsWriteSuccess) {
+        console.log(`[Firestore Admin Persist SUCCESS] Successfully persisted to program_schedules/${selectedProgramId}`);
+      } else {
+        console.warn(`[Firestore Admin Persist WARNING] safeFirestoreSetDoc did not confirm for ${selectedProgramId}, relying on API fallback`);
       }
-    } catch (fsErr) {}
+
+      if (targetProgKey !== selectedProgramId) {
+        const fullTargetSchedule: Record<string, any> = {
+          ...(serverOverrides[targetProgKey] || {}),
+          [dayKey]: updatedDayData
+        };
+        if (isCycleSplitting) {
+          fullTargetSchedule[cycleKey] = updatedDayData;
+          for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
+            fullTargetSchedule[String(d)] = {
+              ...updatedDayData,
+              dayNumber: d
+            };
+          }
+        }
+        await safeFirestoreSetDoc(
+          doc(db, "program_schedules", targetProgKey),
+          {
+            programId: targetProgKey,
+            schedule: fullTargetSchedule,
+            updatedAt: new Date().toISOString(),
+            updatedBy: adminEmail
+          },
+          { merge: true },
+          true
+        );
+        console.log(`[Firestore Admin Persist SUCCESS] Successfully persisted alias program_schedules/${targetProgKey}`);
+      }
+    } catch (fsErr) {
+      console.error(`[Firestore Admin Persist ERROR] Failed writing to Firestore:`, fsErr);
+    }
 
     // Direct dual-persistence to Supabase
     if (isSupabaseConfigured) {
-      const fullProgSchedule = {
+      const fullProgSchedule: Record<string, any> = {
         ...(serverOverrides[selectedProgramId] || {}),
         [dayKey]: updatedDayData,
-        ...(viewMode === "cycle" || applyToAllCycleWeeks ? { [cycleKey]: updatedDayData } : {})
+        ...(isCycleSplitting ? { [cycleKey]: updatedDayData } : {})
       };
       Promise.resolve(
         supabase.from("program_schedules").upsert({
@@ -733,21 +788,28 @@ export default function AdminWorkoutChallengeEngine() {
           track: (selectedProgramId === "home_180" || selectedProgramId.includes("home")) ? adminTrack : undefined,
           targetProgramKey: targetProgKey,
           dayNumber: effectiveDayNumber,
-          cycleDay: ((effectiveDayNumber - 1) % 7) + 1,
-          applyToAllCycleWeeks: applyToAllCycleWeeks || viewMode === "cycle",
-          totalDays: currentProgramMeta.totalDays,
+          cycleDay: computedCycleDay,
+          applyToAllCycleWeeks: isCycleSplitting,
+          totalDays: totalProgDays,
           dayOverride: updatedDayData
         })
       });
 
       if (res.ok) {
+        console.log(`[Server Admin API SUCCESS] Successfully persisted schedule for ${selectedProgramId} Day ${effectiveDayNumber}`);
         setServerOverrides(prev => {
           const next = { ...prev };
           keysToUpdate.forEach(pid => {
             if (!next[pid]) next[pid] = {};
             next[pid][String(effectiveDayNumber)] = updatedDayData;
-            if (viewMode === "cycle" || applyToAllCycleWeeks) {
-              next[pid][`cycle_${((effectiveDayNumber - 1) % 7) + 1}`] = updatedDayData;
+            if (isCycleSplitting) {
+              next[pid][`cycle_${computedCycleDay}`] = updatedDayData;
+              for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
+                next[pid][String(d)] = {
+                  ...updatedDayData,
+                  dayNumber: d
+                };
+              }
             }
           });
           broadcastOverridesUpdated(next);
@@ -755,9 +817,12 @@ export default function AdminWorkoutChallengeEngine() {
         });
         setSaveSuccessMsg(`Routine for ${targetTier.toUpperCase()} manifested successfully!`);
         setTimeout(() => setSaveSuccessMsg(null), 3000);
+      } else {
+        const errText = await res.text();
+        console.warn(`[Server Admin API Notice] Returned status ${res.status}: ${errText}`);
       }
     } catch (err) {
-      console.error("Failed saving reordered exercises:", err);
+      console.error("[Server Admin API Error] Failed saving reordered exercises:", err);
     }
   };
 
@@ -986,6 +1051,18 @@ export default function AdminWorkoutChallengeEngine() {
       const targetExId = target.exerciseId;
       const targetName = (target.exerciseName || target.name || "").toLowerCase().trim();
       const targetNameClean = targetName.replace(/[^a-z0-9]/g, "");
+      const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
+
+      console.log(`[Firestore Admin Transaction] Beginning permanent deletion of drill "${target.exerciseName || target.name}"`, {
+        targetId,
+        targetExId,
+        targetName,
+        programId: selectedProgramId,
+        dayNumber: effectiveDayNumber,
+        cycleDay: ((effectiveDayNumber - 1) % 7) + 1,
+        tier: selectedDifficultyLevel,
+        adminEmail
+      });
 
       const filterOutTarget = (list: ChallengeExerciseItem[]) => {
         if (!Array.isArray(list)) return [];
@@ -1011,7 +1088,7 @@ export default function AdminWorkoutChallengeEngine() {
       };
       nextLevels[selectedDifficultyLevel] = updated;
 
-      // 1. Persist updated routine with drill removed
+      // 1. Persist updated routine with drill removed (dual-write to Firestore + Server API)
       await handleReorderExercises(updated, selectedDifficultyLevel, nextLevels);
 
       // 2. Permanently record deletion in localStorage fit_deleted_exercises
@@ -1027,7 +1104,55 @@ export default function AdminWorkoutChallengeEngine() {
         } catch {}
       }
 
-      // 3. Permanently delete drill and custom GIF from global AppContext & databases
+      // 3. Write directly to Firestore deleted_exercises collection
+      const delDocId = (targetId || targetNameClean || `del_${Date.now()}`).replace(/[\/\s]/g, "_");
+      try {
+        await safeFirestoreSetDoc(
+          doc(db, "deleted_exercises", delDocId),
+          {
+            id: targetId || delDocId,
+            exerciseId: targetExId || null,
+            name: target.exerciseName || target.name,
+            programId: selectedProgramId,
+            dayNumber: effectiveDayNumber,
+            cycleDay: ((effectiveDayNumber - 1) % 7) + 1,
+            deletedAt: new Date().toISOString(),
+            deletedBy: adminEmail
+          },
+          { merge: true },
+          true // bypassQuota for authorized Admin operations
+        );
+        console.log(`[Firestore Admin Transaction SUCCESS] Recorded drill deletion in deleted_exercises/${delDocId}`);
+      } catch (delFsErr) {
+        console.error(`[Firestore Admin Transaction ERROR] Could not log deleted drill to deleted_exercises:`, delFsErr);
+      }
+
+      // 4. Notify backend API of drill deletion
+      try {
+        const token = await auth.currentUser?.getIdToken().catch(() => null);
+        const delHeaders: Record<string, string> = {
+          "Content-Type": "application/json",
+          "x-admin-email": adminEmail
+        };
+        if (token) delHeaders["Authorization"] = `Bearer ${token}`;
+
+        const delRes = await fetch("/api/exercises/delete", {
+          method: "POST",
+          headers: delHeaders,
+          body: JSON.stringify({
+            exerciseId: targetId,
+            exerciseName: target.exerciseName || target.name,
+            programId: selectedProgramId,
+            dayNumber: effectiveDayNumber
+          })
+        });
+        const delData = await delRes.json();
+        console.log(`[Server Admin API Delete OK]`, delData);
+      } catch (apiErr) {
+        console.warn(`[Server Admin API Delete Notice]:`, apiErr);
+      }
+
+      // 5. Permanently delete drill and custom GIF from global AppContext & databases
       if (deleteWorkout) {
         await deleteWorkout(targetId, target.exerciseName || target.name);
       }
@@ -1041,7 +1166,7 @@ export default function AdminWorkoutChallengeEngine() {
       setSaveSuccessMsg(`Permanently removed "${target.exerciseName || target.name}" and purged its media.`);
       setTimeout(() => setSaveSuccessMsg(null), 3000);
     } catch (err: any) {
-      console.error("Delete only error:", err);
+      console.error("[Firestore Admin Transaction ERROR] Delete only error:", err);
       alert("Failed to delete workout: " + (err?.message || "Unknown error"));
     } finally {
       setIsDeleting(false);
