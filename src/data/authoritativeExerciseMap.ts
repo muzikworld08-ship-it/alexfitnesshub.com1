@@ -51,7 +51,41 @@ export function resolveAuthenticExercise(
   let mediaUrl = fallbackGifUrl || "";
   let targetCat = category || "General";
 
+  if (!cleanName) {
+    return {
+      name: "",
+      gifUrl: "",
+      muscleGroup: targetCat
+    };
+  }
+
   const cleanLower = cleanName.toLowerCase();
+
+  // If caller explicitly cleared the media, honor it immediately without resurrecting
+  if (fallbackGifUrl === "none" || fallbackGifUrl === "deleted" || fallbackGifUrl === "null") {
+    return {
+      name: cleanName,
+      gifUrl: "",
+      muscleGroup: targetCat
+    };
+  }
+
+  // Check if exercise has been deleted by admin
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const deletedRaw = window.localStorage.getItem("fit_deleted_exercises");
+      if (deletedRaw) {
+        const deletedArr = JSON.parse(deletedRaw);
+        if (Array.isArray(deletedArr) && (deletedArr.includes(cleanName) || deletedArr.includes(cleanLower))) {
+          return {
+            name: cleanName,
+            gifUrl: "",
+            muscleGroup: targetCat
+          };
+        }
+      }
+    } catch {}
+  }
 
   // 1. Check custom exercise overrides in localStorage FIRST (admin custom GIF overrides take highest precedence)
   if (typeof window !== "undefined" && window.localStorage) {
@@ -61,7 +95,14 @@ export function resolveAuthenticExercise(
         const overridesObj = JSON.parse(overridesRaw);
         const directOverride = overridesObj[cleanName] || overridesObj[cleanLower] || Object.values(overridesObj).find((o: any) => o?.name && o.name.toLowerCase().trim() === cleanLower);
         if (directOverride) {
-          const customUrl = directOverride.customMediaUrl || directOverride.gifUrl || directOverride.imageUrl;
+          const customUrl = directOverride.customMediaUrl ?? directOverride.gifUrl ?? directOverride.imageUrl;
+          if (customUrl === "none" || customUrl === "deleted" || customUrl === "" || directOverride.isDeleted) {
+            return {
+              name: cleanName,
+              gifUrl: "",
+              muscleGroup: directOverride.category || targetCat
+            };
+          }
           if (customUrl) {
             return {
               name: cleanName,

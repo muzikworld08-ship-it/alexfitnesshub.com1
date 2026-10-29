@@ -3982,16 +3982,17 @@ async function uploadFileToSupabaseStorageServer(
 // POST endpoint to handle base64 image uploads permanently to cloud storage
 app.post("/api/media/upload", async (req: any, res: any) => {
   try {
-    const { fileData, filename = `upload_${Date.now()}`, mimeType = "image/png", exerciseId, userId } = req.body;
-    if (!fileData) {
+    const payloadData = req.body.fileData || req.body.data;
+    const { filename = `upload_${Date.now()}`, mimeType = "image/png", exerciseId, userId } = req.body;
+    if (!payloadData) {
       return res.status(400).json({ success: false, error: "Missing required 'fileData' (base64 string or URL)." });
     }
 
-    if (fileData.startsWith("http://") || fileData.startsWith("https://")) {
-      return res.json({ success: true, url: fileData });
+    if (payloadData.startsWith("http://") || payloadData.startsWith("https://")) {
+      return res.json({ success: true, url: payloadData });
     }
 
-    const match = fileData.match(/^data:([^;]+);base64,(.+)$/);
+    const match = payloadData.match(/^data:([^;]+);base64,(.+)$/);
     if (!match) {
       return res.status(400).json({ success: false, error: "Invalid base64 payload format." });
     }
@@ -4075,19 +4076,34 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
       }
     }
 
-    if (customMediaUrl === null) {
-      delete overrides[exerciseId];
+    const isClearingMedia = customMediaUrl === null || customMediaUrl === "" || customMediaUrl === "none" || customMediaUrl === "deleted";
+    if (isClearingMedia) {
+      overrides[exerciseId] = {
+        exerciseId,
+        customMediaUrl: "none",
+        gifUrl: "none",
+        imageUrl: "none",
+        isMediaDeleted: true,
+        updatedAt: new Date().toISOString()
+      };
+      try {
+        fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
+      } catch (e) {}
       try {
         await setServerFirestoreDoc("exercise_media", exerciseId, {
           exerciseId,
           originalUrlOrBase64: null,
-          customMediaUrl: null,
+          customMediaUrl: "none",
+          gifUrl: "none",
+          imageUrl: "none",
+          isMediaDeleted: true,
           customMediaType: customMediaType || "image",
           updatedAt: new Date().toISOString()
         }, false);
       } catch (dbErr) {
         console.error("[Firestore Media Backup Delete Error]:", dbErr);
       }
+      return res.json({ success: true, customMediaUrl: "none" });
     } else {
       const rawInputUrl = customMediaUrl;
       const isCloudStorageUrl = typeof rawInputUrl === "string" && (

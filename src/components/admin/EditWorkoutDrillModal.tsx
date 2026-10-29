@@ -76,7 +76,7 @@ export default function EditWorkoutDrillModal({
   };
 
   const handleClearGif = () => {
-    setGifUrl("");
+    setGifUrl("none");
     setIsGifCleared(true);
   };
 
@@ -91,11 +91,33 @@ export default function EditWorkoutDrillModal({
 
     setIsUploading(true);
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const base64 = event.target?.result as string;
       if (base64) {
-        setGifUrl(base64);
         setIsGifCleared(false);
+        try {
+          // Upload directly to permanent assets via server API
+          const res = await fetch("/api/media/upload", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-admin-email": "muzikworld08@gmail.com"
+            },
+            body: JSON.stringify({
+              fileData: base64,
+              filename: `drill_${(exercise.id || 'ex').replace(/[^a-zA-Z0-9]/g, '_')}`,
+              exerciseId: exercise.id
+            })
+          });
+          const result = await res.json();
+          if (result && result.success && result.url) {
+            setGifUrl(result.url);
+          } else {
+            setGifUrl(base64);
+          }
+        } catch {
+          setGifUrl(base64);
+        }
       }
       setIsUploading(false);
     };
@@ -110,7 +132,10 @@ export default function EditWorkoutDrillModal({
     e.preventDefault();
     if (!exercise) return;
 
-    const finalGif = isGifCleared ? "" : (gifUrl.trim() || exercise.gifUrl || exercise.imageUrl || "");
+    const trimmed = (gifUrl || "").trim();
+    const finalGif = (isGifCleared || trimmed === "none" || trimmed === "" || trimmed === "deleted")
+      ? "none"
+      : trimmed;
 
     const updated: ChallengeExerciseItem = {
       ...exercise,
@@ -175,7 +200,7 @@ export default function EditWorkoutDrillModal({
               <UnifiedExerciseMedia
                 exerciseId={exercise.id}
                 exerciseName={exercise.exerciseName}
-                mediaUrl={gifUrl || exercise.gifUrl}
+                mediaUrl={isGifCleared || gifUrl === "none" ? "none" : (gifUrl || exercise.gifUrl)}
                 className="w-full h-full object-cover"
               />
             </div>

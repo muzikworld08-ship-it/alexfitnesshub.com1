@@ -4045,6 +4045,8 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     }
 
     // 2. Update React Local Client State and LocalStorage with the clean local path
+    const isCleared = !finalMediaUrl || finalMediaUrl === "none" || finalMediaUrl === "deleted";
+    const mediaValue = isCleared ? "none" : finalMediaUrl;
     const targetEx = exercises.find(e => e.id === exerciseId);
 
     const updatedExercises = exercises.map(ex => {
@@ -4056,9 +4058,10 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       if (isMatch) {
         return { 
           ...ex, 
-          customMediaUrl: finalMediaUrl || undefined, 
-          gifUrl: finalMediaUrl || ex.gifUrl,
-          imageUrl: finalMediaUrl || ex.imageUrl,
+          customMediaUrl: mediaValue, 
+          gifUrl: mediaValue,
+          imageUrl: mediaValue,
+          isMediaDeleted: isCleared,
           customMediaType: mediaType || undefined 
         };
       }
@@ -4074,31 +4077,23 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       if (storedOverridesStr) {
         try { currentOverrides = JSON.parse(storedOverridesStr); } catch {}
       }
-      if (finalMediaUrl) {
-        const overrideData = {
-          customMediaUrl: finalMediaUrl,
-          gifUrl: finalMediaUrl,
-          imageUrl: finalMediaUrl,
-          customMediaType: mediaType || "image"
-        };
-        currentOverrides[exerciseId] = {
-          ...(currentOverrides[exerciseId] || {}),
+      const overrideData = {
+        customMediaUrl: mediaValue,
+        gifUrl: mediaValue,
+        imageUrl: mediaValue,
+        customMediaType: mediaType || "image",
+        isMediaDeleted: isCleared
+      };
+      currentOverrides[exerciseId] = {
+        ...(currentOverrides[exerciseId] || {}),
+        ...overrideData
+      };
+      if (targetEx && targetEx.name) {
+        const normName = targetEx.name.toLowerCase().trim();
+        currentOverrides[normName] = {
+          ...(currentOverrides[normName] || {}),
           ...overrideData
         };
-        if (targetEx && targetEx.name) {
-          const normName = targetEx.name.toLowerCase().trim();
-          currentOverrides[normName] = {
-            ...(currentOverrides[normName] || {}),
-            ...overrideData
-          };
-        }
-      } else {
-        if (currentOverrides[exerciseId]) {
-          delete currentOverrides[exerciseId].customMediaUrl;
-          delete currentOverrides[exerciseId].gifUrl;
-          delete currentOverrides[exerciseId].imageUrl;
-          delete currentOverrides[exerciseId].customMediaType;
-        }
       }
       safeSetItem("fit_custom_exercise_overrides", JSON.stringify(currentOverrides));
     } catch (oErr) {
@@ -4108,13 +4103,12 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     // 3. Persist same clean path to real Cloud Firestore (so other users see it instantly across all matching variations)
     if (!isMockFirebase) {
       try {
-        const matchingIds = updatedExercises.filter(ex => ex.customMediaUrl === (finalMediaUrl || undefined)).map(ex => ex.id);
+        const matchingIds = updatedExercises.filter(ex => ex.customMediaUrl === mediaValue).map(ex => ex.id);
         const uniqueIds = Array.from(new Set([exerciseId, ...matchingIds]));
 
-        let safeFirestoreUrl = finalMediaUrl || null;
+        let safeFirestoreUrl = mediaValue;
         if (safeFirestoreUrl && safeFirestoreUrl.startsWith("data:") && safeFirestoreUrl.length > 800000) {
-          // Do not write raw base64 >800KB directly into Firestore document
-          safeFirestoreUrl = null;
+          safeFirestoreUrl = "none";
         }
 
         for (const mId of uniqueIds) {
@@ -4124,6 +4118,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
             customMediaUrl: safeFirestoreUrl,
             gifUrl: safeFirestoreUrl,
             imageUrl: safeFirestoreUrl,
+            isMediaDeleted: isCleared,
             customMediaType: mediaType || null,
             updatedAt: new Date().toISOString()
           }, { merge: true });
@@ -4136,6 +4131,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
           customMediaUrl: safeFirestoreUrl,
           gifUrl: safeFirestoreUrl,
           imageUrl: safeFirestoreUrl,
+          isMediaDeleted: isCleared,
           customMediaType: mediaType || "image",
           updatedAt: new Date().toISOString()
         }, { merge: true });

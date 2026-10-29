@@ -233,7 +233,7 @@ export function generateLocalFallbackDailyWorkout(
 
   let plan: any = null;
   try {
-    plan = getWorkoutForProgramAndDay(engineProgramId as any, safeDay, targetMuscle);
+    plan = getWorkoutForProgramAndDay(engineProgramId as any, safeDay, targetMuscle, { fitnessLevel });
   } catch (e) {
     console.warn("Could not query workout plan from database:", e);
   }
@@ -522,57 +522,12 @@ export function generateLocalFallbackDailyWorkout(
 }
 
 // ============================================================================
-// 4. API CALL TO SERVER-SIDE GEMINI GENERATOR
+// 4. AUTHORITATIVE ADMIN DRILL ENGINE DELEGATION
 // ============================================================================
 export async function generateAIDailyWorkout(
   params: GenerateDailyWorkoutParams,
   idToken?: string | null
 ): Promise<AIDailyWorkoutPlan> {
-  try {
-    const response = await fetch("/api/gemini/generate-daily-workout", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
-      },
-      body: JSON.stringify(params)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Server returned HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    if (data.success && data.workout) {
-      const plan: AIDailyWorkoutPlan = data.workout;
-
-      // Ensure every single exercise has the correct 237 master library GIF and data
-      if (Array.isArray(plan.exercises)) {
-        plan.exercises = plan.exercises.map((ex, idx) => {
-          const matched = findMatchingMasterExercise(ex.name, ex.targetMuscle);
-          return {
-            ...ex,
-            id: matched ? matched.id : ex.id || `ai_ex_${idx + 1}`,
-            name: matched ? matched.name : ex.name,
-            gifUrl: matched ? matched.gifUrl : ex.gifUrl || getExerciseGifUrl(ex.name, ex.targetMuscle),
-            startingPosition: ex.startingPosition || matched?.startingPosition,
-            movementExecution: ex.movementExecution || matched?.movementExecution,
-            finishingPosition: ex.finishingPosition || matched?.finishingPosition,
-            safetyTips: ex.safetyTips || matched?.safetyTips,
-            commonMistakes: ex.commonMistakes || matched?.commonMistakes,
-            equipment: matched?.equipment || ex.equipment || ["Bodyweight"],
-            difficulty: matched?.difficulty || ex.difficulty || "Intermediate",
-            matchedMasterExercise: matched || undefined
-          };
-        });
-      }
-
-      return plan;
-    }
-
-    throw new Error(data.error || "Empty AI response");
-  } catch (err: any) {
-    console.warn("AI Daily Workout API failed or offline, launching clinical local engine:", err);
-    return generateLocalFallbackDailyWorkout(params);
-  }
+  // Always delegate directly to the authoritative Admin Manage Workouts schedule
+  return generateLocalFallbackDailyWorkout(params);
 }

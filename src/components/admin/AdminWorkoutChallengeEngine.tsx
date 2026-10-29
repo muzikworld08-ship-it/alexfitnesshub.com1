@@ -328,12 +328,6 @@ export default function AdminWorkoutChallengeEngine() {
   }, []);
 
   useEffect(() => {
-    // Heal any stale fit_deleted_exercises that may have suppressed exercises in the browser
-    if (typeof window !== "undefined" && window.localStorage) {
-      try {
-        window.localStorage.removeItem("fit_deleted_exercises");
-      } catch {}
-    }
     refreshOverrides();
   }, [refreshOverrides]);
 
@@ -589,11 +583,18 @@ export default function AdminWorkoutChallengeEngine() {
       if (seenNames.has(lower)) continue;
       seenNames.add(lower);
 
-      let gif = ex.gifUrl !== undefined ? ex.gifUrl : ((ex as any).customMediaUrl !== undefined ? (ex as any).customMediaUrl : undefined);
-      if (gif === undefined) {
+      let rawCandidate = ex.gifUrl !== undefined ? ex.gifUrl : ((ex as any).customMediaUrl !== undefined ? (ex as any).customMediaUrl : undefined);
+      let gif: string = "";
+
+      if (rawCandidate === "none" || rawCandidate === "deleted" || rawCandidate === "" || rawCandidate === null) {
+        gif = "none";
+      } else if (rawCandidate) {
+        gif = rawCandidate;
+      } else {
         gif = getExerciseGifUrl(name, ex.category, seenGifs);
       }
-      if (gif) {
+
+      if (gif && gif !== "none") {
         seenGifs.add(gif);
       }
 
@@ -601,8 +602,8 @@ export default function AdminWorkoutChallengeEngine() {
         ...ex,
         name,
         exerciseName: name,
-        gifUrl: gif || "",
-        imageUrl: gif || ""
+        gifUrl: gif,
+        imageUrl: gif
       });
     }
 
@@ -625,7 +626,7 @@ export default function AdminWorkoutChallengeEngine() {
       ? (nextLevels.beginner || sanitizedExercises)
       : (targetTier === "beginner"
         ? sanitizedExercises
-        : (nextLevels.beginner || existingDayData.beginnerExercises || existingDayData.exercises || baseDayPlan.exercises || []));
+        : (nextLevels.beginner || sanitizedExercises));
 
     const updatedDayData = {
       ...existingDayData,
@@ -898,14 +899,14 @@ export default function AdminWorkoutChallengeEngine() {
     const match = libraryExercises.find(e => (e.name || "").toLowerCase().trim() === rawName.toLowerCase().trim() || e.id === updatedEx.id);
     const targetId = match?.id || updatedEx.id;
 
-    if (updatedEx.gifUrl) {
+    if (updatedEx.gifUrl && updatedEx.gifUrl !== "none") {
       try {
         uploadExerciseMedia(targetId, updatedEx.gifUrl, "image");
       } catch (e) {}
     } else {
       try {
-        uploadExerciseMedia(targetId, null, "image");
-        if (rawName) uploadExerciseMedia(rawName, null, "image");
+        uploadExerciseMedia(targetId, "none", "image");
+        if (rawName) uploadExerciseMedia(rawName, "none", "image");
       } catch (e) {}
     }
 
@@ -982,15 +983,20 @@ export default function AdminWorkoutChallengeEngine() {
 
     try {
       const targetId = target.id;
+      const targetExId = target.exerciseId;
       const targetName = (target.exerciseName || target.name || "").toLowerCase().trim();
+      const targetNameClean = targetName.replace(/[^a-z0-9]/g, "");
 
       const filterOutTarget = (list: ChallengeExerciseItem[]) => {
         if (!Array.isArray(list)) return [];
         return list.filter((ex: ChallengeExerciseItem) => {
           if (!ex) return false;
-          if (targetId && ex.id && ex.id === targetId) return false;
+          if (targetId && (ex.id === targetId || (ex as any).exerciseId === targetId)) return false;
+          if (targetExId && (ex.id === targetExId || (ex as any).exerciseId === targetExId)) return false;
           const n = (ex.exerciseName || (ex as any).name || "").toLowerCase().trim();
-          return n !== targetName;
+          if (targetName && n === targetName) return false;
+          if (targetNameClean && n.replace(/[^a-z0-9]/g, "") === targetNameClean) return false;
+          return true;
         });
       };
 
@@ -1008,14 +1014,27 @@ export default function AdminWorkoutChallengeEngine() {
       // 1. Persist updated routine with drill removed
       await handleReorderExercises(updated, selectedDifficultyLevel, nextLevels);
 
-      // 2. Permanently delete drill and custom GIF from global AppContext & databases
+      // 2. Permanently record deletion in localStorage fit_deleted_exercises
+      if (typeof window !== "undefined" && window.localStorage) {
+        try {
+          const delRaw = window.localStorage.getItem("fit_deleted_exercises");
+          let delList: string[] = delRaw ? JSON.parse(delRaw) : [];
+          if (!Array.isArray(delList)) delList = [];
+          if (targetId && !delList.includes(targetId)) delList.push(targetId);
+          if (targetExId && !delList.includes(targetExId)) delList.push(targetExId);
+          if (targetName && !delList.includes(targetName)) delList.push(targetName);
+          window.localStorage.setItem("fit_deleted_exercises", JSON.stringify(delList));
+        } catch {}
+      }
+
+      // 3. Permanently delete drill and custom GIF from global AppContext & databases
       if (deleteWorkout) {
         await deleteWorkout(targetId, target.exerciseName || target.name);
       }
       if (uploadExerciseMedia) {
         try {
-          await uploadExerciseMedia(targetId, null, "image");
-          if (targetName) await uploadExerciseMedia(targetName, null, "image");
+          await uploadExerciseMedia(targetId, "none", "image");
+          if (targetName) await uploadExerciseMedia(targetName, "none", "image");
         } catch {}
       }
 

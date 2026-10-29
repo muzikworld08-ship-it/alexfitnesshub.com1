@@ -287,42 +287,49 @@ export function getWorkoutForProgramAndDay(
         const tierFromLevels = dayOverride.levels?.[requestedTier];
         const tierFromLegacyKey = dayOverride[`${requestedTier}Exercises`];
 
-        if (Array.isArray(tierFromLevels) && tierFromLevels.length > 0) {
+        if (Array.isArray(tierFromLevels)) {
           chosenExercises = tierFromLevels;
-        } else if (Array.isArray(tierFromLegacyKey) && tierFromLegacyKey.length > 0) {
+        } else if (Array.isArray(tierFromLegacyKey)) {
           chosenExercises = tierFromLegacyKey;
+        } else if (Array.isArray(dayOverride.exercises)) {
+          chosenExercises = dayOverride.exercises;
         } else {
-          // Fallback hierarchy between tiers:
+          // Fallback hierarchy between tiers only if requestedTier was not configured at all:
           if (requestedTier === "advanced") {
-            chosenExercises = (dayOverride.levels?.intermediate && dayOverride.levels.intermediate.length > 0)
+            chosenExercises = Array.isArray(dayOverride.levels?.intermediate)
               ? dayOverride.levels.intermediate
-              : (dayOverride.intermediateExercises && dayOverride.intermediateExercises.length > 0)
-              ? dayOverride.intermediateExercises
-              : (dayOverride.levels?.beginner && dayOverride.levels.beginner.length > 0)
-              ? dayOverride.levels.beginner
-              : (dayOverride.beginnerExercises && dayOverride.beginnerExercises.length > 0)
-              ? dayOverride.beginnerExercises
-              : (dayOverride.exercises || []);
+              : (dayOverride.intermediateExercises || dayOverride.levels?.beginner || dayOverride.beginnerExercises || []);
           } else if (requestedTier === "intermediate") {
-            chosenExercises = (dayOverride.levels?.beginner && dayOverride.levels.beginner.length > 0)
+            chosenExercises = Array.isArray(dayOverride.levels?.beginner)
               ? dayOverride.levels.beginner
-              : (dayOverride.beginnerExercises && dayOverride.beginnerExercises.length > 0)
-              ? dayOverride.beginnerExercises
-              : (dayOverride.levels?.advanced && dayOverride.levels.advanced.length > 0)
-              ? dayOverride.levels.advanced
-              : (dayOverride.exercises || []);
+              : (dayOverride.beginnerExercises || dayOverride.levels?.advanced || dayOverride.advancedExercises || []);
           } else {
             // Beginner
-            chosenExercises = (dayOverride.levels?.intermediate && dayOverride.levels.intermediate.length > 0)
+            chosenExercises = Array.isArray(dayOverride.levels?.intermediate)
               ? dayOverride.levels.intermediate
-              : (dayOverride.levels?.advanced && dayOverride.levels.advanced.length > 0)
-              ? dayOverride.levels.advanced
-              : (dayOverride.exercises || []);
+              : (dayOverride.intermediateExercises || dayOverride.levels?.advanced || dayOverride.advancedExercises || []);
           }
         }
       }
 
+      // Check for globally deleted exercises in localStorage
+      let deletedNamesSet = new Set<string>();
+      if (typeof window !== "undefined" && window.localStorage) {
+        try {
+          const rawDel = window.localStorage.getItem("fit_deleted_exercises");
+          if (rawDel) {
+            const arr = JSON.parse(rawDel);
+            if (Array.isArray(arr)) {
+              arr.forEach((d: string) => {
+                if (typeof d === "string") deletedNamesSet.add(d.toLowerCase().trim());
+              });
+            }
+          }
+        } catch {}
+      }
+
       // Deduplicate and sanitize drills to guarantee stable GIFs and correct tier difficulty
+      const tierCapitalized = (requestedTier.charAt(0).toUpperCase() + requestedTier.slice(1)) as "Beginner" | "Intermediate" | "Advanced";
       const seenNames = new Set<string>();
       const seenGifs = new Set<string>();
       const sanitizedChosen: ChallengeExerciseItem[] = [];
@@ -332,6 +339,12 @@ export function getWorkoutForProgramAndDay(
         const name = (ex.exerciseName || (ex as any).name || "").trim();
         if (!name) continue;
         const lower = name.toLowerCase();
+
+        // Omit if permanently deleted
+        if (deletedNamesSet.has(lower) || (ex.id && deletedNamesSet.has(ex.id.toLowerCase())) || ((ex as any).exerciseId && deletedNamesSet.has((ex as any).exerciseId.toLowerCase()))) {
+          continue;
+        }
+
         if (seenNames.has(lower)) continue;
         seenNames.add(lower);
 
@@ -342,33 +355,41 @@ export function getWorkoutForProgramAndDay(
             if (rawOvr) {
               const ovrObj = JSON.parse(rawOvr);
               const o = ovrObj[ex.id] || ovrObj[name] || ovrObj[lower];
-              if (o && (o.customMediaUrl || o.gifUrl || o.imageUrl)) {
-                customGifOverride = o.customMediaUrl || o.gifUrl || o.imageUrl;
+              if (o) {
+                if (o.customMediaUrl !== undefined) customGifOverride = o.customMediaUrl;
+                else if (o.gifUrl !== undefined) customGifOverride = o.gifUrl;
+                else if (o.imageUrl !== undefined) customGifOverride = o.imageUrl;
               }
             }
           } catch {}
         }
 
-        let gif = customGifOverride || ex.gifUrl || (ex as any).customMediaUrl;
-        if (!gif) {
+        let rawCandidate = customGifOverride !== undefined ? customGifOverride : (ex.gifUrl !== undefined ? ex.gifUrl : (ex as any).customMediaUrl);
+        let gif: string = "";
+
+        if (rawCandidate === "none" || rawCandidate === "deleted" || rawCandidate === "" || rawCandidate === null) {
+          gif = "";
+        } else if (rawCandidate) {
+          gif = rawCandidate;
+        } else {
+          // rawCandidate is strictly undefined, assign default GIF
           gif = getExerciseGifUrl(name, ex.category, seenGifs);
         }
+
         if (gif) {
           seenGifs.add(gif);
         }
-
-        const tierCapitalized = (requestedTier.charAt(0).toUpperCase() + requestedTier.slice(1)) as "Beginner" | "Intermediate" | "Advanced";
 
         sanitizedChosen.push({
           ...ex,
           name,
           exerciseName: name,
-          difficulty: ex.difficulty || tierCapitalized,
+          difficulty: tierCapitalized,
           sets: ex.sets || (requestedTier === "beginner" ? 3 : (requestedTier === "advanced" ? 4 : 3)),
           reps: ex.reps || (requestedTier === "beginner" ? "10-12 reps" : (requestedTier === "advanced" ? "6-8 heavy reps" : "8-10 reps")),
           restTime: ex.restTime || (requestedTier === "beginner" ? "60s" : (requestedTier === "advanced" ? "90s" : "45s")),
-          gifUrl: gif || "",
-          imageUrl: gif || ""
+          gifUrl: gif,
+          imageUrl: gif
         });
       }
 
@@ -379,6 +400,7 @@ export function getWorkoutForProgramAndDay(
           programId: normId as any,
           title: dayOverride.title || `Day ${safeDay}: ${dayOverride.category || "Targeted Split"}`,
           category: dayOverride.category || "Targeted Split",
+          difficulty: tierCapitalized,
           targetMuscles: dayOverride.targetMuscles || ["Full Body"],
           estimatedDuration: dayOverride.estimatedDuration || "45-60 mins",
           estimatedCalories: dayOverride.estimatedCalories || 480,
