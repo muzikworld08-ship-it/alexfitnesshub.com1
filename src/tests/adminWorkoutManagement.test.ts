@@ -285,6 +285,65 @@ export async function runAllTests() {
     assert(false, "TEST N: Deleted Exercises API", err.message);
   }
 
+  // TEST O: ADVANCED ROUTINES ARE EMPTY (0 DRILLS) ACROSS ALL PROGRAMS
+  try {
+    const targetPrograms = [
+      "immortal_90",
+      "belly_fat_shred",
+      "women_confidence",
+      "lifestyle_academy",
+      "posture_vitality",
+      "home_180",
+      "home_180_men",
+      "home_180_women"
+    ];
+
+    for (const progId of targetPrograms) {
+      const advPlan = getWorkoutForProgramAndDay(progId, 1, undefined, { fitnessLevel: "Advanced" });
+      assert(
+        advPlan.exercises.length === 0,
+        `TEST O: Advanced Routine Empty for "${progId}"`,
+        `Expected 0 drills for Advanced tier in "${progId}", but found ${advPlan.exercises.length}`
+      );
+    }
+  } catch (err: any) {
+    assert(false, "TEST O: Advanced Routines Empty", err.message);
+  }
+
+  // TEST P: STRICT TIER SEPARATION (BEGINNER & INTERMEDIATE PRESERVE DRILLS)
+  try {
+    const testPrograms = [
+      { id: "belly_fat_shred", day: 1 },
+      { id: "women_confidence", day: 1 },
+      { id: "home_180", day: 1 },
+      { id: "lifestyle_academy", day: 1 }
+    ];
+
+    for (const tp of testPrograms) {
+      const begPlan = getWorkoutForProgramAndDay(tp.id, tp.day, undefined, { fitnessLevel: "Beginner" });
+      const intPlan = getWorkoutForProgramAndDay(tp.id, tp.day, undefined, { fitnessLevel: "Intermediate" });
+      const advPlan = getWorkoutForProgramAndDay(tp.id, tp.day, undefined, { fitnessLevel: "Advanced" });
+
+      assert(
+        begPlan.exercises.length > 0,
+        `TEST P: Beginner Tier Preserves Drills for "${tp.id}"`,
+        `Expected drills for Beginner tier in "${tp.id}", got 0`
+      );
+      assert(
+        intPlan.exercises.length > 0,
+        `TEST P: Intermediate Tier Preserves Drills for "${tp.id}"`,
+        `Expected drills for Intermediate tier in "${tp.id}", got 0`
+      );
+      assert(
+        advPlan.exercises.length === 0,
+        `TEST P: Advanced Tier Remains Isolated & Empty for "${tp.id}"`,
+        `Expected 0 drills for Advanced tier in "${tp.id}", got ${advPlan.exercises.length}`
+      );
+    }
+  } catch (err: any) {
+    assert(false, "TEST P: Strict Tier Separation", err.message);
+  }
+
   console.log("\n=======================================================");
   const passedCount = results.filter(r => r.passed).length;
   console.log(`TOTAL TESTS: ${results.length} | PASSED: ${passedCount} | FAILED: ${results.length - passedCount}`);

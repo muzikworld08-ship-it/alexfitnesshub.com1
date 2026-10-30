@@ -445,15 +445,24 @@ export default function AdminWorkoutChallengeEngine() {
       : base.length;
 
     const getTierCount = (tier: "beginner" | "intermediate" | "advanced") => {
+      if (tier === "advanced") {
+        if (override?.levels && "advanced" in override.levels && Array.isArray(override.levels.advanced)) {
+          return override.levels.advanced.length;
+        }
+        if (override && "advancedExercises" in override && Array.isArray(override.advancedExercises)) {
+          return override.advancedExercises.length;
+        }
+        return 0;
+      }
       if (override?.levels && tier in override.levels && Array.isArray(override.levels[tier])) {
         return override.levels[tier].length;
       }
-      const tierExKey = `${tier}Exercises` as "beginnerExercises" | "intermediateExercises" | "advancedExercises";
+      const tierExKey = `${tier}Exercises` as "beginnerExercises" | "intermediateExercises";
       if (override && tierExKey in override && Array.isArray(override[tierExKey])) {
         return override[tierExKey].length;
       }
-      // If tier is intermediate or advanced and not customized, count beginner if beginner has drills
-      if (tier !== "beginner" && override?.levels && "beginner" in override.levels && Array.isArray(override.levels.beginner)) {
+      // If tier is intermediate and not customized, count beginner if beginner has drills
+      if (tier === "intermediate" && override?.levels && "beginner" in override.levels && Array.isArray(override.levels.beginner)) {
         return override.levels.beginner.length;
       }
       return fallbackCount;
@@ -471,6 +480,9 @@ export default function AdminWorkoutChallengeEngine() {
     if (!currentDayOverride) return false;
     const lvl = currentDayOverride.levels?.[selectedDifficultyLevel];
     const tierExKey = `${selectedDifficultyLevel}Exercises` as "beginnerExercises" | "intermediateExercises" | "advancedExercises";
+    if (selectedDifficultyLevel === "advanced") {
+      return Array.isArray(lvl) || Array.isArray(currentDayOverride[tierExKey]);
+    }
     return Array.isArray(lvl) || (Array.isArray(currentDayOverride[tierExKey]) && currentDayOverride[tierExKey].length > 0);
   }, [currentDayOverride, selectedDifficultyLevel]);
 
@@ -479,15 +491,24 @@ export default function AdminWorkoutChallengeEngine() {
     let rawList: ChallengeExerciseItem[] = [];
 
     const getTierList = (tier: "beginner" | "intermediate" | "advanced") => {
+      if (tier === "advanced") {
+        if (currentDayOverride?.levels && "advanced" in currentDayOverride.levels && Array.isArray(currentDayOverride.levels.advanced)) {
+          return currentDayOverride.levels.advanced;
+        }
+        if (currentDayOverride && "advancedExercises" in currentDayOverride && Array.isArray(currentDayOverride.advancedExercises)) {
+          return currentDayOverride.advancedExercises;
+        }
+        return [];
+      }
       if (currentDayOverride?.levels && tier in currentDayOverride.levels && Array.isArray(currentDayOverride.levels[tier])) {
         return currentDayOverride.levels[tier];
       }
-      const tierExKey = `${tier}Exercises` as "beginnerExercises" | "intermediateExercises" | "advancedExercises";
+      const tierExKey = `${tier}Exercises` as "beginnerExercises" | "intermediateExercises";
       if (currentDayOverride && tierExKey in currentDayOverride && Array.isArray(currentDayOverride[tierExKey])) {
         return currentDayOverride[tierExKey];
       }
-      // If tier is not separately customized, fall back to beginner or general exercises
-      if (tier !== "beginner") {
+      // If intermediate is not separately customized, fall back to beginner or general exercises
+      if (tier === "intermediate") {
         if (currentDayOverride?.levels && "beginner" in currentDayOverride.levels && Array.isArray(currentDayOverride.levels.beginner)) {
           return currentDayOverride.levels.beginner;
         }
@@ -640,9 +661,9 @@ export default function AdminWorkoutChallengeEngine() {
       estimatedDuration: cardioState.durationMinutes,
       exercises: baselineExercises,
       levels: nextLevels,
-      beginnerExercises: nextLevels.beginner || (targetTier === "beginner" ? sanitizedExercises : (existingDayData.beginnerExercises || baselineExercises)),
-      intermediateExercises: nextLevels.intermediate || (targetTier === "intermediate" ? sanitizedExercises : (existingDayData.intermediateExercises || baselineExercises)),
-      advancedExercises: nextLevels.advanced || (targetTier === "advanced" ? sanitizedExercises : (existingDayData.advancedExercises || baselineExercises)),
+      beginnerExercises: Array.isArray(nextLevels.beginner) ? nextLevels.beginner : (targetTier === "beginner" ? sanitizedExercises : (existingDayData.beginnerExercises || baselineExercises)),
+      intermediateExercises: Array.isArray(nextLevels.intermediate) ? nextLevels.intermediate : (targetTier === "intermediate" ? sanitizedExercises : (existingDayData.intermediateExercises || baselineExercises)),
+      advancedExercises: Array.isArray(nextLevels.advanced) ? nextLevels.advanced : (targetTier === "advanced" ? sanitizedExercises : (Array.isArray(existingDayData.advancedExercises) ? existingDayData.advancedExercises : [])),
     };
 
     // Optimistic UI update across program key aliases
@@ -898,19 +919,19 @@ export default function AdminWorkoutChallengeEngine() {
     // Check against existing exercises in target tier
     const currentTierExercises = (() => {
       if (activeTierTarget === "beginner") {
-        return (currentDayOverride?.levels?.beginner && Array.isArray(currentDayOverride.levels.beginner) && currentDayOverride.levels.beginner.length > 0)
+        return (currentDayOverride?.levels?.beginner && Array.isArray(currentDayOverride.levels.beginner))
           ? currentDayOverride.levels.beginner
-          : (currentDayOverride?.beginnerExercises || activeExercises);
+          : (Array.isArray(currentDayOverride?.beginnerExercises) ? currentDayOverride.beginnerExercises : activeExercises);
       }
       if (activeTierTarget === "intermediate") {
-        return (currentDayOverride?.levels?.intermediate && Array.isArray(currentDayOverride.levels.intermediate) && currentDayOverride.levels.intermediate.length > 0)
+        return (currentDayOverride?.levels?.intermediate && Array.isArray(currentDayOverride.levels.intermediate))
           ? currentDayOverride.levels.intermediate
-          : (currentDayOverride?.intermediateExercises || activeExercises);
+          : (Array.isArray(currentDayOverride?.intermediateExercises) ? currentDayOverride.intermediateExercises : activeExercises);
       }
       if (activeTierTarget === "advanced") {
-        return (currentDayOverride?.levels?.advanced && Array.isArray(currentDayOverride.levels.advanced) && currentDayOverride.levels.advanced.length > 0)
+        return (currentDayOverride?.levels?.advanced && Array.isArray(currentDayOverride.levels.advanced))
           ? currentDayOverride.levels.advanced
-          : (currentDayOverride?.advancedExercises || activeExercises);
+          : (Array.isArray(currentDayOverride?.advancedExercises) ? currentDayOverride.advancedExercises : []);
       }
       return activeExercises;
     })();
@@ -1082,9 +1103,9 @@ export default function AdminWorkoutChallengeEngine() {
       // Clean across all tiers so deleted drill never re-emerges from tier fallback
       const existingLevels = currentDayOverride?.levels || {};
       const nextLevels: Record<string, ChallengeExerciseItem[]> = {
-        beginner: filterOutTarget(existingLevels.beginner || currentDayOverride?.beginnerExercises || activeExercises),
-        intermediate: filterOutTarget(existingLevels.intermediate || currentDayOverride?.intermediateExercises || activeExercises),
-        advanced: filterOutTarget(existingLevels.advanced || currentDayOverride?.advancedExercises || activeExercises),
+        beginner: filterOutTarget(Array.isArray(existingLevels.beginner) ? existingLevels.beginner : (Array.isArray(currentDayOverride?.beginnerExercises) ? currentDayOverride.beginnerExercises : activeExercises)),
+        intermediate: filterOutTarget(Array.isArray(existingLevels.intermediate) ? existingLevels.intermediate : (Array.isArray(currentDayOverride?.intermediateExercises) ? currentDayOverride.intermediateExercises : activeExercises)),
+        advanced: filterOutTarget(Array.isArray(existingLevels.advanced) ? existingLevels.advanced : (Array.isArray(currentDayOverride?.advancedExercises) ? currentDayOverride.advancedExercises : [])),
       };
       nextLevels[selectedDifficultyLevel] = updated;
 

@@ -251,6 +251,24 @@ export function getWorkoutForProgramAndDay(
     ? (trackOrUser.toLowerCase().includes("women") || trackOrUser.toLowerCase().includes("female") ? "women" : "men")
     : (trackOrUser?.track || (trackOrUser?.gender?.toLowerCase() === "female" ? "women" : undefined));
 
+  // Determine requested fitness level: strictly "beginner" | "intermediate" | "advanced"
+  const athleteLevelStr = (
+    trackOrUser?.fitnessLevel || 
+    trackOrUser?.difficulty || 
+    trackOrUser?.workoutExperience ||
+    (typeof customExercisesListOrTarget === "string" ? customExercisesListOrTarget : "") ||
+    (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level") || "") : "")
+  ).toLowerCase();
+
+  let requestedTier: "beginner" | "intermediate" | "advanced" = "beginner";
+  if (athleteLevelStr.includes("adv")) {
+    requestedTier = "advanced";
+  } else if (athleteLevelStr.includes("inter")) {
+    requestedTier = "intermediate";
+  } else {
+    requestedTier = "beginner";
+  }
+
   // 1. Check admin schedule overrides from centralized store (Memory -> localStorage cache -> Bundled defaults)
   const allOverrides = getScheduleOverrides();
   const trackKey = track ? `${normId}_${track}` : null;
@@ -259,55 +277,45 @@ export function getWorkoutForProgramAndDay(
   if (progOverrides) {
     const dayOverride = progOverrides[String(safeDay)] || progOverrides[`cycle_${cycleDay}`];
     if (dayOverride) {
-      // Determine requested fitness level: strictly "beginner" | "intermediate" | "advanced"
-      const athleteLevelStr = (
-        trackOrUser?.fitnessLevel || 
-        trackOrUser?.difficulty || 
-        trackOrUser?.workoutExperience ||
-        (typeof customExercisesListOrTarget === "string" ? customExercisesListOrTarget : "") ||
-        (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level") || "") : "")
-      ).toLowerCase();
-
-      let requestedTier: "beginner" | "intermediate" | "advanced" = "beginner";
-      if (athleteLevelStr.includes("adv")) {
-        requestedTier = "advanced";
-      } else if (athleteLevelStr.includes("inter")) {
-        requestedTier = "intermediate";
-      } else {
-        requestedTier = "beginner";
-      }
-
       const isRest = !!dayOverride.isRestDay;
       const isCardio = !!dayOverride.isCardioOnly;
 
       let chosenExercises: ChallengeExerciseItem[] = [];
 
       if (!isRest && !isCardio) {
-        // Direct tier lookup in dayOverride.levels[requestedTier] or dayOverride[`${requestedTier}Exercises`]
-        const tierFromLevels = dayOverride.levels?.[requestedTier];
-        const tierFromLegacyKey = dayOverride[`${requestedTier}Exercises`];
-
-        if (Array.isArray(tierFromLevels)) {
-          chosenExercises = tierFromLevels;
-        } else if (Array.isArray(tierFromLegacyKey)) {
-          chosenExercises = tierFromLegacyKey;
-        } else if (Array.isArray(dayOverride.exercises)) {
-          chosenExercises = dayOverride.exercises;
-        } else {
-          // Fallback hierarchy between tiers only if requestedTier was not configured at all:
-          if (requestedTier === "advanced") {
-            chosenExercises = Array.isArray(dayOverride.levels?.intermediate)
-              ? dayOverride.levels.intermediate
-              : (dayOverride.intermediateExercises || dayOverride.levels?.beginner || dayOverride.beginnerExercises || []);
-          } else if (requestedTier === "intermediate") {
-            chosenExercises = Array.isArray(dayOverride.levels?.beginner)
-              ? dayOverride.levels.beginner
-              : (dayOverride.beginnerExercises || dayOverride.levels?.advanced || dayOverride.advancedExercises || []);
+        if (requestedTier === "advanced") {
+          // Strictly isolate Advanced tier: NEVER fall back to beginner or general exercises
+          if (Array.isArray(dayOverride.levels?.advanced)) {
+            chosenExercises = dayOverride.levels.advanced;
+          } else if (Array.isArray(dayOverride.advancedExercises)) {
+            chosenExercises = dayOverride.advancedExercises;
           } else {
-            // Beginner
-            chosenExercises = Array.isArray(dayOverride.levels?.intermediate)
-              ? dayOverride.levels.intermediate
-              : (dayOverride.intermediateExercises || dayOverride.levels?.advanced || dayOverride.advancedExercises || []);
+            chosenExercises = [];
+          }
+        } else if (requestedTier === "intermediate") {
+          if (Array.isArray(dayOverride.levels?.intermediate)) {
+            chosenExercises = dayOverride.levels.intermediate;
+          } else if (Array.isArray(dayOverride.intermediateExercises)) {
+            chosenExercises = dayOverride.intermediateExercises;
+          } else if (Array.isArray(dayOverride.exercises)) {
+            chosenExercises = dayOverride.exercises;
+          } else if (Array.isArray(dayOverride.levels?.beginner)) {
+            chosenExercises = dayOverride.levels.beginner;
+          } else if (Array.isArray(dayOverride.beginnerExercises)) {
+            chosenExercises = dayOverride.beginnerExercises;
+          } else {
+            chosenExercises = [];
+          }
+        } else {
+          // Beginner
+          if (Array.isArray(dayOverride.levels?.beginner)) {
+            chosenExercises = dayOverride.levels.beginner;
+          } else if (Array.isArray(dayOverride.beginnerExercises)) {
+            chosenExercises = dayOverride.beginnerExercises;
+          } else if (Array.isArray(dayOverride.exercises)) {
+            chosenExercises = dayOverride.exercises;
+          } else {
+            chosenExercises = [];
           }
         }
       }
@@ -421,6 +429,18 @@ export function getWorkoutForProgramAndDay(
   }
 
   // 2. Dynamic generation adhering to new split
+  if (requestedTier === "advanced") {
+    const metaPlan = buildDynamicDayPlan(normId, safeDay, [], track);
+    return {
+      ...metaPlan,
+      meta: {
+        ...metaPlan.meta,
+        difficulty: "Advanced"
+      },
+      exercises: []
+    };
+  }
+
   let activeExercises = Array.isArray(customExercisesListOrTarget) && customExercisesListOrTarget.length > 0
     ? customExercisesListOrTarget
     : getActiveExercisesFromStorage();

@@ -16,6 +16,7 @@ import { findMatchingExercise, isExerciseMatch } from "../utils/exerciseMatching
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
 import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
 import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
+import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
 
 // Define TypeScript structures for Lifestyle Academy
 interface ChallengeData {
@@ -390,347 +391,35 @@ const getStretchingRoutine = (title: string) => {
   ];
 };
 
-// Helper to generate Workout Program dynamically based on user context (8-10 exercises per day)
+// Helper to generate Workout Program adhering strictly to authoritative Admin Challenge Engine
 const getDynamicWorkoutProgram = (
   challengeTitle: string, 
   level: "Beginner" | "Intermediate" | "Advanced", 
   location: "Home" | "Gym"
 ) => {
-  const isGym = location === "Gym";
-  
-  // Custom tailored schedules with 8 to 10 exercises per day, including exactly 3 cardio/walking recovery days
-  return [
-    {
-      day: "Day 1: Posterior Chain & Back Restoration",
-      warmUp: "Y-T-W Scapular Raises (Bodyweight) - 2 sets of 15 reps",
-      exercises: [
-        {
-          name: isGym ? "Cable Lat Pulldowns (Slow Eccentric)" : "Dumbbell Bent-Over Row with Chest Support",
-          reps: level === "Beginner" ? "3 sets of 10 (Light)" : level === "Intermediate" ? "4 sets of 12 (Moderate)" : "4 sets of 15 (Heavy progressive overload)",
-          rest: "60 seconds",
-          coaching: "Hold the peak contraction for 2 full seconds to engage the rhomboids."
-        },
-        {
-          name: isGym ? "Romanian Barbell Deadlifts" : "Dumbbell Romanian Deadlifts",
-          reps: level === "Beginner" ? "3 sets of 8 (Controlled)" : level === "Intermediate" ? "3 sets of 12 (Moderate)" : "4 sets of 10 (Heavy)",
-          rest: "90 seconds",
-          coaching: "Push your hips far back and feel the hamstrings stretch. Keep your spine perfectly flat."
-        },
-        {
-          name: isGym ? "Seated Cable Row" : "Inverted Bodyweight Row",
-          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "3 sets of 12" : "4 sets of 12",
-          rest: "60 seconds",
-          coaching: "Drive your elbows back and pinch your shoulder blades together firmly."
-        },
-        {
-          name: "Face Pulls / Band Pull-Aparts",
-          reps: level === "Beginner" ? "3 sets of 12" : level === "Intermediate" ? "4 sets of 15" : "4 sets of 20",
-          rest: "45 seconds",
-          coaching: "Target rear delts and external rotators to reverse rounded desk posture."
-        },
-        {
-          name: "Hyperextensions / Supermans",
-          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "3 sets of 15" : "4 sets of 15",
-          rest: "45 seconds",
-          coaching: "Strengthen erector spinae muscles with controlled pauses at top."
-        },
-        {
-          name: isGym ? "Dumbbell Hammer Curls" : "Resistance Band Bicep Curls",
-          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "3 sets of 12" : "4 sets of 12",
-          rest: "45 seconds",
-          coaching: "Keep elbows tucked against sides; prevent swinging."
-        },
-        {
-          name: "Bird Dog Isometric Holds",
-          reps: level === "Beginner" ? "3 sets of 8 per side" : level === "Intermediate" ? "3 sets of 12 per side" : "4 sets of 12 per side",
-          rest: "30 seconds",
-          coaching: "Lock core and extend opposite arm and leg without arching lower back."
-        },
-        {
-          name: "Plank Hold",
-          reps: level === "Beginner" ? "3 sets of 30s" : level === "Intermediate" ? "3 sets of 45s" : "4 sets of 60s",
-          rest: "45 seconds",
-          coaching: "Maintain tight pelvic tuck and squeeze quads and glutes."
-        }
-      ],
-      coolDown: "Child's Pose Spinal Reach - 90 seconds"
-    },
-    {
-      day: "Day 2: Active Recovery — Zone 2 Kinetic Incline Walk & Low-Impact Cardio",
-      warmUp: "Dynamic Ankle & Hip Flexor Circles - 2 minutes",
-      exercises: [
-        {
-          name: isGym ? "12-3-30 Treadmill Walk" : "Brisk Outdoor Power Walk with Incline",
-          reps: level === "Beginner" ? "20 minutes (10% incline, 2.8 mph)" : level === "Intermediate" ? "30 minutes (12% incline, 3.0 mph)" : "40 minutes (12% incline, 3.2 mph)",
-          rest: "Continuous Aerobic",
-          coaching: "Maintain nasal breathing and stay in Zone 2 heart rate to flush metabolic lactate without muscular strain."
-        },
-        {
-          name: "Low-Impact Jump Rope / Step Jacks",
-          reps: level === "Beginner" ? "3 sets of 45 seconds" : level === "Intermediate" ? "3 sets of 60 seconds" : "4 sets of 90 seconds",
-          rest: "30 seconds",
-          coaching: "Land softly on the balls of your feet with a relaxed shoulder girdle."
-        },
-        {
-          name: "Bodyweight Air Squats (Recovery Tempo)",
-          reps: level === "Beginner" ? "2 sets of 12 (Slow)" : level === "Intermediate" ? "3 sets of 15 (Slow)" : "3 sets of 20 (Slow)",
-          rest: "30 seconds",
-          coaching: "Move smoothly through full range of motion to circulate synovial fluid in knees and hips."
-        },
-        {
-          name: "Standing High Knees (Low-Impact Cadence)",
-          reps: level === "Beginner" ? "3 sets of 30 seconds" : level === "Intermediate" ? "3 sets of 45 seconds" : "4 sets of 45 seconds",
-          rest: "30 seconds",
-          coaching: "Drive knees up to hip height with rhythmic arm drive, avoiding heavy stomping."
-        },
-        {
-          name: "Dead Bug Core Bracing",
-          reps: level === "Beginner" ? "3 sets of 10 per side" : level === "Intermediate" ? "3 sets of 12 per side" : "3 sets of 15 per side",
-          rest: "30 seconds",
-          coaching: "Re-engage transverse abdominis while keeping the lumbar spine flat."
-        },
-        {
-          name: "Primal Cat-Cow Spinal Waves",
-          reps: level === "Beginner" ? "2 sets of 10 cycles" : level === "Intermediate" ? "3 sets of 12 cycles" : "3 sets of 15 cycles",
-          rest: "20 seconds",
-          coaching: "Mobilize the thoracic and lumbar spine in sync with deep diaphragmatic breaths."
-        },
-        {
-          name: "Single-Leg Glute Bridges (Active Squeeze)",
-          reps: level === "Beginner" ? "2 sets of 8 per side" : level === "Intermediate" ? "3 sets of 10 per side" : "3 sets of 12 per side",
-          rest: "30 seconds",
-          coaching: "Wake up the glutes and posterior chain without adding excessive muscular fatigue."
-        },
-        {
-          name: "Plank Hold with Box Breathing",
-          reps: level === "Beginner" ? "2 sets of 30 seconds" : level === "Intermediate" ? "3 sets of 40 seconds" : "3 sets of 50 seconds",
-          rest: "30 seconds",
-          coaching: "Hold steady isometric tension while taking smooth 4-second inhales and exhales."
-        }
-      ],
-      coolDown: "Child's Pose Spinal Reach & Deep Box Breathing - 2 minutes"
-    },
-    {
-      day: "Day 3: Lateral, Chest & Front Stability",
-      warmUp: "Active Arm Circles & Core Bracing - 2 minutes",
-      exercises: [
-        {
-          name: isGym ? "Standing Dumbbell Overhead Press" : "Resistance Band Shoulder Press",
-          reps: level === "Beginner" ? "3 sets of 8" : level === "Intermediate" ? "3 sets of 12" : "4 sets of 10",
-          rest: "60 seconds",
-          coaching: "Lock your core tightly to protect your lower back at the top of the press."
-        },
-        {
-          name: isGym ? "Barbell / Dumbbell Bench Press" : "Push-ups (Knee or Standard)",
-          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "4 sets of 10" : "4 sets of 12",
-          rest: "75 seconds",
-          coaching: "Keep chest tall and control the eccentric descent to floor."
-        },
-        {
-          name: "Dumbbell / Band Lateral Raises",
-          reps: level === "Beginner" ? "3 sets of 12 (Light)" : level === "Intermediate" ? "4 sets of 15" : "4 sets of 15",
-          rest: "45 seconds",
-          coaching: "Lead with elbows and avoid shrugging traps up to neck."
-        },
-        {
-          name: isGym ? "Incline Dumbbell Chest Press" : "Decline Feet-Elevated Push-ups",
-          reps: level === "Beginner" ? "3 sets of 8" : level === "Intermediate" ? "3 sets of 12" : "4 sets of 10",
-          rest: "60 seconds",
-          coaching: "Target clavicular upper chest with controlled press."
-        },
-        {
-          name: "Plank with Shoulder Taps",
-          reps: level === "Beginner" ? "3 sets of 30 seconds" : level === "Intermediate" ? "3 sets of 45 seconds" : "4 sets of 60 seconds",
-          rest: "45 seconds",
-          coaching: "Avoid shifting your hips; keep your torso perfectly parallel to the floor."
-        },
-        {
-          name: isGym ? "Tricep Rope Pushdowns" : "Overhead Dumbbell Tricep Extension",
-          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "3 sets of 12" : "4 sets of 15",
-          rest: "45 seconds",
-          coaching: "Full lockout at bottom without flaring elbows out."
-        },
-        {
-          name: "Dead Bug Core Bracing",
-          reps: level === "Beginner" ? "3 sets of 10 per side" : level === "Intermediate" ? "3 sets of 14 per side" : "4 sets of 16 per side",
-          rest: "30 seconds",
-          coaching: "Press lumbar spine flat against the ground during entire movement."
-        },
-        {
-          name: "Side Plank Hold",
-          reps: level === "Beginner" ? "3 sets of 20s per side" : level === "Intermediate" ? "3 sets of 35s per side" : "4 sets of 45s per side",
-          rest: "30 seconds",
-          coaching: "Elevate hips high to recruit internal and external obliques."
-        }
-      ],
-      coolDown: "Prone Cobra Chest Opener - 2 minutes"
-    },
-    {
-      day: "Day 4: Active Recovery — Aerobic Conditioning & Fast Step Walking",
-      warmUp: "Light Arm Swings & Knee-to-Chest Hugs - 2 minutes",
-      exercises: [
-        {
-          name: isGym ? "Stationary Cycling / Ergometer Steady-State" : "Brisk Pace Kinetic Walking / Cadence March",
-          reps: level === "Beginner" ? "20 minutes (Moderate Resistance / Cadence)" : level === "Intermediate" ? "30 minutes (Steady Aerobic Pace)" : "35 minutes (Zone 2 Cadence)",
-          rest: "Continuous Pace",
-          coaching: "Focus on relaxed breathing and a steady, rhythmic stride to enhance circulation and capillary density."
-        },
-        {
-          name: "Mountain Climbers (Controlled Recovery Pace)",
-          reps: level === "Beginner" ? "3 sets of 25 seconds" : level === "Intermediate" ? "3 sets of 40 seconds" : "3 sets of 50 seconds",
-          rest: "30 seconds",
-          coaching: "Drive knees in a steady rhythm without sprinting; maintain flat back and stable shoulders."
-        },
-        {
-          name: "Dynamic Side Shuffles / Lateral Step Taps",
-          reps: level === "Beginner" ? "3 sets of 30 seconds" : level === "Intermediate" ? "3 sets of 45 seconds" : "4 sets of 45 seconds",
-          rest: "30 seconds",
-          coaching: "Stay light on feet and activate the gluteus medius in the frontal plane."
-        },
-        {
-          name: "Bird Dog Isometric Holds",
-          reps: level === "Beginner" ? "2 sets of 8 per side" : level === "Intermediate" ? "3 sets of 10 per side" : "3 sets of 12 per side",
-          rest: "30 seconds",
-          coaching: "Maintain neutral pelvis; hold 2 seconds at full extension."
-        },
-        {
-          name: "Standing Calf Raises & Ankle Mobilizers",
-          reps: level === "Beginner" ? "2 sets of 15" : level === "Intermediate" ? "3 sets of 20" : "3 sets of 25",
-          rest: "30 seconds",
-          coaching: "Full plantarflexion at top to promote venous return from lower extremities."
-        },
-        {
-          name: "Russian Twists (Bodyweight Rhythm)",
-          reps: level === "Beginner" ? "2 sets of 16" : level === "Intermediate" ? "3 sets of 20" : "3 sets of 24",
-          rest: "30 seconds",
-          coaching: "Rotate smoothly from the thoracic spine while stabilizing the pelvis."
-        },
-        {
-          name: "Side Plank Reach & Hold",
-          reps: level === "Beginner" ? "2 sets of 20s per side" : level === "Intermediate" ? "3 sets of 30s per side" : "3 sets of 40s per side",
-          rest: "30 seconds",
-          coaching: "Strengthen lateral quadratus lumborum for pelvic stability."
-        },
-        {
-          name: "Child's Pose with Lateral Lat Stretch",
-          reps: level === "Beginner" ? "2 sets of 45 seconds" : level === "Intermediate" ? "2 sets of 60 seconds" : "3 sets of 60 seconds",
-          rest: "20 seconds",
-          coaching: "Walk hands to the left and right to lengthen the lats and decompress the spine."
-        }
-      ],
-      coolDown: "Standing Quad & Hip Flexor Stretch - 90 seconds per leg"
-    },
-    {
-      day: "Day 5: Lower Limb, Glute & Core Awakening",
-      warmUp: "Bodyweight Air Squats & Glute Kickbacks - 3 minutes",
-      exercises: [
-        {
-          name: isGym ? "Leg Press (High & Wide Stance)" : "Dumbbell Goblet Squats",
-          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "3 sets of 15" : "4 sets of 12 (Eccentric focus)",
-          rest: "90 seconds",
-          coaching: "Descend slowly for 3 seconds before driving back up powerfully."
-        },
-        {
-          name: isGym ? "Barbell Back Squats" : "Bodyweight Air Squats",
-          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "4 sets of 10" : "4 sets of 12",
-          rest: "90 seconds",
-          coaching: "Keep chest proud, drive knees outward in line with toes."
-        },
-        {
-          name: "Walking Lunges (or Reverse Lunges)",
-          reps: level === "Beginner" ? "3 sets of 10 per leg" : level === "Intermediate" ? "3 sets of 14 per leg" : "4 sets of 16 per leg",
-          rest: "60 seconds",
-          coaching: "Drop back knee to 1 inch above floor; maintain upright posture."
-        },
-        {
-          name: "Single-Leg Glute Bridges",
-          reps: level === "Beginner" ? "3 sets of 8 per side" : level === "Intermediate" ? "3 sets of 12 per side" : "4 sets of 15 per side",
-          rest: "45 seconds",
-          coaching: "Drive through your heel and squeeze your glutes hard at the top."
-        },
-        {
-          name: isGym ? "Leg Curl Machine" : "Dumbbell Hamstring Sliders",
-          reps: level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "3 sets of 12" : "4 sets of 12",
-          rest: "60 seconds",
-          coaching: "Control the return phase smoothly to build hamstring resilience."
-        },
-        {
-          name: "Standing Calf Raises",
-          reps: level === "Beginner" ? "3 sets of 15" : level === "Intermediate" ? "4 sets of 20" : "4 sets of 25",
-          rest: "30 seconds",
-          coaching: "Full plantarflexion at top with 2-second hold on balls of feet."
-        },
-        {
-          name: "Russian Twists",
-          reps: level === "Beginner" ? "3 sets of 16" : level === "Intermediate" ? "3 sets of 24" : "4 sets of 30",
-          rest: "45 seconds",
-          coaching: "Rotate shoulders fully to engage internal obliques and transversus."
-        },
-        {
-          name: "Mountain Climbers",
-          reps: level === "Beginner" ? "3 sets of 30s" : level === "Intermediate" ? "3 sets of 45s" : "4 sets of 60s",
-          rest: "45 seconds",
-          coaching: "Drive knees rapidly toward chest while maintaining rigid plank."
-        }
-      ],
-      coolDown: "90/90 Hip Stretch - 60 seconds per leg"
-    },
-    {
-      day: "Day 6: Active Recovery — Low-Intensity Steady-State (LISS) Walking & Recovery Flush",
-      warmUp: "World's Greatest Stretch & Thoracic Opener - 3 minutes",
-      exercises: [
-        {
-          name: isGym ? "Elliptical / Stair Climber Steady Aerobic Zone 2" : "Continuous LISS Outdoor Walking (4,000-6,000 Steps)",
-          reps: level === "Beginner" ? "25 minutes steady walk" : level === "Intermediate" ? "35 minutes steady walk" : "45 minutes steady walk",
-          rest: "Continuous Low-Intensity",
-          coaching: "Keep a relaxed, upright posture, swinging arms freely to encourage total-body oxygenation and lymphatic flow."
-        },
-        {
-          name: "Low-Impact Shadow Boxing & Light Arm Drives",
-          reps: level === "Beginner" ? "3 sets of 45 seconds" : level === "Intermediate" ? "3 sets of 60 seconds" : "4 sets of 60 seconds",
-          rest: "30 seconds",
-          coaching: "Throw light jabs and crosses to circulate blood through the shoulder girdle without joint impact."
-        },
-        {
-          name: "Walking High Knee March with Torso Twist",
-          reps: level === "Beginner" ? "2 sets of 12 per side" : level === "Intermediate" ? "3 sets of 15 per side" : "3 sets of 20 per side",
-          rest: "30 seconds",
-          coaching: "Gently twist upper torso toward the lifted knee for functional gait mobility."
-        },
-        {
-          name: "Bodyweight Good Mornings (Hamstring Flush)",
-          reps: level === "Beginner" ? "2 sets of 10" : level === "Intermediate" ? "3 sets of 12" : "3 sets of 15",
-          rest: "30 seconds",
-          coaching: "Hinge at the hips with soft knees to lightly stretch and restore the hamstrings."
-        },
-        {
-          name: "Dead Bug Contralateral Extenders",
-          reps: level === "Beginner" ? "2 sets of 10 per side" : level === "Intermediate" ? "3 sets of 12 per side" : "3 sets of 14 per side",
-          rest: "30 seconds",
-          coaching: "Focus on complete breath exhalation as limbs extend away from center."
-        },
-        {
-          name: "Glute Bridge Pulses (Low Resistance)",
-          reps: level === "Beginner" ? "2 sets of 15" : level === "Intermediate" ? "3 sets of 20" : "3 sets of 25",
-          rest: "30 seconds",
-          coaching: "Gentle pulse at top range to stimulate blood flow through glutes and lower back."
-        },
-        {
-          name: "Plank with Alternating Knee Taps",
-          reps: level === "Beginner" ? "2 sets of 30 seconds" : level === "Intermediate" ? "3 sets of 40 seconds" : "3 sets of 50 seconds",
-          rest: "30 seconds",
-          coaching: "Tap knees to floor lightly while keeping the pelvis completely level."
-        },
-        {
-          name: "Deep Diaphragmatic 4-7-8 Breathing & Core Vacuum",
-          reps: level === "Beginner" ? "2 sets of 5 cycles" : level === "Intermediate" ? "3 sets of 6 cycles" : "3 sets of 8 cycles",
-          rest: "30 seconds",
-          coaching: "Inhale 4s, hold 7s, exhale 8s while gently drawing belly button toward spine to trigger parasympathetic recovery."
-        }
-      ],
+  const days = [1, 2, 3, 4, 5, 6];
+  return days.map(dNum => {
+    const enginePlan = getWorkoutForProgramAndDay("lifestyle_academy", dNum, undefined, { fitnessLevel: level });
+    const dayTitle = enginePlan.meta.title || `Day ${dNum}: ${enginePlan.meta.category}`;
+    const warmUp = enginePlan.meta.isCardioOnly 
+      ? "Dynamic Hip & Ankle Aerobic Prep - 5 mins"
+      : "Y-T-W Scapular Raises & Cat-Cow Mobility - 2 sets of 12 reps";
+
+    // If level is Advanced and no workouts are added by admin, exercises is strictly empty []!
+    const mappedExercises = (enginePlan.exercises || []).map(ex => ({
+      name: ex.exerciseName || (ex as any).name,
+      reps: ex.reps || (level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "4 sets of 12" : "4 sets of 15"),
+      rest: ex.restTime || "60 seconds",
+      coaching: ex.instructions?.[0] || (ex.coachingCues?.[0] as string) || "Execute with deliberate tempo and strict postural alignment."
+    }));
+
+    return {
+      day: dayTitle,
+      warmUp,
+      exercises: mappedExercises,
       coolDown: "90/90 Hip Stretch & Spine Decompression - 2 minutes"
-    }
-  ];
+    };
+  });
 };
 
 export default function LifestyleFitnessAcademy() {
@@ -1470,33 +1159,39 @@ export default function LifestyleFitnessAcademy() {
 
                         <div className="space-y-4">
                           <span className="block text-[9px] uppercase font-bold text-slate-400">MAIN EXERCISES</span>
-                          {dayProg.exercises.map((ex, exIdx) => (
-                            <div key={exIdx} className="bg-white p-4 sm:p-5 border border-slate-200 rounded-xl flex flex-col sm:flex-row gap-4 sm:gap-5 items-stretch w-full min-w-0">
-                              {/* Centralized Exercise Demonstration GIF/Video */}
-                              <div className="w-full sm:w-48 shrink-0 rounded-lg workout-media-frameless relative aspect-video sm:aspect-auto">
-                                <WorkoutVisual 
-                                  exerciseName={getMatchedExerciseName(ex.name)} 
-                                  className="w-full h-full" 
-                                  isCard={true} 
-                                />
-                              </div>
-
-                              <div className="flex-grow flex flex-col justify-between min-w-0 w-full">
-                                <div className="space-y-1">
-                                  <div className="flex justify-between items-start gap-4">
-                                    <h5 className="font-bold text-xs uppercase text-[#D32F2F]">{getMatchedExerciseName(ex.name)}</h5>
-                                    <span className="bg-slate-50 px-2.5 py-0.5 rounded text-[9px] font-mono text-slate-500 font-bold uppercase">{ex.reps}</span>
-                                  </div>
-                                  <p className="text-xs text-slate-600 font-semibold leading-relaxed">
-                                    {ex.coaching}
-                                  </p>
-                                </div>
-                                <div className="text-[9px] font-mono font-bold text-slate-400 uppercase mt-2">
-                                  Rest Protocol: {ex.rest}
-                                </div>
-                              </div>
+                          {dayProg.exercises.length === 0 ? (
+                            <div className="p-5 rounded-xl bg-white border border-dashed border-slate-300 text-center text-xs text-slate-500 font-medium">
+                              No workouts currently assigned to this routine. Drills added by the admin in the dashboard will appear here.
                             </div>
-                          ))}
+                          ) : (
+                            dayProg.exercises.map((ex, exIdx) => (
+                              <div key={exIdx} className="bg-white p-4 sm:p-5 border border-slate-200 rounded-xl flex flex-col sm:flex-row gap-4 sm:gap-5 items-stretch w-full min-w-0">
+                                {/* Centralized Exercise Demonstration GIF/Video */}
+                                <div className="w-full sm:w-48 shrink-0 rounded-lg workout-media-frameless relative aspect-video sm:aspect-auto">
+                                  <WorkoutVisual 
+                                    exerciseName={getMatchedExerciseName(ex.name)} 
+                                    className="w-full h-full" 
+                                    isCard={true} 
+                                  />
+                                </div>
+
+                                <div className="flex-grow flex flex-col justify-between min-w-0 w-full">
+                                  <div className="space-y-1">
+                                    <div className="flex justify-between items-start gap-4">
+                                      <h5 className="font-bold text-xs uppercase text-[#D32F2F]">{getMatchedExerciseName(ex.name)}</h5>
+                                      <span className="bg-slate-50 px-2.5 py-0.5 rounded text-[9px] font-mono text-slate-500 font-bold uppercase">{ex.reps}</span>
+                                    </div>
+                                    <p className="text-xs text-slate-600 font-semibold leading-relaxed">
+                                      {ex.coaching}
+                                    </p>
+                                  </div>
+                                  <div className="text-[9px] font-mono font-bold text-slate-400 uppercase mt-2">
+                                    Rest Protocol: {ex.rest}
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          )}
                         </div>
 
                         <div className="h-px bg-slate-200/50" />
