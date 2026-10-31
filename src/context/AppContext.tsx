@@ -1160,43 +1160,67 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           // Avoid duplicates and deleted items for custom added workouts (do NOT auto-add generated exercises)
           const customMap = new Map<string, Exercise>();
+          const seenNames = new Set<string>(baseList.map(b => (b.name || "").toLowerCase().trim()).filter(Boolean));
 
-          // Only custom exercises saved by admin in mergedOverrides
+          // Only genuine custom exercises saved by admin in mergedOverrides
           Object.keys(mergedOverrides).forEach(key => {
             const val = mergedOverrides[key];
-            if (val && typeof val === "object" && val.name && !activeDeletedIds.has(key) && !isRestrictedHomeWorkout(val).isViolating) {
-              const valName = (val.name || "").toLowerCase().trim();
-              const isBase = baseList.some(b => b.id === key || b.name?.toLowerCase().trim() === valName);
-              if (val.isCustom === true || !isBase) {
-                if (!baseList.some(b => b.id === key)) {
-                  customMap.set(key, {
-                    id: key,
-                    category: val.category || "Gym Workouts",
-                    difficulty: val.difficulty || "Intermediate",
-                    muscleGroups: val.muscleGroups || ["Chest"],
-                    equipment: val.equipment || ["Dumbbells"],
-                    recommendedSets: val.recommendedSets || "3-4",
-                    recommendedReps: val.recommendedReps || "10-12",
-                    recommendedSetsReps: `${val.recommendedSets || "3-4"} Sets x ${val.recommendedReps || "10-12"} Reps`,
-                    isCustom: true,
-                    ...val
-                  } as Exercise);
-                }
+            if (!val || typeof val !== "object" || !val.name) return;
+
+            const normName = (val.name || "").toLowerCase().trim();
+            const canonicalId = (val.id && typeof val.id === "string" && val.id.length > 0) ? val.id : key;
+
+            if (activeDeletedIds.has(canonicalId) || activeDeletedIds.has(normName) || activeDeletedIds.has(key)) return;
+            if (isRestrictedHomeWorkout(val).isViolating) return;
+
+            // Check if this is a base exercise (base exercises are already in mapped)
+            const isBase = baseList.some(b => b.id === canonicalId || b.id === key || (b.name || "").toLowerCase().trim() === normName);
+            if (isBase) return;
+
+            if (val.isCustom === true) {
+              if (!seenNames.has(normName) && !customMap.has(canonicalId)) {
+                seenNames.add(normName);
+                customMap.set(canonicalId, {
+                  id: canonicalId,
+                  name: val.name,
+                  category: val.category || "Gym Workouts",
+                  difficulty: val.difficulty || "Intermediate",
+                  muscleGroups: val.muscleGroups || ["Chest"],
+                  equipment: val.equipment || ["Dumbbells"],
+                  recommendedSets: val.recommendedSets || "3-4",
+                  recommendedReps: val.recommendedReps || "10-12",
+                  recommendedSetsReps: `${val.recommendedSets || "3-4"} Sets x ${val.recommendedReps || "10-12"} Reps`,
+                  isCustom: true,
+                  ...val
+                } as Exercise);
+              } else if (customMap.has(canonicalId)) {
+                const existing = customMap.get(canonicalId)!;
+                customMap.set(canonicalId, {
+                  ...existing,
+                  ...val,
+                  id: canonicalId,
+                  isCustom: true
+                });
               }
             }
           });
 
           // Retain genuine admin-added custom exercises from in-memory state
           prev.forEach(p => {
-            if (p && p.id && !activeDeletedIds.has(p.id)) {
-              const isBase = baseList.some(b => b.id === p.id);
-              if (p.isCustom === true || !isBase) {
-                const existing = customMap.get(p.id);
-                customMap.set(p.id, {
-                  ...p,
-                  ...(existing || {}),
-                  isCustom: true
-                });
+            if (!p || !p.id || !p.name) return;
+            const normName = (p.name || "").toLowerCase().trim();
+            if (activeDeletedIds.has(p.id) || activeDeletedIds.has(normName)) return;
+
+            const isBase = baseList.some(b => b.id === p.id || (b.name || "").toLowerCase().trim() === normName);
+            if (isBase) return;
+
+            if (p.isCustom === true) {
+              if (!seenNames.has(normName) && !customMap.has(p.id)) {
+                seenNames.add(normName);
+                customMap.set(p.id, { ...p, isCustom: true });
+              } else if (customMap.has(p.id)) {
+                const existing = customMap.get(p.id)!;
+                customMap.set(p.id, { ...p, ...existing, isCustom: true });
               }
             }
           });
@@ -1208,15 +1232,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               const parsedRaw = JSON.parse(rawStored) as Exercise[];
               if (Array.isArray(parsedRaw)) {
                 parsedRaw.forEach(p => {
-                  if (p && p.id && !activeDeletedIds.has(p.id)) {
-                    const isBase = baseList.some(b => b.id === p.id);
-                    if (p.isCustom === true || !isBase) {
-                      const existing = customMap.get(p.id);
-                      customMap.set(p.id, {
-                        ...p,
-                        ...(existing || {}),
-                        isCustom: true
-                      });
+                  if (!p || !p.id || !p.name) return;
+                  const normName = (p.name || "").toLowerCase().trim();
+                  if (activeDeletedIds.has(p.id) || activeDeletedIds.has(normName)) return;
+
+                  const isBase = baseList.some(b => b.id === p.id || (b.name || "").toLowerCase().trim() === normName);
+                  if (isBase) return;
+
+                  if (p.isCustom === true) {
+                    if (!seenNames.has(normName) && !customMap.has(p.id)) {
+                      seenNames.add(normName);
+                      customMap.set(p.id, { ...p, isCustom: true });
                     }
                   }
                 });

@@ -1,69 +1,85 @@
 [
   {
-    "isActive": true,
-    "requiresPersonalization": true,
-    "fullDescription": "Engineered specifically for athletes striving for sustainable fat reduction, this comprehensive journal provides structured daily tracking sheets, body measurement grids, weekly reflection reviews, and positive habit reinforcement prompts. Includes official AlexFitnessHub cover personalization with your fitness photo.",
-    "priceNGN": 5500,
-    "coverImage": "https://images.unsplash.com/photo-1544717305-2782549b5136?w=900&auto=format&fit=crop&q=80",
-    "title": "ALEXFITNESSHUB Weight Loss Journal",
     "pageCount": 68,
+    "category": "Journal",
+    "fullDescription": "Engineered specifically for athletes striving for sustainable fat reduction, this comprehensive journal provides structured daily tracking sheets, body measurement grids, weekly reflection reviews, and positive habit reinforcement prompts. Includes official AlexFitnessHub cover personalization with your fitness photo.",
+    "originalPriceNGN": 8000,
     "previewPages": [
       "https://images.unsplash.com/photo-1544717305-2782549b5136?w=900&auto=format&fit=crop&q=80",
       "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=900&auto=format&fit=crop&q=80",
       "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=900&auto=format&fit=crop&q=80"
     ],
-    "originalPriceNGN": 8000,
-    "shortDescription": "Daily transformation tracker, habit checklist, caloric deficit planner, and milestone journal.",
+    "isActive": true,
     "id": "afh-journal-weight-loss",
-    "updatedAt": "2026-10-02T08:49:49.474Z",
-    "personalizationConfig": {
-      "borderRadius": 8,
-      "page": 1,
-      "width": 250,
-      "height": 300,
-      "y": 280,
-      "x": 180
-    },
-    "salesCount": 144,
     "createdAt": "2026-10-02T08:49:49.474Z",
-    "category": "Journal",
+    "updatedAt": "2026-10-02T08:49:49.474Z",
     "benefits": [
       "Structured 68-day physical & habit tracking sheets",
       "Caloric deficit and metabolic expenditure calculator matrix",
       "Bi-weekly body measurement & weigh-in logs",
       "Official personalized athlete cover dedication",
       "Printable on A4/US Letter & tablet compatible"
-    ]
+    ],
+    "personalizationConfig": {
+      "height": 300,
+      "borderRadius": 8,
+      "y": 280,
+      "page": 1,
+      "x": 180,
+      "width": 250
+    },
+    "coverImage": "https://images.unsplash.com/photo-1544717305-2782549b5136?w=900&auto=format&fit=crop&q=80",
+    "title": "ALEXFITNESSHUB Weight Loss Journal",
+    "salesCount": 144,
+    "requiresPersonalization": true,
+    "shortDescription": "Daily transformation tracker, habit checklist, caloric deficit planner, and milestone journal.",
+    "priceNGN": 5500
   },
   {
-    "requiresPersonalization": false,
+    "shortDescription": "Pre-workout fueling protocols, macro-balanced recipes, hydration matrix & energy logs.",
     "isActive": true,
-    "fullDescription": "Eliminate guesswork from your nutritional timing. Features localized African and international whole food guides, high-protein recipes, meal prep worksheets, and energy calibration timetables to maximize gym performance.",
     "coverImage": "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=900&auto=format&fit=crop&q=80",
-    "priceNGN": 4500,
-    "title": "ALEXFITNESSHUB Gym Energy Meal Planner",
-    "pageCount": 52,
+    "category": "Meal Planner",
+    "id": "afh-planner-gym-energy",
     "previewPages": [
       "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=900&auto=format&fit=crop&q=80",
       "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=900&auto=format&fit=crop&q=80"
     ],
-    "originalPriceNGN": 6500,
-    "shortDescription": "Pre-workout fueling protocols, macro-balanced recipes, hydration matrix & energy logs.",
-    "id": "afh-planner-gym-energy",
-    "updatedAt": "2026-10-02T08:49:49.475Z",
     "salesCount": 99,
+    "updatedAt": "2026-10-02T08:49:49.475Z",
     "createdAt": "2026-10-02T08:49:49.475Z",
-    "category": "Meal Planner",
     "benefits": [
       "Pre & Post workout nutrient timing timetable",
       "Over 40 high-protein energy recipes with Nigerian whole foods",
       "Weekly grocery shopping matrix & budget planner",
       "Electrolyte & intracellular hydration formula",
       "Instant high-res printable PDF delivery"
-    ]
+    ],
+    "priceNGN": 4500,
+    "requiresPersonalization": false,
+    "fullDescription": "Eliminate guesswork from your nutritional timing. Features localized African and international whole food guides, high-protein recipes, meal prep worksheets, and energy calibration timetables to maximize gym performance.",
+    "originalPriceNGN": 6500,
+    "title": "ALEXFITNESSHUB Gym Energy Meal Planner",
+    "pageCount": 52
   },
   {
+    "previewPages": [
+      "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=900&auto=format&fit=crop&q=80"
+    ],
     "id": "afh-guide-stamina-nutrition",
+    "pageCount": 46,
+    "coverImage": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=900&auto=format&fit=crop&q=80",
+    "category": "Nutrition",
+    "createdAt": "2026-10-02T08:49:49.475Z",
+    "originalPriceNGN": 7000,
+    "isActive": true,
+    "salesCount": 76,
+    "fullDescription": "Formulated for high-output runners, cross-training athletes, and endurance seekers. Includes meal timing strategies, micronutrient optimization, anti-inflammatory recovery drinks, and carb-cycling principles.",
+    "shortDescription": "Cardiovascular endurance dietary blueprints, electrolyte balance & recovery protocols.",
+    "title": "ALEXFITNESSHUB Stamina Nutrition Guide",
+    "priceNGN": 4800,
+    "updatedAt": "2026-10-02T08:49:49.475Z",
     "benefits": [
       "Cardiovascular glycogen storage protocols",
       "Cramp prevention & electrolyte balance charts",
@@ -71,26 +87,18 @@
       "Endurance run fuel timing strategy (3KM - 21KM)",
       "Printable high-contrast worksheets"
     ],
-    "coverImage": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=900&auto=format&fit=crop&q=80",
-    "shortDescription": "Cardiovascular endurance dietary blueprints, electrolyte balance & recovery protocols.",
-    "category": "Nutrition",
-    "originalPriceNGN": 7000,
-    "createdAt": "2026-10-02T08:49:49.475Z",
-    "requiresPersonalization": false,
-    "isActive": true,
-    "updatedAt": "2026-10-02T08:49:49.475Z",
-    "priceNGN": 4800,
-    "previewPages": [
-      "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=900&auto=format&fit=crop&q=80"
-    ],
-    "title": "ALEXFITNESSHUB Stamina Nutrition Guide",
-    "salesCount": 76,
-    "fullDescription": "Formulated for high-output runners, cross-training athletes, and endurance seekers. Includes meal timing strategies, micronutrient optimization, anti-inflammatory recovery drinks, and carb-cycling principles.",
-    "pageCount": 46
+    "requiresPersonalization": false
   },
   {
+    "previewPages": [
+      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&auto=format&fit=crop&q=80"
+    ],
+    "createdAt": "2026-10-02T08:49:49.475Z",
+    "fullDescription": "Keep track of every set, rep, RPE, and poundage. Designed to be printed weekly or kept on a tablet for relentless gym session accountability and strength progression across all major movement patterns.",
+    "priceNGN": 3900,
     "shortDescription": "Detailed exercise logsheets, progressive overload tables, 1RM calculators & rest timers.",
+    "pageCount": 60,
     "benefits": [
       "Progressive overload log tables for 12 weeks",
       "Warmup sets vs working sets tracking matrix",
@@ -98,55 +106,46 @@
       "Personalized athlete profile badge on cover",
       "Clean high-contrast printable black & white pages"
     ],
-    "category": "Workout",
-    "requiresPersonalization": true,
-    "pageCount": 60,
     "originalPriceNGN": 5500,
-    "salesCount": 165,
-    "fullDescription": "Keep track of every set, rep, RPE, and poundage. Designed to be printed weekly or kept on a tablet for relentless gym session accountability and strength progression across all major movement patterns.",
-    "updatedAt": "2026-10-02T08:49:49.475Z",
-    "id": "afh-tracker-workout-pro",
     "title": "ALEXFITNESSHUB Workout Tracker",
-    "personalizationConfig": {
-      "borderRadius": 8,
-      "height": 300,
-      "y": 280,
-      "page": 1,
-      "width": 250,
-      "x": 180
-    },
-    "createdAt": "2026-10-02T08:49:49.475Z",
-    "previewPages": [
-      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&auto=format&fit=crop&q=80"
-    ],
     "coverImage": "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=900&auto=format&fit=crop&q=80",
+    "category": "Workout",
+    "updatedAt": "2026-10-02T08:49:49.475Z",
+    "requiresPersonalization": true,
+    "id": "afh-tracker-workout-pro",
+    "personalizationConfig": {
+      "height": 300,
+      "width": 250,
+      "borderRadius": 8,
+      "y": 280,
+      "x": 180,
+      "page": 1
+    },
     "isActive": true,
-    "priceNGN": 3900
+    "salesCount": 165
   },
   {
-    "isActive": true,
+    "coverImage": "https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?w=900&auto=format&fit=crop&q=80",
+    "createdAt": "2026-10-02T08:49:49.475Z",
     "personalizationConfig": {
       "y": 280,
-      "height": 300,
-      "x": 180,
       "borderRadius": 8,
+      "width": 250,
+      "x": 180,
       "page": 1,
-      "width": 250
+      "height": 300
     },
-    "updatedAt": "2026-10-02T08:49:49.475Z",
-    "salesCount": 210,
-    "priceNGN": 6000,
-    "pageCount": 90,
     "previewPages": [
       "https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?w=900&auto=format&fit=crop&q=80",
       "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=900&auto=format&fit=crop&q=80"
     ],
-    "fullDescription": "Combines biometric weekly weigh-ins, physique photo grids, mental mindset checkpoints, workout consistency graphs, and coach Alex's peak performance principles into a structured 90-day printable workbook.",
-    "title": "ALEXFITNESSHUB Fitness Progress Journal",
-    "id": "afh-journal-fitness-progress",
-    "coverImage": "https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?w=900&auto=format&fit=crop&q=80",
     "originalPriceNGN": 9000,
+    "pageCount": 90,
+    "salesCount": 210,
+    "category": "Journal",
+    "isActive": true,
+    "priceNGN": 6000,
+    "id": "afh-journal-fitness-progress",
     "benefits": [
       "90-Day daily physical and mindset accountability pages",
       "Weekly biometric circumference & weight curves",
@@ -154,9 +153,10 @@
       "Personalized athlete transformation cover",
       "Printable binder format with margins"
     ],
-    "category": "Journal",
+    "updatedAt": "2026-10-02T08:49:49.475Z",
+    "title": "ALEXFITNESSHUB Fitness Progress Journal",
     "requiresPersonalization": true,
-    "createdAt": "2026-10-02T08:49:49.475Z",
+    "fullDescription": "Combines biometric weekly weigh-ins, physique photo grids, mental mindset checkpoints, workout consistency graphs, and coach Alex's peak performance principles into a structured 90-day printable workbook.",
     "shortDescription": "Comprehensive 90-day physical and mental accountability workbook."
   }
 ]

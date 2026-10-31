@@ -184,26 +184,41 @@ const apiLimiter = rateLimit({
 });
 app.use("/api", apiLimiter);
 
-// Health check endpoints for deployment platforms (Render, Cloud Run, etc.)
-app.get(["/health", "/api/health"], (req, res) => {
+// Health & Deployment Version check endpoints for deployment platforms (Render, Cloud Run, etc.)
+app.get(["/health", "/api/health", "/api/version"], async (req, res) => {
   let buildId = "unknown";
   let commit = "unknown";
+  let builtAt = "unknown";
   try {
     const metadataPath = path.join(process.cwd(), "dist", "build-metadata.json");
     if (fs.existsSync(metadataPath)) {
       const parsed = JSON.parse(fs.readFileSync(metadataPath, "utf-8"));
       buildId = parsed.buildId || parsed.deploymentId || "unknown";
       commit = parsed.commit || parsed.commitHash || "unknown";
+      builtAt = parsed.builtAt || parsed.buildTimestamp || "unknown";
     }
   } catch (err: any) {
     // ignore read errors
   }
 
+  // Check database configuration
+  const hasFirebaseConfig = Boolean(firebaseConfig.projectId);
+  const databaseId = firebaseConfig.firestoreDatabaseId || "(default)";
+
   res.status(200).json({
     status: "ok",
+    version: "2.4.0-production",
     timestamp: new Date().toISOString(),
     buildId,
-    commit
+    commit,
+    builtAt,
+    environment: process.env.NODE_ENV || "production",
+    database: {
+      provider: "firestore",
+      configured: hasFirebaseConfig,
+      projectId: firebaseConfig.projectId || "alex-project-777",
+      databaseId
+    }
   });
 });
 
@@ -4623,6 +4638,24 @@ async function fetchProgramOverridesFromCloud(): Promise<Record<string, any>> {
       }
     }
 
+    // Sanitize legacy seed drills in advanced tier: advanced tier starts empty per system specification
+    for (const progId of Object.keys(cloudOverrides)) {
+      const p = cloudOverrides[progId];
+      if (p && typeof p === "object") {
+        for (const dayKey of Object.keys(p)) {
+          const d = p[dayKey];
+          if (d && typeof d === "object") {
+            if (d.levels && Array.isArray(d.levels.advanced)) {
+              d.levels.advanced = d.levels.advanced.filter((ex: any) => ex && (ex.isCustom === true || ex.addedByAdmin === true));
+            }
+            if (Array.isArray(d.advancedExercises)) {
+              d.advancedExercises = d.advancedExercises.filter((ex: any) => ex && (ex.isCustom === true || ex.addedByAdmin === true));
+            }
+          }
+        }
+      }
+    }
+
     if (Object.keys(cloudOverrides).length > 0) {
       let existing: Record<string, any> = {};
       if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
@@ -4665,7 +4698,7 @@ async function persistProgramOverridesToCloud(overrides: Record<string, any>, us
             schedule: progData,
             updatedAt: new Date().toISOString(),
             updatedBy: userEmail
-          }, true);
+          }, false);
         }
       })
     );
@@ -4963,28 +4996,51 @@ async function addWorkoutToProgramScheduleServer(workout: any, userEmail: string
 
 // Full Cloud Hydration on Boot: restores all programs, schedules, drills and challenges from Firestore & Supabase
 async function hydrateAllDataFromCloud() {
-  console.log("[Cloud Hydration] Initializing automated Firestore & Supabase state hydration on server boot...");
-
   // 1. Program Schedule Overrides
   try {
     let cloudOverrides = await fetchProgramOverridesFromCloud();
 
-    // If cloud is empty on first deployment, seed all default program schedules to Firestore so they are never lost!
-    if (!cloudOverrides || Object.keys(cloudOverrides).length === 0) {
-      if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-        try {
-          const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-          if (raw) {
-            const diskData = JSON.parse(raw);
-            if (Object.keys(diskData).length > 0) {
+    // If cloud is empty or has outdated routines compared to authoritative disk, sync to Cloud Firestore!
+    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      try {
+        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+        if (raw) {
+          const diskData = JSON.parse(raw);
+          if (Object.keys(diskData).length > 0) {
+            if (!cloudOverrides || Object.keys(cloudOverrides).length === 0) {
               console.log(`[Cloud Seeding] Seeding ${Object.keys(diskData).length} programs into Firestore program_schedules...`);
               await persistProgramOverridesToCloud(diskData, "system_seed");
               cloudOverrides = diskData;
+            } else {
+              // Check if any advanced tier drills were emptied on disk but still present in cloud
+              let hasStaleCloudRoutines = false;
+              for (const progId of Object.keys(diskData)) {
+                const progObj = diskData[progId];
+                if (progObj && typeof progObj === "object") {
+                  for (const dayKey of Object.keys(progObj)) {
+                    const day = progObj[dayKey];
+                    if (day && day.levels && Array.isArray(day.levels.advanced) && day.levels.advanced.length === 0) {
+                      const cloudDay = cloudOverrides[progId]?.[dayKey];
+                      if (cloudDay?.levels?.advanced?.length > 0 || cloudDay?.advancedExercises?.length > 0) {
+                        hasStaleCloudRoutines = true;
+                        break;
+                      }
+                    }
+                  }
+                }
+                if (hasStaleCloudRoutines) break;
+              }
+
+              if (hasStaleCloudRoutines) {
+                console.log("[Cloud Persistence] Syncing authoritatively cleaned program routines from disk to Firestore...");
+                await persistProgramOverridesToCloud(diskData, "system_sync");
+                cloudOverrides = diskData;
+              }
             }
           }
-        } catch (seedErr) {
-          console.warn("[Cloud Seeding] Seed notice:", seedErr);
         }
+      } catch (seedErr) {
+        console.warn("[Cloud Seeding] Seed/sync notice:", seedErr);
       }
     }
 

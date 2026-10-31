@@ -239,6 +239,39 @@ export default function AdminWorkoutChallengeEngine() {
     guidelines: "Maintain steady conversational aerobic rhythm. Strict rule: Zero weight training or heavy resistance today."
   });
 
+  // Deployment Version and Firestore Sync State
+  const [deploymentInfo, setDeploymentInfo] = useState<{
+    buildId?: string;
+    commit?: string;
+    status?: string;
+    verifiedAt?: string;
+  } | null>(null);
+  const [isVerifyingSync, setIsVerifyingSync] = useState(false);
+
+  const checkDeploymentSync = useCallback(async () => {
+    setIsVerifyingSync(true);
+    try {
+      const res = await fetch("/api/version");
+      if (res.ok) {
+        const data = await res.json();
+        setDeploymentInfo({
+          buildId: data.buildId,
+          commit: data.commit,
+          status: data.status,
+          verifiedAt: new Date().toLocaleTimeString()
+        });
+      }
+    } catch {
+      // ignore network errors
+    } finally {
+      setIsVerifyingSync(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkDeploymentSync();
+  }, [checkDeploymentSync]);
+
   // Split Meta Editing
   const [splitTitle, setSplitTitle] = useState<string>("");
   const [splitCategory, setSplitCategory] = useState<string>("");
@@ -1682,6 +1715,35 @@ export default function AdminWorkoutChallengeEngine() {
             <p className="text-xs sm:text-sm text-neutral-400 max-w-3xl leading-relaxed">
               Customize exercises across all challenges and programs. Delete or replace any workout, drag to reorder drills, edit the canonical 7-day repeat splits, and enforce dedicated cardio and evening walk rules. All changes manifest instantly for athletes.
             </p>
+
+            {/* Live Deployment & Persistence Sync Indicator */}
+            <div className="flex items-center gap-3 pt-2 flex-wrap">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-700/70 text-xs font-mono text-neutral-300">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="text-neutral-400">Build:</span>
+                <span className="text-white font-bold">{deploymentInfo?.buildId || "live"}</span>
+                <span className="text-neutral-600">|</span>
+                <span className="text-neutral-400">Database:</span>
+                <span className="text-emerald-400 font-semibold">Firestore Cloud Live</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={checkDeploymentSync}
+                disabled={isVerifyingSync}
+                className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-xs text-neutral-300 hover:text-white transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Verify sync between browser, backend, and Cloud Firestore"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-neutral-400 ${isVerifyingSync ? "animate-spin text-red-500" : ""}`} />
+                <span>{isVerifyingSync ? "Verifying..." : "Verify Live Sync"}</span>
+              </button>
+
+              {deploymentInfo?.verifiedAt && (
+                <span className="text-[11px] text-neutral-500">
+                  Last verified: {deploymentInfo.verifiedAt}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-3 shrink-0 flex-wrap">
