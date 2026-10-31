@@ -259,3 +259,223 @@ export function getSyncStatus(): ScheduleSyncStatus {
     degraded
   };
 }
+
+/**
+ * Purges an exercise permanently from all program schedules across all days and difficulty tiers.
+ * Eliminates orphaned references, old copies, and guarantees the drill disappears everywhere.
+ */
+export function purgeExerciseFromAllSchedules(
+  exerciseId: string,
+  exerciseName?: string
+): { updatedOverrides: Record<string, any>; purgedCount: number } {
+  const current = getScheduleOverrides();
+  const next: Record<string, any> = JSON.parse(JSON.stringify(current));
+  let purgedCount = 0;
+
+  const targetId = (exerciseId || "").toLowerCase().trim();
+  const targetName = (exerciseName || "").toLowerCase().trim();
+
+  const isMatch = (item: any) => {
+    if (!item) return false;
+    const itemId = String(item.id || item.exerciseId || "").toLowerCase().trim();
+    const itemName = String(item.exerciseName || item.name || "").toLowerCase().trim();
+    if (targetId && (itemId === targetId || itemName === targetId)) return true;
+    if (targetName && (itemId === targetName || itemName === targetName)) return true;
+    return false;
+  };
+
+  const sanitizeList = (list: any[]) => {
+    if (!Array.isArray(list)) return list;
+    const beforeLen = list.length;
+    const filtered = list.filter(item => !isMatch(item));
+    purgedCount += (beforeLen - filtered.length);
+    return filtered;
+  };
+
+  for (const progKey of Object.keys(next)) {
+    const progData = next[progKey];
+    if (!progData || typeof progData !== "object") continue;
+
+    for (const dayKey of Object.keys(progData)) {
+      const dayData = progData[dayKey];
+      if (!dayData || typeof dayData !== "object") continue;
+
+      if (Array.isArray(dayData.exercises)) {
+        dayData.exercises = sanitizeList(dayData.exercises);
+      }
+      if (Array.isArray(dayData.beginnerExercises)) {
+        dayData.beginnerExercises = sanitizeList(dayData.beginnerExercises);
+      }
+      if (Array.isArray(dayData.intermediateExercises)) {
+        dayData.intermediateExercises = sanitizeList(dayData.intermediateExercises);
+      }
+      if (Array.isArray(dayData.advancedExercises)) {
+        dayData.advancedExercises = sanitizeList(dayData.advancedExercises);
+      }
+      if (dayData.levels && typeof dayData.levels === "object") {
+        if (Array.isArray(dayData.levels.beginner)) {
+          dayData.levels.beginner = sanitizeList(dayData.levels.beginner);
+        }
+        if (Array.isArray(dayData.levels.intermediate)) {
+          dayData.levels.intermediate = sanitizeList(dayData.levels.intermediate);
+        }
+        if (Array.isArray(dayData.levels.advanced)) {
+          dayData.levels.advanced = sanitizeList(dayData.levels.advanced);
+        }
+      }
+    }
+  }
+
+  if (purgedCount > 0) {
+    setScheduleOverridesFromAdmin(next);
+  }
+
+  return { updatedOverrides: next, purgedCount };
+}
+
+/**
+ * Updates an exercise's metadata (GIF URL, sets, reps, category, etc.) across all program schedules.
+ * Ensures newly uploaded GIFs and updated descriptions propagate instantly everywhere.
+ */
+export function updateExerciseInAllSchedules(
+  exerciseId: string,
+  updates: Record<string, any>
+): { updatedOverrides: Record<string, any>; updatedCount: number } {
+  const current = getScheduleOverrides();
+  const next: Record<string, any> = JSON.parse(JSON.stringify(current));
+  let updatedCount = 0;
+
+  const targetId = (exerciseId || "").toLowerCase().trim();
+  const targetName = (updates.name || "").toLowerCase().trim();
+  const mediaUrl = updates.customMediaUrl || updates.gifUrl || updates.imageUrl;
+
+  const isMatch = (item: any) => {
+    if (!item) return false;
+    const itemId = String(item.id || item.exerciseId || "").toLowerCase().trim();
+    const itemName = String(item.exerciseName || item.name || "").toLowerCase().trim();
+    if (targetId && (itemId === targetId || itemName === targetId)) return true;
+    if (targetName && (itemId === targetName || itemName === targetName)) return true;
+    return false;
+  };
+
+  const updateItem = (item: any) => {
+    if (!isMatch(item)) return item;
+    updatedCount++;
+    return {
+      ...item,
+      ...(updates.name ? { name: updates.name, exerciseName: updates.name } : {}),
+      ...(mediaUrl !== undefined ? { gifUrl: mediaUrl, imageUrl: mediaUrl, customMediaUrl: mediaUrl } : {}),
+      ...(updates.recommendedSets ? { sets: updates.recommendedSets } : {}),
+      ...(updates.recommendedReps ? { reps: updates.recommendedReps } : {}),
+      ...(updates.restTime ? { restTime: updates.restTime } : {}),
+      ...(updates.category ? { category: updates.category } : {})
+    };
+  };
+
+  const updateList = (list: any[]) => {
+    if (!Array.isArray(list)) return list;
+    return list.map(updateItem);
+  };
+
+  for (const progKey of Object.keys(next)) {
+    const progData = next[progKey];
+    if (!progData || typeof progData !== "object") continue;
+
+    for (const dayKey of Object.keys(progData)) {
+      const dayData = progData[dayKey];
+      if (!dayData || typeof dayData !== "object") continue;
+
+      if (Array.isArray(dayData.exercises)) {
+        dayData.exercises = updateList(dayData.exercises);
+      }
+      if (Array.isArray(dayData.beginnerExercises)) {
+        dayData.beginnerExercises = updateList(dayData.beginnerExercises);
+      }
+      if (Array.isArray(dayData.intermediateExercises)) {
+        dayData.intermediateExercises = updateList(dayData.intermediateExercises);
+      }
+      if (Array.isArray(dayData.advancedExercises)) {
+        dayData.advancedExercises = updateList(dayData.advancedExercises);
+      }
+      if (dayData.levels && typeof dayData.levels === "object") {
+        if (Array.isArray(dayData.levels.beginner)) {
+          dayData.levels.beginner = updateList(dayData.levels.beginner);
+        }
+        if (Array.isArray(dayData.levels.intermediate)) {
+          dayData.levels.intermediate = updateList(dayData.levels.intermediate);
+        }
+        if (Array.isArray(dayData.levels.advanced)) {
+          dayData.levels.advanced = updateList(dayData.levels.advanced);
+        }
+      }
+    }
+  }
+
+  if (updatedCount > 0) {
+    setScheduleOverridesFromAdmin(next);
+  }
+
+  return { updatedOverrides: next, updatedCount };
+}
+
+/**
+ * Inserts a new exercise into a target program schedule.
+ */
+export function addExerciseToProgramSchedule(
+  exercise: any,
+  targetProgramId: string,
+  targetDay: number = 1,
+  targetTier: "beginner" | "intermediate" | "advanced" = "beginner"
+): Record<string, any> {
+  const current = getScheduleOverrides();
+  const next: Record<string, any> = JSON.parse(JSON.stringify(current));
+
+  if (!next[targetProgramId]) {
+    next[targetProgramId] = {};
+  }
+
+  const dayKey = String(targetDay);
+  const cycleKey = `cycle_${((targetDay - 1) % 7) + 1}`;
+  const existingDay = next[targetProgramId][dayKey] || next[targetProgramId][cycleKey] || {
+    title: `Day ${targetDay} Workout`,
+    category: exercise.category || "Targeted Split",
+    isCardioOnly: false,
+    exercises: [],
+    levels: { beginner: [], intermediate: [], advanced: [] }
+  };
+
+  const newDrillItem = {
+    id: exercise.id,
+    name: exercise.name,
+    exerciseName: exercise.name,
+    category: exercise.category || "Gym Workouts",
+    difficulty: targetTier.charAt(0).toUpperCase() + targetTier.slice(1),
+    sets: exercise.recommendedSets || "3-4",
+    reps: exercise.recommendedReps || "10-12",
+    restTime: exercise.restTime || "60s",
+    gifUrl: exercise.customMediaUrl || exercise.gifUrl || exercise.imageUrl || "",
+    imageUrl: exercise.customMediaUrl || exercise.imageUrl || exercise.gifUrl || ""
+  };
+
+  const updatedLevels = { ...(existingDay.levels || {}) };
+  if (!Array.isArray(updatedLevels[targetTier])) {
+    updatedLevels[targetTier] = [];
+  }
+
+  // Deduplicate before pushing
+  if (!updatedLevels[targetTier].some((d: any) => d.id === exercise.id || (d.name && d.name.toLowerCase().trim() === exercise.name.toLowerCase().trim()))) {
+    updatedLevels[targetTier].push(newDrillItem);
+  }
+
+  const updatedDay = {
+    ...existingDay,
+    levels: updatedLevels,
+    exercises: targetTier === "beginner" ? updatedLevels.beginner : (existingDay.exercises || updatedLevels.beginner)
+  };
+
+  next[targetProgramId][dayKey] = updatedDay;
+  next[targetProgramId][cycleKey] = updatedDay;
+
+  setScheduleOverridesFromAdmin(next);
+  return next;
+}

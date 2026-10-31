@@ -4063,6 +4063,8 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
     return res.status(400).json({ success: false, error: "Exercise ID is required." });
   }
 
+  const matchedEx = EXERCISES.find(e => e.id === exerciseId);
+
   try {
     let overrides: Record<string, any> = {};
     if (fs.existsSync(OVERRIDES_FILE_PATH)) {
@@ -4224,6 +4226,9 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
 
     fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
     console.log(`Successfully saved custom media for exercise ${exerciseId} to local overrides file!`);
+
+    // Synchronize media update across all program schedules in Firestore and local disk
+    await syncExerciseMediaToProgramSchedules(exerciseId, customMediaUrl, matchedEx?.name, req.user?.email || "admin");
     
     // Log admin activity on Firebase
     await logAdminActivityOnFirebase(
@@ -4305,6 +4310,14 @@ app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
       console.warn(`[Firestore Update Warning for exercise ${exerciseId}]:`, dbErr);
     }
 
+    // Synchronize updates across all program schedules in Firestore and local disk
+    await syncExerciseMediaToProgramSchedules(
+      exerciseId, 
+      mediaVal || cleanUpdates.customMediaUrl || overrides[exerciseId]?.customMediaUrl, 
+      cleanUpdates.name, 
+      req.user?.email || "admin"
+    );
+
     // Log admin activity
     await logAdminActivityOnFirebase(
       req.user?.email || "",
@@ -4383,6 +4396,9 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
     } catch (dbErr) {
       console.warn(`[Firestore Create Warning for ${newId}]:`, dbErr);
     }
+
+    // Synchronize to target program schedules if programs are assigned
+    await addWorkoutToProgramScheduleServer(fullWorkout, req.user?.email || "admin");
 
     // Log admin activity
     await logAdminActivityOnFirebase(
@@ -4476,6 +4492,9 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
     } catch (dbErr) {
       console.warn(`[Firestore Delete Warning for ${targetDocId}]:`, dbErr);
     }
+
+    // Purge exercise from all program schedules across local disk and Cloud Firestore
+    await purgeExerciseFromProgramSchedules(exerciseId, cleanName, req.user?.email || "admin");
 
     await logAdminActivityOnFirebase(
       req.user?.email || "",
@@ -4674,6 +4693,271 @@ async function persistProgramOverridesToCloud(overrides: Record<string, any>, us
     } catch (err: any) {
       console.warn("[Cloud Persistence] Supabase save notice:", err?.message || err);
     }
+  }
+}
+
+async function purgeExerciseFromProgramSchedules(exerciseId: string, exerciseName?: string, userEmail: string = "admin") {
+  try {
+    let allOverrides: Record<string, any> = {};
+    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      try {
+        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+        if (raw) allOverrides = JSON.parse(raw);
+      } catch (e) {}
+    }
+
+    const targetId = (exerciseId || "").toLowerCase().trim();
+    const targetName = (exerciseName || "").toLowerCase().trim();
+    let modified = false;
+
+    const isMatch = (item: any) => {
+      if (!item) return false;
+      const itemId = String(item.id || item.exerciseId || "").toLowerCase().trim();
+      const itemName = String(item.exerciseName || item.name || "").toLowerCase().trim();
+      if (targetId && (itemId === targetId || itemName === targetId)) return true;
+      if (targetName && (itemId === targetName || itemName === targetName)) return true;
+      return false;
+    };
+
+    const filterList = (list: any[]) => {
+      if (!Array.isArray(list)) return list;
+      const filtered = list.filter(item => !isMatch(item));
+      if (filtered.length !== list.length) modified = true;
+      return filtered;
+    };
+
+    const touchedKeys: string[] = [];
+    for (const progKey of Object.keys(allOverrides)) {
+      const progData = allOverrides[progKey];
+      if (!progData || typeof progData !== "object") continue;
+      let progModified = false;
+
+      for (const dayKey of Object.keys(progData)) {
+        const dayData = progData[dayKey];
+        if (!dayData || typeof dayData !== "object") continue;
+
+        if (Array.isArray(dayData.exercises)) {
+          const prevLen = dayData.exercises.length;
+          dayData.exercises = filterList(dayData.exercises);
+          if (dayData.exercises.length !== prevLen) progModified = true;
+        }
+        if (Array.isArray(dayData.beginnerExercises)) {
+          const prevLen = dayData.beginnerExercises.length;
+          dayData.beginnerExercises = filterList(dayData.beginnerExercises);
+          if (dayData.beginnerExercises.length !== prevLen) progModified = true;
+        }
+        if (Array.isArray(dayData.intermediateExercises)) {
+          const prevLen = dayData.intermediateExercises.length;
+          dayData.intermediateExercises = filterList(dayData.intermediateExercises);
+          if (dayData.intermediateExercises.length !== prevLen) progModified = true;
+        }
+        if (Array.isArray(dayData.advancedExercises)) {
+          const prevLen = dayData.advancedExercises.length;
+          dayData.advancedExercises = filterList(dayData.advancedExercises);
+          if (dayData.advancedExercises.length !== prevLen) progModified = true;
+        }
+        if (dayData.levels && typeof dayData.levels === "object") {
+          if (Array.isArray(dayData.levels.beginner)) {
+            const prevLen = dayData.levels.beginner.length;
+            dayData.levels.beginner = filterList(dayData.levels.beginner);
+            if (dayData.levels.beginner.length !== prevLen) progModified = true;
+          }
+          if (Array.isArray(dayData.levels.intermediate)) {
+            const prevLen = dayData.levels.intermediate.length;
+            dayData.levels.intermediate = filterList(dayData.levels.intermediate);
+            if (dayData.levels.intermediate.length !== prevLen) progModified = true;
+          }
+          if (Array.isArray(dayData.levels.advanced)) {
+            const prevLen = dayData.levels.advanced.length;
+            dayData.levels.advanced = filterList(dayData.levels.advanced);
+            if (dayData.levels.advanced.length !== prevLen) progModified = true;
+          }
+        }
+      }
+
+      if (progModified) {
+        touchedKeys.push(progKey);
+      }
+    }
+
+    if (modified && touchedKeys.length > 0) {
+      fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
+      await persistProgramOverridesToCloud(allOverrides, userEmail, touchedKeys);
+      console.log(`[Cloud Persistence OK] Purged workout ${exerciseId || exerciseName} from ${touchedKeys.length} programs in Firestore.`);
+    }
+  } catch (err) {
+    console.warn("Failed purging workout from program schedules:", err);
+  }
+}
+
+async function syncExerciseMediaToProgramSchedules(exerciseId: string, mediaUrl: string, exerciseName?: string, userEmail: string = "admin") {
+  try {
+    let allOverrides: Record<string, any> = {};
+    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      try {
+        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+        if (raw) allOverrides = JSON.parse(raw);
+      } catch (e) {}
+    }
+
+    const targetId = (exerciseId || "").toLowerCase().trim();
+    const targetName = (exerciseName || "").toLowerCase().trim();
+    let modified = false;
+
+    const isMatch = (item: any) => {
+      if (!item) return false;
+      const itemId = String(item.id || item.exerciseId || "").toLowerCase().trim();
+      const itemName = String(item.exerciseName || item.name || "").toLowerCase().trim();
+      if (targetId && (itemId === targetId || itemName === targetId)) return true;
+      if (targetName && (itemId === targetName || itemName === targetName)) return true;
+      return false;
+    };
+
+    const updateItem = (item: any) => {
+      if (!isMatch(item)) return item;
+      modified = true;
+      return {
+        ...item,
+        gifUrl: mediaUrl,
+        imageUrl: mediaUrl,
+        customMediaUrl: mediaUrl
+      };
+    };
+
+    const updateList = (list: any[]) => {
+      if (!Array.isArray(list)) return list;
+      return list.map(updateItem);
+    };
+
+    const touchedKeys: string[] = [];
+    for (const progKey of Object.keys(allOverrides)) {
+      const progData = allOverrides[progKey];
+      if (!progData || typeof progData !== "object") continue;
+      let progModified = false;
+
+      for (const dayKey of Object.keys(progData)) {
+        const dayData = progData[dayKey];
+        if (!dayData || typeof dayData !== "object") continue;
+
+        if (Array.isArray(dayData.exercises)) {
+          dayData.exercises = updateList(dayData.exercises);
+        }
+        if (Array.isArray(dayData.beginnerExercises)) {
+          dayData.beginnerExercises = updateList(dayData.beginnerExercises);
+        }
+        if (Array.isArray(dayData.intermediateExercises)) {
+          dayData.intermediateExercises = updateList(dayData.intermediateExercises);
+        }
+        if (Array.isArray(dayData.advancedExercises)) {
+          dayData.advancedExercises = updateList(dayData.advancedExercises);
+        }
+        if (dayData.levels && typeof dayData.levels === "object") {
+          if (Array.isArray(dayData.levels.beginner)) {
+            dayData.levels.beginner = updateList(dayData.levels.beginner);
+          }
+          if (Array.isArray(dayData.levels.intermediate)) {
+            dayData.levels.intermediate = updateList(dayData.levels.intermediate);
+          }
+          if (Array.isArray(dayData.levels.advanced)) {
+            dayData.levels.advanced = updateList(dayData.levels.advanced);
+          }
+        }
+      }
+
+      if (progModified || modified) {
+        touchedKeys.push(progKey);
+      }
+    }
+
+    if (modified && touchedKeys.length > 0) {
+      fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
+      await persistProgramOverridesToCloud(allOverrides, userEmail, touchedKeys);
+      console.log(`[Cloud Persistence OK] Updated exercise media across ${touchedKeys.length} programs in Firestore.`);
+    }
+  } catch (err) {
+    console.warn("Failed syncing exercise media to program schedules:", err);
+  }
+}
+
+async function addWorkoutToProgramScheduleServer(workout: any, userEmail: string = "admin") {
+  try {
+    const assignments: string[] = Array.isArray(workout.programAssignments) ? workout.programAssignments : [];
+    if (assignments.length === 0) return;
+
+    let allOverrides: Record<string, any> = {};
+    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      try {
+        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+        if (raw) allOverrides = JSON.parse(raw);
+      } catch (e) {}
+    }
+
+    const mapProg = (str: string) => {
+      const l = str.toLowerCase();
+      if (l.includes("90") || l.includes("immortal")) return "immortal_90";
+      if (l.includes("women")) return "women_confidence";
+      if (l.includes("belly") || l.includes("shred")) return "belly_fat_shred";
+      if (l.includes("home")) return "home_180";
+      if (l.includes("posture")) return "posture_vitality";
+      if (l.includes("gym")) return "gym_hypertrophy";
+      if (l.includes("lean")) return "lean_muscle";
+      if (l.includes("fat")) return "fat_burning";
+      return null;
+    };
+
+    const targetProgIds = Array.from(new Set(assignments.map(mapProg).filter(Boolean) as string[]));
+    if (targetProgIds.length === 0) return;
+
+    const tier = (workout.difficulty || "Beginner").toLowerCase();
+    const targetTier = (tier.includes("adv") ? "advanced" : (tier.includes("inter") ? "intermediate" : "beginner")) as "beginner" | "intermediate" | "advanced";
+
+    const drillItem = {
+      id: workout.id,
+      name: workout.name,
+      exerciseName: workout.name,
+      category: workout.category || "Gym Workouts",
+      difficulty: targetTier.charAt(0).toUpperCase() + targetTier.slice(1),
+      sets: workout.recommendedSets || "3-4",
+      reps: workout.recommendedReps || "10-12",
+      restTime: workout.restTime || "60s",
+      gifUrl: workout.customMediaUrl || workout.gifUrl || workout.imageUrl || "",
+      imageUrl: workout.customMediaUrl || workout.imageUrl || workout.gifUrl || ""
+    };
+
+    let modified = false;
+    for (const progId of targetProgIds) {
+      if (!allOverrides[progId]) allOverrides[progId] = {};
+      const dayKey = "1";
+      const cycleKey = "cycle_1";
+      const existing = allOverrides[progId][dayKey] || allOverrides[progId][cycleKey] || {
+        title: `Day 1 Workout`,
+        category: workout.category || "Targeted Split",
+        isCardioOnly: false,
+        exercises: [],
+        levels: { beginner: [], intermediate: [], advanced: [] }
+      };
+
+      const levels = { ...(existing.levels || {}) };
+      if (!Array.isArray(levels[targetTier])) levels[targetTier] = [];
+      if (!levels[targetTier].some((d: any) => d.id === workout.id || (d.name && d.name.toLowerCase().trim() === workout.name.toLowerCase().trim()))) {
+        levels[targetTier].push(drillItem);
+        existing.levels = levels;
+        if (targetTier === "beginner") {
+          existing.exercises = levels.beginner;
+        }
+        allOverrides[progId][dayKey] = existing;
+        allOverrides[progId][cycleKey] = existing;
+        modified = true;
+      }
+    }
+
+    if (modified) {
+      fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
+      await persistProgramOverridesToCloud(allOverrides, userEmail, targetProgIds);
+      console.log(`[Cloud Persistence OK] Added workout ${workout.name} to ${targetProgIds.join(", ")} program schedules in Firestore.`);
+    }
+  } catch (err) {
+    console.warn("Failed adding workout to program schedules on server:", err);
   }
 }
 

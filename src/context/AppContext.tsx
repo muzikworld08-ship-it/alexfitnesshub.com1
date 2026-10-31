@@ -38,7 +38,13 @@ import {
 import { calculateReadinessScore } from "../utils/readiness";
 import { EXERCISES, Exercise, getExerciseGifUrl, AUTHENTIC_STRETCH_EXERCISES } from "../data/exercises";
 import { PremiumChallenge, FLAGSHIP_CHALLENGES, getChallengeWorkouts } from "../data/challenges";
-import { setScheduleOverridesFromRemote } from "../utils/scheduleOverridesStore";
+import { 
+  setScheduleOverridesFromRemote, 
+  purgeExerciseFromAllSchedules, 
+  updateExerciseInAllSchedules, 
+  addExerciseToProgramSchedule, 
+  getScheduleOverrides 
+} from "../utils/scheduleOverridesStore";
 import { isExerciseMatch } from "../utils/exerciseMatching";
 import { fetchAllExerciseMediaFromDatabase } from "../utils/mediaStorageService";
 import { samplePopupTestimonials } from "../data/sampleTestimonials";
@@ -1476,7 +1482,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.warn("Real-time deleted_exercises listener notice:", err?.message || err);
       });
 
-      // 5. Real-time canonical listener for program schedule overrides
+      // 5. Real-time per-program listener for 'program_schedules' collection
+      const progSchedulesUnsub = onSnapshot(collection(db, "program_schedules"), (snap) => {
+        if (snap.empty) return;
+        const cloudOverrides: Record<string, any> = {};
+        snap.docs.forEach(docSnap => {
+          if (docSnap.id === "overrides") return;
+          const data = docSnap.data();
+          if (data && data.schedule && typeof data.schedule === "object") {
+            cloudOverrides[docSnap.id] = data.schedule;
+          } else if (data && typeof data === "object") {
+            const { updatedAt, updatedBy, programId, ...cleanSchedule } = data;
+            if (Object.keys(cleanSchedule).length > 0) {
+              cloudOverrides[docSnap.id] = cleanSchedule;
+            }
+          }
+        });
+        if (Object.keys(cloudOverrides).length > 0) {
+          setScheduleOverridesFromRemote(cloudOverrides);
+        }
+      }, (err) => {
+        console.warn("Real-time program_schedules collection listener notice:", err?.message || err);
+      });
+
+      // 6. Real-time canonical listener for program schedule overrides system settings
       const sysSettingsUnsub = onSnapshot(doc(db, "system_settings", "program_schedule_overrides"), (snap) => {
         if (snap.exists()) {
           const data = snap.data();
@@ -1495,6 +1524,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         manifestUnsub();
         challengesUnsub();
         deletedUnsub();
+        progSchedulesUnsub();
         sysSettingsUnsub();
       };
     } catch (e) {
@@ -4141,6 +4171,18 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         console.warn("Notice saving custom media to Cloud Firestore:", err);
       }
     }
+
+    // 4. Update GIF URL across all program schedules immediately so live program pages synchronize
+    try {
+      updateExerciseInAllSchedules(exerciseId, {
+        customMediaUrl: mediaValue,
+        gifUrl: mediaValue,
+        imageUrl: mediaValue,
+        name: targetEx?.name
+      });
+    } catch (schedErr) {
+      console.warn("Notice updating exercise media across schedules:", schedErr);
+    }
   };
 
   const adminUpdateUserTier = async (uid: string, level: "free" | "premium", tier: "monthly" | "yearly" | "none") => {
@@ -4981,6 +5023,13 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         }
       }
 
+      // Update across all program schedules immediately so live program pages synchronize
+      try {
+        updateExerciseInAllSchedules(exerciseId, normalizedUpdates);
+      } catch (schedErr) {
+        console.warn("Notice updating exercise across program schedules:", schedErr);
+      }
+
       logAdminAction("EDIT_WORKOUT", `Edited workout ${exerciseId} (Name: ${updates.name || 'same'}, Sets: ${updates.recommendedSets || 'same'}, Reps: ${updates.recommendedReps || 'same'})`, { exerciseId, updates });
       return true;
     } catch (err) {
@@ -5063,6 +5112,35 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       }
       safeSetItem("fit_custom_exercise_overrides", JSON.stringify(currentOverrides));
     } catch {}
+
+    // If programs are assigned, add to target program schedules immediately so live program pages display it
+    try {
+      if (Array.isArray(sanitizedExercise.programAssignments) && sanitizedExercise.programAssignments.length > 0) {
+        const mapProg = (str: string) => {
+          const l = str.toLowerCase();
+          if (l.includes("90") || l.includes("immortal")) return "immortal_90";
+          if (l.includes("women")) return "women_confidence";
+          if (l.includes("belly") || l.includes("shred")) return "belly_fat_shred";
+          if (l.includes("home")) return "home_180";
+          if (l.includes("posture")) return "posture_vitality";
+          if (l.includes("gym")) return "gym_hypertrophy";
+          if (l.includes("lean")) return "lean_muscle";
+          if (l.includes("fat")) return "fat_burning";
+          return null;
+        };
+        const tier = (sanitizedExercise.difficulty || "Beginner").toLowerCase();
+        const targetTier = (tier.includes("adv") ? "advanced" : (tier.includes("inter") ? "intermediate" : "beginner")) as "beginner" | "intermediate" | "advanced";
+
+        sanitizedExercise.programAssignments.forEach((pName: string) => {
+          const progId = mapProg(pName);
+          if (progId) {
+            addExerciseToProgramSchedule(sanitizedExercise, progId, 1, targetTier);
+          }
+        });
+      }
+    } catch (schedErr) {
+      console.warn("Notice adding exercise to program schedules:", schedErr);
+    }
 
     // Save to server with timeout
     try {
@@ -5170,6 +5248,13 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       }
       return updated;
     });
+
+    // 5b. Purge deleted exercise permanently from all program schedules
+    try {
+      purgeExerciseFromAllSchedules(exerciseId, targetName || optionalName);
+    } catch (schedErr) {
+      console.warn("Notice purging exercise from program schedules:", schedErr);
+    }
 
     // 6. Notify server and Firestore in background without blocking caller for instant delete speed
     (async () => {

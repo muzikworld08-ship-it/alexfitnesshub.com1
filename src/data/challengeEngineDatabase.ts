@@ -293,7 +293,7 @@ export function getWorkoutForProgramAndDay(
             chosenExercises = [];
           }
         } else if (requestedTier === "intermediate") {
-          if (Array.isArray(dayOverride.levels?.intermediate)) {
+          if (dayOverride.levels && "intermediate" in dayOverride.levels && Array.isArray(dayOverride.levels.intermediate)) {
             chosenExercises = dayOverride.levels.intermediate;
           } else if (Array.isArray(dayOverride.intermediateExercises)) {
             chosenExercises = dayOverride.intermediateExercises;
@@ -308,7 +308,7 @@ export function getWorkoutForProgramAndDay(
           }
         } else {
           // Beginner
-          if (Array.isArray(dayOverride.levels?.beginner)) {
+          if (dayOverride.levels && "beginner" in dayOverride.levels && Array.isArray(dayOverride.levels.beginner)) {
             chosenExercises = dayOverride.levels.beginner;
           } else if (Array.isArray(dayOverride.beginnerExercises)) {
             chosenExercises = dayOverride.beginnerExercises;
@@ -329,7 +329,12 @@ export function getWorkoutForProgramAndDay(
             const arr = JSON.parse(rawDel);
             if (Array.isArray(arr)) {
               arr.forEach((d: string) => {
-                if (typeof d === "string") deletedNamesSet.add(d.toLowerCase().trim());
+                if (typeof d === "string") {
+                  const c = d.toLowerCase().trim();
+                  deletedNamesSet.add(c);
+                  deletedNamesSet.add(c.replace(/_/g, " "));
+                  deletedNamesSet.add(c.replace(/\s+/g, "_"));
+                }
               });
             }
           }
@@ -347,9 +352,15 @@ export function getWorkoutForProgramAndDay(
         const name = (ex.exerciseName || (ex as any).name || "").trim();
         if (!name) continue;
         const lower = name.toLowerCase();
+        const exId = String(ex.id || (ex as any).exerciseId || "").toLowerCase().trim();
 
         // Omit if permanently deleted
-        if (deletedNamesSet.has(lower) || (ex.id && deletedNamesSet.has(ex.id.toLowerCase())) || ((ex as any).exerciseId && deletedNamesSet.has((ex as any).exerciseId.toLowerCase()))) {
+        if (
+          deletedNamesSet.has(lower) || 
+          deletedNamesSet.has(lower.replace(/_/g, " ")) || 
+          deletedNamesSet.has(lower.replace(/\s+/g, "_")) ||
+          (exId && (deletedNamesSet.has(exId) || deletedNamesSet.has(exId.replace(/_/g, " ")) || deletedNamesSet.has(exId.replace(/\s+/g, "_"))))
+        ) {
           continue;
         }
 
@@ -362,11 +373,21 @@ export function getWorkoutForProgramAndDay(
             const rawOvr = window.localStorage.getItem("fit_custom_exercise_overrides");
             if (rawOvr) {
               const ovrObj = JSON.parse(rawOvr);
-              const o = ovrObj[ex.id] || ovrObj[name] || ovrObj[lower];
+              const o = ovrObj[ex.id] || ovrObj[name] || ovrObj[lower] || ovrObj[lower.replace(/_/g, " ")] || ovrObj[lower.replace(/\s+/g, "_")];
               if (o) {
                 if (o.customMediaUrl !== undefined) customGifOverride = o.customMediaUrl;
                 else if (o.gifUrl !== undefined) customGifOverride = o.gifUrl;
                 else if (o.imageUrl !== undefined) customGifOverride = o.imageUrl;
+              }
+            }
+            if (customGifOverride === undefined) {
+              const rawExs = window.localStorage.getItem("fit_exercises");
+              if (rawExs) {
+                const exsList: any[] = JSON.parse(rawExs);
+                const matched = exsList.find(e => e.id === ex.id || (e.name && e.name.toLowerCase().trim() === lower));
+                if (matched?.customMediaUrl) {
+                  customGifOverride = matched.customMediaUrl;
+                }
               }
             }
           } catch {}

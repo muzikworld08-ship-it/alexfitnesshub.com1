@@ -5,7 +5,12 @@
 
 import { getWorkoutForProgramAndDay, normalizeProgramId } from "../data/challengeEngineDatabase";
 import { resolveAuthenticExercise } from "../data/authoritativeExerciseMap";
-import { getScheduleOverrides } from "../utils/scheduleOverridesStore";
+import { 
+  getScheduleOverrides, 
+  addExerciseToProgramSchedule, 
+  updateExerciseInAllSchedules, 
+  purgeExerciseFromAllSchedules 
+} from "../utils/scheduleOverridesStore";
 
 interface TestResult {
   name: string;
@@ -342,6 +347,143 @@ export async function runAllTests() {
     }
   } catch (err: any) {
     assert(false, "TEST P: Strict Tier Separation", err.message);
+  }
+
+  // TEST Q: ADD WORKOUT WITH GIF DIRECTLY TO PROGRAM AND VERIFY RETRIEVAL
+  const testWorkoutId = `test_drill_${Date.now()}`;
+  const testWorkoutName = `Test Synchronized Power Squat ${Date.now()}`;
+  const testInitialGif = "https://example.com/squat_demo_v1.gif";
+  try {
+    const newEx = {
+      id: testWorkoutId,
+      name: testWorkoutName,
+      category: "Full Body",
+      difficulty: "Beginner",
+      recommendedSets: "4",
+      recommendedReps: "12-15",
+      customMediaUrl: testInitialGif,
+      gifUrl: testInitialGif,
+      imageUrl: testInitialGif
+    };
+
+    addExerciseToProgramSchedule(newEx, "immortal_90", 1, "beginner");
+
+    const queryResult = getWorkoutForProgramAndDay("immortal_90", 1, undefined, { fitnessLevel: "Beginner" });
+    const found = queryResult.exercises.find(e => e.id === testWorkoutId || e.exerciseName === testWorkoutName);
+
+    assert(
+      found !== undefined,
+      "TEST Q: Newly Added Workout Appears Immediately in Program Schedule Query",
+      `Expected to find "${testWorkoutName}" in Day 1 Immortal 90 Beginner split, but was not found.`
+    );
+    assert(
+      found?.gifUrl === testInitialGif,
+      "TEST Q: Newly Added Workout Renders Authoritative GIF URL",
+      `Expected GIF "${testInitialGif}", got "${found?.gifUrl}"`
+    );
+  } catch (err: any) {
+    assert(false, "TEST Q: Add Workout with GIF", err.message);
+  }
+
+  // TEST R: REFRESH WORKOUT (PERSISTENCE INTEGRITY)
+  try {
+    const reQuery = getWorkoutForProgramAndDay("immortal_90", 1, undefined, { fitnessLevel: "Beginner" });
+    const reFound = reQuery.exercises.find(e => e.id === testWorkoutId || e.exerciseName === testWorkoutName);
+    assert(
+      reFound !== undefined && reFound.gifUrl === testInitialGif,
+      "TEST R: Added Workout and GIF Persist Intact Across Re-Query / Refresh",
+      "Workout was lost or modified on simulated re-query"
+    );
+  } catch (err: any) {
+    assert(false, "TEST R: Refresh Workout Integrity", err.message);
+  }
+
+  // TEST S: REPLACE WORKOUT GIF AND CONFIRM NO RESURRECTION OF OLD GIF
+  const updatedGif = "https://example.com/squat_demo_v2_updated.gif";
+  try {
+    updateExerciseInAllSchedules(testWorkoutId, {
+      name: testWorkoutName,
+      customMediaUrl: updatedGif,
+      gifUrl: updatedGif,
+      imageUrl: updatedGif
+    });
+
+    const postUpdateQuery = getWorkoutForProgramAndDay("immortal_90", 1, undefined, { fitnessLevel: "Beginner" });
+    const updatedDrill = postUpdateQuery.exercises.find(e => e.id === testWorkoutId || e.exerciseName === testWorkoutName);
+
+    assert(
+      updatedDrill !== undefined,
+      "TEST S: Updated Workout Remains Present in Schedule",
+      "Workout disappeared after GIF update"
+    );
+    assert(
+      updatedDrill?.gifUrl === updatedGif,
+      "TEST S: Old GIF Replaced Everywhere and New GIF Renders Authoritatively",
+      `Expected "${updatedGif}", but got "${updatedDrill?.gifUrl}"`
+    );
+    assert(
+      updatedDrill?.gifUrl !== testInitialGif,
+      "TEST S: Old Deleted GIF Does Not Resurrect",
+      "Old GIF URL was resurrected after replacement!"
+    );
+  } catch (err: any) {
+    assert(false, "TEST S: Replace Workout GIF", err.message);
+  }
+
+  // TEST T: PERMANENTLY DELETE WORKOUT AND CONFIRM PURGE EVERYWHERE
+  try {
+    const { purgedCount } = purgeExerciseFromAllSchedules(testWorkoutId, testWorkoutName);
+    assert(
+      purgedCount > 0,
+      "TEST T: purgeExerciseFromAllSchedules Purged Target Drill",
+      `Expected at least 1 purged instance, reported ${purgedCount}`
+    );
+
+    const postDeleteQuery = getWorkoutForProgramAndDay("immortal_90", 1, undefined, { fitnessLevel: "Beginner" });
+    const deletedDrill = postDeleteQuery.exercises.find(e => e.id === testWorkoutId || e.exerciseName === testWorkoutName);
+
+    assert(
+      deletedDrill === undefined,
+      "TEST T: Deleted Workout Removed Permanently and Disappears from Program View",
+      `Deleted drill "${testWorkoutName}" still appeared in Day 1 schedule query!`
+    );
+  } catch (err: any) {
+    assert(false, "TEST T: Permanent Delete Workout", err.message);
+  }
+
+  // TEST U: CANONICAL CENTRALIZED OVERRIDES STORE INTEGRITY (NO ORPHANED COPIES)
+  try {
+    const currentOverrides = getScheduleOverrides();
+    let orphanFound = false;
+    for (const pKey of Object.keys(currentOverrides)) {
+      const pData = currentOverrides[pKey];
+      if (!pData || typeof pData !== "object") continue;
+      for (const dKey of Object.keys(pData)) {
+        const dData = pData[dKey];
+        if (!dData || typeof dData !== "object") continue;
+        const allDrills = [
+          ...(dData.exercises || []),
+          ...(dData.beginnerExercises || []),
+          ...(dData.intermediateExercises || []),
+          ...(dData.advancedExercises || []),
+          ...(dData.levels?.beginner || []),
+          ...(dData.levels?.intermediate || []),
+          ...(dData.levels?.advanced || [])
+        ];
+        if (allDrills.some((d: any) => d.id === testWorkoutId || d.exerciseName === testWorkoutName || d.name === testWorkoutName)) {
+          orphanFound = true;
+          break;
+        }
+      }
+    }
+
+    assert(
+      !orphanFound,
+      "TEST U: Zero Orphaned References or Copies Remain in Any Program Split After Deletion",
+      "Orphaned copy was discovered in schedule overrides store after deletion"
+    );
+  } catch (err: any) {
+    assert(false, "TEST U: Store Integrity & Orphan Prevention", err.message);
   }
 
   console.log("\n=======================================================");
