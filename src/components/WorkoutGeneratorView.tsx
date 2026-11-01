@@ -699,50 +699,48 @@ export default function WorkoutGeneratorView({ setView }: WorkoutGeneratorViewPr
                     </div>
                   </div>
                 ) : dailyWorkout.isRestDay ? (
-                  <div className="p-8 sm:p-12 text-center bg-teal-50/50 border border-teal-200 rounded-3xl space-y-4">
-                    <div className="w-14 h-14 rounded-2xl bg-teal-500/20 text-teal-600 flex items-center justify-center mx-auto">
-                      <Heart className="w-8 h-8" />
+                  <div className="p-6 sm:p-10 text-center bg-slate-900 border border-slate-800 rounded-3xl space-y-6 flex flex-col items-center justify-center relative overflow-hidden">
+                    <div className="max-w-xs sm:max-w-sm flex items-center justify-center">
+                      <img 
+                        src="/assets/aistudio/image_68aeee33.png" 
+                        alt="Today is my rest day" 
+                        className="w-full h-auto max-h-[320px] object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-300"
+                        loading="eager"
+                      />
                     </div>
                     <div className="max-w-xl mx-auto space-y-2">
-                      <span className="text-xs font-mono font-bold uppercase tracking-wider text-teal-800 bg-teal-100/80 px-3 py-1 rounded-full border border-teal-200">
+                      <span className="text-xs font-mono font-bold uppercase tracking-wider text-teal-400 bg-teal-500/10 px-3 py-1 rounded-full border border-teal-500/20">
                         Rest & Active Recovery Protocol
                       </span>
-                      <h3 className="text-2xl font-black text-slate-900">
+                      <h3 className="text-2xl font-black text-white uppercase">
                         Day {dailyWorkout.dayNumber}: Full Muscular & CNS Recovery
                       </h3>
-                      <p className="text-sm text-slate-600 leading-relaxed">
+                      <p className="text-sm text-slate-300 leading-relaxed font-sans">
                         Zero resistance weight training is permitted today. Muscle fibers rebuild, glycogen stores replenish, and tendons adapt during scheduled rest.
                       </p>
                     </div>
-                    {dailyWorkout.guidelines && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto text-left pt-2">
-                        {dailyWorkout.guidelines.map((g, i) => (
-                          <div key={i} className="p-3 bg-white border border-teal-100 rounded-xl text-xs text-slate-700 flex items-start gap-2 shadow-xs">
-                            <Check className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
-                            <span>{g}</span>
-                          </div>
-                        ))}
+                  </div>
+                ) : dailyWorkout.isCardioOnly ? (
+                  <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-emerald-500/30 text-white space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-lg">
+                        <Flame className="w-6 h-6" />
                       </div>
-                    )}
+                      <div>
+                        <span className="text-[10px] font-mono font-black uppercase text-emerald-400 tracking-widest block">
+                          AEROBIC ENDURANCE PROTOCOL
+                        </span>
+                        <h3 className="text-xl sm:text-2xl font-black uppercase font-sans text-white">
+                          5 Kilometer Cardio Protocol
+                        </h3>
+                      </div>
+                    </div>
+                    <p className="text-sm text-slate-200 leading-relaxed font-medium">
+                      No weightlifting exercises today. Focus purely on aerobic output, steady mitochondrial respiration, and cardiovascular fat oxidation.
+                    </p>
                   </div>
                 ) : (
                   <>
-                    {/* If Cardio Only, show Cardio Banner */}
-                    {dailyWorkout.isCardioOnly && (
-                      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-transparent border border-blue-200 flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
-                          <Flame className="w-5 h-5" />
-                        </div>
-                        <div className="space-y-1 text-xs">
-                          <span className="font-mono font-bold uppercase text-blue-700 tracking-wider block text-[10px]">
-                            Aerobic Endurance Protocol &bull; {dailyWorkout.cardioDistance || "5-10 KM"}
-                          </span>
-                          <p className="text-slate-700 leading-relaxed font-sans font-medium">
-                            Strict Cardio and Recovery Day. Zero weightlifting or resistance training permitted. Execute continuous running or brisk walking at steady Zone 2 heart rate (130-145 BPM).
-                          </p>
-                        </div>
-                      </div>
-                    )}
 
                     {/* 1. Dynamic Warm-Up Protocol */}
                     {dailyWorkout.warmup && dailyWorkout.warmup.length > 0 && (

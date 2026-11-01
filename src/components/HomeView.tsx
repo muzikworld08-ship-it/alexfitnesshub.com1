@@ -950,7 +950,8 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
         </div>
       </section>
 
-      {/* 1.15 OFFICIAL PRINTABLE PDF WORKBOOKS & NUTRITION GUIDES SHOWCASE */}
+      {/* 1.15 OFFICIAL PRINTABLE PDF WORKBOOKS & NUTRITION GUIDES SHOWCASE - DISPLAY ONLY ADMIN UPLOADED PRODUCTS */}
+      {visibleHomePdfProducts.length > 0 && (
       <section id="printable-pdfs-showcase" className="py-10 sm:py-12 bg-white text-slate-900 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
@@ -1071,6 +1072,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
 
         </div>
       </section>
+      )}
 
       {/* 1.2 INTERACTIVE ENGINE & PREMIUM SLIDESHOW - PLACED DIRECTLY BELOW THE HERO */}
       <section id="hero-carousel-segment" className="py-12 sm:py-16 lg:py-20 bg-background border-b border-border relative overflow-hidden">

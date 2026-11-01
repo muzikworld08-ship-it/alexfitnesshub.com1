@@ -31,8 +31,16 @@ export interface VerifyOrderResponse {
 const DELETED_PDF_STORAGE_KEY = "afh_deleted_pdf_product_ids";
 const STORE_DELETED_KEY = "afh_permanently_deleted_product_ids";
 
+export const DEFAULT_CLIENT_DELETED_PDF_IDS = [
+  "afh-guide-stamina-nutrition",
+  "afh-journal-fitness-progress",
+  "afh-journal-weight-loss",
+  "afh-planner-gym-energy",
+  "afh-tracker-workout-pro"
+];
+
 export function getClientDeletedPdfIds(): Set<string> {
-  const merged = new Set<string>();
+  const merged = new Set<string>(DEFAULT_CLIENT_DELETED_PDF_IDS);
   try {
     const raw = localStorage.getItem(DELETED_PDF_STORAGE_KEY);
     if (raw) {

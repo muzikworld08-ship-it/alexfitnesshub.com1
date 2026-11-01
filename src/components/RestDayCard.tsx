@@ -51,24 +51,13 @@ export default function RestDayCard({
       id={`rest-day-card-day-${dayNumber}`}
       className="w-full max-w-4xl mx-auto rounded-3xl overflow-hidden border border-slate-200/80 bg-white shadow-xl transition-all duration-300"
     >
-      {/* Visual Header featuring Rest Day Chalkboard Image */}
-      <div className="relative w-full aspect-[16/10] sm:aspect-[21/9] bg-slate-950 overflow-hidden flex items-center justify-center">
-        <img 
-          src="/images/rest-day.jpg" 
-          alt="Rest Day Chalkboard with Dumbbells and Kettlebell" 
-          className="w-full h-full object-cover object-center filter brightness-95 contrast-105 transition-transform duration-700 hover:scale-105"
-          referrerPolicy="no-referrer"
-          onError={(e) => {
-            // High-fidelity fallback styled container
-            (e.target as HTMLElement).style.display = "none";
-          }}
-        />
-
-        {/* Cinematic Gradient Vignette */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent" />
+      {/* Visual Header featuring user-provided Rest Day Sticker */}
+      <div className="relative w-full bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 p-6 sm:p-10 flex flex-col items-center justify-center overflow-hidden">
+        {/* Ambient glow behind sticker */}
+        <div className="absolute inset-0 bg-radial from-amber-500/10 via-rose-500/5 to-transparent pointer-events-none" />
 
         {/* Top Badges */}
-        <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
+        <div className="w-full flex items-center justify-between z-10 mb-6">
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 rounded-full bg-blue-600/90 backdrop-blur-md text-white text-xs font-mono font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg border border-blue-400/30">
               <Moon className="w-3.5 h-3.5 fill-white" />
@@ -86,13 +75,24 @@ export default function RestDayCard({
           )}
         </div>
 
+        {/* User Rest Day Artwork */}
+        <div className="relative z-10 max-w-xs sm:max-w-sm flex items-center justify-center py-2">
+          <img 
+            src="/assets/aistudio/image_68aeee33.png" 
+            alt="Today is my rest day" 
+            className="w-full h-auto max-h-[340px] object-contain drop-shadow-2xl transition-transform duration-500 hover:scale-105"
+            loading="eager"
+            decoding="async"
+          />
+        </div>
+
         {/* Bottom Title on Overlay */}
-        <div className="absolute bottom-4 left-5 right-5 z-10">
-          <h2 className="text-2xl sm:text-4xl font-black text-white uppercase font-sans tracking-tight drop-shadow-md">
-            Scheduled Rest & Tissue Regeneration
+        <div className="w-full text-center z-10 mt-4">
+          <h2 className="text-2xl sm:text-3xl font-black text-white uppercase font-sans tracking-tight drop-shadow-md">
+            Scheduled Rest & Recovery
           </h2>
-          <p className="text-xs sm:text-sm text-slate-300 font-medium max-w-2xl mt-1 drop-shadow-xs">
-            Zero weightlifting or strenuous drills today. Allow your central nervous system, muscle fibers, and joints to repair and supercompensate.
+          <p className="text-xs sm:text-sm text-slate-300 font-medium max-w-xl mx-auto mt-1 drop-shadow-xs">
+            Zero weightlifting or workout drills today. Pure rest, active recovery, and cellular supercompensation.
           </p>
         </div>
       </div>

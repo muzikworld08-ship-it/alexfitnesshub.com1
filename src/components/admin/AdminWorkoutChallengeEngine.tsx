@@ -1378,11 +1378,15 @@ export default function AdminWorkoutChallengeEngine() {
         coachingNotes: cardioState.isCardio 
           ? `Admin Prescribed Cardio Engine: ${cardioState.distance} conversational pace.` 
           : "Execute with strict biomechanics and progressive overload.",
-        exercises: cardioState.isCardio ? [] : baselineList,
-        levels: nextLevels,
-        beginnerExercises: selectedDifficultyLevel === "beginner" ? activeExercises : (nextLevels.beginner || currentDayOverride?.beginnerExercises || baselineList),
-        intermediateExercises: selectedDifficultyLevel === "intermediate" ? activeExercises : (nextLevels.intermediate || currentDayOverride?.intermediateExercises || baselineList),
-        advancedExercises: selectedDifficultyLevel === "advanced" ? activeExercises : (nextLevels.advanced || currentDayOverride?.advancedExercises || baselineList),
+        exercises: cardioState.isCardio ? [] : (selectedDifficultyLevel === "beginner" ? activeExercises : baselineList),
+        levels: {
+          beginner: cardioState.isCardio ? [] : (selectedDifficultyLevel === "beginner" ? activeExercises : (nextLevels.beginner || currentDayOverride?.beginnerExercises || baselineList)),
+          intermediate: cardioState.isCardio ? [] : (selectedDifficultyLevel === "intermediate" ? activeExercises : (nextLevels.intermediate || currentDayOverride?.intermediateExercises || [])),
+          advanced: cardioState.isCardio ? [] : (selectedDifficultyLevel === "advanced" ? activeExercises : (nextLevels.advanced || currentDayOverride?.advancedExercises || []))
+        },
+        beginnerExercises: cardioState.isCardio ? [] : (selectedDifficultyLevel === "beginner" ? activeExercises : (nextLevels.beginner || currentDayOverride?.beginnerExercises || baselineList)),
+        intermediateExercises: cardioState.isCardio ? [] : (selectedDifficultyLevel === "intermediate" ? activeExercises : (nextLevels.intermediate || currentDayOverride?.intermediateExercises || [])),
+        advancedExercises: cardioState.isCardio ? [] : (selectedDifficultyLevel === "advanced" ? activeExercises : (nextLevels.advanced || currentDayOverride?.advancedExercises || [])),
       };
 
       const token = await auth.currentUser?.getIdToken().catch(() => null);

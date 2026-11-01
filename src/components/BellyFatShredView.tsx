@@ -2851,7 +2851,7 @@ export default function BellyFatShredView() {
 
             {/* Check if today is Scheduled Rest Day (Sunday Day 7) or Scheduled Cardio Run (Wednesday Day 3) */}
             {progress.currentDay === 7 ? (
-              <div className="space-y-6">
+              <div className="py-2">
                 <RestDayCard
                   programId="belly_fat_shred"
                   programName="5-Month Belly Fat Shred Program"
@@ -2859,18 +2859,6 @@ export default function BellyFatShredView() {
                   totalDays={140}
                   isCompleted={progress.completedWorkouts.includes(`week_${progress.currentWeek}_day_${progress.currentDay}`) || progress.completedRuns.includes(`week_${progress.currentWeek}_run_${progress.currentDay}`)}
                   onComplete={() => handleToggleWorkout()}
-                />
-                <div className="text-center py-2">
-                  <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest">— OR COMPLETE OPTIONAL AEROBIC CARDIO —</span>
-                </div>
-                <CardioDayCard
-                  programId="belly_fat_shred"
-                  programName="5-Month Belly Fat Shred Program"
-                  dayNumber={((progress.currentWeek - 1) * 7) + progress.currentDay}
-                  totalDays={140}
-                  distanceKm={5}
-                  isCompleted={progress.completedRuns.includes(`week_${progress.currentWeek}_run_${progress.currentDay}`)}
-                  onComplete={() => handleToggleRun()}
                 />
               </div>
             ) : progress.currentDay === 3 ? (

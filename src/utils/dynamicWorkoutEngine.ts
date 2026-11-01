@@ -921,10 +921,12 @@ export function buildDynamicDayPlan(
       return bBeg - aBeg;
     });
   }
-  // Enforce strict maximum of 10 workouts daily
-  const challengeItems = matchedExercises.slice(0, 10).map((ex, idx) =>
-    exerciseToChallengeItem(ex, programId, safeDay, idx)
-  );
+  // Enforce strict maximum of 10 workouts daily. Zero weightlifting drills on cardio and rest days.
+  const challengeItems = (splitDef.isCardioOnly || splitDef.isRestDay)
+    ? []
+    : matchedExercises.slice(0, 10).map((ex, idx) =>
+        exerciseToChallengeItem(ex, programId, safeDay, idx)
+      );
 
   const meta: DayWorkoutMeta = {
     dayNumber: safeDay,
@@ -1068,7 +1070,7 @@ export function resetAndCleanAllProgramSplits(
         isCardioOnly: !!splitDef.isCardioOnly,
         isRestDay: !!splitDef.isRestDay,
         cardioDistance: splitDef.cardioDistance || (splitDef.isCardioOnly ? "5 to 10 KM" : undefined),
-        exercises: result.cleanedExercises.slice(0, 10),
+        exercises: (splitDef.isCardioOnly || splitDef.isRestDay) ? [] : result.cleanedExercises.slice(0, 10),
         updatedAt: new Date().toISOString()
       };
 

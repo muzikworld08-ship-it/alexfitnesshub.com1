@@ -117,7 +117,7 @@ export default function CardioDayCard({
         {/* Bottom Title on Overlay */}
         <div className="absolute bottom-4 left-5 right-5 z-10">
           <h2 className="text-2xl sm:text-4xl font-black text-white uppercase font-sans tracking-tight drop-shadow-md">
-            {selectedDistance} Kilometer Cardio Protocol
+            5 Kilometer Cardio Protocol
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 font-medium max-w-2xl mt-1 drop-shadow-xs">
             No weightlifting exercises today. Focus purely on aerobic output, steady mitochondrial respiration, and cardiovascular fat oxidation.

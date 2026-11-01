@@ -1663,34 +1663,47 @@ export default function WomenConfidenceProgram() {
           )}
 
           {/* Card for Rest Day or Cardio Day if applicable */}
-          {(currentWorkout.dayType === "rest" || currentWorkout.dayType === "active_recovery" || currentWorkout.title.toLowerCase().includes("rest") || currentWorkout.title.toLowerCase().includes("recovery") || currentWorkout.focus.toLowerCase().includes("rest")) && (
-            <div className="py-2 w-full">
-              <RestDayCard
-                programId="women_confidence"
-                programName="Women Confidence Program"
-                dayNumber={selectedDayNumber}
-                totalDays={180}
-                isCompleted={(progState.completedDays || []).includes(selectedDayNumber)}
-                onComplete={() => handleCompleteFullDay(selectedDayNumber)}
-              />
-            </div>
-          )}
+          {(() => {
+            const isRestDay = (currentWorkout.dayType === "rest" || currentWorkout.dayType === "active_recovery" || currentWorkout.title.toLowerCase().includes("rest") || currentWorkout.title.toLowerCase().includes("recovery") || currentWorkout.focus.toLowerCase().includes("rest"));
+            const isCardioDay = (currentWorkout.dayType === "walking" || currentWorkout.title.toLowerCase().includes("cardio") || currentWorkout.focus.toLowerCase().includes("cardio") || currentWorkout.title.toLowerCase().includes("walk") || currentWorkout.title.toLowerCase().includes("run"));
 
-          {(currentWorkout.dayType === "walking" || currentWorkout.title.toLowerCase().includes("cardio") || currentWorkout.focus.toLowerCase().includes("cardio") || currentWorkout.title.toLowerCase().includes("walk") || currentWorkout.title.toLowerCase().includes("run")) && (
-            <div className="py-2 w-full">
-              <CardioDayCard
-                programId="women_confidence"
-                programName="Women Confidence Program"
-                dayNumber={selectedDayNumber}
-                totalDays={180}
-                distanceKm={5}
-                isCompleted={(progState.completedDays || []).includes(selectedDayNumber)}
-                onComplete={() => handleCompleteFullDay(selectedDayNumber)}
-              />
-            </div>
-          )}
+            if (isRestDay) {
+              return (
+                <div className="py-2 w-full">
+                  <RestDayCard
+                    programId="women_confidence"
+                    programName="Women Confidence Program"
+                    dayNumber={selectedDayNumber}
+                    totalDays={180}
+                    isCompleted={(progState.completedDays || []).includes(selectedDayNumber)}
+                    onComplete={() => handleCompleteFullDay(selectedDayNumber)}
+                  />
+                </div>
+              );
+            }
 
-          {/* Daily 10-Drill Exercise List - Guaranteed 10 workouts daily for all 180 days */}
+            if (isCardioDay) {
+              return (
+                <div className="py-2 w-full">
+                  <CardioDayCard
+                    programId="women_confidence"
+                    programName="Women Confidence Program"
+                    dayNumber={selectedDayNumber}
+                    totalDays={180}
+                    distanceKm={5}
+                    isCompleted={(progState.completedDays || []).includes(selectedDayNumber)}
+                    onComplete={() => handleCompleteFullDay(selectedDayNumber)}
+                  />
+                </div>
+              );
+            }
+
+            return null;
+          })()}
+
+          {/* Daily 10-Drill Exercise List - Guaranteed 10 workouts daily for all 180 days (Only on training days) */}
+          {!(currentWorkout.dayType === "rest" || currentWorkout.dayType === "active_recovery" || currentWorkout.title.toLowerCase().includes("rest") || currentWorkout.title.toLowerCase().includes("recovery") || currentWorkout.focus.toLowerCase().includes("rest") || currentWorkout.dayType === "walking" || currentWorkout.title.toLowerCase().includes("cardio") || currentWorkout.focus.toLowerCase().includes("cardio") || currentWorkout.title.toLowerCase().includes("walk") || currentWorkout.title.toLowerCase().includes("run")) && (
+          <>
           <div className="space-y-4 w-full">
             <div className="flex items-center justify-between pt-2">
               <h3 className="text-base sm:text-lg font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
@@ -1814,6 +1827,8 @@ export default function WomenConfidenceProgram() {
               <CheckCircle2 className="w-5 h-5 flex-shrink-0" /> Mark Day {selectedDayNumber} Complete
             </button>
           </div>
+          </>
+          )}
         </div>
       )}
 

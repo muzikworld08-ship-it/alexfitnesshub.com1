@@ -36,15 +36,18 @@ try {
 
 export function getDeletedPdfIds(): Set<string> {
   ensurePdfDirectories();
+  const set = new Set<string>(DEFAULT_DELETED_PDF_IDS);
   if (fs.existsSync(DELETED_PDF_FILE)) {
     try {
       const data = JSON.parse(fs.readFileSync(DELETED_PDF_FILE, "utf-8"));
-      if (Array.isArray(data)) return new Set(data);
+      if (Array.isArray(data)) {
+        data.forEach((id: string) => set.add(id));
+      }
     } catch (e) {
       console.warn("[PDF Deleted IDs] Error reading deleted IDs:", e);
     }
   }
-  return new Set();
+  return set;
 }
 
 export function recordDeletedPdfId(id: string) {
@@ -72,169 +75,16 @@ export function ensurePdfDirectories() {
   });
 }
 
-// 5 Core Seed Products as instructed in prompt
-export const INITIAL_PDF_PRODUCTS: PrintablePdfProduct[] = [
-  {
-    id: "afh-journal-weight-loss",
-    title: "ALEXFITNESSHUB Weight Loss Journal",
-    shortDescription: "Daily transformation tracker, habit checklist, caloric deficit planner, and milestone journal.",
-    fullDescription: "Engineered specifically for athletes striving for sustainable fat reduction, this comprehensive journal provides structured daily tracking sheets, body measurement grids, weekly reflection reviews, and positive habit reinforcement prompts. Includes official AlexFitnessHub cover personalization with your fitness photo.",
-    benefits: [
-      "Structured 68-day physical & habit tracking sheets",
-      "Caloric deficit and metabolic expenditure calculator matrix",
-      "Bi-weekly body measurement & weigh-in logs",
-      "Official personalized athlete cover dedication",
-      "Printable on A4/US Letter & tablet compatible"
-    ],
-    priceNGN: 5500,
-    originalPriceNGN: 8000,
-    coverImage: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=900&auto=format&fit=crop&q=80",
-    pageCount: 68,
-    category: "Journal",
-    requiresPersonalization: true,
-    personalizationConfig: {
-      page: 1,
-      x: 180,
-      y: 280,
-      width: 250,
-      height: 300,
-      borderRadius: 8
-    },
-    previewPages: [
-      "https://images.unsplash.com/photo-1544717305-2782549b5136?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=900&auto=format&fit=crop&q=80"
-    ],
-    isActive: true,
-    salesCount: 142,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: "afh-planner-gym-energy",
-    title: "ALEXFITNESSHUB Gym Energy Meal Planner",
-    shortDescription: "Pre-workout fueling protocols, macro-balanced recipes, hydration matrix & energy logs.",
-    fullDescription: "Eliminate guesswork from your nutritional timing. Features localized African and international whole food guides, high-protein recipes, meal prep worksheets, and energy calibration timetables to maximize gym performance.",
-    benefits: [
-      "Pre & Post workout nutrient timing timetable",
-      "Over 40 high-protein energy recipes with Nigerian whole foods",
-      "Weekly grocery shopping matrix & budget planner",
-      "Electrolyte & intracellular hydration formula",
-      "Instant high-res printable PDF delivery"
-    ],
-    priceNGN: 4500,
-    originalPriceNGN: 6500,
-    coverImage: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=900&auto=format&fit=crop&q=80",
-    pageCount: 52,
-    category: "Meal Planner",
-    requiresPersonalization: false,
-    previewPages: [
-      "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=900&auto=format&fit=crop&q=80"
-    ],
-    isActive: true,
-    salesCount: 98,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: "afh-guide-stamina-nutrition",
-    title: "ALEXFITNESSHUB Stamina Nutrition Guide",
-    shortDescription: "Cardiovascular endurance dietary blueprints, electrolyte balance & recovery protocols.",
-    fullDescription: "Formulated for high-output runners, cross-training athletes, and endurance seekers. Includes meal timing strategies, micronutrient optimization, anti-inflammatory recovery drinks, and carb-cycling principles.",
-    benefits: [
-      "Cardiovascular glycogen storage protocols",
-      "Cramp prevention & electrolyte balance charts",
-      "Anti-inflammatory recovery smoothy formulas",
-      "Endurance run fuel timing strategy (3KM - 21KM)",
-      "Printable high-contrast worksheets"
-    ],
-    priceNGN: 4800,
-    originalPriceNGN: 7000,
-    coverImage: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=900&auto=format&fit=crop&q=80",
-    pageCount: 46,
-    category: "Nutrition",
-    requiresPersonalization: false,
-    previewPages: [
-      "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=900&auto=format&fit=crop&q=80"
-    ],
-    isActive: true,
-    salesCount: 76,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: "afh-tracker-workout-pro",
-    title: "ALEXFITNESSHUB Workout Tracker",
-    shortDescription: "Detailed exercise logsheets, progressive overload tables, 1RM calculators & rest timers.",
-    fullDescription: "Keep track of every set, rep, RPE, and poundage. Designed to be printed weekly or kept on a tablet for relentless gym session accountability and strength progression across all major movement patterns.",
-    benefits: [
-      "Progressive overload log tables for 12 weeks",
-      "Warmup sets vs working sets tracking matrix",
-      "1-Rep Max estimation formula charts",
-      "Personalized athlete profile badge on cover",
-      "Clean high-contrast printable black & white pages"
-    ],
-    priceNGN: 3900,
-    originalPriceNGN: 5500,
-    coverImage: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=900&auto=format&fit=crop&q=80",
-    pageCount: 60,
-    category: "Workout",
-    requiresPersonalization: true,
-    personalizationConfig: {
-      page: 1,
-      x: 180,
-      y: 280,
-      width: 250,
-      height: 300,
-      borderRadius: 8
-    },
-    previewPages: [
-      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&auto=format&fit=crop&q=80"
-    ],
-    isActive: true,
-    salesCount: 165,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: "afh-journal-fitness-progress",
-    title: "ALEXFITNESSHUB Fitness Progress Journal",
-    shortDescription: "Comprehensive 90-day physical and mental accountability workbook.",
-    fullDescription: "Combines biometric weekly weigh-ins, physique photo grids, mental mindset checkpoints, workout consistency graphs, and coach Alex's peak performance principles into a structured 90-day printable workbook.",
-    benefits: [
-      "90-Day daily physical and mindset accountability pages",
-      "Weekly biometric circumference & weight curves",
-      "Coach Alex's mindset and motivation principles",
-      "Personalized athlete transformation cover",
-      "Printable binder format with margins"
-    ],
-    priceNGN: 6000,
-    originalPriceNGN: 9000,
-    coverImage: "https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?w=900&auto=format&fit=crop&q=80",
-    pageCount: 90,
-    category: "Journal",
-    requiresPersonalization: true,
-    personalizationConfig: {
-      page: 1,
-      x: 180,
-      y: 280,
-      width: 250,
-      height: 300,
-      borderRadius: 8
-    },
-    previewPages: [
-      "https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=900&auto=format&fit=crop&q=80"
-    ],
-    isActive: true,
-    salesCount: 210,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
+export const DEFAULT_DELETED_PDF_IDS = [
+  "afh-guide-stamina-nutrition",
+  "afh-journal-fitness-progress",
+  "afh-journal-weight-loss",
+  "afh-planner-gym-energy",
+  "afh-tracker-workout-pro"
 ];
+
+// No default seed products - only admin uploaded products are shown on the platform
+export const INITIAL_PDF_PRODUCTS: PrintablePdfProduct[] = [];
 
 // Read/write catalog
 export function getPdfProducts(): PrintablePdfProduct[] {
@@ -352,6 +202,13 @@ export async function syncPdfProductsFromFirestore(): Promise<PrintablePdfProduc
       }
     } catch {}
 
+    // Purge default deleted products from Firestore
+    DEFAULT_DELETED_PDF_IDS.forEach(delId => {
+      try {
+        deleteDoc(doc(engineDb, "printable_pdf_products", delId)).catch(() => {});
+      } catch {}
+    });
+
     const snap = await getDocs(collection(engineDb, "printable_pdf_products"));
     if (!snap.empty) {
       const firestoreMap = new Map<string, PrintablePdfProduct>();
@@ -362,6 +219,8 @@ export async function syncPdfProductsFromFirestore(): Promise<PrintablePdfProduc
         const p = d.data() as PrintablePdfProduct;
         if (p && p.id && !deletedIds.has(p.id) && !(p as any).isDeleted) {
           firestoreMap.set(p.id, { ...p, id: p.id });
+        } else if (p && p.id && deletedIds.has(p.id)) {
+          deleteDoc(doc(engineDb, "printable_pdf_products", p.id)).catch(() => {});
         }
       });
 
