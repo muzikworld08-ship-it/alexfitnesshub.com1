@@ -21,6 +21,8 @@ import WorkoutReminderCard from "./WorkoutReminderCard";
 import WorkoutVisual from "./WorkoutVisual";
 import { getPreWorkoutStretchesForDay } from "../utils/dynamicWorkoutEngine";
 import { SectionErrorBoundary } from "./ErrorBoundary";
+import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
+import { subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
 
 interface DailyPlanSchema {
   wakeUpTime: string;
@@ -251,12 +253,42 @@ export default function DailyPlanView() {
         recommendedVegetables: veggies,
         cardioRecommendation: "20-30 minutes brisk walking or moderate cardio",
         injuryRestoration: restrictions !== "None" ? `Injury precaution: Avoid overloading joints affected by ${restrictions}. Focus on controlled tempo.` : "Engage core and stabilize joints through warm-up mobility sets.",
-        workoutExercises: [
-          { name: "Goblet Squats", sets: 3, reps: 12, rest: 60, desc: "Keep chest tall, push knees out, descend with control" },
-          { name: "Incline Push-ups / Dumbbell Press", sets: 3, reps: 10, rest: 60, desc: "Engage core, keep elbows tucked at 45 degrees" },
-          { name: "Dumbbell Romanian Deadlifts", sets: 3, reps: 12, rest: 60, desc: "Hinge at the hips, keep spine flat, feel hamstring stretch" },
-          { name: "Plank Hold", sets: 3, reps: 45, rest: 45, desc: "Brace abdominal core, squeeze glutes and maintain flat back" }
-        ],
+        workoutExercises: (() => {
+          const userLevel = (
+            user?.workoutExperience ||
+            user?.fitnessLevel ||
+            (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level")) : null) ||
+            "Beginner"
+          ).toLowerCase();
+
+          let activeProgId = "immortal_90";
+          if (user?.gender?.toLowerCase() === "female") {
+            activeProgId = "women_confidence";
+          }
+          const storedActive = typeof window !== "undefined" ? window.localStorage?.getItem("fit_active_challenge_id") : null;
+          if (storedActive) {
+            activeProgId = storedActive;
+          }
+
+          const enginePlan = getWorkoutForProgramAndDay(
+            activeProgId,
+            currentPlanDay,
+            exercises,
+            { fitnessLevel: userLevel }
+          );
+
+          if (enginePlan.exercises && enginePlan.exercises.length > 0) {
+            return enginePlan.exercises.map((ex: any) => ({
+              name: ex.exerciseName || ex.name,
+              sets: typeof ex.sets === "number" ? ex.sets : parseInt(String(ex.sets || "3"), 10) || 3,
+              reps: typeof ex.reps === "number" ? ex.reps : parseInt(String(ex.reps || "10"), 10) || 10,
+              rest: typeof ex.restTime === "number" ? ex.restTime : parseInt(String(ex.restTime || "60"), 10) || 60,
+              desc: ex.coachingCues?.[0] || ex.instructions?.[0] || `${ex.exerciseName || ex.name} - execute with strict form.`
+            }));
+          }
+
+          return [];
+        })(),
         workoutDurationMinutes: 45,
         dailyStepGoal: goal.includes("Loss") ? 10000 : 8000,
         recoveryActivities: "Foam rolling, gentle hip openers, and hamstring stretches.",
@@ -291,11 +323,16 @@ export default function DailyPlanView() {
         }
       }
 
+      const clientPlan = buildClientFallbackPlan();
       if (data && data.success && data.plan) {
-        setPlan(data.plan);
+        // Ground workout exercises strictly in authoritative admin drills
+        const mergedPlan = {
+          ...data.plan,
+          workoutExercises: clientPlan.workoutExercises.length > 0 ? clientPlan.workoutExercises : data.plan.workoutExercises
+        };
+        setPlan(mergedPlan);
         setMethod(data.method || "Dynamic AI Engine");
       } else {
-        const clientPlan = buildClientFallbackPlan();
         setPlan(clientPlan);
         setMethod("Personalized Biometric Baseline");
       }
@@ -311,7 +348,21 @@ export default function DailyPlanView() {
 
   useEffect(() => {
     fetchDailyPlan();
-  }, [user?.uid, user?.subscriptionStatus]);
+  }, [user?.uid, user?.subscriptionStatus, currentPlanDay]);
+
+  useEffect(() => {
+    const unsub = subscribeScheduleOverrides(() => {
+      fetchDailyPlan();
+    });
+    const handleOverrides = () => fetchDailyPlan();
+    window.addEventListener("fit_schedule_overrides_updated", handleOverrides);
+    window.addEventListener("fit_program_schedule_overrides_updated", handleOverrides);
+    return () => {
+      unsub();
+      window.removeEventListener("fit_schedule_overrides_updated", handleOverrides);
+      window.removeEventListener("fit_program_schedule_overrides_updated", handleOverrides);
+    };
+  }, [currentPlanDay, scaleDaysState]);
 
   // Handle Water increment
   const handleAddHydration = async (amount: number) => {

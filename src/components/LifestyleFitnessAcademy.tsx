@@ -17,6 +17,8 @@ import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
 import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
 import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
 import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
+import { subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
+import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 
 // Define TypeScript structures for Lifestyle Academy
 interface ChallengeData {
@@ -410,7 +412,8 @@ const getDynamicWorkoutProgram = (
       name: ex.exerciseName || (ex as any).name,
       reps: ex.reps || (level === "Beginner" ? "3 sets of 10" : level === "Intermediate" ? "4 sets of 12" : "4 sets of 15"),
       rest: ex.restTime || "60 seconds",
-      coaching: ex.instructions?.[0] || (ex.coachingCues?.[0] as string) || "Execute with deliberate tempo and strict postural alignment."
+      coaching: ex.instructions?.[0] || (ex.coachingCues?.[0] as string) || "Execute with deliberate tempo and strict postural alignment.",
+      gifUrl: ex.gifUrl || (ex as any).customMediaUrl || ""
     }));
 
     return {
@@ -426,6 +429,19 @@ export default function LifestyleFitnessAcademy() {
   const { user, setView, exercises, recordProgramStopPoint, markProgramWorkoutComplete } = useApp();
   const [activeChallengeId, setActiveChallengeId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"education" | "stretching" | "workout" | "habits">("education");
+  const [scheduleOverridesTick, setScheduleOverridesTick] = useState<number>(0);
+
+  useEffect(() => {
+    const unsub = subscribeScheduleOverrides(() => setScheduleOverridesTick(t => t + 1));
+    const handleOverrides = () => setScheduleOverridesTick(t => t + 1);
+    window.addEventListener("fit_schedule_overrides_updated", handleOverrides);
+    window.addEventListener("fit_program_schedule_overrides_updated", handleOverrides);
+    return () => {
+      unsub();
+      window.removeEventListener("fit_schedule_overrides_updated", handleOverrides);
+      window.removeEventListener("fit_program_schedule_overrides_updated", handleOverrides);
+    };
+  }, []);
 
   // Keep position on activeTab change
   const [showSubscriptionAlert, setShowSubscriptionAlert] = useState<string | null>(null);
@@ -1168,10 +1184,10 @@ export default function LifestyleFitnessAcademy() {
                               <div key={exIdx} className="bg-white p-4 sm:p-5 border border-slate-200 rounded-xl flex flex-col sm:flex-row gap-4 sm:gap-5 items-stretch w-full min-w-0">
                                 {/* Centralized Exercise Demonstration GIF/Video */}
                                 <div className="w-full sm:w-48 shrink-0 rounded-lg workout-media-frameless relative aspect-video sm:aspect-auto">
-                                  <WorkoutVisual 
+                                  <UnifiedExerciseMedia 
                                     exerciseName={getMatchedExerciseName(ex.name)} 
-                                    className="w-full h-full" 
-                                    isCard={true} 
+                                    mediaUrl={ex.gifUrl}
+                                    className="w-full h-full object-cover rounded-lg" 
                                   />
                                 </div>
 

@@ -43,6 +43,8 @@ import ConsistencyStreakCounter from "./ConsistencyStreakCounter";
 import DailyCalibrationDesk from "./DailyCalibrationDesk";
 import ProgressTrackerView from "./ProgressTrackerView";
 import AppleHealthSyncCard from "./AppleHealthSyncCard";
+import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
+import { subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
 
 interface DashboardProps {
   activeView?: string;
@@ -592,58 +594,84 @@ interface LoggedSet {
 interface RoutineExercise {
   id: string;
   name: string;
+  gifUrl?: string;
+  targetMuscles?: string | string[];
   sets: LoggedSet[];
 }
 
+const CANONICAL_PROGRAM_OPTIONS = [
+  { id: "immortal_90", name: "Immortal 90 Men", desc: "Flagship Hypertrophy, Strength & 7-Day Split" },
+  { id: "home_180", name: "180 Day Home Workout Challenge", desc: "Zero equipment progressive overload & 5KM cardio" },
+  { id: "women_confidence", name: "Women Confidence Program", desc: "180-Day progressive transformation & glute shaping" },
+  { id: "belly_fat_shred", name: "Belly Fat Shred System", desc: "5-Month core, fat oxidation & metabolic conditioning" },
+  { id: "posture_vitality", name: "Posture Correction Challenge", desc: "Spinal decompression & structural realignment" },
+  { id: "lifestyle_academy", name: "Programs & Academy", desc: "12-Week structured physique splits & longevity" }
+];
+
 function RoutinesAndSetsView() {
   const { exercises } = useCentralizedExercises();
-  // Available Workout Splits templates
-  const splitsTemplates: Array<{ id: string; name: string; desc: string; exercises: RoutineExercise[] }> = [
-    {
-      id: "ppl",
-      name: "Push / Pull / Legs Split",
-      desc: "Optimized 3-day frequency split targeting specific muscle groups with maximum recovery.",
-      exercises: [
-        { id: "ppl_incline_bench", name: "Incline Barbell Bench Press", sets: [{ id: "s1", weight: 80, reps: 8, type: "Standard", done: false }] },
-        { id: "ppl_shoulder_press", name: "Seated Dumbbell Shoulder Press", sets: [{ id: "s2", weight: 24, reps: 10, type: "Standard", done: false }] },
-        { id: "ppl_lateral_raise", name: "Dumbbell Lateral Raises", sets: [{ id: "s3", weight: 12, reps: 15, type: "Superset", done: false }] },
-        { id: "ppl_cable_fly", name: "Cable Chest Flyes", sets: [{ id: "s4", weight: 25, reps: 12, type: "Drop Set", done: false }] }
-      ]
-    },
-    {
-      id: "arnold",
-      name: "Arnold Hypertrophy Split",
-      desc: "High volume aesthetic split pairing antagonistic muscle groups for massive pumps.",
-      exercises: [
-        { id: "arnold_chest_dips", name: "Weighted Chest Dips", sets: [{ id: "s1", weight: 20, reps: 8, type: "Standard", done: false }] },
-        { id: "arnold_weighted_pullups", name: "Weighted Pull-Ups", sets: [{ id: "s2", weight: 15, reps: 8, type: "Standard", done: false }] },
-        { id: "arnold_incline_press", name: "Incline Dumbbell Press", sets: [{ id: "s3", weight: 32, reps: 10, type: "Standard", done: false }] },
-        { id: "arnold_barbell_rows", name: "Barbell Rows", sets: [{ id: "s4", weight: 70, reps: 10, type: "Standard", done: false }] }
-      ]
-    },
-    {
-      id: "strength",
-      name: "5x5 Athletic Power Lift",
-      desc: "Focused barbell strength program centering central nervous system efficiency.",
-      exercises: [
-        { id: "strength_back_squats", name: "Barbell Back Squats", sets: [{ id: "s1", weight: 120, reps: 5, type: "Standard", done: false }] },
-        { id: "strength_bench_press", name: "Barbell Flat Bench Press", sets: [{ id: "s2", weight: 95, reps: 5, type: "Standard", done: false }] },
-        { id: "strength_deadlifts", name: "Conventional Barbell Deadlifts", sets: [{ id: "s3", weight: 140, reps: 5, type: "Standard", done: false }] }
-      ]
-    }
-  ];
+  const { user } = useApp();
 
-  const [activeSplitId, setActiveSplitId] = useState("ppl");
-  const [activeExercises, setActiveExercises] = useState<RoutineExercise[]>(splitsTemplates[0].exercises);
+  const [selectedProgramId, setSelectedProgramId] = useState<string>(() => {
+    return (user?.gender?.toLowerCase() === "female" ? "women_confidence" : "immortal_90");
+  });
+  const [selectedDayNumber, setSelectedDayNumber] = useState<number>(1);
+  const [selectedTier, setSelectedTier] = useState<"beginner" | "intermediate" | "advanced">(() => {
+    const raw = (user?.workoutExperience || user?.fitnessLevel || "").toLowerCase();
+    return raw.includes("adv") ? "advanced" : raw.includes("inter") ? "intermediate" : "beginner";
+  });
+  const [scheduleTick, setScheduleTick] = useState<number>(0);
 
-  // Switch template
-  const handleSelectTemplate = (id: string) => {
-    setActiveSplitId(id);
-    const templ = splitsTemplates.find(t => t.id === id);
-    if (templ) {
-      setActiveExercises(JSON.parse(JSON.stringify(templ.exercises)));
+  // Subscribe to schedule overrides updates from the Admin Challenge Engine
+  useEffect(() => {
+    const unsub = subscribeScheduleOverrides(() => setScheduleTick(t => t + 1));
+    const handleOverrides = () => setScheduleTick(t => t + 1);
+    window.addEventListener("fit_program_schedule_overrides_updated", handleOverrides);
+    window.addEventListener("fit_schedule_overrides_updated", handleOverrides);
+    return () => {
+      unsub();
+      window.removeEventListener("fit_program_schedule_overrides_updated", handleOverrides);
+      window.removeEventListener("fit_schedule_overrides_updated", handleOverrides);
+    };
+  }, []);
+
+  // Dynamically resolve workout from Admin Challenge Engine
+  const workoutPlan = React.useMemo(() => {
+    return getWorkoutForProgramAndDay(
+      selectedProgramId,
+      selectedDayNumber,
+      exercises,
+      { fitnessLevel: selectedTier }
+    );
+  }, [selectedProgramId, selectedDayNumber, selectedTier, scheduleTick, exercises]);
+
+  const [activeExercises, setActiveExercises] = useState<RoutineExercise[]>([]);
+
+  // Sync activeExercises whenever workoutPlan changes
+  useEffect(() => {
+    if (workoutPlan && workoutPlan.exercises) {
+      const routineList: RoutineExercise[] = workoutPlan.exercises.map((ex: any, idx: number) => {
+        const setsCount = typeof ex.sets === "number" ? ex.sets : parseInt(String(ex.sets || "3"), 10) || 3;
+        const repsCount = parseInt(String(ex.reps || "10"), 10) || 10;
+        return {
+          id: ex.id || `drill_${idx + 1}`,
+          name: ex.exerciseName || ex.name,
+          gifUrl: ex.gifUrl || ex.customMediaUrl || "",
+          targetMuscles: ex.muscleGroup || [workoutPlan.meta.category || "Full Body"],
+          sets: Array.from({ length: setsCount }).map((_, sIdx) => ({
+            id: `s_${idx}_${sIdx + 1}`,
+            weight: 30 + (sIdx * 5),
+            reps: repsCount,
+            type: "Standard" as const,
+            done: false
+          }))
+        };
+      });
+      setActiveExercises(routineList);
+    } else {
+      setActiveExercises([]);
     }
-  };
+  }, [workoutPlan]);
 
   // Rest Timer State
   const [timerPreset, setTimerPreset] = useState(90); // default 90 seconds
@@ -814,24 +842,69 @@ function RoutinesAndSetsView() {
             ========================================================= */}
         <div className="lg:col-span-4 space-y-6">
           
-          {/* Workout split template selectors */}
+          {/* Canonical Program & Split Selector */}
           <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 shadow-xs space-y-4">
-            <h3 className="text-xs font-sans font-black text-slate-400 uppercase tracking-wider">Workout Split Templates</h3>
-            <div className="space-y-2">
-              {splitsTemplates.map((t) => (
+            <div className="flex justify-between items-center">
+              <h3 className="text-xs font-sans font-black text-slate-500 uppercase tracking-wider">Programs & 7-Day Splits</h3>
+              <span className="text-[9px] font-mono font-bold bg-[#D32F2F]/10 text-[#D32F2F] px-2 py-0.5 rounded-full uppercase">Live Synced</span>
+            </div>
+            
+            {/* Program Dropdown / Buttons */}
+            <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+              {CANONICAL_PROGRAM_OPTIONS.map((t) => (
                 <button
                   key={t.id}
-                  onClick={() => handleSelectTemplate(t.id)}
-                  className={`w-full p-3.5 rounded-xl text-left border cursor-pointer transition-all ${
-                    activeSplitId === t.id
+                  onClick={() => setSelectedProgramId(t.id)}
+                  className={`w-full p-2.5 rounded-xl text-left border cursor-pointer transition-all ${
+                    selectedProgramId === t.id
                       ? "bg-slate-900 text-white border-slate-900 shadow-sm"
                       : "bg-white border-slate-100 hover:border-slate-200 text-slate-700"
                   }`}
                 >
                   <p className="text-xs font-sans font-black uppercase tracking-wider">{t.name}</p>
-                  <p className="text-[9px] mt-1 text-slate-400 leading-relaxed font-medium">{t.desc}</p>
+                  <p className="text-[9px] mt-0.5 text-slate-400 line-clamp-1">{t.desc}</p>
                 </button>
               ))}
+            </div>
+
+            {/* 7-Day Split Cycle Buttons */}
+            <div className="pt-2 border-t border-slate-200/60">
+              <span className="text-[9px] font-mono font-black uppercase text-slate-400 block mb-1.5">7-Day Split Day:</span>
+              <div className="grid grid-cols-7 gap-1">
+                {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setSelectedDayNumber(d)}
+                    className={`py-1.5 text-center rounded-lg text-xs font-mono font-black transition cursor-pointer ${
+                      selectedDayNumber === d
+                        ? "bg-[#D32F2F] text-white shadow-xs"
+                        : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    D{d}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Difficulty Tier Prescriptions */}
+            <div className="pt-2 border-t border-slate-200/60">
+              <span className="text-[9px] font-mono font-black uppercase text-slate-400 block mb-1.5">Prescribed Tier:</span>
+              <div className="grid grid-cols-3 gap-1">
+                {(["beginner", "intermediate", "advanced"] as const).map((tier) => (
+                  <button
+                    key={tier}
+                    onClick={() => setSelectedTier(tier)}
+                    className={`py-1 text-center rounded-lg text-[10px] font-sans font-bold capitalize transition cursor-pointer ${
+                      selectedTier === tier
+                        ? "bg-slate-900 text-white"
+                        : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    {tier}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -946,22 +1019,39 @@ function RoutinesAndSetsView() {
 
             {/* List of active exercises */}
             <div className="space-y-4">
-              {activeExercises.map((ex, exIdx) => (
-                <div key={ex.id} className="p-4 rounded-2xl bg-white border border-slate-150 space-y-3 shadow-2xs">
-                  <div className="flex justify-between items-center gap-4">
-                    <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-[10px] font-mono font-black text-slate-400 shrink-0">
-                        {exIdx + 1}
-                      </span>
-                      <UnifiedExerciseMedia
-                        exerciseName={ex.name}
-                        className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-slate-200 bg-slate-100"
-                        fallbackType="dumbbell"
-                      />
-                      <h4 className="text-xs font-sans font-black uppercase text-slate-800">
-                        {ex.name}
-                      </h4>
-                    </div>
+              {activeExercises.length === 0 ? (
+                <div className="p-8 rounded-2xl bg-white border border-dashed border-slate-200 text-center space-y-2">
+                  <Dumbbell className="w-8 h-8 text-slate-300 mx-auto" />
+                  <h4 className="text-xs font-black uppercase text-slate-700">No Prescribed Drills For Day {selectedDayNumber} ({selectedTier})</h4>
+                  <p className="text-[10px] text-slate-400 max-w-sm mx-auto">
+                    Custom drills added, reordered, or configured by the admin in the Program Schedule Architect & 7-Day Split Manager manifest here automatically for athletes.
+                  </p>
+                </div>
+              ) : (
+                activeExercises.map((ex, exIdx) => (
+                  <div key={ex.id} className="p-4 rounded-2xl bg-white border border-slate-150 space-y-3 shadow-2xs">
+                    <div className="flex justify-between items-center gap-4">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-[10px] font-mono font-black text-slate-400 shrink-0">
+                          {exIdx + 1}
+                        </span>
+                        <UnifiedExerciseMedia
+                          exerciseName={ex.name}
+                          mediaUrl={ex.gifUrl}
+                          className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-slate-200 bg-slate-100"
+                          fallbackType="dumbbell"
+                        />
+                        <div>
+                          <h4 className="text-xs font-sans font-black uppercase text-slate-800">
+                            {ex.name}
+                          </h4>
+                          {ex.targetMuscles && (
+                            <span className="text-[9px] font-mono font-bold text-[#D32F2F]">
+                              {Array.isArray(ex.targetMuscles) ? ex.targetMuscles.join(", ") : ex.targetMuscles}
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
                     <button
                       onClick={() => handleAddSet(ex.id)}
@@ -1067,7 +1157,7 @@ function RoutinesAndSetsView() {
                   )}
 
                 </div>
-              ))}
+              )))}
             </div>
 
           </div>

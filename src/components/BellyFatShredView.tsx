@@ -651,7 +651,14 @@ export default function BellyFatShredView() {
     const unsub = subscribeScheduleOverrides((updated) => {
       setProgramScheduleOverrides(updated);
     });
-    return () => unsub();
+    const handleOverrides = () => setProgramScheduleOverrides(getScheduleOverrides());
+    window.addEventListener("fit_program_schedule_overrides_updated", handleOverrides);
+    window.addEventListener("fit_schedule_overrides_updated", handleOverrides);
+    return () => {
+      unsub();
+      window.removeEventListener("fit_program_schedule_overrides_updated", handleOverrides);
+      window.removeEventListener("fit_schedule_overrides_updated", handleOverrides);
+    };
   }, []);
 
   const isAdmin = Boolean(user?.role === "admin" || (user?.email && isEmailAdmin(user.email)));

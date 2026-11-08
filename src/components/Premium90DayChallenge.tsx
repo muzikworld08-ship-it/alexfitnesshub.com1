@@ -932,15 +932,14 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
   const isViewingToday = !browsingDay || browsingDay === dbState?.currentDay;
 
   // Active workout object calculations (re-evaluates automatically on admin schedule override edits)
+  const currentChallengeKey = initialChallengeId || dbState?.challengeId || "immortal_90";
   const todayWorkoutDetail = React.useMemo(() => {
-    return (dbState && dbState.onboarding) 
-      ? getDailyWorkoutDetail(activeDisplayDay, dbState.challengeId) 
-      : getDailyWorkoutDetail(activeDisplayDay, initialChallengeId || "immortal_90");
-  }, [dbState, activeDisplayDay, scheduleOverridesVersion, initialChallengeId]);
+    return getDailyWorkoutDetail(activeDisplayDay, currentChallengeKey);
+  }, [currentChallengeKey, activeDisplayDay, scheduleOverridesVersion]);
 
   const previewWorkoutDetail = React.useMemo(() => {
-    return getDailyWorkoutDetail(previewDay, initialChallengeId || "immortal_90");
-  }, [previewDay, scheduleOverridesVersion, initialChallengeId]);
+    return getDailyWorkoutDetail(previewDay, currentChallengeKey);
+  }, [previewDay, scheduleOverridesVersion, currentChallengeKey]);
 
   // User Exercise Swapper State (when users lack equipment or want an alternative from the same category)
   const [swappingExerciseItem, setSwappingExerciseItem] = useState<{ exercise: any; index: number } | null>(null);
@@ -1006,7 +1005,7 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
   const overallProgressPercentage = Math.round((totalCompletedCount / 90) * 100);
   const totalCaloriesBurned = dbState?.workoutHistory?.reduce((acc, curr) => acc + curr.caloriesBurned, 0) || 0;
   const totalMinutesTrained = dbState?.workoutHistory?.reduce((acc, curr) => acc + curr.durationMinutes, 0) || 0;
-  const activeChallengeName = PREMIUM_CHALLENGES.find(c => c.id === (dbState?.challengeId || initialChallengeId || "immortal_90"))?.title || "90 Day Lean Muscle Challenge";
+  const activeChallengeName = PREMIUM_CHALLENGES.find(c => c.id === currentChallengeKey)?.title || "90 Day Lean Muscle Challenge";
 
   // Recharts formatted data
   const chartData = dbState?.bodyMeasurements?.map(m => ({

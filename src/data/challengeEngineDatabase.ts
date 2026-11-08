@@ -272,7 +272,11 @@ export function getWorkoutForProgramAndDay(
   // 1. Check admin schedule overrides from centralized store (Memory -> localStorage cache -> Bundled defaults)
   const allOverrides = getScheduleOverrides();
   const trackKey = track ? `${normId}_${track}` : null;
-  const progOverrides = (trackKey && allOverrides[trackKey]) || allOverrides[programId] || (normId !== programId ? allOverrides[normId] : undefined);
+  const progOverrides = (programId && allOverrides[programId] && (allOverrides[programId][String(safeDay)] || allOverrides[programId][`cycle_${cycleDay}`]))
+    ? allOverrides[programId]
+    : ((trackKey && allOverrides[trackKey] && (allOverrides[trackKey][String(safeDay)] || allOverrides[trackKey][`cycle_${cycleDay}`]))
+      ? allOverrides[trackKey]
+      : (allOverrides[programId] || (trackKey && allOverrides[trackKey]) || (normId !== programId ? allOverrides[normId] : undefined)));
 
   if (progOverrides) {
     const dayOverride = progOverrides[String(safeDay)] || progOverrides[`cycle_${cycleDay}`];

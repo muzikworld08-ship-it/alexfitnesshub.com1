@@ -22,6 +22,7 @@ import LiveWorkoutPlayerModal from "./generator/LiveWorkoutPlayerModal";
 import UniversalExerciseSwapperModal from "./UniversalExerciseSwapperModal";
 import MasterLibraryBrowserModal from "./generator/MasterLibraryBrowserModal";
 import WorkoutCelebrationModal from "./WorkoutCelebrationModal";
+import { subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
 
 interface WorkoutGeneratorViewProps {
   setView?: (view: string) => void;
@@ -106,6 +107,33 @@ export default function WorkoutGeneratorView({ setView }: WorkoutGeneratorViewPr
     });
     setDailyWorkout(initial);
   }, []);
+
+  // Listen for admin schedule overrides updates
+  useEffect(() => {
+    const unsub = subscribeScheduleOverrides(() => {
+      setDailyWorkout(generateLocalFallbackDailyWorkout({
+        programType: selectedProgram,
+        dayNumber: selectedDay,
+        duration: selectedDuration,
+        fitnessLevel
+      }));
+    });
+    const handleOverrides = () => {
+      setDailyWorkout(generateLocalFallbackDailyWorkout({
+        programType: selectedProgram,
+        dayNumber: selectedDay,
+        duration: selectedDuration,
+        fitnessLevel
+      }));
+    };
+    window.addEventListener("fit_program_schedule_overrides_updated", handleOverrides);
+    window.addEventListener("fit_schedule_overrides_updated", handleOverrides);
+    return () => {
+      unsub();
+      window.removeEventListener("fit_program_schedule_overrides_updated", handleOverrides);
+      window.removeEventListener("fit_schedule_overrides_updated", handleOverrides);
+    };
+  }, [selectedProgram, selectedDay, selectedDuration, fitnessLevel]);
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
