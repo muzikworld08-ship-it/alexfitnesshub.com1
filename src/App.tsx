@@ -24,7 +24,7 @@ import { BRAND_CONTACTS } from "./constants/socialLinks";
 
 // Lazy-load heavy views to drastically reduce initial bundle size and boost page interaction speed
 const WorkoutLibrary = React.lazy(() => import("./components/WorkoutLibrary"));
-const WorkoutGeneratorView = React.lazy(() => import("./components/WorkoutGeneratorView"));
+const AdminWorkoutEditor = React.lazy(() => import("./components/admin/AdminWorkoutEditor"));
 const CoachView = React.lazy(() => import("./components/CoachView"));
 const AdminDashboard = React.lazy(() => import("./components/AdminDashboard"));
 const OnboardingWizard = React.lazy(() => import("./components/OnboardingWizard"));
@@ -258,7 +258,7 @@ function FitnessAppContent() {
         "saved-exercises": "Saved Drills & Workouts",
         "weekly-reports": "Weekly Progress Reports",
         "handbook": "Athlete Handbook",
-        "workout-generator": "AI Workout Generator"
+        "workout-generator": "Workout Management Desk"
       };
 
       const loginRequiredViews = [
@@ -434,7 +434,7 @@ function FitnessAppContent() {
       "saved-exercises": "Saved Drills & Workouts",
       "weekly-reports": "Weekly Progress Reports",
       "handbook": "Athlete Handbook",
-      "workout-generator": "AI Workout Generator"
+      "workout-generator": "Workout Management Desk"
     };
 
     const loginRequiredViews = [
@@ -652,7 +652,7 @@ function FitnessAppContent() {
                 <WorkoutLibrary setView={handleSetView} />
               )}
               {currentView === "workout-generator" && (
-                <WorkoutGeneratorView setView={handleSetView} />
+                <AdminWorkoutEditor />
               )}
               {currentView === "nutrition" && (
                 <NutritionView />

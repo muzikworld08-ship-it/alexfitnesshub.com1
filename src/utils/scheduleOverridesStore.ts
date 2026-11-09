@@ -64,7 +64,7 @@ export async function refreshScheduleOverridesFromServer(): Promise<Record<strin
   isHydratingFromServer = true;
 
   try {
-    const res = await fetch("/api/admin/programs/overrides");
+    const res = await fetch("/api/admin/programs/overrides?fresh=true");
     if (res.ok) {
       const data = await res.json();
       if (data && data.overrides && typeof data.overrides === "object" && Object.keys(data.overrides).length > 0) {

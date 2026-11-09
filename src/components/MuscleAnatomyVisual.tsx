@@ -8,8 +8,8 @@ interface MuscleAnatomyVisualProps {
 const MuscleAnatomyVisual = React.memo(function MuscleAnatomyVisual({ muscleGroups = [], musclesWorked = [] }: MuscleAnatomyVisualProps) {
   // Normalize strings for easy checking
   const normalizedTargets = [
-    ...muscleGroups.map(m => m.toLowerCase()),
-    ...musclesWorked.map(m => m.toLowerCase())
+    ...(Array.isArray(muscleGroups) ? muscleGroups : []).map(m => String(m || "").toLowerCase()),
+    ...(Array.isArray(musclesWorked) ? musclesWorked : []).map(m => String(m || "").toLowerCase())
   ];
 
   const isActive = (terms: string[]) => {

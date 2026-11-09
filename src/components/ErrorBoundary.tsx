@@ -40,9 +40,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   private handleReset = () => {
     try {
-      // Clear specific temporary keys if they are causing cyclic rendering failures
+      localStorage.removeItem("fit_program_schedule_overrides");
+      localStorage.removeItem("fit_schedule_overrides_updated_at");
+      localStorage.removeItem("fit_custom_exercise_overrides");
+      localStorage.removeItem("fit_deleted_exercises");
       localStorage.removeItem("fit_attempted_view");
       localStorage.removeItem("fit_workout_filters_guest");
+      sessionStorage.clear();
     } catch (e) {}
     
     // Hard refresh to boot the application with clean state
@@ -152,6 +156,15 @@ export class SectionErrorBoundary extends React.Component<SectionErrorBoundaryPr
   private handleClearCacheAndReload = () => {
     try {
       if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem("fit_program_schedule_overrides");
+          localStorage.removeItem("fit_schedule_overrides_updated_at");
+          localStorage.removeItem("fit_custom_exercise_overrides");
+          localStorage.removeItem("fit_deleted_exercises");
+          localStorage.removeItem("fit_attempted_view");
+          localStorage.removeItem("fit_workout_filters_guest");
+          sessionStorage.clear();
+        } catch (e) {}
         if ("caches" in window) {
           caches.keys().then((keys) => {
             keys.forEach((k) => caches.delete(k));

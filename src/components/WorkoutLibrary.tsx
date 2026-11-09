@@ -1797,7 +1797,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                   <div>
                     <span className="font-extrabold text-slate-500 block uppercase text-[10px] font-mono tracking-wider mb-2">Prime Target Muscle Groups:</span>
                     <div className="flex flex-wrap gap-2">
-                      {selectedExercise.musclesWorked.map((muscle) => (
+                      {(Array.isArray(selectedExercise.musclesWorked) ? selectedExercise.musclesWorked : (Array.isArray(selectedExercise.muscleGroups) ? selectedExercise.muscleGroups : [selectedExercise.category || "Full Body"])).map((muscle) => (
                         <span key={muscle} className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] font-extrabold px-3 py-1.5 rounded-lg uppercase font-mono">
                           {muscle}
                         </span>
@@ -1813,7 +1813,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                   EQUIPMENT SPECIFICATION
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {selectedExercise.equipment.map((eq) => (
+                  {(Array.isArray(selectedExercise.equipment) ? selectedExercise.equipment : [String(selectedExercise.equipment || "Bodyweight")]).map((eq) => (
                     <div key={eq} className="flex items-center gap-3 p-3 rounded-xl bg-slate-55 border border-slate-150 text-xs">
                       <div className="bg-emerald-500/10 text-emerald-500 opacity-90 rounded-full p-1 border border-emerald-500/10">
                         <CheckCircle2 className="w-4 h-4" />
@@ -1837,7 +1837,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                     Forms to Avoid
                   </h5>
                   <ul className="space-y-2 text-xs text-slate-655 leading-relaxed">
-                    {selectedExercise.commonMistakes.map((mistake, idx) => (
+                    {(Array.isArray(selectedExercise.commonMistakes) ? selectedExercise.commonMistakes : ["Avoid hyperextension or jerky movements"]).map((mistake, idx) => (
                       <li key={idx} className="flex items-start gap-1.5">
                         <span className="shrink-0 text-rose-500 font-extrabold">&#10006;</span>
                         <span>{mistake}</span>
@@ -1853,7 +1853,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                     Safety Callouts
                   </h5>
                   <ul className="space-y-2 text-xs text-slate-655 leading-relaxed">
-                    {selectedExercise.safetyTips.map((tip, idx) => (
+                    {(Array.isArray(selectedExercise.safetyTips) ? selectedExercise.safetyTips : ["Maintain a neutral spine and controlled breathing"]).map((tip, idx) => (
                       <li key={idx} className="flex items-start gap-1.5">
                         <span className="shrink-0 text-amber-600 font-extrabold">&#10004;</span>
                         <span>{tip}</span>
@@ -1874,21 +1874,21 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                   <div className="p-3 rounded-2xl bg-slate-50">
                     <span className="block text-[8px] font-bold uppercase tracking-wider text-slate-400 font-mono">Alternative Swaps</span>
                     <p className="text-slate-800 font-bold mt-1.5 leading-snug">
-                      {selectedExercise.alternativeExercises.join(" / ") || "Standard swaps apply"}
+                      {Array.isArray(selectedExercise.alternativeExercises) ? selectedExercise.alternativeExercises.join(" / ") : "Standard swaps apply"}
                     </p>
                   </div>
 
                   <div className="p-3 rounded-2xl bg-slate-50">
                     <span className="block text-[8px] font-bold uppercase tracking-wider text-slate-400 font-mono">Advanced Progression</span>
                     <p className="text-slate-800 font-bold mt-1.5 leading-snug">
-                      {selectedExercise.progressionVariations.join(" / ") || "High density loads"}
+                      {Array.isArray(selectedExercise.progressionVariations) ? selectedExercise.progressionVariations.join(" / ") : "High density loads"}
                     </p>
                   </div>
 
                   <div className="p-3 rounded-2xl bg-slate-50">
                     <span className="block text-[8px] font-bold uppercase tracking-wider text-slate-400 font-mono">Regression Options</span>
                     <p className="text-slate-800 font-bold mt-1.5 leading-snug">
-                      {selectedExercise.regressionVariations.join(" / ") || "Knee assisted splits"}
+                      {Array.isArray(selectedExercise.regressionVariations) ? selectedExercise.regressionVariations.join(" / ") : "Knee assisted splits"}
                     </p>
                   </div>
                 </div>
@@ -2180,7 +2180,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 Common Biomechanical Mistakes
               </h3>
               <ul className="space-y-3 text-xs text-slate-650 list-disc pl-4 leading-relaxed">
-                {activeExercise.commonMistakes.map((mistake: string, idx: number) => (
+                {(Array.isArray(activeExercise.commonMistakes) ? activeExercise.commonMistakes : []).map((mistake: string, idx: number) => (
                   <li key={idx} className="pl-1 text-slate-650">
                     <span className="font-bold text-rose-500">Don&apos;t: </span>{mistake}
                   </li>
@@ -2213,7 +2213,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
               </ul>
               <div className="pt-3 border-t border-slate-100 text-[11px]">
                 <span className="font-bold text-slate-750 block mb-1 font-mono">Alternative Exercises:</span>
-                <span className="text-slate-500">{activeExercise.alternativeExercises.join(", ")}</span>
+                <span className="text-slate-500">{Array.isArray(activeExercise.alternativeExercises) ? activeExercise.alternativeExercises.join(", ") : "Standard swaps apply"}</span>
               </div>
             </div>
           </div>
@@ -2340,7 +2340,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                         <div>
                           <span className="text-slate-400 block mb-0.5">Equipment</span>
                           <span className="font-bold text-slate-800 uppercase">
-                            {exDetail.equipment.join(", ") || "No Equipment"}
+                            {Array.isArray(exDetail.equipment) ? exDetail.equipment.join(", ") : String(exDetail.equipment || "No Equipment")}
                           </span>
                         </div>
                         <div>
@@ -3979,13 +3979,13 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 </button>
 
                 <div className="mt-6 pt-4 border-t border-red-100 max-w-sm mx-auto">
-                  <p className="text-[10px] text-[#C0392B] font-mono uppercase mb-2 font-bold">Or Craft It Instantly:</p>
+                  <p className="text-[10px] text-[#C0392B] font-mono uppercase mb-2 font-bold">Authoritative Workout Architect:</p>
                   <button
                     onClick={() => setView?.("workout-generator")}
                     className="w-full py-2.5 bg-[#C0392B] hover:bg-[#A82E22] text-white text-[10px] font-bold uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 duration-150 transition-all font-mono cursor-pointer"
                   >
-                    <Sparkles className="w-4 h-4 animate-pulse text-yellow-300" />
-                    Forge "{searchQuery || 'Custom Routine'}" with AI
+                    <Dumbbell className="w-4 h-4 text-white" />
+                    Open Workout Management Desk & Schedule Architect
                   </button>
                 </div>
               </div>
@@ -4083,7 +4083,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                                 </p>
 
                                 <div className="mt-4 flex flex-wrap gap-1.5">
-                                  {ex.equipment.map((eq) => (
+                                  {(Array.isArray(ex.equipment) ? ex.equipment : [String(ex.equipment || "Bodyweight")]).map((eq) => (
                                     <span key={eq} className="bg-red-50 text-[9px] font-sans font-extrabold text-[#C0392B] px-2 py-1 rounded uppercase border border-red-100/50">
                                       {eq}
                                     </span>
@@ -4241,7 +4241,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                           </p>
 
                           <div className="mt-4 flex flex-wrap gap-1.5">
-                            {ex.equipment.map((eq) => (
+                            {(Array.isArray(ex.equipment) ? ex.equipment : [String(ex.equipment || "Bodyweight")]).map((eq) => (
                               <span key={eq} className="bg-red-50 text-[9px] font-sans font-extrabold text-[#C0392B] px-2 py-1 rounded uppercase border border-red-100/50">
                                 {eq}
                               </span>

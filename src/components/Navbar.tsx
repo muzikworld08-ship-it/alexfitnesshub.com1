@@ -89,7 +89,7 @@ export default function Navbar({ currentView, setView, onOpenAuth }: NavbarProps
     "saved-exercises": "Saved Drills & Workouts",
     "weekly-reports": "Weekly Progress Reports",
     "handbook": "Athlete Handbook",
-    "workout-generator": "AI Workout Generator"
+    "workout-generator": "Workout Management Desk"
   };
 
   const GUEST_PROTECTED_VIEWS: string[] = [

@@ -5286,8 +5286,10 @@ app.get("/api/exercises/deleted", (req, res) => {
   }
 });
 
-// GET all program schedule overrides (with Firestore self-healing)
-app.get("/api/admin/programs/overrides", async (req, res) => {
+let lastProgramOverridesCloudSync = 0;
+
+// GET all program schedule overrides (with continuous Firestore cloud synchronization)
+app.get(["/api/admin/programs/overrides", "/api/programs/schedules"], async (req, res) => {
   try {
     let overrides: Record<string, any> = {};
     if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
@@ -5299,11 +5301,17 @@ app.get("/api/admin/programs/overrides", async (req, res) => {
       }
     }
 
-    // If disk is empty (e.g. Render spin-down), self-heal from cloud Firestore immediately!
-    if (!overrides || Object.keys(overrides).length === 0) {
-      const cloudData = await fetchProgramOverridesFromCloud();
-      if (cloudData && Object.keys(cloudData).length > 0) {
-        overrides = cloudData;
+    const isFresh = req.query.fresh === "true" || (Date.now() - lastProgramOverridesCloudSync > 10000);
+    // If cache is stale or disk was empty (e.g. fresh Render container boot), sync from Cloud Firestore!
+    if (isFresh || !overrides || Object.keys(overrides).length === 0) {
+      try {
+        const cloudData = await fetchProgramOverridesFromCloud();
+        if (cloudData && Object.keys(cloudData).length > 0) {
+          overrides = { ...overrides, ...cloudData };
+          lastProgramOverridesCloudSync = Date.now();
+        }
+      } catch (cloudErr) {
+        console.warn("[Overrides API] Notice checking cloud overrides:", cloudErr);
       }
     }
 

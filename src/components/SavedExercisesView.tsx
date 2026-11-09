@@ -270,11 +270,11 @@ export default function SavedExercisesView({ setView }: SavedExercisesViewProps)
                       {ex.name}
                     </h3>
                     <p className="text-xs text-slate-600 mt-1.5 line-clamp-2 leading-relaxed">
-                      {ex.instructions[0]} Focus on high structural execution on every repetition.
+                      {(Array.isArray(ex.instructions) && ex.instructions[0]) ? ex.instructions[0] : "Focus on high structural execution on every repetition."}
                     </p>
 
                     <div className="mt-4 flex flex-wrap gap-1.5">
-                      {ex.equipment.map((eq) => (
+                      {(Array.isArray(ex.equipment) ? ex.equipment : [String(ex.equipment || "Bodyweight")]).map((eq) => (
                         <span key={eq} className="bg-red-50 text-[9px] font-sans font-extrabold text-[#C0392B] px-2 py-1 rounded uppercase border border-red-100/50">
                           {eq}
                         </span>
@@ -385,7 +385,7 @@ export default function SavedExercisesView({ setView }: SavedExercisesViewProps)
                   <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200">
                     <h5 className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-3">Target Muscles Worked</h5>
                     <div className="flex flex-wrap gap-1.5">
-                      {selectedExercise.musclesWorked.map((muscle) => (
+                      {(Array.isArray(selectedExercise.musclesWorked) ? selectedExercise.musclesWorked : (Array.isArray(selectedExercise.muscleGroups) ? selectedExercise.muscleGroups : [selectedExercise.category || "Full Body"])).map((muscle) => (
                         <span key={muscle} className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[10px] font-sans font-bold px-2.5 py-1 rounded">
                           {muscle}
                         </span>
@@ -403,7 +403,7 @@ export default function SavedExercisesView({ setView }: SavedExercisesViewProps)
                     
                     {/* Equipment labels */}
                     <div className="mt-3 flex flex-wrap gap-1.5 pb-4 border-b border-red-100">
-                      {selectedExercise.equipment.map((eq) => (
+                      {(Array.isArray(selectedExercise.equipment) ? selectedExercise.equipment : [String(selectedExercise.equipment || "Bodyweight")]).map((eq) => (
                         <span key={eq} className="bg-red-50 border border-red-100 text-[10px] font-sans font-bold text-[#C0392B] px-2 py-0.5 rounded">
                           {eq}
                         </span>

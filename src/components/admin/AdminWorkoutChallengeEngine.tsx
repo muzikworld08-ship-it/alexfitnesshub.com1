@@ -900,8 +900,28 @@ export default function AdminWorkoutChallengeEngine() {
     handleReorderExercises(reordered, selectedDifficultyLevel);
   };
 
+  // Instant clear/empty all workouts for the active tier routine
+  const handleClearTierRoutine = async () => {
+    if (!window.confirm(`Delete and clear all workouts from the ${selectedDifficultyLevel.toUpperCase()} routine for Day ${effectiveDayNumber}?`)) {
+      return;
+    }
+    const existingLevels = currentDayOverride?.levels || {};
+    const nextLevels: Record<string, ChallengeExerciseItem[]> = {
+      ...existingLevels,
+      [selectedDifficultyLevel]: []
+    };
+    await handleReorderExercises([], selectedDifficultyLevel, nextLevels);
+    setSaveSuccessMsg(`Cleared all drills from ${selectedDifficultyLevel.toUpperCase()} routine.`);
+    setTimeout(() => setSaveSuccessMsg(null), 3000);
+  };
+
   // Drag and Drop Handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
+    const target = e.target as HTMLElement | null;
+    if (target && (target.closest("button") || target.closest("input") || target.closest("a"))) {
+      e.preventDefault();
+      return;
+    }
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = "move";
   };
@@ -2368,10 +2388,21 @@ export default function AdminWorkoutChallengeEngine() {
                 {selectedDifficultyLevel.toUpperCase()} TIER
               </span>
             </h4>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <span className="text-xs text-neutral-500 hidden md:inline">
                 Grab the handle <GripVertical className="w-3 h-3 inline text-neutral-400" /> to drag & reorder, or use the arrow buttons.
               </span>
+              {activeExercises.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearTierRoutine}
+                  className="px-3 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-red-400 border border-neutral-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                  title={`Clear all workouts from ${selectedDifficultyLevel} routine`}
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                  <span>Clear Routine</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(true)}
@@ -2478,13 +2509,23 @@ export default function AdminWorkoutChallengeEngine() {
                     </div>
 
                     {/* Right: Quick Move Buttons & Action Controls */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div 
+                      className="flex items-center gap-1.5 shrink-0"
+                      draggable={false}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
                       {/* Move Up / Down Buttons for quick mobile/touch reorder */}
-                      <div className="flex items-center gap-0.5 mr-1">
+                      <div className="flex items-center gap-0.5 mr-1" draggable={false} onMouseDown={(e) => e.stopPropagation()}>
                         <button
                           type="button"
+                          draggable={false}
                           disabled={index === 0}
-                          onClick={() => handleMoveUp(index)}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveUp(index);
+                          }}
                           title="Move drill up"
                           className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
                         >
@@ -2492,8 +2533,13 @@ export default function AdminWorkoutChallengeEngine() {
                         </button>
                         <button
                           type="button"
+                          draggable={false}
                           disabled={index === activeExercises.length - 1}
-                          onClick={() => handleMoveDown(index)}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveDown(index);
+                          }}
                           title="Move drill down"
                           className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
                         >
@@ -2504,7 +2550,12 @@ export default function AdminWorkoutChallengeEngine() {
                       {/* Edit Button */}
                       <button
                         type="button"
-                        onClick={() => setEditingExercise(exercise)}
+                        draggable={false}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingExercise(exercise);
+                        }}
                         className="px-2.5 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                         title="Edit drill sets, reps, cues & parameters"
                       >
@@ -2515,7 +2566,12 @@ export default function AdminWorkoutChallengeEngine() {
                       {/* Replace Button */}
                       <button
                         type="button"
-                        onClick={() => setTargetToReplace(exercise)}
+                        draggable={false}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTargetToReplace(exercise);
+                        }}
                         className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                         title="Replace with another exercise"
                       >
@@ -2526,7 +2582,12 @@ export default function AdminWorkoutChallengeEngine() {
                       {/* Delete Button */}
                       <button
                         type="button"
-                        onClick={() => setTargetToDelete(exercise)}
+                        draggable={false}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTargetToDelete(exercise);
+                        }}
                         className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-red-950/40 hover:bg-red-950/70 text-red-400 border border-red-900/50 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                         title="Delete workout"
                       >
