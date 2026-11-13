@@ -11,7 +11,7 @@ import {
   orderBy,
   arrayUnion
 } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { db, getFirebaseIdToken } from "../lib/firebase";
 import { useApp, isEmailAdmin } from "./AppContext";
 import { Product, CartItem, StoreOrder, StoreDeliveryInfo } from "../types";
 import { INITIAL_STORE_PRODUCTS } from "../data/storeProducts";
@@ -612,13 +612,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       // 7.5. Persist to server disk permanently
       try {
-        const adminEmail = user?.email || localStorage.getItem("fit_user_email") || "alexfitnesshub@gmail.com";
-        const token = localStorage.getItem("fit_id_token");
+        const token = await getFirebaseIdToken();
         await fetch("/api/store/products/delete", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-admin-email": adminEmail,
             ...(token ? { "Authorization": `Bearer ${token}` } : {})
           },
           body: JSON.stringify({ productId })

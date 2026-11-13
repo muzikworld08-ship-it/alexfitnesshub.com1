@@ -1,5 +1,5 @@
 import { PrintablePdfProduct, PrintablePdfOrder } from "../types/printablePdf";
-import { db, safeFirestoreSetDoc, safeFirestoreDeleteDoc } from "../lib/firebase";
+import { db, safeFirestoreSetDoc, safeFirestoreDeleteDoc, getFirebaseIdToken } from "../lib/firebase";
 import { doc, collection, getDocs, getDoc } from "firebase/firestore";
 
 export interface InitializeOrderParams {
@@ -73,14 +73,12 @@ export function recordClientDeletedPdfId(id: string) {
 }
 
 class PrintablePdfService {
-  private getAuthHeaders(): HeadersInit {
+  private async getAuthHeaders(): Promise<HeadersInit> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json"
     };
     try {
-      const email = localStorage.getItem("fit_user_email") || localStorage.getItem("fit_saved_email") || "alexfitnesshub@gmail.com";
-      headers["x-admin-email"] = email || "alexfitnesshub@gmail.com";
-      const token = localStorage.getItem("fit_id_token");
+      const token = await getFirebaseIdToken();
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
@@ -200,7 +198,7 @@ class PrintablePdfService {
     try {
       if (!email) return [];
       const res = await fetch(`/api/printable-pdfs/my-orders?email=${encodeURIComponent(email)}`, {
-        headers: this.getAuthHeaders()
+        headers: await this.getAuthHeaders()
       });
       if (!res.ok) return [];
       const data = await res.json();
@@ -220,7 +218,7 @@ class PrintablePdfService {
   async getAdminProducts(): Promise<PrintablePdfProduct[]> {
     try {
       const res = await fetch("/api/admin/printable-pdfs", {
-        headers: this.getAuthHeaders()
+        headers: await this.getAuthHeaders()
       });
       if (res.ok) {
         const data = await res.json();
@@ -261,7 +259,7 @@ class PrintablePdfService {
 
     const res = await fetch(url, {
       method,
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify(product)
     });
     const data = await res.json();
@@ -297,7 +295,7 @@ class PrintablePdfService {
 
     const res = await fetch(`/api/admin/printable-pdfs/${encodeURIComponent(id)}`, {
       method: "DELETE",
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
@@ -309,7 +307,7 @@ class PrintablePdfService {
   async uploadAsset(fileData: string, filename: string, mimeType: string, assetType: "cover" | "master_pdf"): Promise<{ url: string; filename: string }> {
     const res = await fetch("/api/admin/printable-pdfs/upload-asset", {
       method: "POST",
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       body: JSON.stringify({ fileData, filename, mimeType, assetType })
     });
     const data = await res.json();
@@ -369,7 +367,7 @@ class PrintablePdfService {
 
   async getAdminOrders(): Promise<PrintablePdfOrder[]> {
     const res = await fetch("/api/admin/printable-pdfs/orders", {
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
     if (!res.ok) throw new Error("Failed to fetch orders");
     const data = await res.json();
@@ -379,7 +377,7 @@ class PrintablePdfService {
   async regenerateOrderPdf(orderId: string): Promise<boolean> {
     const res = await fetch(`/api/admin/printable-pdfs/orders/${encodeURIComponent(orderId)}/regenerate`, {
       method: "POST",
-      headers: this.getAuthHeaders()
+      headers: await this.getAuthHeaders()
     });
     const data = await res.json();
     if (!res.ok || !data.success) {

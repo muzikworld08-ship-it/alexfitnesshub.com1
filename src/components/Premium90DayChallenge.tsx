@@ -23,6 +23,7 @@ import {
 import PersistentDashboardTabs from "./PersistentDashboardTabs";
 import { getChallengeWorkouts } from "../data/challenges";
 import { getScheduleOverrides, subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
+import { resolveAthleteTier } from "../utils/athleteContext";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import { 
   getWorkoutForProgramAndDay,
@@ -614,7 +615,7 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
 
     // Delegate directly to the authoritative Admin Dashboard Challenge Engine for ALL programs
     const progToQuery = challengeId || "immortal_90";
-    const athleteLevel = dbState?.onboarding?.fitnessLevel || (user as any)?.workoutExperience || (user as any)?.fitnessLevel || (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level")) : null) || "Beginner";
+    const athleteLevel = resolveAthleteTier(user, dbState);
     const enginePlan = getWorkoutForProgramAndDay(progToQuery, dayNum, undefined, { fitnessLevel: athleteLevel });
     const isCardioDay = !!enginePlan.meta.isCardioOnly;
 
@@ -933,13 +934,14 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
 
   // Active workout object calculations (re-evaluates automatically on admin schedule override edits)
   const currentChallengeKey = initialChallengeId || dbState?.challengeId || "immortal_90";
+  const resolvedTierDep = resolveAthleteTier(user, dbState);
   const todayWorkoutDetail = React.useMemo(() => {
     return getDailyWorkoutDetail(activeDisplayDay, currentChallengeKey);
-  }, [currentChallengeKey, activeDisplayDay, scheduleOverridesVersion]);
+  }, [currentChallengeKey, activeDisplayDay, scheduleOverridesVersion, resolvedTierDep]);
 
   const previewWorkoutDetail = React.useMemo(() => {
     return getDailyWorkoutDetail(previewDay, currentChallengeKey);
-  }, [previewDay, scheduleOverridesVersion, currentChallengeKey]);
+  }, [previewDay, scheduleOverridesVersion, currentChallengeKey, resolvedTierDep]);
 
   // User Exercise Swapper State (when users lack equipment or want an alternative from the same category)
   const [swappingExerciseItem, setSwappingExerciseItem] = useState<{ exercise: any; index: number } | null>(null);

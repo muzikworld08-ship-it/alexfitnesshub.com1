@@ -14,9 +14,10 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs, query, where, deleteDoc, onSnapshot } from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
-import { auth, db, isMockFirebase, handleFirestoreError, OperationType, cleanFirestoreData, isFirestoreQuotaExhausted, safeFirestoreSetDoc } from "../lib/firebase";
+import { auth, db, isMockFirebase, handleFirestoreError, OperationType, cleanFirestoreData, isFirestoreQuotaExhausted, safeFirestoreSetDoc, getFirebaseIdToken } from "../lib/firebase";
 import { supabase, isSupabaseConfigured } from "../utils/supabase/client";
 import { AssetManifestService } from "../services/AssetManifestService";
+import { resolveAthleteTier, persistAthleteTier } from "../utils/athleteContext";
 import { 
   UserProfile, 
   SavedWorkout, 
@@ -868,11 +869,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Reliable admin request headers helper
   const getAdminHeaders = async (): Promise<Record<string, string>> => {
-    const token = await auth.currentUser?.getIdToken().catch(() => null);
+    const token = await getFirebaseIdToken();
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
-    const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
-    headers["x-admin-email"] = adminEmail;
     return headers;
   };
 
@@ -1997,7 +1996,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // Check if user has returned from an OAuth redirect
     const pendingProvider = localStorage.getItem("fit_pending_oauth_provider") as "google" | "apple" | null;
-    if (pendingProvider) {
+    if (pendingProvider && auth) {
       getRedirectResult(auth)
         .then(async (result) => {
           localStorage.removeItem("fit_pending_oauth_provider");
@@ -2020,10 +2019,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setAuthError(describeAuthError(err, pendingProvider || "email"));
           }
         });
+    } else if (pendingProvider && !auth) {
+      localStorage.removeItem("fit_pending_oauth_provider");
     }
     
     // Primary Firebase Session Management
     let userDocUnsubscribe: (() => void) | null = null;
+
+    if (!auth) {
+      setLoading(false);
+      return () => {
+        if (userDocUnsubscribe) userDocUnsubscribe();
+      };
+    }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (userDocUnsubscribe) {
@@ -2259,7 +2267,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setIsBlockedUser(true);
             setUser(null);
             setLoading(false);
-            signOut(auth);
+            if (auth) signOut(auth);
             return;
           }
 
@@ -2432,6 +2440,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user?.uid, user?.subscriptionStatus, user?.subscriptionExpiry, user?.role]);
 
+  // Keep athlete fitness tier mirrored in localStorage whenever Firestore user/onboarding loads or updates
+  useEffect(() => {
+    if (user) {
+      persistAthleteTier(resolveAthleteTier(user));
+    }
+  }, [user?.uid, user?.fitnessLevel, (user as any)?.workoutExperience]);
+
   const saveWorkoutFiltersToFirebase = async (uid: string, filters: WorkoutLibraryFilters) => {
     if (isMockFirebase) return;
     try {
@@ -2582,7 +2597,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const next = { ...prev, [programId]: updated };
       try {
-        const uid = auth.currentUser?.uid;
+        const uid = auth?.currentUser?.uid;
         safeSetItem("fit_program_progress_guest", JSON.stringify(next));
         if (uid) {
           safeSetItem(`fit_program_progress_${uid}`, JSON.stringify(next));
@@ -2609,7 +2624,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const next = { ...prev, [programId]: updated };
       try {
-        const uid = auth.currentUser?.uid;
+        const uid = auth?.currentUser?.uid;
         safeSetItem("fit_program_progress_guest", JSON.stringify(next));
         if (uid) {
           safeSetItem(`fit_program_progress_${uid}`, JSON.stringify(next));
@@ -2677,7 +2692,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const next = { ...prev, [programId]: updated };
       try {
-        const uid = auth.currentUser?.uid;
+        const uid = auth?.currentUser?.uid;
         safeSetItem("fit_program_progress_guest", JSON.stringify(next));
         if (uid) {
           safeSetItem(`fit_program_progress_${uid}`, JSON.stringify(next));
@@ -2723,7 +2738,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const next = { ...prev, [programId]: updated };
       try {
-        const uid = auth.currentUser?.uid;
+        const uid = auth?.currentUser?.uid;
         safeSetItem("fit_program_progress_guest", JSON.stringify(next));
         if (uid) {
           safeSetItem(`fit_program_progress_${uid}`, JSON.stringify(next));
@@ -2771,7 +2786,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         // Always save to guest key as fallback
         safeSetItem("fit_workout_filters_guest", JSON.stringify(updated));
-        if (auth.currentUser?.uid) {
+        if (auth?.currentUser?.uid) {
           safeSetItem(`fit_workout_filters_${auth.currentUser.uid}`, JSON.stringify(updated));
           saveWorkoutFiltersToFirebase(auth.currentUser.uid, updated);
         }
@@ -2806,7 +2821,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
       setWorkoutFiltersState(defaultFilters);
       try {
-        if (auth.currentUser?.uid) {
+        if (auth?.currentUser?.uid) {
           localStorage.setItem(`fit_workout_filters_${auth.currentUser.uid}`, JSON.stringify(defaultFilters));
           saveWorkoutFiltersToFirebase(auth.currentUser.uid, defaultFilters);
         }
@@ -2815,7 +2830,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // 3. Reset calibration goals to standard optimal fitness targets
       const defaultCalibration: CalibrationGoals = {
-        userId: auth.currentUser?.uid || "guest",
+        userId: auth?.currentUser?.uid || "guest",
         dailyHydrationGoal: 10,
         dailySleepGoal: 8.0,
         targetReadinessScore: 85,
@@ -2823,7 +2838,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updatedAt: new Date().toISOString()
       };
       setCalibrationGoals(defaultCalibration);
-      if (auth.currentUser?.uid && !isMockFirebase) {
+      if (auth?.currentUser?.uid && !isMockFirebase) {
         try {
           const calibRef = doc(db, "users", auth.currentUser.uid, "calibrationGoals", "current");
           await safeFirestoreSetDoc(calibRef, defaultCalibration, { merge: true });
@@ -2835,7 +2850,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // 4. Reset Program Progress tracking indicators back to Day 1 start
       setProgramProgressState(DEFAULT_PROGRAM_PROGRESS);
       try {
-        if (auth.currentUser?.uid) {
+        if (auth?.currentUser?.uid) {
           localStorage.setItem(`fit_program_progress_${auth.currentUser.uid}`, JSON.stringify(DEFAULT_PROGRAM_PROGRESS));
           saveProgramProgressToFirebase(auth.currentUser.uid, DEFAULT_PROGRAM_PROGRESS);
         }
@@ -2844,7 +2859,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // 5. Reset all Challenge Engine states, workout cooldown timers, and active challenge progress across all workouts
       try {
-        const uid = auth.currentUser?.uid || "guest";
+        const uid = auth?.currentUser?.uid || "guest";
         const challengeKeysToRemove = [
           `alex_challenge_engine_state_v3_${uid}`,
           `alex_challenge_engine_state_v3_guest`,
@@ -3280,6 +3295,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   
   const loginWithGoogle = async () => {
     setAuthError(null);
+    if (!auth) {
+      throw new Error("Authentication service is not configured yet.");
+    }
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({
       prompt: 'select_account'
@@ -3319,6 +3337,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithApple = async () => {
     setAuthError(null);
+    if (!auth) {
+      throw new Error("Authentication service is not configured yet.");
+    }
     const provider = new OAuthProvider('apple.com');
     try {
       const result = await signInWithPopup(auth, provider);
@@ -3353,6 +3374,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUpEmail = async (email: string, pass: string, name: string, remember: boolean = true) => {
+    if (!auth) {
+      throw new Error("Authentication service is not configured yet.");
+    }
     setLoading(true);
     localStorage.removeItem("fit_explicitly_logged_out");
     try {
@@ -3375,6 +3399,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loginEmail = async (email: string, pass: string, remember: boolean = true) => {
+    if (!auth) {
+      throw new Error("Authentication service is not configured yet.");
+    }
     setLoading(true);
     localStorage.removeItem("fit_explicitly_logged_out");
     try {
@@ -3403,6 +3430,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const sendPasswordReset = async (email: string) => {
     try {
+      if (!auth) {
+        throw new Error("Authentication service is not configured yet.");
+      }
       const cleanEmail = (email || "").trim().toLowerCase();
       if (!cleanEmail) {
         throw new Error("Email address is required.");
@@ -3420,7 +3450,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("fit_active_uid");
     localStorage.removeItem("fit_attempted_view");
     try {
-      await signOut(auth);
+      if (auth) await signOut(auth);
     } catch (e) {
       console.warn("SignOut notice:", e);
     }
@@ -3803,14 +3833,14 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
   const upgradeWithPaystack = async (reference: string, plan?: "monthly" | "yearly" | "multi") => {
     setLoading(true);
     try {
-      let token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      let token = auth?.currentUser ? await auth.currentUser.getIdToken() : null;
       if (!token) {
         await new Promise(resolve => setTimeout(resolve, 800));
-        token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+        token = auth?.currentUser ? await auth.currentUser.getIdToken() : null;
       }
 
-      const currentEmail = user?.email || auth.currentUser?.email || "";
-      const currentUid = user?.uid || auth.currentUser?.uid || "";
+      const currentEmail = user?.email || auth?.currentUser?.email || "";
+      const currentUid = user?.uid || auth?.currentUser?.uid || "";
 
       const res = await fetch("/api/payments/verify", {
         method: "POST",
@@ -3939,7 +3969,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
     try {
       // 2. Query Gemini-certified proxy
-      const token = await auth.currentUser?.getIdToken();
+      const token = await auth?.currentUser?.getIdToken();
       const response = await fetch("/api/gemini/coach", {
         method: "POST",
         headers: { 
@@ -4006,7 +4036,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
   const logAdminAction = async (actionType: string, description: string, details?: any) => {
     if (!user || (!isEmailAdmin(user.email) && user.role !== "admin")) return;
     try {
-      const token = await auth.currentUser?.getIdToken();
+      const token = await auth?.currentUser?.getIdToken();
       if (!token) return;
       await fetch("/api/admin/log-activity", {
         method: "POST",
@@ -4544,7 +4574,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
           }
         }
       }
-      if (!currentUser && auth.currentUser) {
+      if (!currentUser && auth?.currentUser) {
         currentUser = {
           uid: auth.currentUser.uid,
           email: auth.currentUser.email || "athlete@alexfitnesshub.com",
@@ -4589,10 +4619,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       const finalWaterGoal = Math.round(baseGoal);
 
       const resolvedLevel = onboardingData.workoutExperience || (onboardingData as any).fitnessLevel || safeUser.fitnessLevel || "Beginner";
-      try {
-        localStorage.setItem("fit_athlete_fitness_level", resolvedLevel.toLowerCase());
-        localStorage.setItem("fit_user_fitness_level", resolvedLevel.toLowerCase());
-      } catch (e) {}
+      persistAthleteTier(resolveAthleteTier({ fitnessLevel: resolvedLevel }));
 
       const updated: UserProfile = {
         ...safeUser,
@@ -5173,7 +5200,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       const headers = await Promise.race([
         getAdminHeaders(),
         new Promise<Record<string, string>>((resolve) => 
-          setTimeout(() => resolve({ "Content-Type": "application/json", "x-admin-email": "muzikworld08@gmail.com" }), 2500)
+          setTimeout(() => resolve({ "Content-Type": "application/json" }), 2500)
         )
       ]);
       await Promise.race([
@@ -5288,7 +5315,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         const headers = await Promise.race([
           getAdminHeaders(),
           new Promise<Record<string, string>>((resolve) => 
-            setTimeout(() => resolve({ "Content-Type": "application/json", "x-admin-email": "muzikworld08@gmail.com" }), 1200)
+            setTimeout(() => resolve({ "Content-Type": "application/json" }), 1200)
           )
         ]);
         await fetch("/api/exercises/delete", {

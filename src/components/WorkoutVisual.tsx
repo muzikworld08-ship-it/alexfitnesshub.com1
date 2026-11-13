@@ -289,7 +289,7 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
           <span>Step-by-Step Training Instructions</span>
         </h4>
         
-        {exercise && exercise.instructions && exercise.instructions.length > 0 ? (
+        {exercise && Array.isArray(exercise.instructions) && exercise.instructions.length > 0 ? (
           <div className="space-y-2.5">
             {exercise.instructions.map((step, idx) => (
               <div key={idx} className="flex gap-3 items-start text-xs text-slate-600 leading-relaxed">
@@ -300,6 +300,8 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
               </div>
             ))}
           </div>
+        ) : exercise && typeof exercise.instructions === "string" && (exercise.instructions as string).trim() ? (
+          <p className="text-xs text-slate-600 leading-relaxed">{exercise.instructions}</p>
         ) : (
           <p className="text-xs text-slate-500 italic">
             Standard performance: Retract scapula, establish neutral head position, maintain active core brace, and execute targeted concentric load with tempo control.
@@ -341,7 +343,7 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
       </div>
 
       {/* Safety Compliance Tips */}
-      {exercise && exercise.safetyTips && exercise.safetyTips.length > 0 && (
+      {exercise && Array.isArray(exercise.safetyTips) && exercise.safetyTips.length > 0 && (
         <div className="p-3.5 bg-red-50/50 border border-red-100 rounded-xl space-y-1.5">
           <span className="text-[9px] font-mono font-black text-[#C0392B] uppercase tracking-widest flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4" />

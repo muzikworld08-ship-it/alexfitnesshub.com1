@@ -3,6 +3,7 @@ import { X, Save, Dumbbell, Clock, ShieldCheck, Check, Sparkles, Layers, Image a
 import { ChallengeExerciseItem } from "../../types/challengeEngine";
 import UnifiedExerciseMedia from "../UnifiedExerciseMedia";
 import { getExerciseGifUrl } from "../../data/exercises";
+import { getFirebaseIdToken } from "../../lib/firebase";
 
 interface EditWorkoutDrillModalProps {
   isOpen: boolean;
@@ -96,13 +97,13 @@ export default function EditWorkoutDrillModal({
       if (base64) {
         setIsGifCleared(false);
         try {
+          const token = await getFirebaseIdToken();
+          const uploadHeaders: Record<string, string> = { "Content-Type": "application/json" };
+          if (token) uploadHeaders["Authorization"] = `Bearer ${token}`;
           // Upload directly to permanent assets via server API
           const res = await fetch("/api/media/upload", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-admin-email": "muzikworld08@gmail.com"
-            },
+            headers: uploadHeaders,
             body: JSON.stringify({
               fileData: base64,
               filename: `drill_${(exercise.id || 'ex').replace(/[^a-zA-Z0-9]/g, '_')}`,

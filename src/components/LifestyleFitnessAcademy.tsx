@@ -18,6 +18,7 @@ import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
 import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
 import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
 import { subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
+import { resolveAthleteTier } from "../utils/athleteContext";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 
 // Define TypeScript structures for Lifestyle Academy
@@ -496,7 +497,8 @@ export default function LifestyleFitnessAcademy() {
   };
 
   // User Profile from App Context
-  const userLevel = (user?.workoutExperience as "Beginner" | "Intermediate" | "Advanced") || "Beginner";
+  const resolvedTier = resolveAthleteTier(user);
+  const userLevel = (resolvedTier.charAt(0).toUpperCase() + resolvedTier.slice(1)) as "Beginner" | "Intermediate" | "Advanced";
   const userLocation = (user?.trainingLocation as "Home" | "Gym") || "Home";
 
   // State for tracking progress

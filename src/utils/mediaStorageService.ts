@@ -218,7 +218,7 @@ export async function saveExerciseMediaToDatabase(
 
   // C. Post to backend Express server endpoint to sync local server overrides and server-side memory
   try {
-    const token = await auth.currentUser?.getIdToken();
+    const token = await auth?.currentUser?.getIdToken();
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;

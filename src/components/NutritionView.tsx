@@ -74,7 +74,7 @@ export default function NutritionView() {
     setAnalyzerResult(null);
 
     try {
-      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      const token = auth?.currentUser ? await auth.currentUser.getIdToken() : null;
       const response = await fetch("/api/gemini/analyze-food", {
         method: "POST",
         headers: { 
@@ -116,7 +116,7 @@ export default function NutritionView() {
     setGeneratedPlanText(null);
 
     try {
-      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      const token = auth?.currentUser ? await auth.currentUser.getIdToken() : null;
       const response = await fetch("/api/gemini/nutrition-planner", {
         method: "POST",
         headers: { 

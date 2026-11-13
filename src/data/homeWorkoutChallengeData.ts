@@ -4,6 +4,7 @@ import { isExplicitlyMarkedWomenWorkout } from "./womenConfidenceProgramData";
 import { CANONICAL_EXERCISES } from "./canonicalExercises";
 import { getWorkoutForProgramAndDay } from "./challengeEngineDatabase";
 import { getScheduleOverrides } from "../utils/scheduleOverridesStore";
+import { resolveAthleteTier } from "../utils/athleteContext";
 
 export interface HomeOnboardingProfile {
   gender: "Male" | "Female" | "Other";
@@ -220,7 +221,7 @@ export function getHomeWorkoutForDay(
     ? trackOverride 
     : (profile?.gender === "Female" ? "Women" : "Men");
   const trackKey = (activeTrack || "").toLowerCase().includes("women") ? "women" : "men";
-  const level = fitnessLevel || profile?.fitnessLevel || "Beginner";
+  const level = resolveAthleteTier({ fitnessLevel }, { onboarding: profile });
 
   const progKey = trackKey === "women" ? "home_180_women" : "home_180";
   const enginePlan = getWorkoutForProgramAndDay(

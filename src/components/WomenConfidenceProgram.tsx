@@ -1786,7 +1786,12 @@ export default function WomenConfidenceProgram() {
 
                       {/* Instructions */}
                       <div className="space-y-1 text-xs text-gray-600 leading-relaxed">
-                        {ex.instructions.map((ins, i) => (
+                        {(Array.isArray(ex.instructions)
+                          ? ex.instructions
+                          : (typeof ex.instructions === "string" && (ex.instructions as string).trim()
+                              ? [ex.instructions]
+                              : ["Execute movement with controlled tempo and stable posture."])
+                        ).map((ins, i) => (
                           <div key={i} className="flex items-start gap-2">
                             <span className="font-bold text-gray-400 flex-shrink-0">{i + 1}.</span>
                             <span className="break-words">{ins}</span>
@@ -1797,10 +1802,10 @@ export default function WomenConfidenceProgram() {
                       {/* Form Tips & Modifications */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-gray-100 text-[11px] w-full">
                         <div className="p-2.5 rounded-lg bg-amber-50/60 border border-amber-100 text-amber-900 break-words">
-                          <span className="font-bold">Form Tip:</span> {ex.formTips[0]}
+                          <span className="font-bold">Form Tip:</span> {(Array.isArray(ex.formTips) && ex.formTips[0]) ? ex.formTips[0] : (typeof ex.formTips === "string" && ex.formTips ? ex.formTips : "Keep core engaged and move smoothly.")}
                         </div>
                         <div className="p-2.5 rounded-lg bg-rose-50/60 border border-rose-100 text-rose-900 break-words">
-                          <span className="font-bold">Modification:</span> {ex.beginnerModification}
+                          <span className="font-bold">Modification:</span> {ex.beginnerModification || "Reduce range or pace as needed."}
                         </div>
                       </div>
                     </div>

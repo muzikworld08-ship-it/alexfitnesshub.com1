@@ -21,39 +21,43 @@ import FloatingWorkoutTimerOverlay from "./components/FloatingWorkoutTimerOverla
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import SocialLinksBar from "./components/SocialLinksBar";
 import { BRAND_CONTACTS } from "./constants/socialLinks";
+import { lazyWithRetry } from "./utils/lazyWithRetry";
+import { resolveAthleteTier, resolveActiveProgramId } from "./utils/athleteContext";
+import { getSyncStatus, subscribeScheduleOverrides } from "./utils/scheduleOverridesStore";
+import { getWorkoutForProgramAndDay } from "./data/challengeEngineDatabase";
 
-// Lazy-load heavy views to drastically reduce initial bundle size and boost page interaction speed
-const WorkoutLibrary = React.lazy(() => import("./components/WorkoutLibrary"));
-const AdminWorkoutEditor = React.lazy(() => import("./components/admin/AdminWorkoutEditor"));
-const CoachView = React.lazy(() => import("./components/CoachView"));
-const AdminDashboard = React.lazy(() => import("./components/AdminDashboard"));
-const OnboardingWizard = React.lazy(() => import("./components/OnboardingWizard"));
-const AuthModal = React.lazy(() => import("./components/AuthModal"));
-const AuthView = React.lazy(() => import("./components/AuthView"));
-const NutritionView = React.lazy(() => import("./components/NutritionView"));
-const CommunityView = React.lazy(() => import("./components/CommunityView"));
-const SuccessView = React.lazy(() => import("./components/SuccessView"));
-const SavedExercisesView = React.lazy(() => import("./components/SavedExercisesView"));
-const WorkoutVideos = React.lazy(() => import("./components/WorkoutVideos"));
-const DailyPlanView = React.lazy(() => import("./components/DailyPlanView"));
-const DashboardView = React.lazy(() => import("./components/DashboardView"));
-const ProgressTrackerView = React.lazy(() => import("./components/ProgressTrackerView"));
-const PaymentSuccessView = React.lazy(() => import("./components/PaymentSuccessView"));
-const FitnessChallenges = React.lazy(() => import("./components/FitnessChallenges"));
-const BellyFatShredView = React.lazy(() => import("./components/BellyFatShredView"));
-const LifestyleFitnessAcademy = React.lazy(() => import("./components/LifestyleFitnessAcademy"));
-const WomenConfidenceProgram = React.lazy(() => import("./components/WomenConfidenceProgram"));
-const HomeWorkoutChallengeView = React.lazy(() => import("./components/HomeWorkoutChallengeView"));
-const BodyStatsCalculatorView = React.lazy(() => import("./components/BodyStatsCalculatorView"));
-const PricingView = React.lazy(() => import("./components/PricingView"));
-const StoreView = React.lazy(() => import("./components/StoreView"));
-const ProductDetailView = React.lazy(() => import("./components/ProductDetailView").then(m => ({ default: m.ProductDetailView })));
-const PremiumUpgradeModal = React.lazy(() => import("./components/PremiumUpgradeModal"));
-const AdminWorkoutChallengeEngine = React.lazy(() => import("./components/admin/AdminWorkoutChallengeEngine"));
-const PrintablePdfStoreView = React.lazy(() => import("./components/pdf/PrintablePdfStoreView").then(m => ({ default: m.PrintablePdfStoreView })));
-const PdfProductDetailView = React.lazy(() => import("./components/pdf/PdfProductDetailView").then(m => ({ default: m.PdfProductDetailView })));
-const PdfDownloadSuccessView = React.lazy(() => import("./components/pdf/PdfDownloadSuccessView").then(m => ({ default: m.PdfDownloadSuccessView })));
-const MyDigitalProductsView = React.lazy(() => import("./components/pdf/MyDigitalProductsView").then(m => ({ default: m.MyDigitalProductsView })));
+// Lazy-load heavy views with automatic retry to drastically reduce initial bundle size and prevent chunk-load errors
+const WorkoutLibrary = lazyWithRetry(() => import("./components/WorkoutLibrary"), "WorkoutLibrary");
+const AdminWorkoutEditor = lazyWithRetry(() => import("./components/admin/AdminWorkoutEditor"), "AdminWorkoutEditor");
+const CoachView = lazyWithRetry(() => import("./components/CoachView"), "CoachView");
+const AdminDashboard = lazyWithRetry(() => import("./components/AdminDashboard"), "AdminDashboard");
+const OnboardingWizard = lazyWithRetry(() => import("./components/OnboardingWizard"), "OnboardingWizard");
+const AuthModal = lazyWithRetry(() => import("./components/AuthModal"), "AuthModal");
+const AuthView = lazyWithRetry(() => import("./components/AuthView"), "AuthView");
+const NutritionView = lazyWithRetry(() => import("./components/NutritionView"), "NutritionView");
+const CommunityView = lazyWithRetry(() => import("./components/CommunityView"), "CommunityView");
+const SuccessView = lazyWithRetry(() => import("./components/SuccessView"), "SuccessView");
+const SavedExercisesView = lazyWithRetry(() => import("./components/SavedExercisesView"), "SavedExercisesView");
+const WorkoutVideos = lazyWithRetry(() => import("./components/WorkoutVideos"), "WorkoutVideos");
+const DailyPlanView = lazyWithRetry(() => import("./components/DailyPlanView"), "DailyPlanView");
+const DashboardView = lazyWithRetry(() => import("./components/DashboardView"), "DashboardView");
+const ProgressTrackerView = lazyWithRetry(() => import("./components/ProgressTrackerView"), "ProgressTrackerView");
+const PaymentSuccessView = lazyWithRetry(() => import("./components/PaymentSuccessView"), "PaymentSuccessView");
+const FitnessChallenges = lazyWithRetry(() => import("./components/FitnessChallenges"), "FitnessChallenges");
+const BellyFatShredView = lazyWithRetry(() => import("./components/BellyFatShredView"), "BellyFatShredView");
+const LifestyleFitnessAcademy = lazyWithRetry(() => import("./components/LifestyleFitnessAcademy"), "LifestyleFitnessAcademy");
+const WomenConfidenceProgram = lazyWithRetry(() => import("./components/WomenConfidenceProgram"), "WomenConfidenceProgram");
+const HomeWorkoutChallengeView = lazyWithRetry(() => import("./components/HomeWorkoutChallengeView"), "HomeWorkoutChallengeView");
+const BodyStatsCalculatorView = lazyWithRetry(() => import("./components/BodyStatsCalculatorView"), "BodyStatsCalculatorView");
+const PricingView = lazyWithRetry(() => import("./components/PricingView"), "PricingView");
+const StoreView = lazyWithRetry(() => import("./components/StoreView"), "StoreView");
+const ProductDetailView = lazyWithRetry(() => import("./components/ProductDetailView").then(m => ({ default: m.ProductDetailView })), "ProductDetailView");
+const PremiumUpgradeModal = lazyWithRetry(() => import("./components/PremiumUpgradeModal"), "PremiumUpgradeModal");
+const AdminWorkoutChallengeEngine = lazyWithRetry(() => import("./components/admin/AdminWorkoutChallengeEngine"), "AdminWorkoutChallengeEngine");
+const PrintablePdfStoreView = lazyWithRetry(() => import("./components/pdf/PrintablePdfStoreView").then(m => ({ default: m.PrintablePdfStoreView })), "PrintablePdfStoreView");
+const PdfProductDetailView = lazyWithRetry(() => import("./components/pdf/PdfProductDetailView").then(m => ({ default: m.PdfProductDetailView })), "PdfProductDetailView");
+const PdfDownloadSuccessView = lazyWithRetry(() => import("./components/pdf/PdfDownloadSuccessView").then(m => ({ default: m.PdfDownloadSuccessView })), "PdfDownloadSuccessView");
+const MyDigitalProductsView = lazyWithRetry(() => import("./components/pdf/MyDigitalProductsView").then(m => ({ default: m.MyDigitalProductsView })), "MyDigitalProductsView");
 
 const pageTransitionVariants: Variants = {
   initial: {
@@ -770,6 +774,8 @@ function FitnessAppContent() {
         </AnimatePresence>
       </main>
 
+      <SyncStatusFooter user={user} />
+
       {/* Auth State Modal */}
       <React.Suspense fallback={null}>
         <AuthModal 
@@ -813,6 +819,54 @@ function FitnessAppContent() {
       <OfflineIndicator />
 
     </div>
+  );
+}
+
+function SyncStatusFooter({ user }: { user: any }) {
+  const [syncTick, setSyncTick] = useState(0);
+
+  useEffect(() => {
+    const unsub = subscribeScheduleOverrides(() => setSyncTick(t => t + 1));
+    const handleEvent = () => setSyncTick(t => t + 1);
+    window.addEventListener("fit_schedule_overrides_updated", handleEvent);
+    window.addEventListener("fit_program_schedule_overrides_updated", handleEvent);
+    return () => {
+      unsub();
+      window.removeEventListener("fit_schedule_overrides_updated", handleEvent);
+      window.removeEventListener("fit_program_schedule_overrides_updated", handleEvent);
+    };
+  }, []);
+
+  const syncStatus = React.useMemo(() => getSyncStatus(), [syncTick]);
+  const tier = resolveAthleteTier(user);
+  const programId = resolveActiveProgramId(user);
+  const dayPlan = React.useMemo(
+    () => getWorkoutForProgramAndDay(programId, 1, undefined, { fitnessLevel: tier }),
+    [programId, tier, syncTick]
+  );
+  const buildId = typeof window !== "undefined" ? ((window as any).__APP_BUILD_ID__ || "dev") : "dev";
+
+  return (
+    <footer
+      data-testid="sync-status-footer"
+      className="w-full border-t border-slate-200/70 bg-slate-50/70 px-4 py-2.5 text-[11px] font-mono text-slate-500"
+    >
+      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-center sm:justify-between gap-x-4 gap-y-1">
+        <span>
+          Sync status: <strong className="text-slate-700">{syncStatus.source}</strong>
+          {syncStatus.updatedAt ? ` (${syncStatus.updatedAt})` : ""}
+          {syncStatus.degraded ? " [degraded]" : ""}
+        </span>
+        <span>
+          Build: <strong className="text-slate-700">{buildId}</strong>
+        </span>
+        <span>
+          Tier: <strong className="text-slate-700">{tier}</strong> | Program:{" "}
+          <strong className="text-slate-700">{programId}</strong> | Day 1 Drills:{" "}
+          <strong className="text-slate-700">{dayPlan.exercises.length}</strong>
+        </span>
+      </div>
+    </footer>
   );
 }
 

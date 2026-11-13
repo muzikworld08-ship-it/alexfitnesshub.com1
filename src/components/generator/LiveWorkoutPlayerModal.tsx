@@ -320,7 +320,7 @@ export default function LiveWorkoutPlayerModal({
                     {currentExercise.targetMuscle}
                   </span>
                   <span className="text-[10px] font-mono font-bold uppercase bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full">
-                    {currentExercise.equipment.join(", ") || "Bodyweight"}
+                    {(Array.isArray(currentExercise.equipment) ? currentExercise.equipment.join(", ") : String(currentExercise.equipment || "")) || "Bodyweight"}
                   </span>
                   {currentExercise.tempo && (
                     <span className="text-[10px] font-mono font-bold uppercase bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded-full border border-amber-200">

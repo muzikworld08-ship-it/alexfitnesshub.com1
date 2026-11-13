@@ -275,7 +275,7 @@ export default function WorkoutVideos() {
     }
     const delayDebounce = setTimeout(async () => {
       try {
-        const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+        const token = auth?.currentUser ? await auth.currentUser.getIdToken() : null;
         const res = await fetch(`/api/videos/suggestions?q=${encodeURIComponent(searchQuery)}`, {
           headers: token ? { "Authorization": `Bearer ${token}` } : {}
         });
@@ -298,7 +298,7 @@ export default function WorkoutVideos() {
       const finalQ = queryText === undefined ? searchQuery : queryText;
       const finalF = filterText === undefined ? selectedFilter : filterText;
 
-      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      const token = auth?.currentUser ? await auth.currentUser.getIdToken() : null;
       const url = `/api/videos/search?q=${encodeURIComponent(finalQ)}&filter=${encodeURIComponent(finalF)}&trending=${isTrending}`;
       const res = await fetch(url, {
         headers: token ? { "Authorization": `Bearer ${token}` } : {}

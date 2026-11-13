@@ -28,7 +28,7 @@ import { getExerciseGifUrl, Exercise, EXERCISES } from "../../data/exercises";
 import { ChallengeValidationService } from "../../services/challengeValidationService";
 import { useApp } from "../../context/AppContext";
 import { getChallengeWorkouts } from "../../data/challenges";
-import { auth, db, safeFirestoreSetDoc } from "../../lib/firebase";
+import { auth, db, safeFirestoreSetDoc, getFirebaseIdToken } from "../../lib/firebase";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { supabase, isSupabaseConfigured } from "../../utils/supabase/client";
 import DeleteWorkoutConfirmModal, { DeleteWorkoutTarget } from "./DeleteWorkoutConfirmModal";
@@ -204,6 +204,7 @@ export default function AdminWorkoutChallengeEngine() {
   const [isLoadingOverrides, setIsLoadingOverrides] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+  const [saveErrorMsg, setSaveErrorMsg] = useState<string | null>(null);
   const [isPurging, setIsPurging] = useState<boolean>(false);
 
   // Subscribe to live schedule store updates
@@ -287,12 +288,12 @@ export default function AdminWorkoutChallengeEngine() {
     setIsLoadingOverrides(true);
     let loaded = false;
     try {
-      const res = await fetch("/api/admin/programs/overrides");
+      const res = await fetch("/api/admin/programs/overrides?fresh=true", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
-        if (data.overrides && Object.keys(data.overrides).length > 0) {
-          setServerOverrides(prev => ({ ...prev, ...data.overrides }));
-          setScheduleOverridesFromRemote(data.overrides);
+        if (data.overrides && typeof data.overrides === "object" && Object.keys(data.overrides).length > 0) {
+          setServerOverrides(data.overrides);
+          setScheduleOverridesFromRemote(data.overrides, data.updatedAt || data.serverTime);
           loaded = true;
         }
       }
@@ -716,19 +717,20 @@ export default function AdminWorkoutChallengeEngine() {
 
     setServerOverrides(prev => {
       const next = { ...prev };
-      
+
       keysToUpdate.forEach(key => {
-        if (!next[key]) next[key] = {};
-        next[key][dayKey] = updatedDayData;
+        const progCopy = { ...(next[key] || {}) };
         if (isCycleSplitting) {
-          next[key][cycleKey] = updatedDayData;
+          progCopy[cycleKey] = { ...updatedDayData, cycleDay: computedCycleDay };
           for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
-            next[key][String(d)] = {
-              ...updatedDayData,
-              dayNumber: d
-            };
+            if (progCopy[String(d)]?.isOneOff !== true) {
+              delete progCopy[String(d)];
+            }
           }
+        } else {
+          progCopy[dayKey] = { ...updatedDayData, dayNumber: effectiveDayNumber, isOneOff: true };
         }
+        next[key] = progCopy;
       });
       broadcastOverridesUpdated(next);
       return next;
@@ -739,18 +741,18 @@ export default function AdminWorkoutChallengeEngine() {
     // Direct dual-persistence to Firestore per-program document (<100KB, guaranteed safe under 1MB limit)
     try {
       const fullProgSchedule: Record<string, any> = {
-        ...(serverOverrides[selectedProgramId] || {}),
-        [dayKey]: updatedDayData
+        ...(serverOverrides[selectedProgramId] || {})
       };
 
       if (isCycleSplitting) {
-        fullProgSchedule[cycleKey] = updatedDayData;
+        fullProgSchedule[cycleKey] = { ...updatedDayData, cycleDay: computedCycleDay };
         for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
-          fullProgSchedule[String(d)] = {
-            ...updatedDayData,
-            dayNumber: d
-          };
+          if (fullProgSchedule[String(d)]?.isOneOff !== true) {
+            delete fullProgSchedule[String(d)];
+          }
         }
+      } else {
+        fullProgSchedule[dayKey] = { ...updatedDayData, dayNumber: effectiveDayNumber, isOneOff: true };
       }
 
       console.log(`[Firestore Admin Persist] Attempting write to program_schedules/${selectedProgramId}`, {
@@ -771,7 +773,7 @@ export default function AdminWorkoutChallengeEngine() {
           updatedAt: new Date().toISOString(),
           updatedBy: adminEmail
         },
-        { merge: true },
+        { merge: false },
         true // bypassQuota for authorized Admin operations
       );
 
@@ -783,17 +785,17 @@ export default function AdminWorkoutChallengeEngine() {
 
       if (targetProgKey !== selectedProgramId) {
         const fullTargetSchedule: Record<string, any> = {
-          ...(serverOverrides[targetProgKey] || {}),
-          [dayKey]: updatedDayData
+          ...(serverOverrides[targetProgKey] || {})
         };
         if (isCycleSplitting) {
-          fullTargetSchedule[cycleKey] = updatedDayData;
+          fullTargetSchedule[cycleKey] = { ...updatedDayData, cycleDay: computedCycleDay };
           for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
-            fullTargetSchedule[String(d)] = {
-              ...updatedDayData,
-              dayNumber: d
-            };
+            if (fullTargetSchedule[String(d)]?.isOneOff !== true) {
+              delete fullTargetSchedule[String(d)];
+            }
           }
+        } else {
+          fullTargetSchedule[dayKey] = { ...updatedDayData, dayNumber: effectiveDayNumber, isOneOff: true };
         }
         await safeFirestoreSetDoc(
           doc(db, "program_schedules", targetProgKey),
@@ -803,7 +805,7 @@ export default function AdminWorkoutChallengeEngine() {
             updatedAt: new Date().toISOString(),
             updatedBy: adminEmail
           },
-          { merge: true },
+          { merge: false },
           true
         );
         console.log(`[Firestore Admin Persist SUCCESS] Successfully persisted alias program_schedules/${targetProgKey}`);
@@ -829,10 +831,9 @@ export default function AdminWorkoutChallengeEngine() {
     }
 
     try {
-      const token = await auth.currentUser?.getIdToken().catch(() => null);
+      const token = await getFirebaseIdToken();
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      headers["x-admin-email"] = adminEmail;
 
       const res = await fetch("/api/admin/programs/save-day-override", {
         method: "POST",
@@ -849,34 +850,55 @@ export default function AdminWorkoutChallengeEngine() {
         })
       });
 
+      const resData = await res.json().catch(() => ({}));
       if (res.ok) {
         console.log(`[Server Admin API SUCCESS] Successfully persisted schedule for ${selectedProgramId} Day ${effectiveDayNumber}`);
         setServerOverrides(prev => {
           const next = { ...prev };
           keysToUpdate.forEach(pid => {
-            if (!next[pid]) next[pid] = {};
-            next[pid][String(effectiveDayNumber)] = updatedDayData;
-            if (isCycleSplitting) {
-              next[pid][`cycle_${computedCycleDay}`] = updatedDayData;
-              for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
-                next[pid][String(d)] = {
-                  ...updatedDayData,
-                  dayNumber: d
-                };
-              }
+            if (pid === selectedProgramId && resData?.allProgramOverrides) {
+              next[pid] = resData.allProgramOverrides;
+              return;
             }
+            const progCopy = { ...(next[pid] || {}) };
+            if (isCycleSplitting) {
+              progCopy[`cycle_${computedCycleDay}`] = updatedDayData;
+              for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
+                if (progCopy[String(d)]?.isOneOff !== true) {
+                  delete progCopy[String(d)];
+                }
+              }
+            } else {
+              progCopy[String(effectiveDayNumber)] = { ...updatedDayData, isOneOff: true };
+            }
+            next[pid] = progCopy;
           });
           broadcastOverridesUpdated(next);
           return next;
         });
+
+        if (resData?.cloudSaved === false) {
+          setSaveSuccessMsg(null);
+          setSaveErrorMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
+          return false;
+        }
+
+        setSaveErrorMsg(null);
         setSaveSuccessMsg(`Routine for ${targetTier.toUpperCase()} manifested successfully!`);
         setTimeout(() => setSaveSuccessMsg(null), 3000);
+        return true;
       } else {
-        const errText = await res.text();
+        const errText = resData?.error || await res.text().catch(() => "Request failed");
         console.warn(`[Server Admin API Notice] Returned status ${res.status}: ${errText}`);
+        setSaveSuccessMsg(null);
+        setSaveErrorMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
+        return false;
       }
     } catch (err) {
       console.error("[Server Admin API Error] Failed saving reordered exercises:", err);
+      setSaveSuccessMsg(null);
+      setSaveErrorMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
+      return false;
     }
   };
 
@@ -910,9 +932,11 @@ export default function AdminWorkoutChallengeEngine() {
       ...existingLevels,
       [selectedDifficultyLevel]: []
     };
-    await handleReorderExercises([], selectedDifficultyLevel, nextLevels);
-    setSaveSuccessMsg(`Cleared all drills from ${selectedDifficultyLevel.toUpperCase()} routine.`);
-    setTimeout(() => setSaveSuccessMsg(null), 3000);
+    const cloudOk = await handleReorderExercises([], selectedDifficultyLevel, nextLevels);
+    if (cloudOk) {
+      setSaveSuccessMsg(`Cleared all drills from ${selectedDifficultyLevel.toUpperCase()} routine.`);
+      setTimeout(() => setSaveSuccessMsg(null), 3000);
+    }
   };
 
   // Drag and Drop Handlers
@@ -1099,10 +1123,12 @@ export default function AdminWorkoutChallengeEngine() {
       };
 
       const updated = activeExercises.map((ex: ChallengeExerciseItem) => ex.id === targetToReplace.id ? replacementItem : ex);
-      await handleReorderExercises(updated, selectedDifficultyLevel);
+      const cloudOk = await handleReorderExercises(updated, selectedDifficultyLevel);
 
-      setSaveSuccessMsg(`Replaced "${targetToReplace.exerciseName}" with "${replacementItem.exerciseName}" in ${selectedDifficultyLevel.toUpperCase()} routine!`);
-      setTimeout(() => setSaveSuccessMsg(null), 3500);
+      if (cloudOk) {
+        setSaveSuccessMsg(`Replaced "${targetToReplace.exerciseName}" with "${replacementItem.exerciseName}" in ${selectedDifficultyLevel.toUpperCase()} routine!`);
+        setTimeout(() => setSaveSuccessMsg(null), 3500);
+      }
       setTargetToReplace(null);
     } catch (err: any) {
       console.error("Replacement error:", err);
@@ -1163,7 +1189,7 @@ export default function AdminWorkoutChallengeEngine() {
       nextLevels[selectedDifficultyLevel] = updated;
 
       // 1. Persist updated routine with drill removed (dual-write to Firestore + Server API)
-      await handleReorderExercises(updated, selectedDifficultyLevel, nextLevels);
+      const cloudOk = await handleReorderExercises(updated, selectedDifficultyLevel, nextLevels);
 
       // 2. Permanently record deletion in localStorage fit_deleted_exercises
       if (typeof window !== "undefined" && window.localStorage) {
@@ -1203,10 +1229,9 @@ export default function AdminWorkoutChallengeEngine() {
 
       // 4. Notify backend API of drill deletion
       try {
-        const token = await auth.currentUser?.getIdToken().catch(() => null);
+        const token = await getFirebaseIdToken();
         const delHeaders: Record<string, string> = {
-          "Content-Type": "application/json",
-          "x-admin-email": adminEmail
+          "Content-Type": "application/json"
         };
         if (token) delHeaders["Authorization"] = `Bearer ${token}`;
 
@@ -1237,8 +1262,10 @@ export default function AdminWorkoutChallengeEngine() {
         } catch {}
       }
 
-      setSaveSuccessMsg(`Permanently removed "${target.exerciseName || target.name}" and purged its media.`);
-      setTimeout(() => setSaveSuccessMsg(null), 3000);
+      if (cloudOk) {
+        setSaveSuccessMsg(`Permanently removed "${target.exerciseName || target.name}" and purged its media.`);
+        setTimeout(() => setSaveSuccessMsg(null), 3000);
+      }
     } catch (err: any) {
       console.error("[Firestore Admin Transaction ERROR] Delete only error:", err);
       alert("Failed to delete workout: " + (err?.message || "Unknown error"));
@@ -1294,7 +1321,7 @@ export default function AdminWorkoutChallengeEngine() {
 
         const updated = activeExercises.map((ex: ChallengeExerciseItem) => ex.id === target.id ? replacementItem : ex);
         // Instant optimistic manifestation across all tier mappings
-        await handleReorderExercises(updated, selectedDifficultyLevel);
+        const cloudOk = await handleReorderExercises(updated, selectedDifficultyLevel);
 
         // Ensure replacement GIF is permanent globally
         if (replacementItem.gifUrl) {
@@ -1303,19 +1330,19 @@ export default function AdminWorkoutChallengeEngine() {
           } catch (e) {}
         }
 
-        setSaveSuccessMsg(`Dynamically substituted "${target.exerciseName || target.name}" with "${replacementItem.exerciseName}" in ${selectedDifficultyLevel.toUpperCase()} routine!`);
-        setTimeout(() => setSaveSuccessMsg(null), 3500);
+        if (cloudOk) {
+          setSaveSuccessMsg(`Dynamically substituted "${target.exerciseName || target.name}" with "${replacementItem.exerciseName}" in ${selectedDifficultyLevel.toUpperCase()} routine!`);
+          setTimeout(() => setSaveSuccessMsg(null), 3500);
+        }
 
         // Notify server in background
         (async () => {
           try {
-            const token = await auth.currentUser?.getIdToken().catch(() => null);
+            const token = await getFirebaseIdToken();
             const headers: Record<string, string> = { "Content-Type": "application/json" };
             if (token) headers["Authorization"] = `Bearer ${token}`;
-            const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
-            headers["x-admin-email"] = adminEmail;
 
-            await fetch("/api/admin/programs/delete-and-replace", {
+            const repRes = await fetch("/api/admin/programs/delete-and-replace", {
               method: "POST",
               headers,
               body: JSON.stringify({
@@ -1330,6 +1357,11 @@ export default function AdminWorkoutChallengeEngine() {
                 muscleGroupHint: targetMuscle
               })
             });
+            const repData = await repRes.json().catch(() => ({}));
+            if (repData?.cloudSaved === false) {
+              setSaveSuccessMsg(null);
+              setSaveErrorMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
+            }
           } catch (e) {}
         })();
       } else {
@@ -1409,11 +1441,9 @@ export default function AdminWorkoutChallengeEngine() {
         advancedExercises: cardioState.isCardio ? [] : (selectedDifficultyLevel === "advanced" ? activeExercises : (nextLevels.advanced || currentDayOverride?.advancedExercises || [])),
       };
 
-      const token = await auth.currentUser?.getIdToken().catch(() => null);
+      const token = await getFirebaseIdToken();
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
-      headers["x-admin-email"] = adminEmail;
 
       const targetProgKey = (selectedProgramId === "home_180" && adminTrack) 
         ? `${selectedProgramId}_${adminTrack}` 
@@ -1441,31 +1471,46 @@ export default function AdminWorkoutChallengeEngine() {
         const next = { ...prev };
         const pids = [selectedProgramId];
         if (targetProgKey !== selectedProgramId) pids.push(targetProgKey);
+        const computedCycle = ((effectiveDayNumber - 1) % 7) + 1;
+        const isCycleMode = viewMode === "cycle" || applyToAllCycleWeeks;
         pids.forEach(pid => {
-          if (!next[pid]) next[pid] = {};
-          next[pid][String(effectiveDayNumber)] = data.savedOverride;
-          if (viewMode === "cycle" || applyToAllCycleWeeks) {
-            next[pid][`cycle_${((effectiveDayNumber - 1) % 7) + 1}`] = data.savedOverride;
+          if (pid === selectedProgramId && data.allProgramOverrides) {
+            next[pid] = data.allProgramOverrides;
+            return;
           }
+          const progCopy = { ...(next[pid] || {}) };
+          if (isCycleMode) {
+            progCopy[`cycle_${computedCycle}`] = data.savedOverride;
+            const maxDays = currentProgramMeta.totalDays || 90;
+            for (let d = computedCycle; d <= maxDays; d += 7) {
+              if (progCopy[String(d)]?.isOneOff !== true) {
+                delete progCopy[String(d)];
+              }
+            }
+          } else {
+            progCopy[String(effectiveDayNumber)] = data.savedOverride;
+          }
+          next[pid] = progCopy;
         });
         broadcastOverridesUpdated(next);
 
         // Direct client-side dual persistence to Firebase Firestore per-program document (<100KB, never exceeds 1MB doc limit)
         try {
+          const auditEmail = user?.email || localStorage.getItem("fit_saved_email") || "admin";
           safeFirestoreSetDoc(doc(db, "program_schedules", selectedProgramId), {
             programId: selectedProgramId,
             schedule: next[selectedProgramId] || dayData,
             updatedAt: new Date().toISOString(),
-            updatedBy: adminEmail
-          }, { merge: true }).catch((e) => console.warn("Notice updating program doc:", e));
+            updatedBy: auditEmail
+          }, { merge: false }).catch((e) => console.warn("Notice updating program doc:", e));
 
           if (targetProgKey !== selectedProgramId) {
             safeFirestoreSetDoc(doc(db, "program_schedules", targetProgKey), {
               programId: targetProgKey,
               schedule: next[targetProgKey] || dayData,
               updatedAt: new Date().toISOString(),
-              updatedBy: adminEmail
-            }, { merge: true }).catch(() => {});
+              updatedBy: auditEmail
+            }, { merge: false }).catch(() => {});
           }
         } catch (fsErr) {
           console.warn("Direct Firestore dual-persistence notice:", fsErr);
@@ -1495,8 +1540,14 @@ export default function AdminWorkoutChallengeEngine() {
         return next;
       });
 
-      setSaveSuccessMsg(`Day ${effectiveDayNumber} (${splitTitle}) configuration successfully saved and manifested!`);
-      setTimeout(() => setSaveSuccessMsg(null), 3500);
+      if (data.cloudSaved === false) {
+        setSaveSuccessMsg(null);
+        setSaveErrorMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
+      } else {
+        setSaveErrorMsg(null);
+        setSaveSuccessMsg(`Day ${effectiveDayNumber} (${splitTitle}) configuration successfully saved and manifested!`);
+        setTimeout(() => setSaveSuccessMsg(null), 3500);
+      }
     } catch (err: any) {
       console.error("Save day configuration error:", err);
       alert("Error saving: " + (err?.message || "Unknown error"));
@@ -1544,16 +1595,18 @@ export default function AdminWorkoutChallengeEngine() {
       );
 
       // Reorder and persist the sanitized exercise array
-      await handleReorderExercises(result.cleanedExercises);
+      const cloudOk = await handleReorderExercises(result.cleanedExercises);
 
-      if (result.removedNames.length > 0) {
-        setSaveSuccessMsg(
-          `🧹 Purged ${result.removedNames.length} mismatched workout(s): ${result.removedNames.join(", ")}. Split reset to strictly contain only valid ${categoryTitle} exercises!`
-        );
-      } else {
-        setSaveSuccessMsg(`✨ Zero mismatched workouts found! Every drill in this split 100% authentically belongs to ${categoryTitle}.`);
+      if (cloudOk) {
+        if (result.removedNames.length > 0) {
+          setSaveSuccessMsg(
+            `🧹 Purged ${result.removedNames.length} mismatched workout(s): ${result.removedNames.join(", ")}. Split reset to strictly contain only valid ${categoryTitle} exercises!`
+          );
+        } else {
+          setSaveSuccessMsg(`✨ Zero mismatched workouts found! Every drill in this split 100% authentically belongs to ${categoryTitle}.`);
+        }
+        setTimeout(() => setSaveSuccessMsg(null), 5000);
       }
-      setTimeout(() => setSaveSuccessMsg(null), 5000);
     } catch (err) {
       console.error("Purge error:", err);
       alert("Error purging workouts: " + (err as any)?.message);
@@ -1622,31 +1675,78 @@ export default function AdminWorkoutChallengeEngine() {
       });
 
       // Persist to backend server
-      const token = await auth.currentUser?.getIdToken().catch(() => null);
+      const token = await getFirebaseIdToken();
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      headers["x-admin-email"] = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
 
-      await fetch("/api/admin/programs/purge-all-splits", {
+      const purgeRes = await fetch("/api/admin/programs/purge-all-splits", {
         method: "POST",
         headers,
         body: JSON.stringify({
           programId: selectedProgramId,
           overrides: updatedOverrides
         })
-      }).catch(err => console.warn("Purge sync warn:", err));
+      }).catch(err => {
+        console.warn("Purge sync warn:", err);
+        return null;
+      });
+      const purgeData = purgeRes ? await purgeRes.json().catch(() => ({})) : { cloudSaved: false };
 
-      setSaveSuccessMsg(
-        totalPurged > 0
-          ? `🚀 Full Program Purged! Removed ${totalPurged} mismatched drills across the 7-day split. All splits strictly reset to authentic category exercises!`
-          : `✨ Program Cadence Audited: All 7 days are already strictly aligned with their official muscle splits!`
-      );
-      setTimeout(() => setSaveSuccessMsg(null), 6000);
+      if (!purgeRes || !purgeRes.ok || purgeData?.cloudSaved === false) {
+        setSaveSuccessMsg(null);
+        setSaveErrorMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
+      } else {
+        setSaveErrorMsg(null);
+        setSaveSuccessMsg(
+          totalPurged > 0
+            ? `🚀 Full Program Purged! Removed ${totalPurged} mismatched drills across the 7-day split. All splits strictly reset to authentic category exercises!`
+            : `✨ Program Cadence Audited: All 7 days are already strictly aligned with their official muscle splits!`
+        );
+        setTimeout(() => setSaveSuccessMsg(null), 6000);
+      }
     } catch (err) {
       console.error("Purge all error:", err);
       alert("Error purging all splits: " + (err as any)?.message);
     } finally {
       setIsPurging(false);
+    }
+  };
+
+  // Normalize Cycles (Remove stale per-day numeric copies)
+  const [isNormalizingCycles, setIsNormalizingCycles] = useState(false);
+
+  const handleNormalizeCycles = async () => {
+    setIsNormalizingCycles(true);
+    try {
+      const token = await getFirebaseIdToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch("/api/admin/programs/normalize-cycles", {
+        method: "POST",
+        headers
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed normalizing cycles");
+
+      if (data.overrides) {
+        setServerOverrides(data.overrides);
+        setScheduleOverridesFromAdmin(data.overrides);
+      }
+
+      if (data.cloudSaved === false) {
+        setSaveSuccessMsg(null);
+        setSaveErrorMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
+      } else {
+        setSaveErrorMsg(null);
+        setSaveSuccessMsg(`Normalized cycle schedules: removed ${data.removedCount ?? 0} stale per-day copy(ies).`);
+        setTimeout(() => setSaveSuccessMsg(null), 5000);
+      }
+    } catch (err: any) {
+      console.error("Normalize cycles error:", err);
+      setSaveErrorMsg("Failed normalizing cycles: " + (err?.message || "Unknown error"));
+    } finally {
+      setIsNormalizingCycles(false);
     }
   };
 
@@ -1664,12 +1764,11 @@ export default function AdminWorkoutChallengeEngine() {
       setServerOverrides(cleanRes.updatedOverrides);
       setScheduleOverridesFromAdmin(cleanRes.updatedOverrides);
 
-      const token = await auth.currentUser?.getIdToken().catch(() => null);
+      const token = await getFirebaseIdToken();
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      headers["x-admin-email"] = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
 
-      await fetch("/api/admin/programs/reset-and-clean-all-programs", {
+      const resetRes = await fetch("/api/admin/programs/reset-and-clean-all-programs", {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -1677,12 +1776,19 @@ export default function AdminWorkoutChallengeEngine() {
           stats: cleanRes.stats
         })
       });
+      const resetData = await resetRes.json().catch(() => ({}));
 
-      setSaveSuccessMsg(
-        `⚡ All programs reset and cleaned! ${cleanRes.stats.totalProgramsCleaned} programs updated, ${cleanRes.stats.totalMismatchesRemoved} mismatched exercises purged, and daily workouts capped at 10 max.`
-      );
-      setTimeout(() => setSaveSuccessMsg(null), 8000);
-      alert(`Success! All program workouts have been reset and auto-cleaned.\n\n• ${cleanRes.stats.totalProgramsCleaned} programs sanitized\n• ${cleanRes.stats.totalDaysReset} program days verified\n• ${cleanRes.stats.totalMismatchesRemoved} mismatched exercises purged\n• All daily routines capped at maximum 10 workouts daily.`);
+      if (!resetRes.ok || resetData?.cloudSaved === false) {
+        setSaveSuccessMsg(null);
+        setSaveErrorMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
+      } else {
+        setSaveErrorMsg(null);
+        setSaveSuccessMsg(
+          `⚡ All programs reset and cleaned! ${cleanRes.stats.totalProgramsCleaned} programs updated, ${cleanRes.stats.totalMismatchesRemoved} mismatched exercises purged, and daily workouts capped at 10 max.`
+        );
+        setTimeout(() => setSaveSuccessMsg(null), 8000);
+        alert(`Success! All program workouts have been reset and auto-cleaned.\n\n• ${cleanRes.stats.totalProgramsCleaned} programs sanitized\n• ${cleanRes.stats.totalDaysReset} program days verified\n• ${cleanRes.stats.totalMismatchesRemoved} mismatched exercises purged\n• All daily routines capped at maximum 10 workouts daily.`);
+      }
     } catch (err: any) {
       console.error("Reset all error:", err);
       alert("Error resetting and cleaning all programs: " + (err?.message || "Unknown error"));
@@ -1773,6 +1879,17 @@ export default function AdminWorkoutChallengeEngine() {
           <div className="flex items-center gap-3 shrink-0 flex-wrap">
             <button
               type="button"
+              onClick={handleNormalizeCycles}
+              disabled={isNormalizingCycles || isResettingAllPrograms || isPurging}
+              className="px-4 py-2.5 rounded-2xl bg-indigo-950/70 hover:bg-indigo-900 border border-indigo-500/50 text-xs font-bold text-indigo-200 hover:text-white transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              title="Delete stale numeric per-day copies so canonical 7-day cycle splits control all repeating days"
+            >
+              <Repeat className={`w-4 h-4 text-indigo-400 ${isNormalizingCycles ? "animate-spin" : ""}`} />
+              <span>{isNormalizingCycles ? "Normalizing..." : "Normalize cycles (remove stale per-day copies)"}</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleResetAndCleanAllPrograms}
               disabled={isResettingAllPrograms || isPurging}
               className="px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-500 border border-amber-400 text-xs font-black text-white transition flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-600/30 disabled:opacity-50"
@@ -1837,7 +1954,22 @@ export default function AdminWorkoutChallengeEngine() {
           </span>
         </div>
 
-        {/* Save Toast */}
+        {/* Save Toast / Cloud Persistence Error Toast */}
+        {saveErrorMsg && (
+          <div className="mt-4 p-3.5 rounded-2xl bg-red-950/80 border border-red-500/60 text-red-200 text-xs font-bold flex items-center justify-between gap-2.5 animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+              <span>{saveErrorMsg}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSaveErrorMsg(null)}
+              className="text-red-300 hover:text-white text-[11px] px-2 py-0.5 rounded bg-red-900/60 cursor-pointer"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         {saveSuccessMsg && (
           <div className="mt-4 p-3.5 rounded-2xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 text-xs font-bold flex items-center gap-2.5 animate-in fade-in">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -2416,13 +2548,18 @@ export default function AdminWorkoutChallengeEngine() {
           </div>
 
           {activeExercises.length === 0 ? (
-            <div className="text-center py-12 rounded-2xl bg-neutral-950/60 border border-dashed border-neutral-800 space-y-3">
-              <Dumbbell className="w-10 h-10 mx-auto text-neutral-600" />
-              <p className="text-sm text-neutral-400">
-                {cardioState.isCardio 
-                  ? "This is a dedicated Cardio day. No heavy weight drills required." 
-                  : `No workouts currently assigned to this ${selectedDifficultyLevel} day routine.`}
-              </p>
+            <div className="space-y-3">
+              <div className="p-3.5 rounded-2xl bg-amber-950/70 border border-amber-500/50 text-amber-200 text-xs font-bold flex items-center gap-2.5 text-left">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>No drills assigned for this tier. Athletes at this level will see an empty workout.</span>
+              </div>
+              <div className="text-center py-12 rounded-2xl bg-neutral-950/60 border border-dashed border-neutral-800 space-y-3">
+                <Dumbbell className="w-10 h-10 mx-auto text-neutral-600" />
+                <p className="text-sm text-neutral-400">
+                  {cardioState.isCardio 
+                    ? "This is a dedicated Cardio day. No heavy weight drills required." 
+                    : `No workouts currently assigned to this ${selectedDifficultyLevel} day routine.`}
+                </p>
               <div className="flex items-center justify-center gap-2">
                 <button
                   type="button"
@@ -2440,6 +2577,7 @@ export default function AdminWorkoutChallengeEngine() {
                     Copy Beginner Drills
                   </button>
                 )}
+              </div>
               </div>
             </div>
           ) : (

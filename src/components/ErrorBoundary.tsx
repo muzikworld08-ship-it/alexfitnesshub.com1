@@ -1,5 +1,6 @@
 import React, { ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RotateCcw, Activity, ShieldAlert, LifeBuoy } from "lucide-react";
+import { isChunkLoadError } from "../utils/lazyWithRetry";
 
 interface Props {
   children?: ReactNode;
@@ -147,6 +148,10 @@ export class SectionErrorBoundary extends React.Component<SectionErrorBoundaryPr
   }
 
   private handleRetry = () => {
+    if (isChunkLoadError(this.state.error)) {
+      this.handleClearCacheAndReload();
+      return;
+    }
     this.setState({ hasError: false, error: null });
     if (this.props.onReset) {
       this.props.onReset();

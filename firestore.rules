@@ -1,8 +1,295 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Global default-deny safety net
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email_verified == true && request.auth.token.email != null && request.auth.token.email in [
+          'alexfitnesshub@gmail.com',
+          'muzikworld08@gmail.com',
+          'admin@alexfitnesshub.com',
+          'admin@alexfitness.com',
+          'coach@alexfitness.com'
+        ]) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Authoritative Program Schedules & Workout Catalog (Public read, Admin-only write)
+    match /program_schedules/{programId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /program_cycle_templates/{templateId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /program_overrides/{overrideId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /system_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /exercises/{exerciseId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /generated_exercises/{exerciseId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /exercise_media/{mediaId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /deleted_exercises/{exerciseId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /assets_manifest/{assetId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /challenges/{challengeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Store Catalog & Testimonials (Public read, Admin-only write)
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /deleted_products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /store_meta/{metaId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /printable_pdf_products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /printable_pdf_files/{fileId} {
+      allow read: if true;
+      allow write: if isAdmin();
+      match /chunks/{chunkId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+    }
+
+    match /printable_pdf_chunks/{chunkId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /popup_testimonials/{testimonialId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /testimonials/{testimonialId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /app_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // User Profiles: owner can read/write own profile (cannot self-elevate role), Admin has full access
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAdmin() || (
+        isOwner(userId) &&
+        (!('role' in request.resource.data) || request.resource.data.role == 'user')
+      );
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        (!('role' in request.resource.data) || request.resource.data.role == resource.data.role)
+      );
+      allow delete: if isAdmin();
+    }
+
+    // User-keyed program progress & preferences (doc ID == uid)
+    match /belly_fat_shred_progress/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /user_premium_challenges/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /home_workout_challenge/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /user_academy_progress/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /user_program_progress/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /workout_library_filters/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /calibration_goals/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /user_streak_history/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    // Owner-scoped collections referencing userId field
+    match /user_workout_actions/{actionId} {
+      allow read, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid);
+    }
+
+    match /progress_logs/{logId} {
+      allow read, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid);
+    }
+
+    match /vitals_logs/{logId} {
+      allow read, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid);
+    }
+
+    match /saved_workouts/{workoutId} {
+      allow read, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid);
+    }
+
+    match /ai_coach_chats/{chatId} {
+      allow read, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid);
+    }
+
+    match /custom_programs/{programId} {
+      allow read, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid);
+    }
+
+    match /favorite_videos/{favoriteId} {
+      allow read, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid);
+    }
+
+    match /video_search_history/{historyId} {
+      allow read, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid);
+    }
+
+    match /user_inspirations/{docId} {
+      allow read, delete: if isAdmin() || (isSignedIn() && (docId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow create: if isAdmin() || (isSignedIn() && (docId == request.auth.uid || request.resource.data.userId == request.auth.uid));
+      allow update: if isAdmin() || (isSignedIn() && (docId == request.auth.uid || resource.data.userId == request.auth.uid));
+    }
+
+    match /weekly_reports/{reportId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    match /community_posts/{postId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /todos/{todoId} {
+      allow read, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAdmin() || (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.customerEmail == request.auth.token.email));
+      allow create: if isSignedIn() || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    match /printable_pdf_orders/{orderId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.customerEmail == request.auth.token.email);
+      allow write: if isAdmin();
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    match /subscription_transactions/{transactionId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    // Admin-only collections
+    match /admin_activities/{activityId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /admin_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /mail/{mailId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /newsletter_subscribers/{subId} {
+      allow read, delete, update: if isAdmin();
+      allow create: if true;
     }
   }
 }

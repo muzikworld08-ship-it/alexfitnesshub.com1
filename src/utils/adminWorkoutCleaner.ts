@@ -1,4 +1,4 @@
-import { db, isMockFirebase } from "../lib/firebase";
+import { db, isMockFirebase, getFirebaseIdToken } from "../lib/firebase";
 import { collection, getDocs, deleteDoc, doc, writeBatch } from "firebase/firestore";
 import { Exercise } from "../data/exercises";
 import { isHomeEligibleExercise } from "./dynamicWorkoutEngine";
@@ -237,9 +237,10 @@ export async function purgeRestrictedHomeWorkouts(
     // 3. Trigger Backend Server Purge to synchronize custom_exercise_overrides.json & custom_deleted_exercises.json
     onProgress?.("Synchronizing with backend server storage...");
     try {
+      const token = await getFirebaseIdToken();
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        "x-admin-email": (typeof window !== "undefined" && (window.localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com")) || "muzikworld08@gmail.com",
+        ...(token ? { "Authorization": `Bearer ${token}` } : {}),
         ...(customAdminHeaders || {})
       };
 

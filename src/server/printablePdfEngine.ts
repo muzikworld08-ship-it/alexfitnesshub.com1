@@ -24,9 +24,13 @@ export function setEngineDb(dbInstance: any) {
 }
 
 try {
+  const apiKey = (firebaseConfig as any).apiKey || (process.env.FIREBASE_API_KEY || "").trim();
+  if (!apiKey) {
+    console.error("[PDF Engine] Missing FIREBASE_API_KEY env var and firebase-applet-config.json apiKey.");
+  }
   const activeConfig = {
     ...firebaseConfig,
-    apiKey: (firebaseConfig as any).apiKey || ["AI", "za", "SyCN-", "LfNHvWpZK9d8wDqKhlPGjgsJa0MscQ"].join("")
+    apiKey
   };
   const fbApp = getApps().length > 0 ? getApp() : initializeApp(activeConfig);
   engineDb = getFirestore(fbApp, firebaseConfig.firestoreDatabaseId);

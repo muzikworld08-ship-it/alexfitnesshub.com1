@@ -330,9 +330,9 @@ export default function ExerciseReplacementModal({
                             {m}
                           </span>
                         ))}
-                        {ex.equipment?.[0] && (
+                        {((Array.isArray(ex.equipment) && ex.equipment[0]) || (typeof ex.equipment === "string" && ex.equipment)) && (
                           <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-400">
-                            {ex.equipment[0]}
+                            {Array.isArray(ex.equipment) ? ex.equipment[0] : ex.equipment}
                           </span>
                         )}
                       </div>

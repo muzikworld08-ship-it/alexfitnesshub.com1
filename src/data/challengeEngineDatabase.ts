@@ -279,7 +279,9 @@ export function getWorkoutForProgramAndDay(
       : (allOverrides[programId] || (trackKey && allOverrides[trackKey]) || (normId !== programId ? allOverrides[normId] : undefined)));
 
   if (progOverrides) {
-    const dayOverride = progOverrides[String(safeDay)] || progOverrides[`cycle_${cycleDay}`];
+    const cycleOverride = progOverrides[`cycle_${cycleDay}`];
+    const dayEntry = progOverrides[String(safeDay)];
+    const dayOverride = (dayEntry && dayEntry.isOneOff === true) ? dayEntry : (cycleOverride || dayEntry);
     if (dayOverride) {
       const isRest = !!dayOverride.isRestDay;
       const isCardio = !!dayOverride.isCardioOnly;
@@ -454,6 +456,7 @@ export function getWorkoutForProgramAndDay(
   }
 
   // 2. Dynamic generation adhering to new split
+  const tierCapitalizedDyn = (requestedTier.charAt(0).toUpperCase() + requestedTier.slice(1)) as "Beginner" | "Intermediate" | "Advanced";
   if (requestedTier === "advanced") {
     const metaPlan = buildDynamicDayPlan(normId, safeDay, [], track);
     return {
@@ -476,7 +479,14 @@ export function getWorkoutForProgramAndDay(
     activeExercises = activeExercises.filter(ex => !isExplicitlyMarkedWomenWorkout(ex));
   }
 
-  return buildDynamicDayPlan(normId, safeDay, activeExercises, track);
+  const dynamicPlan = buildDynamicDayPlan(normId, safeDay, activeExercises, track);
+  return {
+    ...dynamicPlan,
+    meta: {
+      ...dynamicPlan.meta,
+      difficulty: tierCapitalizedDyn
+    }
+  };
 }
 
 export default getWorkoutForProgramAndDay;

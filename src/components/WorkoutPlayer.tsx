@@ -38,20 +38,24 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
   const workoutTimer = useWorkoutTimer();
   const [workoutExercises, setWorkoutExercises] = useState<Exercise[]>(() => {
     const list: Exercise[] = [];
-    const targetMuscles = exercises.flatMap(e => e.muscleGroups || [e.category]);
-    const stretches = getPreWorkoutStretchesForDay(targetMuscles, exercises, 2);
+    const safeExercises = Array.isArray(exercises) ? exercises.filter(Boolean) : [];
+    const targetMuscles = safeExercises.flatMap(e => Array.isArray(e?.muscleGroups) ? e.muscleGroups : [e?.category || "Full Body"]);
+    const stretches = getPreWorkoutStretchesForDay(targetMuscles, safeExercises, 2);
     // 2 stretch workouts at the beginning of each workout
     for (const st of stretches) {
-      if (!exercises.some(e => e.name.toLowerCase() === (st.name || "").toLowerCase())) {
+      if (!safeExercises.some(e => (e?.name || "").toLowerCase() === (st?.name || "").toLowerCase())) {
+        const stretchMuscles = Array.isArray(st.muscleGroups)
+          ? st.muscleGroups
+          : (typeof (st as any).muscleGroup === "string" ? [(st as any).muscleGroup] : ["Mobility"]);
         list.push({
           id: st.id || "stretch_prep",
           name: `[Warm-up Stretch] ${st.name}`,
           category: "Stretching & Mobility",
           categories: ["Stretching & Mobility", "Mobility & Recovery"],
-          muscleGroups: st.muscleGroups || (st as any).muscleGroup || ["Mobility"],
+          muscleGroups: stretchMuscles,
           difficulty: "Beginner",
-          instructions: st.instructions || ["Dynamic stretch warmup: execute with controlled tempo."],
-          equipment: st.equipment || ["Bodyweight"],
+          instructions: Array.isArray(st.instructions) ? st.instructions : (typeof st.instructions === "string" ? [st.instructions] : ["Dynamic stretch warmup: execute with controlled tempo."]),
+          equipment: Array.isArray(st.equipment) ? st.equipment : (typeof st.equipment === "string" ? [st.equipment] : ["Bodyweight"]),
           commonMistakes: [],
           safetyTips: ["Never bounce into the stretch."],
           alternativeExercises: [],
@@ -61,7 +65,7 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
           movementExecution: "Slow, rhythmic diaphragmatic breathing.",
           finishingPosition: "",
           regressionVariations: [],
-          musclesWorked: st.muscleGroups || (st as any).muscleGroup || ["Mobility"],
+          musclesWorked: stretchMuscles,
           gifUrl: st.gifUrl || "",
           customMediaUrl: st.customMediaUrl || st.gifUrl || "",
           duration: st.duration || "45s Continuous",
@@ -70,7 +74,7 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
         });
       }
     }
-    list.push(...exercises.slice(0, 10));
+    list.push(...safeExercises.slice(0, 10));
     return list;
   });
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -500,7 +504,9 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
                 <div className="truncate">
                   <span className="text-[8px] text-slate-500 font-mono block">UP NEXT</span>
                   <span className="text-xs font-black text-white block truncate">{currentExercise.name}</span>
-                  <span className="text-[10px] text-emerald-400 font-bold block mt-0.5">Target: {currentExercise.muscleGroups?.join(", ")}</span>
+                  <span className="text-[10px] text-emerald-400 font-bold block mt-0.5">
+                    Target: {Array.isArray(currentExercise.muscleGroups) ? (currentExercise.muscleGroups.join(", ") || currentExercise.category || "Full Body") : String(currentExercise.muscleGroups || currentExercise.category || "Full Body")}
+                  </span>
                 </div>
               </div>
             ) : null}

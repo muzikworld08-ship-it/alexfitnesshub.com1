@@ -2,6 +2,8 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useApp, isEmailAdmin } from "../context/AppContext";
 import { Exercise, PROGRAMS, Program, EXERCISES, getExerciseGifUrl } from "../data/exercises";
 import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
+import { resolveAthleteTier } from "../utils/athleteContext";
+import { subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
 import { WORKOUTS_DATABASE, WORKOUT_CATEGORIES_INFO, Workout, WorkoutExercise, getWorkoutMappedCategory, calculateWorkoutDuration, calculateProgramWorkoutDuration } from "../data/workoutsData";
 import YouTubePlayer from "./video/YouTubePlayer";
 import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
@@ -228,9 +230,9 @@ export function getExercisesForWorkoutCategory(categoryId: string, allExercises:
 
   if (normCat === "belly-fat-shred") {
     return allExercises.filter(e => {
-      const mg = (e.muscleGroups || []).map(m => m.toLowerCase());
+      const mg = (Array.isArray(e.muscleGroups) ? e.muscleGroups : []).map(m => String(m || "").toLowerCase());
       const cat = (e.category || "").toLowerCase();
-      const name = e.name.toLowerCase();
+      const name = (e.name || "").toLowerCase();
       return mg.includes("core") || mg.includes("abs") || mg.includes("obliques") || mg.includes("cardio") ||
              cat.includes("hiit") || cat.includes("fat") || cat.includes("core") ||
              name.includes("plank") || name.includes("treadmill") || name.includes("climber") ||
@@ -240,9 +242,9 @@ export function getExercisesForWorkoutCategory(categoryId: string, allExercises:
 
   if (normCat === "home-workout-180") {
     return allExercises.filter(e => {
-      const eq = (e.equipment || []).map(item => item.toLowerCase());
+      const eq = (Array.isArray(e.equipment) ? e.equipment : []).map(item => String(item || "").toLowerCase());
       const cat = (e.category || "").toLowerCase();
-      const name = e.name.toLowerCase();
+      const name = (e.name || "").toLowerCase();
       return eq.includes("bodyweight") || eq.includes("none") || cat.includes("bodyweight") || cat.includes("home") ||
              name.includes("push-up") || name.includes("squat") || name.includes("lunge") ||
              name.includes("plank") || name.includes("jack") || name.includes("stretch") || name.includes("dip");
@@ -251,8 +253,8 @@ export function getExercisesForWorkoutCategory(categoryId: string, allExercises:
 
   if (normCat === "womens-confidence-180") {
     return allExercises.filter(e => {
-      const mg = (e.muscleGroups || []).map(m => m.toLowerCase());
-      const name = e.name.toLowerCase();
+      const mg = (Array.isArray(e.muscleGroups) ? e.muscleGroups : []).map(m => String(m || "").toLowerCase());
+      const name = (e.name || "").toLowerCase();
       const bodyPart = (e.bodyPart || "").toLowerCase();
       return mg.includes("glutes") || mg.includes("core") || mg.includes("posture") || bodyPart.includes("glutes") ||
              name.includes("thrust") || name.includes("bridge") || name.includes("lunge") ||
@@ -263,11 +265,11 @@ export function getExercisesForWorkoutCategory(categoryId: string, allExercises:
 
   // Standard Muscle & Training Categories
   return allExercises.filter(e => {
-    const mg = (e.muscleGroups || []).map(m => m.toLowerCase());
+    const mg = (Array.isArray(e.muscleGroups) ? e.muscleGroups : []).map(m => String(m || "").toLowerCase());
     const cat = (e.category || "").toLowerCase();
     const bodyPart = (e.bodyPart || "").toLowerCase();
-    const name = e.name.toLowerCase();
-    const eq = (e.equipment || []).map(item => item.toLowerCase());
+    const name = (e.name || "").toLowerCase();
+    const eq = (Array.isArray(e.equipment) ? e.equipment : []).map(item => String(item || "").toLowerCase());
 
     if (normCat === "chest") {
       return mg.includes("chest") || bodyPart.includes("chest") || cat.includes("chest") || name.includes("press") || name.includes("fly") || name.includes("push-up");
@@ -424,6 +426,19 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
   // Live Workout Session active stopwatch states
   const [isWorkoutSessionActive, setIsWorkoutSessionActive] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
+  const [, setScheduleOverridesTick] = useState(0);
+
+  useEffect(() => {
+    const unsub = subscribeScheduleOverrides(() => setScheduleOverridesTick(t => t + 1));
+    const handleOverrides = () => setScheduleOverridesTick(t => t + 1);
+    window.addEventListener("fit_schedule_overrides_updated", handleOverrides);
+    window.addEventListener("fit_program_schedule_overrides_updated", handleOverrides);
+    return () => {
+      unsub();
+      window.removeEventListener("fit_schedule_overrides_updated", handleOverrides);
+      window.removeEventListener("fit_program_schedule_overrides_updated", handleOverrides);
+    };
+  }, []);
 
   useEffect(() => {
     let interval: any = null;
@@ -935,28 +950,28 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
         if (nameLower.includes(term)) return true;
 
         // Categories match
-        if (ex.categories && ex.categories.some(cat => cat.toLowerCase().includes(term))) return true;
+        if (exCategories.some(cat => String(cat || "").toLowerCase().includes(term))) return true;
         if (ex.category && ex.category.toLowerCase().includes(term)) return true;
 
         // Muscles and body parts match
-        if (ex.muscleGroups && ex.muscleGroups.some(m => m.toLowerCase().includes(term))) return true;
-        if (ex.musclesWorked && ex.musclesWorked.some(m => m.toLowerCase().includes(term))) return true;
+        if (exMuscleGroups.some(m => String(m || "").toLowerCase().includes(term))) return true;
+        if (exMusclesWorked.some(m => String(m || "").toLowerCase().includes(term))) return true;
         if (bodyPartLower.includes(term)) return true;
 
         // Equipment match
-        if (ex.equipment && ex.equipment.some(eq => eq.toLowerCase().includes(term))) return true;
+        if (exEquipment.some(eq => String(eq || "").toLowerCase().includes(term))) return true;
 
         // Difficulty match
         if (ex.difficulty && ex.difficulty.toLowerCase().includes(term)) return true;
 
         // High-precision anatomical & movement category terms
         if (term === "push" || term === "pushing") {
-          const isPush = (ex.muscleGroups && ex.muscleGroups.some(m => ["chest", "shoulders", "triceps"].includes(m.toLowerCase()))) ||
+          const isPush = (exMuscleGroups.some(m => ["chest", "shoulders", "triceps"].includes(String(m || "").toLowerCase()))) ||
             nameLower.includes("push") || nameLower.includes("press") || nameLower.includes("dip");
           if (isPush) return true;
         }
         if (term === "pull" || term === "pulling") {
-          const isPull = (ex.muscleGroups && ex.muscleGroups.some(m => ["back", "biceps", "forearms", "lats"].includes(m.toLowerCase()))) ||
+          const isPull = (exMuscleGroups.some(m => ["back", "biceps", "forearms", "lats"].includes(String(m || "").toLowerCase()))) ||
             nameLower.includes("pull") || nameLower.includes("row") || nameLower.includes("chin");
           if (isPull) return true;
         }
@@ -970,7 +985,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
           if (isLower) return true;
         }
         if (term === "arms" || term === "arm") {
-          const isArm = (ex.muscleGroups && ex.muscleGroups.some(m => ["biceps", "triceps", "forearms"].includes(m.toLowerCase()))) ||
+          const isArm = (exMuscleGroups.some(m => ["biceps", "triceps", "forearms"].includes(String(m || "").toLowerCase()))) ||
             nameLower.includes("curl") || nameLower.includes("tricep") || nameLower.includes("bicep") || nameLower.includes("dip");
           if (isArm) return true;
         }
@@ -1365,7 +1380,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 {workout.name}
               </h4>
               <span className="text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-red-50 text-[#C0392B] border border-red-100 whitespace-nowrap shrink-0">
-                {workout.exercises.length} Drills
+                {(Array.isArray(workout.exercises) ? workout.exercises : []).length} Drills
               </span>
             </div>
             <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
@@ -1396,14 +1411,14 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             })()}
 
             <div className="flex flex-wrap gap-1 mt-2">
-              {workout.exercises.slice(0, 3).map((ex, idx) => (
+              {(Array.isArray(workout.exercises) ? workout.exercises : []).slice(0, 3).map((ex, idx) => (
                 <span key={idx} className="text-[9px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-sm">
                   {ex.name}
                 </span>
               ))}
-              {workout.exercises.length > 3 && (
+              {(Array.isArray(workout.exercises) ? workout.exercises : []).length > 3 && (
                 <span className="text-[9px] font-mono text-slate-400 py-0.5">
-                  +{workout.exercises.length - 3} more
+                  +{(Array.isArray(workout.exercises) ? workout.exercises : []).length - 3} more
                 </span>
               )}
             </div>
@@ -1420,7 +1435,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             <button
               type="button"
               onClick={() => {
-                const workoutExs = workout.exercises.map(we => getOrCreateExercise(we.name, exercises));
+                const workoutExs = (Array.isArray(workout.exercises) ? workout.exercises : []).map(we => getOrCreateExercise(we.name, exercises));
                 setActivePlayerSession({
                   exercises: workoutExs,
                   title: workout.name
@@ -1723,11 +1738,11 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                   </div>
 
                   {/* Step-by-Step Instructions list */}
-                  {selectedExercise.instructions && selectedExercise.instructions.length > 0 && (
+                  {(Array.isArray(selectedExercise.instructions) ? selectedExercise.instructions : (typeof selectedExercise.instructions === "string" && (selectedExercise.instructions as string).trim() ? [selectedExercise.instructions] : [])).length > 0 && (
                     <div className="p-4 bg-slate-50 rounded-xl border border-slate-150 space-y-3">
                       <span className="font-extrabold text-slate-800 block uppercase text-[10px] font-mono tracking-wider">Step-by-Step Technique Instructions:</span>
                       <ol className="space-y-2">
-                        {selectedExercise.instructions.map((inst, index) => (
+                        {(Array.isArray(selectedExercise.instructions) ? selectedExercise.instructions : [String(selectedExercise.instructions)]).map((inst, index) => (
                           <li key={`step-${selectedExercise.id}-${index}`} className="flex gap-2.5 text-xs text-slate-655 leading-relaxed">
                             <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono font-bold text-emerald-500 shrink-0">
                               {index + 1}
@@ -1769,11 +1784,11 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                   </div>
 
                   {/* Exercise Benefits */}
-                  {selectedExercise.benefits && selectedExercise.benefits.length > 0 && (
+                  {(Array.isArray(selectedExercise.benefits) ? selectedExercise.benefits : (typeof selectedExercise.benefits === "string" && (selectedExercise.benefits as string).trim() ? [selectedExercise.benefits] : [])).length > 0 && (
                     <div className="p-4 bg-slate-50 rounded-xl border border-slate-150 space-y-2">
                       <span className="font-extrabold text-slate-500 block uppercase text-[10px] font-mono tracking-wider">Biomechanical Benefits:</span>
                       <ul className="space-y-1.5">
-                        {selectedExercise.benefits.map((benefit, idx) => (
+                        {(Array.isArray(selectedExercise.benefits) ? selectedExercise.benefits : [String(selectedExercise.benefits)]).map((benefit, idx) => (
                           <li key={idx} className="flex items-start gap-2 text-xs text-slate-705 leading-relaxed">
                             <span className="text-emerald-500 font-extrabold mt-0.5">&#10004;</span>
                             <span>{benefit}</span>
@@ -1926,7 +1941,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                           </p>
                         </div>
                         <div className="flex items-center justify-between text-[9px] font-mono text-slate-450 mt-2 pt-2 border-t border-slate-200/50 w-full">
-                          <span className="line-clamp-1">{ex.equipment[0] || "No Equipment"}</span>
+                          <span className="line-clamp-1">{Array.isArray(ex.equipment) ? (ex.equipment[0] || "No Equipment") : String(ex.equipment || "No Equipment")}</span>
                           <span className="text-[#C0392B] font-bold group-hover:translate-x-1 transition-transform">&#10142;</span>
                         </div>
                       </button>
@@ -2102,17 +2117,24 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
                     <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block mb-0.5">Primary Muscle</span>
-                    <span className="font-bold text-slate-800 capitalize">{activeExercise.muscleGroups[0]}</span>
+                    <span className="font-bold text-slate-800 capitalize">
+                      {(Array.isArray(activeExercise.muscleGroups) && activeExercise.muscleGroups[0]) ||
+                        (Array.isArray(activeExercise.musclesWorked) && activeExercise.musclesWorked[0]) ||
+                        activeExercise.category ||
+                        "Full Body"}
+                    </span>
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block mb-0.5">Secondary Muscles</span>
                     <span className="font-bold text-slate-800 capitalize">
-                      {activeExercise.muscleGroups.slice(1).join(", ") || "None"}
+                      {(Array.isArray(activeExercise.muscleGroups) ? activeExercise.muscleGroups.slice(1).join(", ") : "") || "None"}
                     </span>
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block mb-0.5">Equipment</span>
-                    <span className="font-bold text-slate-800">{activeExercise.equipment.join(", ")}</span>
+                    <span className="font-bold text-slate-800">
+                      {Array.isArray(activeExercise.equipment) ? (activeExercise.equipment.join(", ") || "Bodyweight") : String(activeExercise.equipment || "Bodyweight")}
+                    </span>
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block mb-0.5">Difficulty</span>
@@ -2165,7 +2187,12 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 Clinical Execution Instructions
               </h3>
               <ol className="space-y-3 text-xs text-slate-650 list-decimal pl-4 leading-relaxed">
-                {activeExercise.instructions.map((inst: string, idx: number) => (
+                {(Array.isArray(activeExercise.instructions)
+                  ? activeExercise.instructions
+                  : (typeof activeExercise.instructions === "string" && (activeExercise.instructions as string).trim()
+                      ? [activeExercise.instructions]
+                      : ["Execute movement with deliberate tempo and controlled breathing."])
+                ).map((inst: string, idx: number) => (
                   <li key={idx} className="pl-1">
                     {inst}
                   </li>
@@ -2199,11 +2226,11 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 Physique & Strength Benefits
               </h3>
               <ul className="space-y-3 text-xs text-slate-650 list-disc pl-4 leading-relaxed">
-                {activeExercise.benefits?.map((benefit: string, idx: number) => (
+                {Array.isArray(activeExercise.benefits) && activeExercise.benefits.length > 0 ? activeExercise.benefits.map((benefit: string, idx: number) => (
                   <li key={idx} className="pl-1">
                     {benefit}
                   </li>
-                )) || (
+                )) : (
                   <>
                     <li>Maximizes target muscle fiber mechanical tension.</li>
                     <li>Improves joint range of motion and overall structural stability.</li>
@@ -2295,7 +2322,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             <button
               type="button"
               onClick={() => {
-                const workoutExs = activeWorkout.exercises.map((we: any) => getOrCreateExercise(we.name, exercises));
+                const workoutExs = (Array.isArray(activeWorkout.exercises) ? activeWorkout.exercises : []).map((we: any) => getOrCreateExercise(we.name, exercises));
                 setActivePlayerSession({
                   exercises: workoutExs,
                   title: activeWorkout.name
@@ -2316,7 +2343,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
 
             {/* Exercises Horizontal Cards Stack */}
             <div className="space-y-4">
-              {activeWorkout.exercises.map((workoutEx: any, index: number) => {
+              {(Array.isArray(activeWorkout.exercises) ? activeWorkout.exercises : []).map((workoutEx: any, index: number) => {
                 const exDetail = getOrCreateExercise(workoutEx.name, exercises);
                 const stableKey = exDetail?.id || workoutEx.id || `active-workout-${activeWorkout.id}-${workoutEx.name}-${index}`;
                 return (
@@ -3883,7 +3910,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                                           <button
                                             type="button"
                                             onClick={() => {
-                                              const workoutExs = workout.exercises.map(we => getOrCreateExercise(we.name, exercises));
+                                              const workoutExs = (Array.isArray(workout.exercises) ? workout.exercises : []).map(we => getOrCreateExercise(we.name, exercises));
                                               setActivePlayerSession({
                                                 exercises: workoutExs,
                                                 title: workout.name
@@ -4079,7 +4106,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                                   {ex.name}
                                 </h3>
                                 <p className="text-xs text-slate-600 mt-1 line-clamp-2">
-                                  {ex.instructions[0]} Focus on perfect execution.
+                                  {(Array.isArray(ex.instructions) && ex.instructions[0]) ? ex.instructions[0] : (typeof ex.instructions === "string" && (ex.instructions as string).trim() ? ex.instructions : (ex.movementExecution || "Execute movement with strict form."))} Focus on perfect execution.
                                 </p>
 
                                 <div className="mt-4 flex flex-wrap gap-1.5">
@@ -4237,7 +4264,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                             {ex.name}
                           </h3>
                           <p className="text-xs text-slate-600 mt-1 line-clamp-2">
-                            {ex.instructions[0]} Focus on perfect execution.
+                            {(Array.isArray(ex.instructions) && ex.instructions[0]) ? ex.instructions[0] : (typeof ex.instructions === "string" && (ex.instructions as string).trim() ? ex.instructions : (ex.movementExecution || "Execute movement with strict form."))} Focus on perfect execution.
                           </p>
 
                           <div className="mt-4 flex flex-wrap gap-1.5">
@@ -4513,7 +4540,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 <div className="space-y-3">
                   {selectedProgram.schedule.map((sch, i) => {
                     const cycleDay = i + 1;
-                    const enginePlan = getWorkoutForProgramAndDay(selectedProgram.id, cycleDay, exercises);
+                    const enginePlan = getWorkoutForProgramAndDay(selectedProgram.id, cycleDay, exercises, { fitnessLevel: resolveAthleteTier(user) });
                     const dayFocus = enginePlan.meta.title || enginePlan.meta.category || sch.focus;
                     const dayExercises = (enginePlan.exercises && enginePlan.exercises.length > 0)
                       ? enginePlan.exercises.map(e => e.exerciseName || (e as any).name)

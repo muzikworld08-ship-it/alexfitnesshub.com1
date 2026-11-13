@@ -42,22 +42,22 @@ export default function MasterLibraryBrowserModal({
     } else if (selectedCategory === "home") {
       pool = pool.filter(e => e.categories?.includes("Home Workouts") || e.equipment?.includes("Bodyweight"));
     } else if (selectedCategory === "chest") {
-      pool = pool.filter(e => e.category.toLowerCase().includes("chest") || e.muscleGroups.some(m => m.toLowerCase().includes("chest") || m.toLowerCase().includes("tricep")));
+      pool = pool.filter(e => (e.category || "").toLowerCase().includes("chest") || (Array.isArray(e.muscleGroups) ? e.muscleGroups : []).some(m => String(m || "").toLowerCase().includes("chest") || String(m || "").toLowerCase().includes("tricep")));
     } else if (selectedCategory === "back") {
-      pool = pool.filter(e => e.category.toLowerCase().includes("back") || e.muscleGroups.some(m => m.toLowerCase().includes("back") || m.toLowerCase().includes("bicep")));
+      pool = pool.filter(e => (e.category || "").toLowerCase().includes("back") || (Array.isArray(e.muscleGroups) ? e.muscleGroups : []).some(m => String(m || "").toLowerCase().includes("back") || String(m || "").toLowerCase().includes("bicep")));
     } else if (selectedCategory === "legs") {
-      pool = pool.filter(e => e.category.toLowerCase().includes("leg") || e.muscleGroups.some(m => m.toLowerCase().includes("quad") || m.toLowerCase().includes("glute") || m.toLowerCase().includes("leg")));
+      pool = pool.filter(e => (e.category || "").toLowerCase().includes("leg") || (Array.isArray(e.muscleGroups) ? e.muscleGroups : []).some(m => String(m || "").toLowerCase().includes("quad") || String(m || "").toLowerCase().includes("glute") || String(m || "").toLowerCase().includes("leg")));
     } else if (selectedCategory === "cardio") {
-      pool = pool.filter(e => e.category.toLowerCase().includes("cardio") || e.categories?.some(c => c.toLowerCase().includes("calisthenics") || c.toLowerCase().includes("hiit")));
+      pool = pool.filter(e => (e.category || "").toLowerCase().includes("cardio") || (Array.isArray(e.categories) ? e.categories : []).some(c => String(c || "").toLowerCase().includes("calisthenics") || String(c || "").toLowerCase().includes("hiit")));
     }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       pool = pool.filter(e =>
-        e.name.toLowerCase().includes(q) ||
-        e.category.toLowerCase().includes(q) ||
-        e.muscleGroups.some(m => m.toLowerCase().includes(q)) ||
-        e.equipment.some(eq => eq.toLowerCase().includes(q))
+        (e.name || "").toLowerCase().includes(q) ||
+        (e.category || "").toLowerCase().includes(q) ||
+        (Array.isArray(e.muscleGroups) ? e.muscleGroups : []).some(m => String(m || "").toLowerCase().includes(q)) ||
+        (Array.isArray(e.equipment) ? e.equipment : []).some(eq => String(eq || "").toLowerCase().includes(q))
       );
     }
 
@@ -177,7 +177,7 @@ export default function MasterLibraryBrowserModal({
                           {ex.musclesWorked?.[0] || ex.muscleGroups?.[0] || ex.category}
                         </span>
                         <span className="text-[9px] font-mono text-slate-400">
-                          {ex.equipment.join(", ") || "Bodyweight"}
+                          {(Array.isArray(ex.equipment) ? ex.equipment.join(", ") : String(ex.equipment || "")) || "Bodyweight"}
                         </span>
                       </div>
                       <h4 className="text-xs font-black text-slate-900 leading-tight">
@@ -237,7 +237,7 @@ export default function MasterLibraryBrowserModal({
                       {selectedExercise.difficulty}
                     </span>
                     <span className="text-[10px] font-mono text-slate-500">
-                      {selectedExercise.equipment.join(", ") || "Bodyweight"}
+                      {(Array.isArray(selectedExercise.equipment) ? selectedExercise.equipment.join(", ") : String(selectedExercise.equipment || "")) || "Bodyweight"}
                     </span>
                   </div>
 

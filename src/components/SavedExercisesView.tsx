@@ -91,12 +91,12 @@ export default function SavedExercisesView({ setView }: SavedExercisesViewProps)
       // Check if all search terms match the exercise in some way
       return queryTerms.every(term => {
         if (nameLower.includes(term)) return true;
-        if (ex.categories && ex.categories.some(cat => cat.toLowerCase().includes(term))) return true;
+        if (Array.isArray(ex.categories) && ex.categories.some(cat => String(cat || "").toLowerCase().includes(term))) return true;
         if (ex.category && ex.category.toLowerCase().includes(term)) return true;
-        if (ex.muscleGroups && ex.muscleGroups.some(m => m.toLowerCase().includes(term))) return true;
+        if (Array.isArray(ex.muscleGroups) && ex.muscleGroups.some(m => String(m || "").toLowerCase().includes(term))) return true;
         if (musclesWorkedLower.some(m => m.includes(term))) return true;
         if (bodyPartLower.includes(term)) return true;
-        if (ex.equipment && ex.equipment.some(eq => eq.toLowerCase().includes(term))) return true;
+        if (Array.isArray(ex.equipment) && ex.equipment.some(eq => String(eq || "").toLowerCase().includes(term))) return true;
         
         // Movement pattern synonym logic
         if (term === "push" || term === "pushing" || term === "chest") {
@@ -438,7 +438,12 @@ export default function SavedExercisesView({ setView }: SavedExercisesViewProps)
                         <div>
                           <h4 className="text-[10px] font-mono font-bold text-[#C0392B] uppercase tracking-widest mb-2">Step-by-step Execution</h4>
                           <ol className="list-decimal list-inside space-y-1.5 text-xs text-slate-600 leading-relaxed font-sans">
-                            {selectedExercise.instructions.map((inst, i) => (
+                            {(Array.isArray(selectedExercise.instructions)
+                              ? selectedExercise.instructions
+                              : (typeof selectedExercise.instructions === "string" && (selectedExercise.instructions as string).trim()
+                                  ? [selectedExercise.instructions]
+                                  : ["Execute movement with controlled tempo and proper alignment."])
+                            ).map((inst, i) => (
                               <li key={i} className="pl-1 text-slate-755"><span className="font-semibold text-slate-800">{inst}</span></li>
                             ))}
                           </ol>

@@ -3,6 +3,8 @@ services:
     name: alex-fitness-hub
     runtime: node
     plan: free
+    autoDeploy: true
+    healthCheckPath: /health
     buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     envVars:

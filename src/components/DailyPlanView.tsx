@@ -23,6 +23,7 @@ import { getPreWorkoutStretchesForDay } from "../utils/dynamicWorkoutEngine";
 import { SectionErrorBoundary } from "./ErrorBoundary";
 import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
 import { subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
+import { resolveAthleteTier, resolveActiveProgramId } from "../utils/athleteContext";
 
 interface DailyPlanSchema {
   wakeUpTime: string;
@@ -254,21 +255,8 @@ export default function DailyPlanView() {
         cardioRecommendation: "20-30 minutes brisk walking or moderate cardio",
         injuryRestoration: restrictions !== "None" ? `Injury precaution: Avoid overloading joints affected by ${restrictions}. Focus on controlled tempo.` : "Engage core and stabilize joints through warm-up mobility sets.",
         workoutExercises: (() => {
-          const userLevel = (
-            user?.workoutExperience ||
-            user?.fitnessLevel ||
-            (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level")) : null) ||
-            "Beginner"
-          ).toLowerCase();
-
-          let activeProgId = "immortal_90";
-          if (user?.gender?.toLowerCase() === "female") {
-            activeProgId = "women_confidence";
-          }
-          const storedActive = typeof window !== "undefined" ? window.localStorage?.getItem("fit_active_challenge_id") : null;
-          if (storedActive) {
-            activeProgId = storedActive;
-          }
+          const userLevel = resolveAthleteTier(user);
+          const activeProgId = resolveActiveProgramId(user);
 
           const enginePlan = getWorkoutForProgramAndDay(
             activeProgId,
@@ -298,7 +286,7 @@ export default function DailyPlanView() {
     };
 
     try {
-      const token = auth.currentUser 
+      const token = auth?.currentUser 
         ? await auth.currentUser.getIdToken() 
         : (localStorage.getItem("fit_active_uid") || "");
       const response = await fetch("/api/gemini/generate-plan", {

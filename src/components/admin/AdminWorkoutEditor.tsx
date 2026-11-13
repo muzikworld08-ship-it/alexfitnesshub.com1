@@ -16,7 +16,7 @@ import { purgeRestrictedHomeWorkouts, PurgeRestrictedHomeResult } from "../../ut
 import DeleteWorkoutConfirmModal, { DeleteWorkoutTarget } from "./DeleteWorkoutConfirmModal";
 import { resetAndCleanAllProgramSplits } from "../../utils/dynamicWorkoutEngine";
 import { getScheduleOverrides, setScheduleOverridesFromAdmin } from "../../utils/scheduleOverridesStore";
-import { auth } from "../../lib/firebase";
+import { auth, getFirebaseIdToken } from "../../lib/firebase";
 import { 
   STRONG_MEN_EXERCISE_BLOCKLIST, 
   isWomenWorkoutEligibleExercise, 
@@ -191,6 +191,7 @@ export default function AdminWorkoutEditor() {
 
   // One-Click Clean & Reset All Program Workouts
   const [isResettingPrograms, setIsResettingPrograms] = useState(false);
+  const [cloudErrorMsg, setCloudErrorMsg] = useState<string | null>(null);
 
   const handleResetAndCleanAllPrograms = async () => {
     if (!window.confirm("One-Click Reset & Auto-Clean All Program Days?\n\nThis will scan every day of every program split (e.g. 90-Day Immortal, Belly Fat Shred, 180-Day Home, etc.):\n• On Back & Biceps days: any chest or leg exercises will disappear immediately.\n• On Chest & Triceps days: any back or leg exercises will disappear.\n• On Legs days: any chest or back exercises will disappear.\n• Every day's routine is capped strictly at 10 workouts max daily.\n\nProceed?")) {
@@ -206,13 +207,11 @@ export default function AdminWorkoutEditor() {
       setScheduleOverridesFromAdmin(cleanRes.updatedOverrides);
 
       // Send to server
-      const token = await auth.currentUser?.getIdToken().catch(() => null);
+      const token = await getFirebaseIdToken();
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const adminEmail = localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
-      headers["x-admin-email"] = adminEmail;
 
-      await fetch("/api/admin/programs/reset-and-clean-all-programs", {
+      const res = await fetch("/api/admin/programs/reset-and-clean-all-programs", {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -220,8 +219,13 @@ export default function AdminWorkoutEditor() {
           stats: cleanRes.stats
         })
       });
-
-      alert(`Success! All program workouts have been reset and auto-cleaned.\n\n• ${cleanRes.stats.totalProgramsCleaned} programs sanitized\n• ${cleanRes.stats.totalDaysReset} program days verified\n• ${cleanRes.stats.totalMismatchesRemoved} mismatched exercises purged (e.g. cross-contaminations removed)\n• All daily routines capped at maximum 10 workouts daily.`);
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok || resData?.cloudSaved === false) {
+        setCloudErrorMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
+      } else {
+        setCloudErrorMsg(null);
+        alert(`Success! All program workouts have been reset and auto-cleaned.\n\n• ${cleanRes.stats.totalProgramsCleaned} programs sanitized\n• ${cleanRes.stats.totalDaysReset} program days verified\n• ${cleanRes.stats.totalMismatchesRemoved} mismatched exercises purged (e.g. cross-contaminations removed)\n• All daily routines capped at maximum 10 workouts daily.`);
+      }
     } catch (err: any) {
       alert("Error resetting programs: " + (err?.message || "Unknown error"));
     } finally {
@@ -582,6 +586,23 @@ export default function AdminWorkoutEditor() {
           </div>
         </div>
       </div>
+
+      {/* Cloud Persistence Error Banner */}
+      {cloudErrorMsg && (
+        <div className="p-4 rounded-2xl bg-red-50 border border-red-300 text-red-900 text-xs font-bold flex items-center justify-between gap-3 animate-fade-in shadow-xs">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+            <span>{cloudErrorMsg}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCloudErrorMsg(null)}
+            className="text-red-700 hover:text-red-950 text-xs px-2 py-0.5 rounded cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Audience Notice Banner */}
       {audienceNotice && (

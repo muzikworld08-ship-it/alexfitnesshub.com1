@@ -28,6 +28,7 @@ import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import { resolveAuthenticExercise } from "../data/authoritativeExerciseMap";
 import { saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
 import { subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
+import { resolveAthleteTier } from "../utils/athleteContext";
 import { DailyLifestyleChecklist, DailyLifestyleHabits } from "./DailyLifestyleChecklist";
 import { getExerciseGifUrl } from "../data/exercises";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
@@ -293,15 +294,10 @@ export default function HomeWorkoutChallengeView() {
 
   // Get current selected day workout
   const currentWorkout: HomeDailyWorkout = useMemo(() => {
-    const athleteLvl = (
-      state.onboarding?.fitnessLevel || 
-      (user as any)?.workoutExperience || 
-      (user as any)?.fitnessLevel || 
-      (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level")) : null) || 
-      "Beginner"
-    ) as any;
+    const resolvedTier = resolveAthleteTier(user, state);
+    const athleteLvl = (resolvedTier.charAt(0).toUpperCase() + resolvedTier.slice(1)) as "Beginner" | "Intermediate" | "Advanced";
     return getHomeWorkoutForDay(selectedDayNumber, athleteLvl, state.onboarding, exercises, selectedTrack);
-  }, [selectedDayNumber, state.onboarding, exercises, selectedTrack, overrideTick, user]);
+  }, [selectedDayNumber, state, exercises, selectedTrack, overrideTick, user]);
 
   // Exercise Swapper State (when users lack equipment or want an alternative from the same category)
   const [swappingExerciseItem, setSwappingExerciseItem] = useState<{ exercise: any; index: number } | null>(null);
@@ -1715,13 +1711,13 @@ export default function HomeWorkoutChallengeView() {
                         )}
 
                         {/* Kinetic Form Instructions & Coaching Cues */}
-                        {ex.instructions && ex.instructions.length > 0 && (
+                        {(Array.isArray(ex.instructions) ? ex.instructions : (typeof ex.instructions === "string" && (ex.instructions as string).trim() ? [ex.instructions] : [])).length > 0 && (
                           <div className="space-y-2 pt-2">
                             <span className="text-xs font-extrabold text-slate-900 uppercase tracking-tight block">
                               Form Instructions & Kinetic Execution:
                             </span>
                             <ul className="space-y-2 text-xs text-slate-600">
-                              {ex.instructions.map((step, idx) => (
+                              {(Array.isArray(ex.instructions) ? ex.instructions : [String(ex.instructions)]).map((step, idx) => (
                                 <li key={idx} className="flex items-start gap-2.5">
                                   <span className="h-4 w-4 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-[10px] font-mono font-bold shrink-0 mt-0.5">
                                     {idx + 1}

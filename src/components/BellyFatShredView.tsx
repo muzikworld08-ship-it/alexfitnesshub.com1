@@ -23,7 +23,8 @@ import RestDayCard from "./RestDayCard";
 import CardioDayCard from "./CardioDayCard";
 import ProgramCooldownWaitingScreen from "./ProgramCooldownWaitingScreen";
 import { recordDailyWorkoutCompletion, getProgramWaitState } from "../utils/programWaitManager";
-import { cleanFirestoreData } from "../lib/firebase";
+import { resolveAthleteTier } from "../utils/athleteContext";
+import { cleanFirestoreData, getFirebaseIdToken } from "../lib/firebase";
 import { 
   isChestExercise, 
   isBackExercise, 
@@ -303,13 +304,11 @@ const getWorkoutForWeekAndDay = (
   userFitnessLevel?: string
 ) => {
   const daySeq = (week - 1) * 7 + dayNum;
-  const userLevel = (
-    userFitnessLevel || 
-    (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level")) : null) || 
-    (week <= 4 ? "Beginner" : "Intermediate")
-  ).toLowerCase();
-  const isBeginner = userLevel.includes("beg");
-  const isAdvanced = userLevel.includes("adv");
+  const userLevel = userFitnessLevel
+    ? resolveAthleteTier({ fitnessLevel: userFitnessLevel })
+    : resolveAthleteTier(null);
+  const isBeginner = userLevel === "beginner";
+  const isAdvanced = userLevel === "advanced";
   const difficulty = isBeginner ? "Beginner" : isAdvanced ? "Advanced" : "Intermediate";
 
   // Muscle groups & themes progression
@@ -731,25 +730,33 @@ export default function BellyFatShredView() {
       setProgramScheduleOverrides(newAllOverrides);
       setScheduleOverridesFromAdmin(newAllOverrides);
 
+      let cloudSaveFailed = false;
       try {
-        await fetch("/api/admin/programs/save-day-override", {
+        const token = await getFirebaseIdToken();
+        const saveHeaders: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) saveHeaders["Authorization"] = `Bearer ${token}`;
+        const res = await fetch("/api/admin/programs/save-day-override", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${(user as any)?.token || "admin"}`
-          },
+          headers: saveHeaders,
           body: JSON.stringify({
             programId: "belly_fat_shred",
             dayNumber: progress.currentDay,
-            dayData: updatedDayData,
+            dayOverride: updatedDayData,
             user: { email: user?.email, role: user?.role }
           })
         });
+        const resData = await res.json().catch(() => ({}));
+        if (!res.ok || resData?.cloudSaved === false) {
+          cloudSaveFailed = true;
+        }
       } catch (err) {
+        cloudSaveFailed = true;
         console.warn("Server save error (cached locally):", err);
       }
 
-      if (result.removedNames.length > 0) {
+      if (cloudSaveFailed) {
+        setPurgeSuccessMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
+      } else if (result.removedNames.length > 0) {
         setPurgeSuccessMsg(`🧹 Purged ${result.removedNames.length} mismatched workout(s): ${result.removedNames.join(", ")}. Split reset to strictly contain only valid ${splitDef.categoryTitle} exercises!`);
       } else {
         setPurgeSuccessMsg(`✨ Zero mismatched workouts found! Every drill in this split 100% authentically belongs to ${splitDef.categoryTitle}.`);
@@ -809,7 +816,7 @@ export default function BellyFatShredView() {
     if (!user) return;
     setFetchingPremiumContent(true);
     try {
-      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      const token = auth?.currentUser ? await auth.currentUser.getIdToken() : null;
       if (!token) return;
       const res = await fetch("/api/premium/belly-fat-shred/content", {
         headers: {
@@ -1069,7 +1076,7 @@ export default function BellyFatShredView() {
 
   // Active workout definition dynamically resolved from admin library & schedule overrides
   const bellyOverrides = programScheduleOverrides["belly_fat_shred"] || {};
-  const athleteLevel = user?.workoutExperience || (user as any)?.fitnessLevel || (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level")) : null) || "Beginner";
+  const athleteLevel = resolveAthleteTier(user);
   const workoutInfo = useMemo(() => {
     return getWorkoutForWeekAndDay(
       progress.currentWeek, 
@@ -3458,7 +3465,12 @@ export default function BellyFatShredView() {
                         <div className="space-y-1.5 pt-2">
                           <span className="text-[10px] font-mono text-slate-500 uppercase font-bold block">Steps</span>
                           <ol className="text-xs space-y-1 text-slate-600 list-decimal pl-4 leading-relaxed">
-                            {exercise.instructions.map((step, sIdx) => (
+                            {(Array.isArray(exercise.instructions)
+                              ? exercise.instructions
+                              : (typeof exercise.instructions === "string" && (exercise.instructions as string).trim()
+                                  ? [exercise.instructions]
+                                  : ["Execute movement with controlled tempo and proper alignment."])
+                            ).map((step, sIdx) => (
                               <li key={sIdx}>{step}</li>
                             ))}
                           </ol>
@@ -3466,7 +3478,7 @@ export default function BellyFatShredView() {
 
                         {/* Muscle groups badges */}
                         <div className="flex flex-wrap gap-1.5 pt-2">
-                          {exercise.muscles.map((muscle, mIdx) => (
+                          {(Array.isArray(exercise.muscles) ? exercise.muscles : ["Full Body"]).map((muscle, mIdx) => (
                             <span key={mIdx} className="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-200/60 text-slate-500 uppercase">
                               {muscle}
                             </span>
@@ -3491,7 +3503,7 @@ export default function BellyFatShredView() {
                         <span className="text-xs shrink-0">🛡️</span>
                         <div>
                           <strong className="uppercase font-mono block">Safety Cue:</strong>
-                          {exercise.safetyTips.join(" ")}
+                          {Array.isArray(exercise.safetyTips) ? exercise.safetyTips.join(" ") : String(exercise.safetyTips || "Maintain controlled breathing and neutral spine alignment.")}
                         </div>
                       </div>
                     </div>

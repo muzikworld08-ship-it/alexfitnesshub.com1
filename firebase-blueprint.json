@@ -431,6 +431,40 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "productId", "customerEmail", "paymentReference"]
+    },
+    "ProgramSchedule": {
+      "title": "Program Schedule",
+      "description": "Canonical 7-day cycle and per-day override schedule for a fitness program or challenge.",
+      "type": "object",
+      "properties": {
+        "programId": { "type": "string" },
+        "schedule": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["programId", "schedule"]
+    },
+    "DeletedExercise": {
+      "title": "Deleted Exercise Record",
+      "description": "Tombstone record preventing deleted exercises from resurfacing.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "deletedAt": { "type": "string", "format": "date-time" },
+        "deletedBy": { "type": "string" }
+      },
+      "required": ["id"]
+    },
+    "SystemSetting": {
+      "title": "System Setting Document",
+      "description": "System-level configuration and synchronized schedule snapshot.",
+      "type": "object",
+      "properties": {
+        "overrides": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" }
+      }
     }
   },
   "firestore": {
@@ -525,6 +559,18 @@
     "printable_pdf_orders/{orderId}": {
       "schema": "PrintablePdfOrder",
       "description": "Customer digital goods purchases and download tokens."
+    },
+    "program_schedules/{programId}": {
+      "schema": "ProgramSchedule",
+      "description": "Authoritative per-program 7-day cadence and workout drill assignments."
+    },
+    "deleted_exercises/{exerciseId}": {
+      "schema": "DeletedExercise",
+      "description": "Authoritative deleted workout tombstones."
+    },
+    "system_settings/{settingId}": {
+      "schema": "SystemSetting",
+      "description": "Synchronized global settings and schedule overrides snapshot."
     }
   }
 }

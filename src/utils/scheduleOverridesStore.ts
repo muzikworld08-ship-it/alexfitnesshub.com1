@@ -1,5 +1,3 @@
-import DEFAULT_PROGRAM_SCHEDULE_OVERRIDES from "../data/program_schedule_overrides.json";
-
 // The canonical localStorage key for schedule overrides cache.
 // Per project requirement, this string must ONLY exist in this store file.
 const STORAGE_KEY = "fit_program_schedule_overrides";
@@ -22,7 +20,7 @@ const subscribers = new Set<Subscriber>();
 
 function initFromCache() {
   if (typeof window === "undefined" || !window.localStorage) {
-    memoryOverrides = (DEFAULT_PROGRAM_SCHEDULE_OVERRIDES as Record<string, any>) || {};
+    memoryOverrides = {};
     currentSource = "bundled";
     lastUpdatedAt = null;
     return;
@@ -44,7 +42,7 @@ function initFromCache() {
     console.warn("[ScheduleOverridesStore] Error reading cached overrides:", err);
   }
 
-  memoryOverrides = (DEFAULT_PROGRAM_SCHEDULE_OVERRIDES as Record<string, any>) || {};
+  memoryOverrides = {};
   currentSource = "bundled";
   lastUpdatedAt = null;
 }
@@ -64,17 +62,17 @@ export async function refreshScheduleOverridesFromServer(): Promise<Record<strin
   isHydratingFromServer = true;
 
   try {
-    const res = await fetch("/api/admin/programs/overrides?fresh=true");
+    const res = await fetch("/api/admin/programs/overrides?fresh=true", { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
-      if (data && data.overrides && typeof data.overrides === "object" && Object.keys(data.overrides).length > 0) {
-        setScheduleOverridesFromRemote(data.overrides);
+      if (data && data.overrides && typeof data.overrides === "object") {
+        setScheduleOverridesFromRemote(data.overrides, data.updatedAt || data.serverTime);
       }
 
       // Also sync deleted exercises so client-side routine renders omit permanently deleted drills across devices
       if (typeof window !== "undefined" && window.localStorage) {
         try {
-          const delRes = await fetch("/api/exercises/deleted");
+          const delRes = await fetch("/api/exercises/deleted", { cache: "no-store" });
           if (delRes.ok) {
             const delData = await delRes.json();
             if (delData?.deletedExercises && Array.isArray(delData.deletedExercises)) {
@@ -97,14 +95,49 @@ export async function refreshScheduleOverridesFromServer(): Promise<Record<strin
   } finally {
     isHydratingFromServer = false;
   }
+
+  // Last-resort bundled fallback ONLY when cache is empty and server fetch failed
+  if (!memoryOverrides || Object.keys(memoryOverrides).length === 0) {
+    try {
+      const mod = await import("../data/program_schedule_overrides.json");
+      const bundled = (mod?.default || mod || {}) as Record<string, any>;
+      if (bundled && typeof bundled === "object" && Object.keys(bundled).length > 0) {
+        memoryOverrides = bundled;
+        currentSource = "bundled";
+        notifySubscribers();
+      }
+    } catch {}
+  }
+
   return getScheduleOverrides();
 }
 
-// Automatically sync latest overrides from server on client startup
+// Automatically sync latest overrides from server on client startup and lifecycle events
 if (typeof window !== "undefined") {
   setTimeout(() => {
     refreshScheduleOverridesFromServer();
   }, 50);
+
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        refreshScheduleOverridesFromServer();
+      }
+    });
+  }
+
+  window.addEventListener("focus", () => {
+    refreshScheduleOverridesFromServer();
+  });
+
+  window.addEventListener("online", () => {
+    refreshScheduleOverridesFromServer();
+  });
+
+  // Poll every 60 seconds while the app stays open so all devices reflect admin updates
+  setInterval(() => {
+    refreshScheduleOverridesFromServer();
+  }, 60_000);
 
   // Cross-tab sync for schedule overrides
   window.addEventListener("storage", (e) => {
@@ -144,17 +177,17 @@ function notifySubscribers() {
  * Memory -> localStorage Cache -> Bundled Defaults.
  */
 export function getScheduleOverrides(): Record<string, any> {
-  if (memoryOverrides && Object.keys(memoryOverrides).length > 0) {
+  if (memoryOverrides !== null) {
     return memoryOverrides;
   }
 
   initFromCache();
-  return memoryOverrides || (DEFAULT_PROGRAM_SCHEDULE_OVERRIDES as Record<string, any>) || {};
+  return memoryOverrides || {};
 }
 
 /**
- * Updates store from canonical remote Firestore document (system_settings/program_schedule_overrides).
- * A remote snapshot REPLACES the cache (no merging) when its _updatedAt is newer or equal.
+ * Updates store from canonical remote snapshot (/api/admin/programs/overrides or Firestore).
+ * Replaces the cached snapshot in full so deletions and rollbacks take effect cleanly without merging.
  */
 export function setScheduleOverridesFromRemote(
   data: Record<string, any>,
@@ -167,36 +200,19 @@ export function setScheduleOverridesFromRemote(
     ? (typeof incomingTime === "number" ? new Date(incomingTime).toISOString() : String(incomingTime))
     : new Date().toISOString();
 
-  // If we already have a newer timestamp in memory/cache, do not overwrite with older data
-  if (lastUpdatedAt && incomingTime) {
-    const prevMs = new Date(lastUpdatedAt).getTime();
-    const nextMs = new Date(incomingIso).getTime();
-    if (!isNaN(prevMs) && !isNaN(nextMs) && nextMs < prevMs) {
-      console.log("[ScheduleOverridesStore] Ignoring stale remote snapshot:", { incomingIso, lastUpdatedAt });
-      return;
-    }
-  }
-
   // Strip internal metadata fields before caching
   const { _updatedAt, _updatedBy, ...cleanOverrides } = data;
   const finalData = cleanOverrides.overrides && typeof cleanOverrides.overrides === "object"
     ? cleanOverrides.overrides
     : cleanOverrides;
 
-  // Deep merge to guarantee no program is wiped when receiving remote updates
-  const current = memoryOverrides || (DEFAULT_PROGRAM_SCHEDULE_OVERRIDES as Record<string, any>) || {};
-  const merged: Record<string, any> = { ...current };
-  for (const [k, v] of Object.entries(finalData)) {
-    merged[k] = { ...(current[k] || {}), ...(v as any) };
-  }
-
-  memoryOverrides = merged;
+  memoryOverrides = finalData;
   currentSource = "remote";
   lastUpdatedAt = incomingIso;
 
   if (typeof window !== "undefined" && window.localStorage) {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(finalData));
       window.localStorage.setItem(UPDATED_AT_KEY, incomingIso);
     } catch (e) {
       console.warn("[ScheduleOverridesStore] Failed to write localStorage cache:", e);
@@ -208,13 +224,13 @@ export function setScheduleOverridesFromRemote(
 
 /**
  * Save schedule overrides from Admin dashboards (AdminWorkoutChallengeEngine / AdminWorkoutEditor).
- * Replaces the cache, records update time, and broadcasts to all components.
+ * Merges updated program keys into current snapshot, records update time, and broadcasts to all components.
  */
 export function setScheduleOverridesFromAdmin(data: Record<string, any>): void {
   if (!data || typeof data !== "object") return;
   const now = new Date().toISOString();
-  // Deep merge to guarantee no program is wiped when an admin saves another program
-  const current = memoryOverrides || (DEFAULT_PROGRAM_SCHEDULE_OVERRIDES as Record<string, any>) || {};
+  // Deep merge per program key when admin saves one program so other programs stay intact
+  const current = memoryOverrides || {};
   const merged: Record<string, any> = { ...current };
   for (const [k, v] of Object.entries(data)) {
     merged[k] = { ...(current[k] || {}), ...(v as any) };

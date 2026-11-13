@@ -45,6 +45,7 @@ import ProgressTrackerView from "./ProgressTrackerView";
 import AppleHealthSyncCard from "./AppleHealthSyncCard";
 import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
 import { subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
+import { resolveAthleteTier, resolveActiveProgramId } from "../utils/athleteContext";
 
 interface DashboardProps {
   activeView?: string;
@@ -612,14 +613,9 @@ function RoutinesAndSetsView() {
   const { exercises } = useCentralizedExercises();
   const { user } = useApp();
 
-  const [selectedProgramId, setSelectedProgramId] = useState<string>(() => {
-    return (user?.gender?.toLowerCase() === "female" ? "women_confidence" : "immortal_90");
-  });
+  const [selectedProgramId, setSelectedProgramId] = useState<string>(() => resolveActiveProgramId(user));
   const [selectedDayNumber, setSelectedDayNumber] = useState<number>(1);
-  const [selectedTier, setSelectedTier] = useState<"beginner" | "intermediate" | "advanced">(() => {
-    const raw = (user?.workoutExperience || user?.fitnessLevel || "").toLowerCase();
-    return raw.includes("adv") ? "advanced" : raw.includes("inter") ? "intermediate" : "beginner";
-  });
+  const [selectedTier, setSelectedTier] = useState<"beginner" | "intermediate" | "advanced">(() => resolveAthleteTier(user));
   const [scheduleTick, setScheduleTick] = useState<number>(0);
 
   // Subscribe to schedule overrides updates from the Admin Challenge Engine

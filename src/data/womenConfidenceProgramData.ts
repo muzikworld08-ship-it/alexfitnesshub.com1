@@ -3,6 +3,7 @@ import { filterExercisesForSplit } from "../utils/dynamicWorkoutEngine";
 import { CANONICAL_EXERCISES } from "./canonicalExercises";
 import { getWorkoutForProgramAndDay } from "./challengeEngineDatabase";
 import { getScheduleOverrides } from "../utils/scheduleOverridesStore";
+import { resolveAthleteTier } from "../utils/athleteContext";
 
 export interface WomenOnboardingProfile {
   age: number;
@@ -355,7 +356,7 @@ export function getDailyWorkoutForDay(
 ): WomenDailyWorkout {
   const safeDay = Math.max(1, Math.min(180, Number(dayNumber) || 1));
   const phaseNum = Math.min(6, Math.ceil(safeDay / 30));
-  const userLevel = profile?.fitnessLevel || (typeof window !== "undefined" ? (window.localStorage?.getItem("fit_athlete_fitness_level") || window.localStorage?.getItem("fit_user_fitness_level")) : null) || "beginner";
+  const userLevel = resolveAthleteTier(null, profile);
 
   // Delegate strictly to the authoritative Admin Dashboard Challenge Engine
   const enginePlan = getWorkoutForProgramAndDay(

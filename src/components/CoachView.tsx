@@ -89,7 +89,7 @@ export default function CoachView() {
     setGeneratedImage(null);
 
     try {
-      const token = await auth.currentUser?.getIdToken();
+      const token = await auth?.currentUser?.getIdToken();
       const response = await fetch("/api/gemini/generate-image", {
         method: "POST",
         headers: {

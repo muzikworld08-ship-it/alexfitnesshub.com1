@@ -141,8 +141,10 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
     let interval: any = null;
     if (isPlaying && !isPrepPhase && !isCompleted && !showHydrationReminder) {
       interval = setInterval(() => {
+        if (!currentExercise) return;
         // Increment calories burned based on exercise intensity
-        const baseCalPerSec = parseFloat(currentExercise.caloriesEst.split("-")[1] || "15") / 30;
+        const calParts = String(currentExercise.caloriesEst || "10-15").split("-");
+        const baseCalPerSec = (parseFloat(calParts[1] || calParts[0] || "15") || 15) / 30;
         setCaloriesBurned(prev => parseFloat((prev + baseCalPerSec).toFixed(2)));
 
         // Dynamic Heart Rate Simulation
@@ -363,7 +365,8 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
   };
 
   // Progress Percent
-  const progressPercent = Math.round(((currentIndex) / circuit.exercises.length) * 100);
+  const totalCircuitExercises = Array.isArray(circuit.exercises) && circuit.exercises.length > 0 ? circuit.exercises.length : 1;
+  const progressPercent = Math.round(((currentIndex) / totalCircuitExercises) * 100);
 
   // SVG Line Path Generator for heart rate sparkline
   const generateHeartRatePath = () => {
@@ -622,7 +625,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
                   <span className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Active Exercise</span>
                   <h1 className="text-2xl font-black text-white mt-1 uppercase font-display">{currentExercise.name}</h1>
                   <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                    {currentExercise.instructions[0]}
+                    {Array.isArray(currentExercise.instructions) ? (currentExercise.instructions[0] || "Execute with strict control.") : String(currentExercise.instructions || "Execute with strict control.")}
                   </p>
                 </div>
 
@@ -630,7 +633,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
                   <div>
                     <span className="text-[9px] font-mono text-slate-500 uppercase">Primary Targets</span>
                     <div className="flex flex-wrap gap-1.5 mt-1.5">
-                      {currentExercise.muscles.map(m => (
+                      {(Array.isArray(currentExercise.muscles) ? currentExercise.muscles : ["Full Body"]).map(m => (
                         <span key={m} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-slate-300 uppercase">
                           {m}
                         </span>

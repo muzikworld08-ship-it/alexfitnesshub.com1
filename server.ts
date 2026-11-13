@@ -184,6 +184,9 @@ const apiLimiter = rateLimit({
 });
 app.use("/api", apiLimiter);
 
+const SERVER_STARTED_AT = new Date().toISOString();
+let bootHydrationSource: "cloud" | "disk" = "disk";
+
 // Health & Deployment Version check endpoints for deployment platforms (Render, Cloud Run, etc.)
 app.get(["/health", "/api/health", "/api/version"], async (req, res) => {
   let buildId = "unknown";
@@ -209,6 +212,8 @@ app.get(["/health", "/api/health", "/api/version"], async (req, res) => {
     status: "ok",
     version: "2.4.0-production",
     timestamp: new Date().toISOString(),
+    startedAt: SERVER_STARTED_AT,
+    bootSource: bootHydrationSource,
     buildId,
     commit,
     builtAt,
@@ -606,7 +611,10 @@ function markdownToHtml(md: string): string {
 const firebaseConfigPath = path.join(process.cwd(), "firebase-applet-config.json");
 let firebaseConfig = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf-8"));
 if (!firebaseConfig.apiKey) {
-  firebaseConfig.apiKey = process.env.FIREBASE_API_KEY || ["AI", "za", "SyCN-", "LfNHvWpZK9d8wDqKhlPGjgsJa0MscQ"].join("");
+  firebaseConfig.apiKey = (process.env.FIREBASE_API_KEY || "").trim();
+}
+if (!firebaseConfig.apiKey) {
+  console.error("[Firebase Server Config Error] Missing FIREBASE_API_KEY environment variable and firebase-applet-config.json apiKey.");
 }
 
 // No patching logic is allowed to override the user's correct, fully-provisioned Firebase project config.
@@ -615,11 +623,23 @@ const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
 
 // Authenticate server as Admin to allow it to read user profiles securely
-const backendAuth = getAuth(firebaseApp);
+let backendAuth: ReturnType<typeof getAuth> | null = null;
+if (firebaseConfig.apiKey) {
+  try {
+    backendAuth = getAuth(firebaseApp);
+  } catch (authErr: any) {
+    console.error("[Firebase Server Auth Error] Could not initialize Firebase Auth:", authErr?.message || authErr);
+  }
+}
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "alexfitnesshub@gmail.com").trim();
-const ADMIN_PASS = (process.env.ADMIN_PASS || "Mbajugha2002@").trim();
+const ADMIN_PASS = (process.env.ADMIN_PASS || "").trim();
 
 async function authenticateServer() {
+  if (!ADMIN_PASS || !firebaseConfig.apiKey || !backendAuth) {
+    console.error("[Firebase Server Auth Error] ADMIN_PASS or FIREBASE_API_KEY not configured in environment; skipping server admin sign-in.");
+    startFirestoreMailWorker(db, 300000);
+    return;
+  }
   try {
     await signInWithEmailAndPassword(backendAuth, ADMIN_EMAIL, ADMIN_PASS);
     console.log(`[Firebase Server Auth] Authenticated as Admin (${ADMIN_EMAIL}).`);
@@ -909,8 +929,11 @@ function formatFirestoreRestFields(obj: any): any {
   return fields;
 }
 
-// Global server Firestore write quota tracker
-let serverFirestoreQuotaExhausted = false;
+// Global server Firestore write quota tracker with 15-minute recovery
+let serverFirestoreQuotaExhaustedAt = 0;
+const QUOTA_RETRY_MS = 15 * 60 * 1000;
+const isFirestoreQuotaBlocked = () =>
+  serverFirestoreQuotaExhaustedAt > 0 && Date.now() - serverFirestoreQuotaExhaustedAt < QUOTA_RETRY_MS;
 
 // Ultra-reliable server-side document write handler supporting metadata REST fallback in Cloud Run
 async function setServerFirestoreDoc(collectionName: string, docId: string, data: any, merge: boolean = false, userToken?: string) {
@@ -995,8 +1018,8 @@ async function setServerFirestoreDoc(collectionName: string, docId: string, data
   }
 
   // 3. Fallback to standard Firestore SDK
-  if (serverFirestoreQuotaExhausted) {
-    return { success: false, error: "Firestore write quota exhausted (local storage fallback active)" };
+  if (isFirestoreQuotaBlocked()) {
+    return { success: false, error: "Firestore write quota exhausted (15-min cooldown active)" };
   }
   try {
     const docRef = doc(db, collectionName, docId);
@@ -1004,6 +1027,7 @@ async function setServerFirestoreDoc(collectionName: string, docId: string, data
       setDoc(docRef, data, { merge }),
       new Promise((_, reject) => setTimeout(() => reject(new Error("Server Firestore setDoc timeout")), 10000))
     ]);
+    serverFirestoreQuotaExhaustedAt = 0;
     console.log(`[Server Firestore Web SDK Write OK] Successfully wrote ${collectionName}/${docId} via Web SDK`);
     return { success: true };
   } catch (err: any) {
@@ -1015,8 +1039,8 @@ async function setServerFirestoreDoc(collectionName: string, docId: string, data
       msg.includes("Free daily write units") ||
       err?.code === "resource-exhausted"
     ) {
-      serverFirestoreQuotaExhausted = true;
-      console.warn(`[Server Firestore Write Quota Exceeded] Daily quota reached; using server disk fallback for ${collectionName}/${docId}`);
+      serverFirestoreQuotaExhaustedAt = Date.now();
+      console.warn(`[Server Firestore Write Quota Exceeded] Daily quota reached (retrying in 15 min); using server disk fallback for ${collectionName}/${docId}`);
       return { success: false, error: "Firestore write quota exceeded" };
     }
     console.warn(`[Server Firestore Web SDK Notice] Could not write ${collectionName}/${docId}:`, err?.message || err);
@@ -1047,11 +1071,6 @@ async function verifyFirebaseIdToken(token: string): Promise<{ uid: string; emai
   try {
     const parts = token.split(".");
     if (parts.length !== 3) {
-      // Fallback: If token is a simple UID (e.g. from localStorage fit_active_uid), treat it as authenticated
-      if (token && token.length >= 10 && !token.includes(" ") && token !== "mock-token") {
-        console.log(`[DevOps Token Fallback] Treating direct UID as verified: ${token}`);
-        return { uid: token, email: "fallback@example.com" };
-      }
       return null;
     }
 
@@ -1309,48 +1328,40 @@ function isServerAdminEmail(email?: string | null): boolean {
   return SERVER_ADMIN_EMAILS.includes(String(email).toLowerCase().trim());
 }
 
-// Middleware to require admin status
+// Middleware to require admin status strictly via verified Firebase ID token
 async function requireAdmin(req: any, res: any, next: any) {
-  const adminEmailHeader = req.headers["x-admin-email"] || req.headers["x-user-email"];
-  if (adminEmailHeader && isServerAdminEmail(String(adminEmailHeader))) {
-    const adminEmail = String(adminEmailHeader).toLowerCase().trim();
-    req.user = { uid: "admin_" + adminEmail.split("@")[0], email: adminEmail, role: "admin", subscriptionStatus: "premium" };
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith("Bearer ")
+    ? authHeader.split("Bearer ")[1].trim()
+    : "";
+
+  if (!token) {
+    console.warn("[Auth Security Denial] Missing Bearer token in requireAdmin.");
+    return res.status(401).json({ error: "Authentication required. Access Denied." });
+  }
+
+  const decoded = await verifyFirebaseIdToken(token);
+  if (!decoded) {
+    console.warn("[Auth Security Denial] Invalid or expired Firebase ID token in requireAdmin.");
+    return res.status(401).json({ error: "Invalid session token. Access Denied." });
+  }
+
+  if (decoded.email && isServerAdminEmail(decoded.email)) {
+    console.log(`[Auth Security] Admin user verified via email claim in requireAdmin: ${decoded.email}`);
+    req.user = { uid: decoded.uid, email: decoded.email, role: "admin", subscriptionStatus: "premium" };
     return next();
   }
 
-  const authHeader = req.headers.authorization;
-  let token = "";
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    token = authHeader.split("Bearer ")[1];
-  }
-
-  if (token) {
-    const decoded = await verifyFirebaseIdToken(token);
-    if (decoded) {
-      if (decoded.email && isServerAdminEmail(decoded.email)) {
-        console.log(`[Auth Security] Admin user verified via email claim in requireAdmin: ${decoded.email}`);
-        req.user = { uid: decoded.uid, email: decoded.email, role: "admin", subscriptionStatus: "premium" };
+  try {
+    const userSnap = await getServerFirestoreDoc("users", decoded.uid, token);
+    if (userSnap.exists) {
+      const profile = userSnap.data();
+      if (profile?.role === "admin" || isServerAdminEmail(profile?.email)) {
+        req.user = { uid: decoded.uid, email: decoded.email || profile.email, role: "admin", subscriptionStatus: "premium", profile };
         return next();
       }
-
-      try {
-        const userSnap = await getServerFirestoreDoc("users", decoded.uid, token);
-        if (userSnap.exists) {
-          const profile = userSnap.data();
-          if (profile.role === "admin" || isServerAdminEmail(profile.email)) {
-            req.user = { uid: decoded.uid, email: decoded.email || profile.email, role: "admin", subscriptionStatus: "premium", profile };
-            return next();
-          }
-        }
-      } catch (err) {}
     }
-  }
-
-  if (adminEmailHeader && isServerAdminEmail(String(adminEmailHeader))) {
-    const adminEmail = String(adminEmailHeader).toLowerCase().trim();
-    req.user = { uid: "admin_" + adminEmail.split("@")[0], email: adminEmail, role: "admin", subscriptionStatus: "premium" };
-    return next();
-  }
+  } catch (err) {}
 
   console.warn("[Auth Security Denial] Admin access required for endpoint.");
   return res.status(403).json({ error: "Admin access required. Access Denied." });
@@ -4638,24 +4649,6 @@ async function fetchProgramOverridesFromCloud(): Promise<Record<string, any>> {
       }
     }
 
-    // Sanitize legacy seed drills in advanced tier: advanced tier starts empty per system specification
-    for (const progId of Object.keys(cloudOverrides)) {
-      const p = cloudOverrides[progId];
-      if (p && typeof p === "object") {
-        for (const dayKey of Object.keys(p)) {
-          const d = p[dayKey];
-          if (d && typeof d === "object") {
-            if (d.levels && Array.isArray(d.levels.advanced)) {
-              d.levels.advanced = d.levels.advanced.filter((ex: any) => ex && (ex.isCustom === true || ex.addedByAdmin === true));
-            }
-            if (Array.isArray(d.advancedExercises)) {
-              d.advancedExercises = d.advancedExercises.filter((ex: any) => ex && (ex.isCustom === true || ex.addedByAdmin === true));
-            }
-          }
-        }
-      }
-    }
-
     if (Object.keys(cloudOverrides).length > 0) {
       let existing: Record<string, any> = {};
       if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
@@ -4664,6 +4657,7 @@ async function fetchProgramOverridesFromCloud(): Promise<Record<string, any>> {
           if (raw) existing = JSON.parse(raw);
         } catch (e) {}
       }
+      // Replace disk copy per program at program level (cloud wins cleanly)
       const merged = { ...existing, ...cloudOverrides };
       fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(merged, null, 2), "utf-8");
       console.log(`[Cloud Persistence OK] Loaded ${Object.keys(merged).length} program overrides from Firestore into cache.`);
@@ -4675,7 +4669,35 @@ async function fetchProgramOverridesFromCloud(): Promise<Record<string, any>> {
   return {};
 }
 
-async function persistProgramOverridesToCloud(overrides: Record<string, any>, userEmail: string = "admin", specificKeys?: string[]) {
+function stampDrillListAddedByAdmin(list: any): any {
+  if (!Array.isArray(list)) return list;
+  return list.map((item: any) =>
+    item && typeof item === "object" ? { ...item, addedByAdmin: true } : item
+  );
+}
+
+function stampDayDrillsAddedByAdmin(dayObj: any): any {
+  if (!dayObj || typeof dayObj !== "object") return dayObj;
+  const stamped: any = { ...dayObj };
+  if (Array.isArray(stamped.exercises)) stamped.exercises = stampDrillListAddedByAdmin(stamped.exercises);
+  if (Array.isArray(stamped.beginnerExercises)) stamped.beginnerExercises = stampDrillListAddedByAdmin(stamped.beginnerExercises);
+  if (Array.isArray(stamped.intermediateExercises)) stamped.intermediateExercises = stampDrillListAddedByAdmin(stamped.intermediateExercises);
+  if (Array.isArray(stamped.advancedExercises)) stamped.advancedExercises = stampDrillListAddedByAdmin(stamped.advancedExercises);
+  if (stamped.levels && typeof stamped.levels === "object") {
+    const levels = { ...stamped.levels };
+    if (Array.isArray(levels.beginner)) levels.beginner = stampDrillListAddedByAdmin(levels.beginner);
+    if (Array.isArray(levels.intermediate)) levels.intermediate = stampDrillListAddedByAdmin(levels.intermediate);
+    if (Array.isArray(levels.advanced)) levels.advanced = stampDrillListAddedByAdmin(levels.advanced);
+    stamped.levels = levels;
+  }
+  return stamped;
+}
+
+async function persistProgramOverridesToCloud(
+  overrides: Record<string, any>,
+  userEmail: string = "admin",
+  specificKeys?: string[]
+): Promise<{ firestoreOk: boolean; supabaseOk: boolean; durable: boolean }> {
   // 1. Write to local disk cache immediately
   try {
     fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(overrides, null, 2), "utf-8");
@@ -4683,50 +4705,76 @@ async function persistProgramOverridesToCloud(overrides: Record<string, any>, us
     console.warn("[Cloud Persistence] Disk write notice:", e);
   }
 
-  const keysToPersist = specificKeys && specificKeys.length > 0 
-    ? specificKeys 
+  const keysToPersist = specificKeys && specificKeys.length > 0
+    ? specificKeys
     : Object.keys(overrides);
+
+  let firestoreOk = false;
+  let supabaseOk = false;
 
   // 2. Persist individual program documents in program_schedules collection concurrently (<100KB each, guaranteed under 1MB limit)
   try {
-    await Promise.all(
+    const fsResults = await Promise.all(
       keysToPersist.map(async (progId) => {
         const progData = overrides[progId];
-        if (progData && typeof progData === "object" && Object.keys(progData).length > 0) {
-          await setServerFirestoreDoc("program_schedules", progId, {
+        if (progData && typeof progData === "object") {
+          return await setServerFirestoreDoc("program_schedules", progId, {
             programId: progId,
             schedule: progData,
             updatedAt: new Date().toISOString(),
             updatedBy: userEmail
           }, false);
         }
+        return { success: true };
       })
     );
-    console.log(`[Cloud Persistence OK] Persisted ${keysToPersist.length} programs to Firestore program_schedules.`);
+    firestoreOk = keysToPersist.length > 0 && fsResults.every((r: any) => r && r.success === true);
+    if (firestoreOk) {
+      console.log(`[Cloud Persistence OK] Persisted ${keysToPersist.length} programs to Firestore program_schedules.`);
+    } else {
+      console.error(`[Cloud Persistence FAILED] Firestore write failed for one or more programs:`, keysToPersist);
+    }
   } catch (err) {
-    console.warn("[Cloud Persistence] Failed writing per-program documents to Firestore:", err);
+    console.error("[Cloud Persistence FAILED] Failed writing per-program documents to Firestore:", err);
+    firestoreOk = false;
   }
 
   // 3. Persist to Supabase if active
   if (supabaseServer) {
     try {
-      await Promise.all(
+      const sbResults = await Promise.all(
         keysToPersist.map(async (progId) => {
           const progData = overrides[progId];
           if (progData && typeof progData === "object") {
-            await supabaseServer.from("program_schedules").upsert({
+            const { error } = await supabaseServer.from("program_schedules").upsert({
               id: progId,
               data: progData,
               updated_at: new Date().toISOString()
             });
+            if (error) {
+              console.warn(`[Cloud Persistence] Supabase upsert error for ${progId}:`, error.message);
+              return false;
+            }
+            return true;
           }
+          return true;
         })
       );
-      console.log(`[Cloud Persistence] Persisted ${keysToPersist.length} overrides to Supabase program_schedules.`);
+      supabaseOk = keysToPersist.length > 0 && sbResults.every(Boolean);
+      if (supabaseOk) {
+        console.log(`[Cloud Persistence] Persisted ${keysToPersist.length} overrides to Supabase program_schedules.`);
+      }
     } catch (err: any) {
       console.warn("[Cloud Persistence] Supabase save notice:", err?.message || err);
+      supabaseOk = false;
     }
   }
+
+  const durable = firestoreOk || supabaseOk;
+  if (!durable) {
+    console.error(`[Cloud Persistence FAILED] Program schedule writes (${keysToPersist.join(", ")}) were NOT persisted to Firestore or Supabase.`);
+  }
+  return { firestoreOk, supabaseOk, durable };
 }
 
 async function purgeExerciseFromProgramSchedules(exerciseId: string, exerciseName?: string, userEmail: string = "admin") {
@@ -4954,7 +5002,8 @@ async function addWorkoutToProgramScheduleServer(workout: any, userEmail: string
       reps: workout.recommendedReps || "10-12",
       restTime: workout.restTime || "60s",
       gifUrl: workout.customMediaUrl || workout.gifUrl || workout.imageUrl || "",
-      imageUrl: workout.customMediaUrl || workout.imageUrl || workout.gifUrl || ""
+      imageUrl: workout.customMediaUrl || workout.imageUrl || workout.gifUrl || "",
+      addedByAdmin: true
     };
 
     let modified = false;
@@ -4999,53 +5048,29 @@ async function hydrateAllDataFromCloud() {
   // 1. Program Schedule Overrides
   try {
     let cloudOverrides = await fetchProgramOverridesFromCloud();
+    let seededFromDisk = false;
 
-    // If cloud is empty or has outdated routines compared to authoritative disk, sync to Cloud Firestore!
-    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+    // ONLY seed from disk if cloud is completely empty
+    if ((!cloudOverrides || Object.keys(cloudOverrides).length === 0) && fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
       try {
         const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
         if (raw) {
           const diskData = JSON.parse(raw);
           if (Object.keys(diskData).length > 0) {
-            if (!cloudOverrides || Object.keys(cloudOverrides).length === 0) {
-              console.log(`[Cloud Seeding] Seeding ${Object.keys(diskData).length} programs into Firestore program_schedules...`);
-              await persistProgramOverridesToCloud(diskData, "system_seed");
-              cloudOverrides = diskData;
-            } else {
-              // Check if any advanced tier drills were emptied on disk but still present in cloud
-              let hasStaleCloudRoutines = false;
-              for (const progId of Object.keys(diskData)) {
-                const progObj = diskData[progId];
-                if (progObj && typeof progObj === "object") {
-                  for (const dayKey of Object.keys(progObj)) {
-                    const day = progObj[dayKey];
-                    if (day && day.levels && Array.isArray(day.levels.advanced) && day.levels.advanced.length === 0) {
-                      const cloudDay = cloudOverrides[progId]?.[dayKey];
-                      if (cloudDay?.levels?.advanced?.length > 0 || cloudDay?.advancedExercises?.length > 0) {
-                        hasStaleCloudRoutines = true;
-                        break;
-                      }
-                    }
-                  }
-                }
-                if (hasStaleCloudRoutines) break;
-              }
-
-              if (hasStaleCloudRoutines) {
-                console.log("[Cloud Persistence] Syncing authoritatively cleaned program routines from disk to Firestore...");
-                await persistProgramOverridesToCloud(diskData, "system_sync");
-                cloudOverrides = diskData;
-              }
-            }
+            console.log(`[Cloud Seeding] Cloud empty. Seeding ${Object.keys(diskData).length} programs from disk...`);
+            await persistProgramOverridesToCloud(diskData, "system_seed");
+            cloudOverrides = diskData;
+            seededFromDisk = true;
           }
         }
       } catch (seedErr) {
-        console.warn("[Cloud Seeding] Seed/sync notice:", seedErr);
+        console.warn("[Cloud Seeding] Seed notice:", seedErr);
       }
     }
 
     if (cloudOverrides && Object.keys(cloudOverrides).length > 0) {
-      console.log(`[Cloud Hydration OK] Hydrated and secured ${Object.keys(cloudOverrides).length} program schedules across Cloud Firestore.`);
+      bootHydrationSource = seededFromDisk ? "disk" : "cloud";
+      console.log(`[Cloud Hydration OK] Hydrated and secured ${Object.keys(cloudOverrides).length} program schedules (${bootHydrationSource}).`);
     }
   } catch (err) {
     console.warn("[Cloud Hydration] Program overrides hydration notice:", err);
@@ -5290,6 +5315,7 @@ let lastProgramOverridesCloudSync = 0;
 
 // GET all program schedule overrides (with continuous Firestore cloud synchronization)
 app.get(["/api/admin/programs/overrides", "/api/programs/schedules"], async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
   try {
     let overrides: Record<string, any> = {};
     if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
@@ -5301,6 +5327,7 @@ app.get(["/api/admin/programs/overrides", "/api/programs/schedules"], async (req
       }
     }
 
+    let source: "cloud" | "disk" = "disk";
     const isFresh = req.query.fresh === "true" || (Date.now() - lastProgramOverridesCloudSync > 10000);
     // If cache is stale or disk was empty (e.g. fresh Render container boot), sync from Cloud Firestore!
     if (isFresh || !overrides || Object.keys(overrides).length === 0) {
@@ -5309,13 +5336,85 @@ app.get(["/api/admin/programs/overrides", "/api/programs/schedules"], async (req
         if (cloudData && Object.keys(cloudData).length > 0) {
           overrides = { ...overrides, ...cloudData };
           lastProgramOverridesCloudSync = Date.now();
+          source = "cloud";
         }
       } catch (cloudErr) {
         console.warn("[Overrides API] Notice checking cloud overrides:", cloudErr);
       }
     }
 
-    res.json({ success: true, overrides });
+    let maxUpdatedAt = "";
+    for (const progId of Object.keys(overrides || {})) {
+      const progObj = overrides[progId];
+      if (!progObj || typeof progObj !== "object") continue;
+      for (const dayKey of Object.keys(progObj)) {
+        const day = progObj[dayKey];
+        if (day && typeof day.updatedAt === "string" && day.updatedAt > maxUpdatedAt) {
+          maxUpdatedAt = day.updatedAt;
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      overrides,
+      source,
+      count: Object.keys(overrides).length,
+      serverTime: new Date().toISOString(),
+      updatedAt: maxUpdatedAt || null
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET diagnostic schedule source breakdown (no auth, read-only counts only)
+app.get("/api/diagnostics/schedule-source", async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    let overrides: Record<string, any> = {};
+    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      try {
+        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+        if (raw) overrides = JSON.parse(raw);
+      } catch (e) {}
+    }
+
+    const programs: Record<string, any> = {};
+    for (const progId of Object.keys(overrides || {})) {
+      const progObj = overrides[progId];
+      if (!progObj || typeof progObj !== "object") continue;
+      const keys = Object.keys(progObj);
+      const numericDayCount = keys.filter(k => /^\d+$/.test(k)).length;
+      const cycleKeyCount = keys.filter(k => /^cycle_\d+$/.test(k)).length;
+      const cycles: Record<string, { beginner: number; intermediate: number; advanced: number }> = {};
+      for (let c = 1; c <= 7; c++) {
+        const ck = `cycle_${c}`;
+        const day = progObj[ck];
+        if (day && typeof day === "object") {
+          const levels = day.levels && typeof day.levels === "object" ? day.levels : {};
+          cycles[ck] = {
+            beginner: Array.isArray(levels.beginner) ? levels.beginner.length : (Array.isArray(day.beginnerExercises) ? day.beginnerExercises.length : 0),
+            intermediate: Array.isArray(levels.intermediate) ? levels.intermediate.length : (Array.isArray(day.intermediateExercises) ? day.intermediateExercises.length : 0),
+            advanced: Array.isArray(levels.advanced) ? levels.advanced.length : (Array.isArray(day.advancedExercises) ? day.advancedExercises.length : 0)
+          };
+        } else {
+          cycles[ck] = { beginner: 0, intermediate: 0, advanced: 0 };
+        }
+      }
+      programs[progId] = {
+        numericDayCount,
+        cycleKeyCount,
+        cycles
+      };
+    }
+
+    res.json({
+      success: true,
+      serverTime: new Date().toISOString(),
+      programCount: Object.keys(programs).length,
+      programs
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -5373,8 +5472,9 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
     const maxDays = Number(totalDays) || 90;
     const computedCycleDay = Number(cycleDay) || (((Number(dayNumber) - 1) % 7) + 1);
 
+    const stampedDayOverride = stampDayDrillsAddedByAdmin(dayOverride);
     const baseRecord = {
-      ...dayOverride,
+      ...stampedDayOverride,
       updatedAt: new Date().toISOString(),
       updatedBy: req.user?.email || "admin"
     };
@@ -5384,49 +5484,61 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
         allOverrides[key] = {};
       }
 
-      if (dayNumber) {
-        allOverrides[key][String(dayNumber)] = {
-          ...baseRecord,
-          dayNumber: Number(dayNumber)
-        };
-      }
-
-      // Always update cycle key so new/future days also adopt this 7-day template
-      if (computedCycleDay) {
+      if (applyToAllCycleWeeks && computedCycleDay) {
+        // Canonical repeating split: write ONLY cycle_N and delete numeric day keys for this cycle day
         allOverrides[key][`cycle_${computedCycleDay}`] = {
           ...baseRecord,
           cycleDay: computedCycleDay
         };
-      }
-
-      // If applyToAllCycleWeeks is requested, replicate to all recurring days across the entire program (Days 1, 8, 15... up to maxDays)
-      if (applyToAllCycleWeeks && computedCycleDay) {
-        for (let d = computedCycleDay; d <= maxDays; d += 7) {
-          allOverrides[key][String(d)] = {
+        const existingNumericMax = Object.keys(allOverrides[key])
+          .filter(k => /^\d+$/.test(k))
+          .reduce((max, k) => Math.max(max, Number(k)), maxDays);
+        for (let d = computedCycleDay; d <= existingNumericMax; d += 7) {
+          if (allOverrides[key][String(d)]?.isOneOff !== true) {
+            delete allOverrides[key][String(d)];
+          }
+        }
+      } else {
+        if (dayNumber) {
+          allOverrides[key][String(dayNumber)] = {
             ...baseRecord,
-            dayNumber: d
+            dayNumber: Number(dayNumber),
+            isOneOff: true
+          };
+        } else if (computedCycleDay) {
+          allOverrides[key][`cycle_${computedCycleDay}`] = {
+            ...baseRecord,
+            cycleDay: computedCycleDay
           };
         }
       }
     });
 
     // Persist to both local disk and Firestore cloud (targeting modified keys for instant performance)
-    await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", targetKeys);
+    const persisted = await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", targetKeys);
 
     await logAdminActivityOnFirebase(
       req.user?.email || "",
       req.user?.uid || "",
       "PROGRAM_DAY_UPDATE",
       `Admin updated program ${programId} ${applyToAllCycleWeeks ? `All Repeating Cycle Day ${computedCycleDay}s` : `Day ${dayNumber}`} schedule`,
-      { programId, dayNumber, cycleDay: computedCycleDay, applyToAllCycleWeeks }
+      { programId, dayNumber, cycleDay: computedCycleDay, applyToAllCycleWeeks, cloudSaved: persisted.durable }
     );
+
+    const savedOverride = applyToAllCycleWeeks
+      ? allOverrides[programId][`cycle_${computedCycleDay}`]
+      : (allOverrides[programId][String(dayNumber)] || allOverrides[programId][`cycle_${computedCycleDay}`]);
 
     res.json({
       success: true,
+      cloudSaved: persisted.durable,
+      firestoreOk: persisted.firestoreOk,
+      supabaseOk: persisted.supabaseOk,
+      warning: persisted.durable ? undefined : "Saved on this server only. NOT permanent. Check Firestore quota/logs.",
       message: applyToAllCycleWeeks 
         ? `Cycle Day ${computedCycleDay} split applied to all repeating weeks across ${programId} (Days ${computedCycleDay}..${maxDays}).`
         : `Day ${dayNumber} schedule for ${programId} updated successfully.`,
-      savedOverride: allOverrides[programId][String(dayNumber || computedCycleDay)],
+      savedOverride,
       allProgramOverrides: allOverrides[programId]
     });
   } catch (error: any) {
@@ -5460,8 +5572,9 @@ app.post("/api/admin/programs/save-cycle-template", requireAdmin, async (req: an
       const dayData = cycleOverrides[String(cDay)] || cycleOverrides[`cycle_${cDay}`];
       if (!dayData) continue;
 
+      const stampedDayData = stampDayDrillsAddedByAdmin(dayData);
       const record = {
-        ...dayData,
+        ...stampedDayData,
         cycleDay: cDay,
         updatedAt: new Date().toISOString(),
         updatedBy: req.user?.email || "admin"
@@ -5479,9 +5592,9 @@ app.post("/api/admin/programs/save-cycle-template", requireAdmin, async (req: an
       }
     }
 
-    fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
+    const persisted = await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", [programId]);
 
-    // Sync to Firestore
+    // Sync cycle template metadata to Firestore
     try {
       await setServerFirestoreDoc("program_cycle_templates", programId, {
         programId,
@@ -5496,6 +5609,10 @@ app.post("/api/admin/programs/save-cycle-template", requireAdmin, async (req: an
 
     res.json({
       success: true,
+      cloudSaved: persisted.durable,
+      firestoreOk: persisted.firestoreOk,
+      supabaseOk: persisted.supabaseOk,
+      warning: persisted.durable ? undefined : "Saved on this server only. NOT permanent. Check Firestore quota/logs.",
       message: `7-Day repeating cadence for ${programId} saved and propagated across all ${maxDays} days.`,
       programOverrides: allOverrides[programId]
     });
@@ -5523,13 +5640,17 @@ app.post("/api/admin/programs/purge-all-splits", requireAdmin, async (req: any, 
       }
     }
 
-    allOverrides[programId] = overrides;
-    fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
+    const stampedProgramOverrides: Record<string, any> = {};
+    for (const dk of Object.keys(overrides || {})) {
+      stampedProgramOverrides[dk] = stampDayDrillsAddedByAdmin(overrides[dk]);
+    }
+    allOverrides[programId] = stampedProgramOverrides;
+    const persisted = await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", [programId]);
 
     try {
       await setServerFirestoreDoc("program_overrides", `${programId}_all_purged`, {
         programId,
-        overrides,
+        overrides: stampedProgramOverrides,
         updatedAt: new Date().toISOString(),
         updatedBy: req.user?.email || "admin"
       }, true);
@@ -5539,6 +5660,10 @@ app.post("/api/admin/programs/purge-all-splits", requireAdmin, async (req: any, 
 
     res.json({
       success: true,
+      cloudSaved: persisted.durable,
+      firestoreOk: persisted.firestoreOk,
+      supabaseOk: persisted.supabaseOk,
+      warning: persisted.durable ? undefined : "Saved on this server only. NOT permanent. Check Firestore quota/logs.",
       message: `Clean category splits successfully purged, manifested, and persisted for ${programId}.`,
       programOverrides: allOverrides[programId]
     });
@@ -5566,8 +5691,18 @@ app.post("/api/admin/programs/reset-and-clean-all-programs", requireAdmin, async
       }
     }
 
-    const merged = { ...currentOverrides, ...allOverrides };
-    fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(merged, null, 2), "utf-8");
+    const stampedAllOverrides: Record<string, any> = {};
+    for (const pId of Object.keys(allOverrides || {})) {
+      const progObj = allOverrides[pId];
+      if (progObj && typeof progObj === "object") {
+        stampedAllOverrides[pId] = {};
+        for (const dk of Object.keys(progObj)) {
+          stampedAllOverrides[pId][dk] = stampDayDrillsAddedByAdmin(progObj[dk]);
+        }
+      }
+    }
+    const merged = { ...currentOverrides, ...stampedAllOverrides };
+    const persisted = await persistProgramOverridesToCloud(merged, req.user?.email || "admin", Object.keys(stampedAllOverrides));
 
     try {
       await setServerFirestoreDoc("program_overrides", "all_programs_sanitized", {
@@ -5582,12 +5717,81 @@ app.post("/api/admin/programs/reset-and-clean-all-programs", requireAdmin, async
 
     res.json({
       success: true,
+      cloudSaved: persisted.durable,
+      firestoreOk: persisted.firestoreOk,
+      supabaseOk: persisted.supabaseOk,
+      warning: persisted.durable ? undefined : "Saved on this server only. NOT permanent. Check Firestore quota/logs.",
       message: "All program workouts have been reset and auto-cleaned. Cross-contamination purged and daily routines capped at 10 workouts.",
       overrides: merged,
       stats
     });
   } catch (error: any) {
     console.error("Failed resetting and cleaning all programs:", error);
+    res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
+// POST normalize cycles: remove stale non-isOneOff numeric day copies across every program
+app.post("/api/admin/programs/normalize-cycles", requireAdmin, async (req: any, res) => {
+  try {
+    let allOverrides: Record<string, any> = {};
+    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      try {
+        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+        if (raw) allOverrides = JSON.parse(raw);
+      } catch (err) {
+        console.error("Failed reading program schedule overrides for normalize-cycles:", err);
+      }
+    }
+
+    let removedCount = 0;
+    const touchedPrograms: string[] = [];
+
+    for (const progId of Object.keys(allOverrides)) {
+      const progObj = allOverrides[progId];
+      if (!progObj || typeof progObj !== "object") continue;
+
+      let progChanged = false;
+      for (const key of Object.keys(progObj)) {
+        if (/^\d+$/.test(key)) {
+          const dayEntry = progObj[key];
+          if (!dayEntry || dayEntry.isOneOff !== true) {
+            delete progObj[key];
+            removedCount++;
+            progChanged = true;
+          }
+        }
+      }
+      if (progChanged) {
+        touchedPrograms.push(progId);
+      }
+    }
+
+    const persisted = touchedPrograms.length > 0
+      ? await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", touchedPrograms)
+      : { firestoreOk: true, supabaseOk: true, durable: true };
+
+    await logAdminActivityOnFirebase(
+      req.user?.email || "",
+      req.user?.uid || "",
+      "PROGRAM_NORMALIZE_CYCLES",
+      `Normalized cycle schedules: removed ${removedCount} stale numeric day copies across ${touchedPrograms.length} programs.`,
+      { removedCount, touchedPrograms, cloudSaved: persisted.durable }
+    );
+
+    res.json({
+      success: true,
+      cloudSaved: persisted.durable,
+      firestoreOk: persisted.firestoreOk,
+      supabaseOk: persisted.supabaseOk,
+      warning: persisted.durable ? undefined : "Saved on this server only. NOT permanent. Check Firestore quota/logs.",
+      removedCount,
+      programsProcessed: Object.keys(allOverrides).length,
+      touchedPrograms,
+      overrides: allOverrides
+    });
+  } catch (error: any) {
+    console.error("Failed normalizing cycles:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });
   }
 });
@@ -5759,6 +5963,8 @@ app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any
     const effectiveDay = dayNumber ? String(dayNumber) : `cycle_${cycleDay}`;
     const existingOverride = allOverrides[programId][effectiveDay] || {};
 
+    updatedExercises = stampDrillListAddedByAdmin(updatedExercises);
+
     const baseUpdate = {
       ...existingOverride,
       exercises: updatedExercises,
@@ -5768,30 +5974,35 @@ app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any
         : `Replaced ${exerciseToDelete.exerciseName} with ${resultingReplacement?.exerciseName || "replacement"}`
     };
 
-    allOverrides[programId][effectiveDay] = baseUpdate;
-
     const computedCycleDay = Number(cycleDay) || (((Number(dayNumber) - 1) % 7) + 1);
-    if (computedCycleDay) {
+    if (applyToAllCycleWeeks && computedCycleDay) {
       allOverrides[programId][`cycle_${computedCycleDay}`] = {
         ...(allOverrides[programId][`cycle_${computedCycleDay}`] || {}),
         exercises: updatedExercises,
         updatedAt: new Date().toISOString()
       };
-    }
-
-    if (applyToAllCycleWeeks && computedCycleDay) {
       const maxDays = Number(totalDays) || 90;
       for (let d = computedCycleDay; d <= maxDays; d += 7) {
-        allOverrides[programId][String(d)] = {
-          ...(allOverrides[programId][String(d)] || {}),
+        if (allOverrides[programId][String(d)]?.isOneOff !== true) {
+          delete allOverrides[programId][String(d)];
+        }
+      }
+    } else {
+      allOverrides[programId][effectiveDay] = {
+        ...baseUpdate,
+        ...(dayNumber ? { isOneOff: true } : {})
+      };
+      if (computedCycleDay && !dayNumber) {
+        allOverrides[programId][`cycle_${computedCycleDay}`] = {
+          ...(allOverrides[programId][`cycle_${computedCycleDay}`] || {}),
           exercises: updatedExercises,
           updatedAt: new Date().toISOString()
         };
       }
     }
 
-    // Persist to local disk and Firestore cloud (both system_settings and program_schedules)
-    await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin");
+    // Persist to local disk and Firestore cloud (program_schedules)
+    const persisted = await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", [programId]);
 
     await logAdminActivityOnFirebase(
       req.user?.email || "",
@@ -5800,11 +6011,15 @@ app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any
       mode === "delete_only"
         ? `Admin deleted "${exerciseToDelete.exerciseName}" from ${programId} Day ${dayNumber || computedCycleDay}.`
         : `Admin replaced "${exerciseToDelete.exerciseName}" with "${resultingReplacement?.exerciseName}" in ${programId}.`,
-      { programId, dayNumber, deletedExerciseId: exerciseId, mode }
+      { programId, dayNumber, deletedExerciseId: exerciseId, mode, cloudSaved: persisted.durable }
     );
 
     res.json({
       success: true,
+      cloudSaved: persisted.durable,
+      firestoreOk: persisted.firestoreOk,
+      supabaseOk: persisted.supabaseOk,
+      warning: persisted.durable ? undefined : "Saved on this server only. NOT permanent. Check Firestore quota/logs.",
       message: mode === "delete_only"
         ? `Workout "${exerciseToDelete.exerciseName}" removed from routine.`
         : `Workout "${exerciseToDelete.exerciseName}" replaced with "${resultingReplacement?.exerciseName}".`,
@@ -8263,7 +8478,7 @@ async function startServer() {
     
     // Serve static files with custom headers to prevent browser/CDN caching issues
     app.use(express.static(distPath, {
-      maxAge: "1d",
+      maxAge: 0,
       setHeaders: (res, filePath) => {
         const lowerPath = filePath.toLowerCase();
         if (lowerPath.endsWith(".html") || filePath.includes("index.html") || lowerPath.endsWith("sw.js") || lowerPath.endsWith("service-worker.js") || lowerPath.endsWith("manifest.json")) {

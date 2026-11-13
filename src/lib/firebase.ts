@@ -135,11 +135,18 @@ let auth: any;
 let storage: any;
 const isMockFirebase = false;
 
+const resolvedFirebaseApiKey =
+  (firebaseConfig as any).apiKey ||
+  (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_FIREBASE_API_KEY) ||
+  "";
+
+if (!resolvedFirebaseApiKey) {
+  console.error("[Firebase Config Error] Missing VITE_FIREBASE_API_KEY or firebase-applet-config.json apiKey.");
+}
+
 const activeFirebaseConfig = {
   ...firebaseConfig,
-  apiKey: (firebaseConfig as any).apiKey || 
-    (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_FIREBASE_API_KEY) ||
-    ["AI", "za", "SyCN-", "LfNHvWpZK9d8wDqKhlPGjgsJa0MscQ"].join("")
+  apiKey: resolvedFirebaseApiKey
 };
 
 try {
@@ -383,6 +390,23 @@ export async function safeFirestoreDeleteDoc(docRef: any): Promise<boolean> {
     console.warn("[Firestore Delete Notice]:", err?.message || err);
     return false;
   }
+}
+
+export async function getFirebaseIdToken(): Promise<string | null> {
+  try {
+    if (auth?.currentUser) {
+      return await auth.currentUser.getIdToken();
+    }
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("fit_id_token");
+      if (stored && stored.split(".").length === 3) {
+        return stored;
+      }
+    }
+  } catch (err) {
+    console.warn("[Firebase Auth] Could not retrieve ID token:", err);
+  }
+  return null;
 }
 
 export { app, db, auth, storage, isMockFirebase };
