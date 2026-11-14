@@ -1,13 +1,22 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase, isSupabaseConfigured } from "../utils/supabase/client";
-import { collection, onSnapshot, doc, deleteDoc } from "firebase/firestore";
-import { db, safeFirestoreSetDoc, safeFirestoreUpdateDoc } from "../lib/firebase";
+import { collection, onSnapshot, doc, query, where, getDocsFromServer } from "firebase/firestore";
+import {
+  auth,
+  db,
+  OperationType,
+  handleFirestoreError,
+  safeFirestoreSetDoc,
+  safeFirestoreUpdateDoc,
+  safeFirestoreDeleteDoc
+} from "../lib/firebase";
 
 export interface Todo {
   id: string;
   title: string;
   completed: boolean;
   created_at?: string;
+  updated_at?: string;
+  userId?: string;
   user_id?: string;
 }
 
@@ -16,88 +25,53 @@ export function useRealtimeTodos(userId?: string) {
   const [loading, setLoading] = useState<boolean>(true);
   const [syncStatus, setSyncStatus] = useState<"synced" | "syncing" | "error">("synced");
 
-  // Helper to merge and deduplicate todos from Supabase and Firebase
-  const mergeAndSetTodos = useCallback((incomingTodos: Todo[]) => {
-    setTodos((prevTodos) => {
-      const todoMap = new Map<string, Todo>();
-      
-      // Load existing
-      prevTodos.forEach((t) => todoMap.set(t.id, t));
-      
-      // Overlay incoming
-      incomingTodos.forEach((t) => {
-        const existing = todoMap.get(t.id);
-        if (!existing) {
-          todoMap.set(t.id, t);
-        } else {
-          todoMap.set(t.id, { ...existing, ...t });
-        }
-      });
+  const effectiveUid = auth?.currentUser?.uid || userId || "";
 
-      const merged = Array.from(todoMap.values());
-      // Sort by creation date descending
-      merged.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-      return merged;
-    });
-  }, []);
+  const sortTodos = (list: Todo[]) =>
+    [...list].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
 
-  // Fetch initial todos from Supabase
-  const fetchSupabaseTodos = useCallback(async () => {
-    if (!isSupabaseConfigured) return;
-    try {
-      let query = supabase.from("todos").select("*");
-      if (userId) {
-        query = query.eq("user_id", userId);
-      }
-      const { data, error } = await query;
-      if (error) {
-        console.warn("[Supabase Todos Fetch Notice]:", error.message);
-      } else if (data) {
-        mergeAndSetTodos(data as Todo[]);
-      }
-    } catch (e) {
-      console.warn("[Supabase Todos Fetch Exception]:", e);
+  const refreshTodos = useCallback(async () => {
+    if (!db || !auth?.currentUser) {
+      setLoading(false);
+      return;
     }
-  }, [userId, mergeAndSetTodos]);
-
-  useEffect(() => {
     setLoading(true);
-    if (isSupabaseConfigured) {
-      fetchSupabaseTodos().then(() => setLoading(false));
-    } else {
+    try {
+      const q = query(collection(db, "todos"), where("userId", "==", auth.currentUser.uid));
+      const snap = await getDocsFromServer(q);
+      const fbTodos: Todo[] = snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          title: data.title || "",
+          completed: Boolean(data.completed),
+          created_at: data.created_at || data.createdAt || new Date().toISOString(),
+          updated_at: data.updated_at || data.updatedAt,
+          userId: data.userId || data.user_id,
+          user_id: data.userId || data.user_id
+        };
+      });
+      setTodos(sortTodos(fbTodos));
+      setSyncStatus("synced");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.LIST, "todos");
+      setSyncStatus("error");
+    } finally {
       setLoading(false);
     }
+  }, [effectiveUid]);
 
-    // 1. SUPABASE REALTIME CHANNEL SUBSCRIPTION
-    let supabaseChannel: any = null;
-    if (isSupabaseConfigured) {
-      supabaseChannel = supabase
-        .channel("public:todos")
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "todos" },
-          (payload) => {
-            console.log("[Supabase Channel] Realtime change detected:", payload.eventType);
-            if (payload.eventType === "INSERT" && payload.new) {
-              mergeAndSetTodos([payload.new as Todo]);
-            } else if (payload.eventType === "UPDATE" && payload.new) {
-              mergeAndSetTodos([payload.new as Todo]);
-            } else if (payload.eventType === "DELETE" && payload.old) {
-              setTodos((prev) => prev.filter((t) => t.id !== payload.old.id));
-            } else {
-              fetchSupabaseTodos();
-            }
-          }
-        )
-        .subscribe((status) => {
-          console.log(`[Supabase Channel Status]: ${status}`);
-        });
+  useEffect(() => {
+    if (!db || !auth?.currentUser) {
+      setLoading(false);
+      return;
     }
 
-    // 2. FIREBASE FIRESTORE REALTIME CHANNEL SUBSCRIPTION
-    const todosCollection = collection(db, "todos");
+    setLoading(true);
+    const uid = auth.currentUser.uid;
+    const todosQuery = query(collection(db, "todos"), where("userId", "==", uid));
     const unsubscribeFirebase = onSnapshot(
-      todosCollection,
+      todosQuery,
       (snapshot) => {
         const fbTodos: Todo[] = snapshot.docs.map((d) => {
           const data = d.data();
@@ -105,115 +79,105 @@ export function useRealtimeTodos(userId?: string) {
             id: d.id,
             title: data.title || "",
             completed: Boolean(data.completed),
-            created_at: data.created_at || new Date().toISOString(),
-            user_id: data.user_id || undefined,
+            created_at: data.created_at || data.createdAt || new Date().toISOString(),
+            updated_at: data.updated_at || data.updatedAt,
+            userId: data.userId || data.user_id,
+            user_id: data.userId || data.user_id
           };
         });
-        console.log(`[Firebase Channel] Received ${fbTodos.length} todos via onSnapshot.`);
-        mergeAndSetTodos(fbTodos);
+        setTodos(sortTodos(fbTodos));
+        setSyncStatus("synced");
+        setLoading(false);
       },
       (error) => {
-        console.warn("[Firebase Channel Notice]:", error?.message || error);
+        handleFirestoreError(error, OperationType.GET, "todos");
+        setSyncStatus("error");
+        setLoading(false);
       }
     );
 
     return () => {
-      if (supabaseChannel) {
-        supabase.removeChannel(supabaseChannel);
-      }
       unsubscribeFirebase();
     };
-  }, [userId, fetchSupabaseTodos, mergeAndSetTodos]);
+  }, [effectiveUid]);
 
-  // Dual-Write Actions (Permanent sync on both Supabase & Firebase)
   const addTodo = async (title: string) => {
-    if (!title.trim()) return;
-    setSyncStatus("syncing");
+    const cleanTitle = title.trim();
+    if (!cleanTitle) return;
+    if (!db || !auth?.currentUser) {
+      setSyncStatus("error");
+      return;
+    }
 
+    setSyncStatus("syncing");
+    const uid = auth.currentUser.uid;
+    const now = new Date().toISOString();
     const newId = `todo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const newTodo: Todo = {
       id: newId,
-      title: title.trim(),
+      title: cleanTitle,
       completed: false,
-      created_at: new Date().toISOString(),
-      user_id: userId || undefined,
+      created_at: now,
+      updated_at: now,
+      userId: uid,
+      user_id: uid
     };
 
-    // Optimistic UI update
-    mergeAndSetTodos([newTodo]);
-
     try {
-      // Storage 1: Supabase (if configured)
-      if (isSupabaseConfigured) {
-        const { error: sbError } = await supabase.from("todos").insert([{
+      const ok = await safeFirestoreSetDoc(
+        doc(db, "todos", newId),
+        {
           id: newTodo.id,
           title: newTodo.title,
           completed: newTodo.completed,
-          created_at: newTodo.created_at,
-          user_id: newTodo.user_id || null,
-        }]);
-        if (sbError) console.warn("[Supabase Insert Notice]:", sbError.message);
+          created_at: now,
+          updated_at: now,
+          userId: uid
+        },
+        { merge: false },
+        true
+      );
+      if (!ok) {
+        setSyncStatus("error");
+        return;
       }
-
-      // Storage 2: Firebase (always active)
-      await safeFirestoreSetDoc(doc(db, "todos", newId), {
-        id: newTodo.id,
-        title: newTodo.title,
-        completed: newTodo.completed,
-        created_at: newTodo.created_at,
-        user_id: newTodo.user_id || null,
-      });
-
       setSyncStatus("synced");
     } catch (err) {
-      console.warn("[Add Todo Sync Notice]:", err);
+      handleFirestoreError(err, OperationType.CREATE, `todos/${newId}`);
       setSyncStatus("error");
     }
   };
 
   const toggleTodo = async (id: string, currentCompleted: boolean) => {
+    if (!db || !auth?.currentUser) {
+      setSyncStatus("error");
+      return;
+    }
     const nextCompleted = !currentCompleted;
     setSyncStatus("syncing");
-
-    // Optimistic update
-    setTodos((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: nextCompleted } : t))
-    );
-
     try {
-      // Update Supabase (if configured)
-      if (isSupabaseConfigured) {
-        await supabase.from("todos").update({ completed: nextCompleted }).eq("id", id);
-      }
-
-      // Update Firebase
-      await safeFirestoreUpdateDoc(doc(db, "todos", id), { completed: nextCompleted });
-
-      setSyncStatus("synced");
+      const ok = await safeFirestoreUpdateDoc(doc(db, "todos", id), {
+        completed: nextCompleted,
+        updated_at: new Date().toISOString()
+      });
+      setSyncStatus(ok ? "synced" : "error");
     } catch (err) {
-      console.warn("[Toggle Todo Sync Notice]:", err);
+      handleFirestoreError(err, OperationType.UPDATE, `todos/${id}`);
       setSyncStatus("error");
     }
   };
 
   const deleteTodo = async (id: string) => {
+    if (!db || !auth?.currentUser) {
+      setSyncStatus("error");
+      return;
+    }
     setSyncStatus("syncing");
-
-    // Optimistic remove
-    setTodos((prev) => prev.filter((t) => t.id !== id));
-
     try {
-      // Delete from Supabase (if configured)
-      if (isSupabaseConfigured) {
-        await supabase.from("todos").delete().eq("id", id);
-      }
-
-      // Delete from Firebase
-      await deleteDoc(doc(db, "todos", id));
-
-      setSyncStatus("synced");
+      const ok = await safeFirestoreDeleteDoc(doc(db, "todos", id));
+      setSyncStatus(ok ? "synced" : "error");
     } catch (err) {
-      console.warn("[Delete Todo Sync Notice]:", err);
+      handleFirestoreError(err, OperationType.DELETE, `todos/${id}`);
       setSyncStatus("error");
     }
   };
@@ -225,7 +189,7 @@ export function useRealtimeTodos(userId?: string) {
     addTodo,
     toggleTodo,
     deleteTodo,
-    refreshTodos: fetchSupabaseTodos,
+    refreshTodos
   };
 }
 

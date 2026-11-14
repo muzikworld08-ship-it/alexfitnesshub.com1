@@ -1,8 +1,6 @@
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { doc, getDoc, collection, getDocs } from "firebase/firestore";
-import { storage, db, auth, isMockFirebase, safeFirestoreSetDoc } from "../lib/firebase";
-import { supabase, isSupabaseConfigured } from "./supabase/client";
-import { uploadAdminMedia } from "../lib/mediaStorage";
+import { doc, collection, getDocs } from "firebase/firestore";
+import { storage, db, isMockFirebase, safeFirestoreSetDoc, getFirebaseIdToken } from "../lib/firebase";
 
 export interface ExerciseMediaRecord {
   exerciseId: string;
@@ -12,8 +10,8 @@ export interface ExerciseMediaRecord {
 }
 
 /**
- * Uploads media file/blob directly to Firebase Storage or Supabase Storage.
- * Returns a permanent, stable HTTPS cloud URL (or clean Data URL fallback).
+ * Uploads media file/blob directly to Firebase Storage (primary)
+ * or backend /api/media/upload (server Firebase Storage + static assets).
  */
 export async function uploadMediaToCloud(
   input: File | Blob | string,
@@ -21,7 +19,6 @@ export async function uploadMediaToCloud(
   mediaType: "image" | "video" = "image",
   onProgress?: (pct: number, status: string) => void
 ): Promise<string> {
-  // If input is already a permanent HTTP/HTTPS URL, return as-is
   if (typeof input === "string") {
     if (input.startsWith("http://") || input.startsWith("https://")) {
       return input;
@@ -31,7 +28,6 @@ export async function uploadMediaToCloud(
   const cleanId = exerciseId.replace(/[^a-zA-Z0-9_-]/g, "_");
   const timestamp = Date.now();
 
-  // Convert string Data URL to Blob if necessary for cloud storage upload
   let fileBlob: Blob | File | null = null;
   let filename = `exercise_${cleanId}_${timestamp}`;
 
@@ -50,7 +46,7 @@ export async function uploadMediaToCloud(
       filename += `.${ext}`;
       fileBlob = new Blob([u8arr], { type: mime });
     } catch (e) {
-      console.warn("[MediaStorage] Failed to convert data URL to Blob, using raw data URL:", e);
+      console.warn("[MediaStorage] Failed to convert data URL to Blob:", e);
       return input;
     }
   } else if (input instanceof File || input instanceof Blob) {
@@ -99,27 +95,13 @@ export async function uploadMediaToCloud(
         return downloadURL;
       }
     } catch (fbErr) {
-      console.warn("[MediaStorage] Firebase Storage upload skipped/failed. Proceeding to Supabase Storage...", fbErr);
+      console.warn("[MediaStorage] Firebase Storage direct upload failed, attempting authenticated server upload:", fbErr);
     }
   }
 
-  // 2. Secondary Attempt: Direct Upload to Supabase Storage Bucket 'exercise_media'
+  // 2. Secondary Attempt: Backend Server Firebase Storage Upload (/api/media/upload)
   try {
-    if (onProgress) onProgress(40, "Uploading to Supabase Storage Bucket...");
-    const bucketPath = `exercises/${filename}`;
-
-    const supabaseUrl = await uploadAdminMedia(fileBlob, bucketPath);
-    if (supabaseUrl && (supabaseUrl.startsWith("http://") || supabaseUrl.startsWith("https://"))) {
-      console.log(`[MediaStorage OK] Permanent Supabase Storage URL created: ${supabaseUrl}`);
-      return supabaseUrl;
-    }
-  } catch (sbErr) {
-    console.warn("[MediaStorage] Supabase Storage bucket upload skipped:", sbErr);
-  }
-
-  // 3. Tertiary Attempt: Backend Server Cloud Storage REST Upload (/api/media/upload)
-  try {
-    if (onProgress) onProgress(60, "Uploading to permanent cloud storage via server...");
+    if (onProgress) onProgress(60, "Uploading to Firebase Storage via server...");
     const reader = new FileReader();
     const dataUrl = await new Promise<string>((resolve, reject) => {
       reader.onload = (e) => resolve(e.target?.result as string);
@@ -127,9 +109,13 @@ export async function uploadMediaToCloud(
       reader.readAsDataURL(fileBlob as Blob);
     });
 
+    const token = await getFirebaseIdToken();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     const res = await fetch("/api/media/upload", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         fileData: dataUrl,
         filename: `media_${cleanId}`,
@@ -149,8 +135,8 @@ export async function uploadMediaToCloud(
     console.warn("[MediaStorage] Server cloud upload fallback warning:", srvErr);
   }
 
-  // 4. Final Fallback: Convert to Data URL stream if network is completely offline
-  if (onProgress) onProgress(80, "Converting file to persistent data URL stream...");
+  // 3. Offline preview Data URL fallback (caller must still check persistence)
+  if (onProgress) onProgress(80, "Converting file to data URL stream...");
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => resolve(e.target?.result as string);
@@ -160,65 +146,71 @@ export async function uploadMediaToCloud(
 }
 
 /**
- * Persists exercise media URL permanently to BOTH Supabase Database AND Cloud Firestore
+ * Persists exercise media URL authoritatively to Cloud Firestore and verified Express endpoint.
+ * Never returns success unless confirmed by Firestore or the backend Firestore-confirmed API.
  */
 export async function saveExerciseMediaToDatabase(
   exerciseId: string,
   mediaUrl: string | null,
   mediaType: "image" | "video" = "image"
-): Promise<{ success: boolean; finalUrl: string | null }> {
+): Promise<{ success: boolean; finalUrl: string | null; error?: string }> {
   const timestamp = new Date().toISOString();
+  let firestoreDirectOk = false;
+  let serverOk = false;
+  let serverFinalUrl: string | null = mediaUrl;
+  let lastError = "";
 
-  // A. Save to Supabase 'exercise_media' table if configured
-  if (isSupabaseConfigured) {
+  // A. Save directly to Cloud Firestore 'exercise_media' and 'exercises' collections
+  if (!isMockFirebase && db) {
     try {
-      await supabase.from("exercise_media").upsert({
-        exercise_id: exerciseId,
-        media_url: mediaUrl,
-        media_type: mediaType,
-        updated_at: timestamp
-      });
-      console.log(`[Supabase Media DB OK] Saved media record for exercise ${exerciseId}`);
-    } catch (sErr) {
-      console.warn("[Supabase Media DB Error]:", sErr);
-    }
-  }
-
-  // B. Save to Cloud Firestore 'exercise_media' and 'exercises' collections
-  if (!isMockFirebase) {
-    try {
-      // Store in exercise_media backup doc
       const mediaDocRef = doc(db, "exercise_media", exerciseId);
-      await safeFirestoreSetDoc(mediaDocRef, {
-        exerciseId,
-        customMediaUrl: mediaUrl,
-        gifUrl: mediaUrl,
-        imageUrl: mediaUrl,
-        originalUrlOrBase64: mediaUrl,
-        customMediaType: mediaType,
-        updatedAt: timestamp
-      }, { merge: true });
-
-      // Store in exercises collection doc
       const exDocRef = doc(db, "exercises", exerciseId);
-      await safeFirestoreSetDoc(exDocRef, {
-        id: exerciseId,
-        customMediaUrl: mediaUrl,
-        gifUrl: mediaUrl,
-        imageUrl: mediaUrl,
-        customMediaType: mediaType,
-        updatedAt: timestamp
-      }, { merge: true });
+      const [mOk, eOk] = await Promise.all([
+        safeFirestoreSetDoc(
+          mediaDocRef,
+          {
+            exerciseId,
+            customMediaUrl: mediaUrl || "none",
+            gifUrl: mediaUrl || "none",
+            imageUrl: mediaUrl || "none",
+            originalUrlOrBase64: mediaUrl || null,
+            isMediaDeleted: !mediaUrl || mediaUrl === "none" || mediaUrl === "deleted",
+            customMediaType: mediaType,
+            updatedAt: timestamp
+          },
+          { merge: true },
+          true
+        ),
+        safeFirestoreSetDoc(
+          exDocRef,
+          {
+            id: exerciseId,
+            customMediaUrl: mediaUrl || "none",
+            gifUrl: mediaUrl || "none",
+            imageUrl: mediaUrl || "none",
+            customMediaType: mediaType,
+            updatedAt: timestamp
+          },
+          { merge: true },
+          true
+        )
+      ]);
 
-      console.log(`[Firestore Media DB OK] Saved media record for exercise ${exerciseId}`);
-    } catch (fErr) {
+      firestoreDirectOk = mOk && eOk;
+      if (firestoreDirectOk) {
+        console.log(`[Firestore Media DB OK] Confirmed media record for exercise ${exerciseId}`);
+      } else {
+        lastError = "Client Firestore write did not confirm.";
+      }
+    } catch (fErr: any) {
+      lastError = fErr?.message || String(fErr);
       console.warn("[Firestore Media DB Error]:", fErr);
     }
   }
 
-  // C. Post to backend Express server endpoint to sync local server overrides and server-side memory
+  // B. Confirm persistence via backend Express server endpoint (Firestore REST + server cache)
   try {
-    const token = await auth?.currentUser?.getIdToken();
+    const token = await getFirebaseIdToken();
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
@@ -234,21 +226,31 @@ export async function saveExerciseMediaToDatabase(
       })
     });
 
-    if (res.ok) {
-      const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success && data.firestoreOk !== false) {
+      serverOk = true;
       if (data.customMediaUrl) {
-        return { success: true, finalUrl: data.customMediaUrl };
+        serverFinalUrl = data.customMediaUrl;
       }
+    } else {
+      lastError = data.error || `Server returned HTTP ${res.status}`;
     }
-  } catch (serverErr) {
+  } catch (serverErr: any) {
+    lastError = serverErr?.message || String(serverErr);
     console.warn("[Express Server Media Save Notice]:", serverErr);
   }
 
-  return { success: true, finalUrl: mediaUrl };
+  const confirmed = firestoreDirectOk || serverOk;
+  if (!confirmed) {
+    console.error(`[MediaStorage FAILED] Could not confirm Firestore media save for ${exerciseId}: ${lastError}`);
+    return { success: false, finalUrl: null, error: lastError || "Failed to confirm Firestore media persistence." };
+  }
+
+  return { success: true, finalUrl: serverFinalUrl };
 }
 
 /**
- * Fetches all saved exercise custom media records from Supabase DB and Cloud Firestore
+ * Fetches all saved exercise custom media records authoritatively from Cloud Firestore.
  */
 export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string, { customMediaUrl: string; customMediaType: "image" | "video" }>> {
   const result: Record<string, { customMediaUrl: string; customMediaType: "image" | "video" }> = {};
@@ -256,38 +258,33 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
   const setEntry = (key: string, url: string, type: "image" | "video") => {
     if (!key || !url) return;
     result[key] = { customMediaUrl: url, customMediaType: type };
-    
-    // Also save without exercise- prefix and with exercise- prefix for instant O(1) matching
+
     const cleanKey = key.replace(/^exercise[-_]/, "").replace(/^exercise/, "");
     result[cleanKey] = { customMediaUrl: url, customMediaType: type };
     result[`exercise-${cleanKey}`] = { customMediaUrl: url, customMediaType: type };
   };
 
-  // 1. Query Supabase 'exercise_media' table if configured
-  if (isSupabaseConfigured) {
+  if (!isMockFirebase && db) {
+    const deletedSet = new Set<string>();
     try {
-      const { data: sbData, error: sbErr } = await supabase
-        .from("exercise_media")
-        .select("exercise_id, media_url, media_type");
+      const delSnap = await getDocs(collection(db, "deleted_exercises"));
+      delSnap.forEach((d) => {
+        deletedSet.add(d.id);
+        const data = d.data();
+        if (data?.id) deletedSet.add(String(data.id));
+        if (data?.name) deletedSet.add(String(data.name).toLowerCase().trim());
+      });
+    } catch {}
 
-      if (!sbErr && Array.isArray(sbData)) {
-        for (const row of sbData) {
-          if (row.exercise_id && row.media_url) {
-            setEntry(row.exercise_id, row.media_url, row.media_type === "video" ? "video" : "image");
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("[MediaStorage] Supabase media fetch notice:", e);
-    }
-  }
-
-  // 2. Query Cloud Firestore collections ('exercise_media', 'exercises', 'assets_manifest')
-  if (!isMockFirebase) {
     try {
       const mediaSnap = await getDocs(collection(db, "exercise_media"));
       mediaSnap.forEach((docSnap) => {
         const d = docSnap.data();
+        if (deletedSet.has(docSnap.id) || (d?.exerciseId && deletedSet.has(d.exerciseId))) return;
+        if (d?.isMediaDeleted) {
+          setEntry(docSnap.id, "none", "image");
+          return;
+        }
         const url = d.customMediaUrl || d.gifUrl || d.imageUrl || d.originalUrlOrBase64 || d.url;
         if (url) {
           setEntry(docSnap.id, url, d.customMediaType === "video" ? "video" : "image");
@@ -304,6 +301,7 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
       const exSnap = await getDocs(collection(db, "exercises"));
       exSnap.forEach((docSnap) => {
         const d = docSnap.data();
+        if (d?.isDeleted || deletedSet.has(docSnap.id)) return;
         const url = d.customMediaUrl || d.gifUrl || d.imageUrl;
         if (url) {
           setEntry(docSnap.id, url, d.customMediaType === "video" ? "video" : "image");
@@ -320,9 +318,11 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
       const manifestSnap = await getDocs(collection(db, "assets_manifest"));
       manifestSnap.forEach((docSnap) => {
         const d = docSnap.data();
+        const id = d.assetId || docSnap.id;
+        if (deletedSet.has(id)) return;
         const url = d.mediaUrl || d.url;
         if (url) {
-          setEntry(d.assetId || docSnap.id, url, d.mediaType === "video" ? "video" : "image");
+          setEntry(id, url, d.mediaType === "video" ? "video" : "image");
         }
       });
     } catch (e) {

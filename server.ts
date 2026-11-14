@@ -61,24 +61,14 @@ import {
 import { EXERCISES, getExerciseGifUrl } from "./src/data/exercises";
 import { getWorkoutForProgramAndDay, normalizeProgramId } from "./src/data/challengeEngineDatabase";
 import { registerPrintablePdfRoutes } from "./src/server/printablePdfRoutes";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { runOneWaySupabaseToFirestoreMigration } from "./src/server/migrateSupabaseToFirestore";
 
 // Load environment variables
 dotenv.config();
 
-// Initialize Supabase Server Client (if credentials present in environment)
-const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "https://sqaxwqtjvaixqytnluiy.supabase.co").trim();
-const SUPABASE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "").trim();
-const isSupabaseServerActive = Boolean(SUPABASE_URL && SUPABASE_KEY && (SUPABASE_URL.startsWith("http://") || SUPABASE_URL.startsWith("https://")));
-let supabaseServer: any = null;
-if (isSupabaseServerActive) {
-  try {
-    supabaseServer = createSupabaseClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log(`[Supabase Server OK] Connected to Supabase at: ${SUPABASE_URL}`);
-  } catch (e: any) {
-    console.warn("[Supabase Server Notice] Client init notice:", e?.message || e);
-  }
-}
+// Supabase database/storage integration is RETIRED. Cloud Firestore & Firebase Storage are authoritative.
+const supabaseServer: any = null;
+console.log("[Database Mode] Cloud Firestore is the sole authoritative database (Supabase retired).");
 
 // Initialize Resend Client
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
@@ -635,8 +625,13 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "alexfitnesshub@gmail.com").trim
 const ADMIN_PASS = (process.env.ADMIN_PASS || "").trim();
 
 async function authenticateServer() {
-  if (!ADMIN_PASS || !firebaseConfig.apiKey || !backendAuth) {
-    console.error("[Firebase Server Auth Error] ADMIN_PASS or FIREBASE_API_KEY not configured in environment; skipping server admin sign-in.");
+  if (!firebaseConfig.apiKey || !backendAuth) {
+    console.error("[Firebase Server Auth Error] FIREBASE_API_KEY not configured in environment; skipping server admin sign-in.");
+    startFirestoreMailWorker(db, 300000);
+    return;
+  }
+  if (!ADMIN_PASS) {
+    console.log("[Firebase Server Auth] ADMIN_PASS not set in environment; privileged operations authenticate via verified caller Firebase ID tokens.");
     startFirestoreMailWorker(db, 300000);
     return;
   }
@@ -711,14 +706,69 @@ function parseFirestoreRestFields(fields: any): any {
   return parsed;
 }
 
+let metadataRestDisabled = false;
+let metadataRestNoticeLogged = false;
+
+function extractConciseApiError(rawText: string, status?: number): string {
+  const cleaned = String(rawText || "").trim();
+  if (!cleaned) return status ? `HTTP ${status}` : "Unknown error";
+  try {
+    const parsed = JSON.parse(cleaned);
+    const msg = parsed?.error?.message || parsed?.message || parsed?.error?.status;
+    if (typeof msg === "string" && msg.trim()) {
+      return status ? `HTTP ${status}: ${msg.trim()}` : msg.trim();
+    }
+  } catch {}
+  return cleaned.replace(/\s+/g, " ").slice(0, 180);
+}
+
+function markMetadataRestPermissionDenied(status: number) {
+  if (status === 401 || status === 403) {
+    metadataRestDisabled = true;
+    if (!metadataRestNoticeLogged) {
+      metadataRestNoticeLogged = true;
+      console.log(
+        `[Server Firestore] Cloud Run metadata service account lacks IAM permission on Firebase project ${firebaseConfig.projectId} (HTTP ${status}); using Firebase Web SDK & caller ID tokens.`
+      );
+    }
+  }
+}
+
+async function getMetadataServiceAccountToken(): Promise<string | null> {
+  if (!process.env.K_SERVICE || metadataRestDisabled) return null;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500);
+    const tokenRes = await fetch(
+      "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
+      {
+        headers: { "Metadata-Flavor": "Google" },
+        signal: controller.signal
+      }
+    );
+    clearTimeout(timeoutId);
+    if (!tokenRes.ok) {
+      if (tokenRes.status === 401 || tokenRes.status === 403 || tokenRes.status === 404) {
+        metadataRestDisabled = true;
+      }
+      return null;
+    }
+    const tokenData: any = await tokenRes.json();
+    return tokenData?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
 async function getServerFirestoreDoc(collectionName: string, docId: string, userToken?: string) {
   const projectId = firebaseConfig.projectId;
   const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
+  const safeDocId = encodeURIComponent(String(docId || ""));
   
   // 1. If userToken is provided, try retrieving the document via Firestore REST API using the user's token
   if (userToken) {
     try {
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/${collectionName}/${docId}`;
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/${collectionName}/${safeDocId}`;
       const docRes = await fetch(url, {
         headers: { "Authorization": `Bearer ${userToken}` }
       });
@@ -730,41 +780,35 @@ async function getServerFirestoreDoc(collectionName: string, docId: string, user
         };
       } else if (docRes.status === 404) {
         return { exists: false, data: () => null };
-      } else {
+      } else if (docRes.status !== 401 && docRes.status !== 403) {
         console.warn(`[Server Firestore REST UserToken] Request returned status ${docRes.status} for ${collectionName}/${docId}. Falling back.`);
       }
-    } catch (err) {
-      console.warn(`[Server Firestore REST UserToken] Error fetching ${collectionName}/${docId}:`, err);
+    } catch (err: any) {
+      console.warn(`[Server Firestore REST UserToken] Error fetching ${collectionName}/${docId}:`, err?.message || err);
     }
   }
 
-  // 2. Try metadata service account credentials in Cloud Run
-  if (process.env.K_SERVICE) {
+  // 2. Try metadata service account credentials in Cloud Run (if permitted on this Firebase project)
+  const saToken = await getMetadataServiceAccountToken();
+  if (saToken) {
     try {
-      const tokenRes = await fetch("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token", {
-        headers: { "Metadata-Flavor": "Google" }
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/${collectionName}/${safeDocId}`;
+      const docRes = await fetch(url, {
+        headers: { "Authorization": `Bearer ${saToken}` }
       });
-      if (tokenRes.ok) {
-        const tokenData: any = await tokenRes.json();
-        const saToken = tokenData.access_token;
-        if (saToken) {
-          const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/${collectionName}/${docId}`;
-          const docRes = await fetch(url, {
-            headers: { "Authorization": `Bearer ${saToken}` }
-          });
-          if (docRes.ok) {
-            const docData: any = await docRes.json();
-            return {
-              exists: true,
-              data: () => parseFirestoreRestFields(docData.fields)
-            };
-          } else if (docRes.status === 404) {
-            return { exists: false, data: () => null };
-          }
-        }
+      if (docRes.ok) {
+        const docData: any = await docRes.json();
+        return {
+          exists: true,
+          data: () => parseFirestoreRestFields(docData.fields)
+        };
+      } else if (docRes.status === 404) {
+        return { exists: false, data: () => null };
+      } else if (docRes.status === 401 || docRes.status === 403) {
+        markMetadataRestPermissionDenied(docRes.status);
       }
-    } catch (err) {
-      console.warn("[Server Firestore REST] Metadata fetch failed, falling back to Web SDK:", err);
+    } catch (err: any) {
+      console.warn("[Server Firestore REST] Metadata fetch failed, falling back to Web SDK:", err?.message || err);
     }
   }
 
@@ -780,7 +824,10 @@ async function getServerFirestoreDoc(collectionName: string, docId: string, user
       data: () => snap.data()
     };
   } catch (err: any) {
-    console.warn(`[Server Firestore Doc Read] Notice reading ${collectionName}/${docId}:`, err?.message || err);
+    const msg = String(err?.message || err);
+    if (!msg.toLowerCase().includes("missing or insufficient permissions") && err?.code !== "permission-denied") {
+      console.warn(`[Server Firestore Doc Read] Notice reading ${collectionName}/${docId}:`, msg);
+    }
     return {
       exists: false,
       data: () => null
@@ -788,78 +835,87 @@ async function getServerFirestoreDoc(collectionName: string, docId: string, user
   }
 }
 
-async function getServerFirestoreQuery(collectionName: string, fieldPath: string, op: string, value: any) {
+async function getServerFirestoreQuery(collectionName: string, fieldPath: string, op: string, value: any, userToken?: string) {
   const projectId = firebaseConfig.projectId;
   const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
 
-  if (process.env.K_SERVICE) {
-    try {
-      const tokenRes = await fetch("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token", {
-        headers: { "Metadata-Flavor": "Google" }
-      });
-      if (tokenRes.ok) {
-        const tokenData: any = await tokenRes.json();
-        const saToken = tokenData.access_token;
-        if (saToken) {
-          const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents:runQuery`;
-          
-          let firestoreValue: any = {};
-          if (typeof value === "string") {
-            firestoreValue = { stringValue: value };
-          } else if (typeof value === "number") {
-            if (Number.isInteger(value)) {
-              firestoreValue = { integerValue: String(value) };
-            } else {
-              firestoreValue = { doubleValue: value };
-            }
-          } else if (typeof value === "boolean") {
-            firestoreValue = { booleanValue: value };
-          }
+  const runRestQuery = async (bearerToken: string, isMetadataToken: boolean) => {
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents:runQuery`;
+    let firestoreValue: any = {};
+    if (typeof value === "string") {
+      firestoreValue = { stringValue: value };
+    } else if (typeof value === "number") {
+      if (Number.isInteger(value)) {
+        firestoreValue = { integerValue: String(value) };
+      } else {
+        firestoreValue = { doubleValue: value };
+      }
+    } else if (typeof value === "boolean") {
+      firestoreValue = { booleanValue: value };
+    }
 
-          const opMapping: Record<string, string> = {
-            "==": "EQUAL",
-            "<": "LESS_THAN",
-            "<=": "LESS_THAN_OR_EQUAL",
-            ">": "GREATER_THAN",
-            ">=": "GREATER_THAN_OR_EQUAL",
-          };
+    const opMapping: Record<string, string> = {
+      "==": "EQUAL",
+      "<": "LESS_THAN",
+      "<=": "LESS_THAN_OR_EQUAL",
+      ">": "GREATER_THAN",
+      ">=": "GREATER_THAN_OR_EQUAL",
+    };
 
-          const body = {
-            structuredQuery: {
-              from: [{ collectionId: collectionName }],
-              where: {
-                fieldFilter: {
-                  field: { fieldPath },
-                  op: opMapping[op] || "EQUAL",
-                  value: firestoreValue
-                }
-              }
-            }
-          };
-
-          const queryRes = await fetch(url, {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${saToken}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(body)
-          });
-
-          if (queryRes.ok) {
-            const results: any[] = await queryRes.json();
-            const docs = results
-              .filter(r => r.document)
-              .map(r => ({
-                id: r.document.name.split("/").pop(),
-                data: () => parseFirestoreRestFields(r.document.fields)
-              }));
-            return { docs };
+    const body = {
+      structuredQuery: {
+        from: [{ collectionId: collectionName }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath },
+            op: opMapping[op] || "EQUAL",
+            value: firestoreValue
           }
         }
       }
-    } catch (err) {
-      console.warn("[Server Firestore REST] Query fetch failed, falling back to Web SDK:", err);
+    };
+
+    const queryRes = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${bearerToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (queryRes.ok) {
+      const results: any[] = await queryRes.json();
+      const docs = results
+        .filter(r => r.document)
+        .map(r => ({
+          id: r.document.name.split("/").pop(),
+          data: () => parseFirestoreRestFields(r.document.fields)
+        }));
+      return { docs };
+    }
+    if (isMetadataToken && (queryRes.status === 401 || queryRes.status === 403)) {
+      markMetadataRestPermissionDenied(queryRes.status);
+    }
+    return null;
+  };
+
+  if (userToken) {
+    try {
+      const restResult = await runRestQuery(userToken, false);
+      if (restResult) return restResult;
+    } catch (err: any) {
+      console.warn("[Server Firestore REST UserToken] Query fetch failed, falling back:", err?.message || err);
+    }
+  }
+
+  const saToken = await getMetadataServiceAccountToken();
+  if (saToken) {
+    try {
+      const restResult = await runRestQuery(saToken, true);
+      if (restResult) return restResult;
+    } catch (err: any) {
+      console.warn("[Server Firestore REST] Query fetch failed, falling back to Web SDK:", err?.message || err);
     }
   }
 
@@ -873,15 +929,81 @@ async function getServerFirestoreQuery(collectionName: string, fieldPath: string
       }))
     };
   } catch (err: any) {
-    console.warn(`[Server Firestore Query Read] Notice querying ${collectionName}:`, err?.message || err);
+    const msg = String(err?.message || err);
+    if (!msg.toLowerCase().includes("missing or insufficient permissions") && err?.code !== "permission-denied") {
+      console.warn(`[Server Firestore Query Read] Notice querying ${collectionName}:`, msg);
+    }
     return { docs: [] };
   }
 }
 
-async function getServerFirestoreCollection(collectionName: string) {
+async function getServerFirestoreCollection(collectionName: string, userToken?: string) {
+  const projectId = firebaseConfig.projectId;
+  const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
+
+  const fetchViaRest = async (authToken: string) => {
+    const docs: Array<{ id: string; data: () => any }> = [];
+    let pageToken = "";
+    do {
+      const qs = new URLSearchParams({ pageSize: "1000" });
+      if (pageToken) qs.set("pageToken", pageToken);
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/${collectionName}?${qs.toString()}`;
+      const res = await fetch(url, {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        const error: any = new Error(
+          `Firestore REST collection read failed (${res.status}): ${extractConciseApiError(errText, res.status)}`
+        );
+        error.status = res.status;
+        throw error;
+      }
+      const payload: any = await res.json();
+      if (Array.isArray(payload.documents)) {
+        for (const d of payload.documents) {
+          const docId = String(d.name || "").split("/").pop() || "";
+          const parsed = parseFirestoreRestFields(d.fields);
+          docs.push({
+            id: docId,
+            data: () => parsed
+          });
+        }
+      }
+      pageToken = payload.nextPageToken || "";
+    } while (pageToken);
+    return docs;
+  };
+
+  if (userToken) {
+    try {
+      return await fetchViaRest(userToken);
+    } catch (err: any) {
+      if (err?.status !== 401 && err?.status !== 403) {
+        console.warn(`[Server Firestore REST UserToken Collection] ${collectionName}:`, err?.message || err);
+      }
+    }
+  }
+
+  const saToken = await getMetadataServiceAccountToken();
+  if (saToken) {
+    try {
+      return await fetchViaRest(saToken);
+    } catch (err: any) {
+      if (err?.status === 401 || err?.status === 403) {
+        markMetadataRestPermissionDenied(err.status);
+      } else {
+        console.warn(`[Server Firestore REST Collection] ${collectionName}:`, err?.message || err);
+      }
+    }
+  }
+
   try {
-    const snap = await getDocs(collection(db, collectionName));
-    return snap.docs.map(d => ({
+    const snap = await Promise.race([
+      getDocs(collection(db, collectionName)),
+      new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Server Firestore getDocs timeout")), 8000))
+    ]);
+    return snap.docs.map((d: any) => ({
       id: d.id,
       data: () => d.data()
     }));
@@ -939,12 +1061,13 @@ const isFirestoreQuotaBlocked = () =>
 async function setServerFirestoreDoc(collectionName: string, docId: string, data: any, merge: boolean = false, userToken?: string) {
   const projectId = firebaseConfig.projectId;
   const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
+  const safeDocId = String(docId || "").replace(/\//g, "_");
 
   // 1. Try writing via REST API using userToken if available
   if (userToken) {
     try {
       const fields = formatFirestoreRestFields(data);
-      let url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/${collectionName}/${docId}`;
+      let url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/${collectionName}/${encodeURIComponent(safeDocId)}`;
       const queryParams: string[] = [];
       if (merge) {
         Object.keys(data).forEach(key => {
@@ -963,54 +1086,51 @@ async function setServerFirestoreDoc(collectionName: string, docId: string, data
         body: JSON.stringify({ fields })
       });
       if (writeRes.ok) {
-        console.log(`[Server Firestore REST UserToken Write OK] Successfully wrote ${collectionName}/${docId}`);
+        console.log(`[Server Firestore REST UserToken Write OK] Successfully wrote ${collectionName}/${safeDocId}`);
         return { success: true };
+      } else {
+        const errText = await writeRes.text().catch(() => "");
+        console.warn(`[Server Firestore REST UserToken Notice] Write returned status ${writeRes.status} for ${collectionName}/${safeDocId}: ${extractConciseApiError(errText, writeRes.status)}`);
       }
     } catch (err: any) {
-      console.warn(`[Server Firestore REST UserToken Notice] Could not write ${collectionName}/${docId}:`, err?.message || err);
+      console.warn(`[Server Firestore REST UserToken Notice] Could not write ${collectionName}/${safeDocId}:`, err?.message || err);
     }
   }
 
-  // 2. Try metadata service account token in Cloud Run
-  if (process.env.K_SERVICE) {
+  // 2. Try metadata service account token in Cloud Run (if permitted on this Firebase project)
+  const saToken = await getMetadataServiceAccountToken();
+  if (saToken) {
     try {
-      const tokenRes = await fetch("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token", {
-        headers: { "Metadata-Flavor": "Google" }
+      const fields = formatFirestoreRestFields(data);
+      let url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/${collectionName}/${encodeURIComponent(safeDocId)}`;
+      const queryParams: string[] = [];
+      
+      if (merge) {
+        Object.keys(data).forEach(key => {
+          queryParams.push(`updateMask.fieldPaths=${encodeURIComponent(key)}`);
+        });
+      }
+      if (queryParams.length > 0) {
+        url += `?${queryParams.join("&")}`;
+      }
+      
+      const writeRes = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Authorization": `Bearer ${saToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ fields })
       });
-      if (tokenRes.ok) {
-        const tokenData: any = await tokenRes.json();
-        const saToken = tokenData.access_token;
-        if (saToken) {
-          const fields = formatFirestoreRestFields(data);
-          let url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/${collectionName}/${docId}`;
-          const queryParams: string[] = [];
-          
-          if (merge) {
-            Object.keys(data).forEach(key => {
-              queryParams.push(`updateMask.fieldPaths=${encodeURIComponent(key)}`);
-            });
-          }
-          if (queryParams.length > 0) {
-            url += `?${queryParams.join("&")}`;
-          }
-          
-          const writeRes = await fetch(url, {
-            method: "PATCH",
-            headers: {
-              "Authorization": `Bearer ${saToken}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ fields })
-          });
-          
-          if (writeRes.ok) {
-            console.log(`[Server Firestore REST Write OK] Successfully wrote ${collectionName}/${docId} via REST`);
-            return { success: true };
-          } else {
-            const errText = await writeRes.text();
-            console.warn(`[Server Firestore REST Notice] Write returned status ${writeRes.status} for ${collectionName}/${docId}. Body: ${errText}`);
-          }
-        }
+      
+      if (writeRes.ok) {
+        console.log(`[Server Firestore REST Write OK] Successfully wrote ${collectionName}/${safeDocId} via REST`);
+        return { success: true };
+      } else if (writeRes.status === 401 || writeRes.status === 403) {
+        markMetadataRestPermissionDenied(writeRes.status);
+      } else {
+        const errText = await writeRes.text().catch(() => "");
+        console.warn(`[Server Firestore REST Notice] Write returned status ${writeRes.status} for ${collectionName}/${safeDocId}: ${extractConciseApiError(errText, writeRes.status)}`);
       }
     } catch (err: any) {
       console.warn("[Server Firestore REST Write Notice] REST write notice:", err?.message || err);
@@ -1045,6 +1165,58 @@ async function setServerFirestoreDoc(collectionName: string, docId: string, data
     }
     console.warn(`[Server Firestore Web SDK Notice] Could not write ${collectionName}/${docId}:`, err?.message || err);
     return { success: false, error: err?.message || err };
+  }
+}
+
+async function deleteServerFirestoreDoc(collectionName: string, docId: string, userToken?: string) {
+  const projectId = firebaseConfig.projectId;
+  const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
+  const safeDocId = String(docId || "").replace(/\//g, "_");
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/${collectionName}/${encodeURIComponent(safeDocId)}`;
+
+  if (userToken) {
+    try {
+      const res = await fetch(url, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${userToken}` }
+      });
+      if (res.ok || res.status === 404) {
+        return { success: true };
+      }
+      const errText = await res.text().catch(() => "");
+      console.warn(`[Server Firestore REST UserToken Delete] Status ${res.status} for ${collectionName}/${safeDocId}: ${extractConciseApiError(errText, res.status)}`);
+    } catch (err: any) {
+      console.warn(`[Server Firestore REST UserToken Delete Error] ${collectionName}/${safeDocId}:`, err?.message || err);
+    }
+  }
+
+  const saToken = await getMetadataServiceAccountToken();
+  if (saToken) {
+    try {
+      const res = await fetch(url, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${saToken}` }
+      });
+      if (res.ok || res.status === 404) {
+        return { success: true };
+      }
+      if (res.status === 401 || res.status === 403) {
+        markMetadataRestPermissionDenied(res.status);
+      }
+    } catch (err: any) {
+      console.warn(`[Server Firestore REST Delete Error] ${collectionName}/${safeDocId}:`, err?.message || err);
+    }
+  }
+
+  try {
+    await Promise.race([
+      deleteDoc(doc(db, collectionName, safeDocId)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Server Firestore deleteDoc timeout")), 10000))
+    ]);
+    return { success: true };
+  } catch (err: any) {
+    console.warn(`[Server Firestore Web SDK Delete Notice] Could not delete ${collectionName}/${safeDocId}:`, err?.message || err);
+    return { success: false, error: err?.message || String(err) };
   }
 }
 
@@ -1279,7 +1451,7 @@ async function requirePremium(req: any, res: any, next: any) {
           ...profile,
           subscriptionStatus: "free",
           subscriptionTier: "none"
-        }, true).catch(err => console.warn("Failed to revert expired user in Firestore:", err));
+        }, true, token).catch(err => console.warn("Failed to revert expired user in Firestore:", err));
 
         if (isAIEndpoint) {
           req.user = { uid: decoded.uid, email: decoded.email, role: "user", subscriptionStatus: "premium", profile };
@@ -1348,6 +1520,7 @@ async function requireAdmin(req: any, res: any, next: any) {
 
   if (decoded.email && isServerAdminEmail(decoded.email)) {
     console.log(`[Auth Security] Admin user verified via email claim in requireAdmin: ${decoded.email}`);
+    req.authToken = token;
     req.user = { uid: decoded.uid, email: decoded.email, role: "admin", subscriptionStatus: "premium" };
     return next();
   }
@@ -1357,6 +1530,7 @@ async function requireAdmin(req: any, res: any, next: any) {
     if (userSnap.exists) {
       const profile = userSnap.data();
       if (profile?.role === "admin" || isServerAdminEmail(profile?.email)) {
+        req.authToken = token;
         req.user = { uid: decoded.uid, email: decoded.email || profile.email, role: "admin", subscriptionStatus: "premium", profile };
         return next();
       }
@@ -1368,7 +1542,7 @@ async function requireAdmin(req: any, res: any, next: any) {
 }
 
 // Durable Firebase logger for administrative tasks
-async function logAdminActivityOnFirebase(email: string, userId: string, actionType: string, description: string, details?: any) {
+async function logAdminActivityOnFirebase(email: string, userId: string, actionType: string, description: string, details?: any, userToken?: string) {
   if (!email || !isServerAdminEmail(email)) return;
   
   const id = "act_" + Math.random().toString(36).substring(2, 11) + "_" + Date.now();
@@ -1385,7 +1559,7 @@ async function logAdminActivityOnFirebase(email: string, userId: string, actionT
   };
   
   try {
-    await setServerFirestoreDoc("admin_activities", id, activityData, false);
+    await setServerFirestoreDoc("admin_activities", id, activityData, false, userToken);
     console.log(`[Firebase Admin Activity Logged] ${actionType}: ${description}`);
   } catch (err) {
     console.error("Failed to write admin activity log to Firestore:", err);
@@ -3798,8 +3972,11 @@ app.get("/api/diagnostics/subscription-sync", async (req: any, res: any) => {
 });
 
 
-// GET custom exercise media overrides and deleted exercise IDs
+let lastCustomMediaCloudSync = 0;
+
+// GET custom exercise media overrides and deleted exercise IDs (Cloud Firestore authoritative)
 app.get("/api/exercises/custom-media", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
   try {
     let data: Record<string, any> = {};
     if (fs.existsSync(OVERRIDES_FILE_PATH)) {
@@ -3816,89 +3993,6 @@ app.get("/api/exercises/custom-media", async (req, res) => {
       fs.writeFileSync(OVERRIDES_FILE_PATH, "{}", "utf-8");
     }
 
-    // Auto self-heal: if disk cache is empty, hydrate immediately from Firestore collections
-    if (Object.keys(data).length === 0) {
-      try {
-        const mediaDocs = await getServerFirestoreCollection("exercise_media");
-        mediaDocs.forEach(d => {
-          const docData = d.data();
-          const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl || docData?.originalUrlOrBase64;
-          if (mUrl) {
-            data[d.id] = {
-              ...(data[d.id] || {}),
-              ...docData,
-              customMediaUrl: mUrl,
-              gifUrl: mUrl,
-              imageUrl: mUrl,
-              customMediaType: docData.customMediaType || "image"
-            };
-            if (docData.exerciseName) {
-              const normName = docData.exerciseName.toLowerCase().trim();
-              data[normName] = {
-                ...(data[normName] || {}),
-                ...docData,
-                customMediaUrl: mUrl,
-                gifUrl: mUrl,
-                imageUrl: mUrl,
-                customMediaType: docData.customMediaType || "image"
-              };
-            }
-          }
-        });
-
-        const exDocs = await getServerFirestoreCollection("exercises");
-        exDocs.forEach(d => {
-          const docData = d.data();
-          const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
-          if (docData && (mUrl || docData.isCustom || docData.name)) {
-            data[d.id] = {
-              ...(data[d.id] || {}),
-              ...docData,
-              ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-            };
-            if (docData.name) {
-              const normName = docData.name.toLowerCase().trim();
-              data[normName] = {
-                ...(data[normName] || {}),
-                ...docData,
-                ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-              };
-            }
-          }
-        });
-
-        const genDocs = await getServerFirestoreCollection("generated_exercises");
-        genDocs.forEach(d => {
-          const docData = d.data();
-          const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
-          if (docData && (mUrl || docData.isCustom || docData.name)) {
-            data[d.id] = {
-              ...(data[d.id] || {}),
-              ...docData,
-              isCustom: true,
-              ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-            };
-            if (docData.name) {
-              const normName = docData.name.toLowerCase().trim();
-              data[normName] = {
-                ...(data[normName] || {}),
-                ...docData,
-                isCustom: true,
-                ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-              };
-            }
-          }
-        });
-
-        if (Object.keys(data).length > 0) {
-          fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(data, null, 2), "utf-8");
-          console.log(`[Auto Self-Heal] Successfully hydrated ${Object.keys(data).length} exercise overrides into local cache.`);
-        }
-      } catch (cloudErr) {
-        console.warn("[Auto Self-Heal] Notice during Firestore overrides hydration:", cloudErr);
-      }
-    }
-
     let deletedExercises: string[] = [];
     if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
       try {
@@ -3911,10 +4005,136 @@ app.get("/api/exercises/custom-media", async (req, res) => {
       }
     }
 
+    const shouldSyncCloud =
+      req.query.fresh === "true" ||
+      Object.keys(data).length === 0 ||
+      Date.now() - lastCustomMediaCloudSync > 10000;
+
+    if (shouldSyncCloud) {
+      try {
+        const [mediaDocs, exDocs, genDocs, deletedDocs] = await Promise.all([
+          getServerFirestoreCollection("exercise_media"),
+          getServerFirestoreCollection("exercises"),
+          getServerFirestoreCollection("generated_exercises"),
+          getServerFirestoreCollection("deleted_exercises")
+        ]);
+
+        const tombstoneSet = new Set<string>(deletedExercises.map(v => String(v).toLowerCase().trim()));
+        for (const d of deletedDocs) {
+          const dData = d.data();
+          const delId = String(dData?.id || d.id || "").trim();
+          const delName = String(dData?.name || "").trim().toLowerCase();
+          if (delId) {
+            tombstoneSet.add(delId.toLowerCase());
+            if (!deletedExercises.includes(delId)) deletedExercises.push(delId);
+          }
+          if (delName) {
+            tombstoneSet.add(delName);
+            if (!deletedExercises.includes(delName)) deletedExercises.push(delName);
+          }
+        }
+
+        const freshOverrides: Record<string, any> = {};
+
+        mediaDocs.forEach(d => {
+          const docData = d.data();
+          if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) return;
+          const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl || docData?.originalUrlOrBase64;
+          if (mUrl) {
+            freshOverrides[d.id] = {
+              ...(freshOverrides[d.id] || {}),
+              ...docData,
+              customMediaUrl: mUrl,
+              gifUrl: mUrl,
+              imageUrl: mUrl,
+              customMediaType: docData.customMediaType || "image"
+            };
+            if (docData.exerciseName) {
+              const normName = docData.exerciseName.toLowerCase().trim();
+              if (!tombstoneSet.has(normName)) {
+                freshOverrides[normName] = {
+                  ...(freshOverrides[normName] || {}),
+                  ...docData,
+                  customMediaUrl: mUrl,
+                  gifUrl: mUrl,
+                  imageUrl: mUrl,
+                  customMediaType: docData.customMediaType || "image"
+                };
+              }
+            }
+          }
+        });
+
+        exDocs.forEach(d => {
+          const docData = d.data();
+          if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) return;
+          const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
+          if (docData && (mUrl || docData.isCustom || docData.name)) {
+            freshOverrides[d.id] = {
+              ...(freshOverrides[d.id] || {}),
+              ...docData,
+              ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+            };
+            if (docData.name) {
+              const normName = docData.name.toLowerCase().trim();
+              if (!tombstoneSet.has(normName)) {
+                freshOverrides[normName] = {
+                  ...(freshOverrides[normName] || {}),
+                  ...docData,
+                  ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+                };
+              }
+            }
+          }
+        });
+
+        genDocs.forEach(d => {
+          const docData = d.data();
+          if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) return;
+          const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
+          if (docData && (mUrl || docData.isCustom || docData.name)) {
+            freshOverrides[d.id] = {
+              ...(freshOverrides[d.id] || {}),
+              ...docData,
+              isCustom: true,
+              ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+            };
+            if (docData.name) {
+              const normName = docData.name.toLowerCase().trim();
+              if (!tombstoneSet.has(normName)) {
+                freshOverrides[normName] = {
+                  ...(freshOverrides[normName] || {}),
+                  ...docData,
+                  isCustom: true,
+                  ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+                };
+              }
+            }
+          }
+        });
+
+        // Merge cloud authority over local cache and strip tombstoned exercises
+        data = { ...data, ...freshOverrides };
+        for (const k of Object.keys(data)) {
+          const item = data[k];
+          const itemName = String(item?.name || item?.exerciseName || "").toLowerCase().trim();
+          if (item?.isDeleted === true || tombstoneSet.has(k.toLowerCase()) || (itemName && tombstoneSet.has(itemName))) {
+            delete data[k];
+          }
+        }
+
+        fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(data, null, 2), "utf-8");
+        fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(deletedExercises, null, 2), "utf-8");
+        lastCustomMediaCloudSync = Date.now();
+      } catch (cloudErr) {
+        console.warn("[Custom Media API] Notice during Firestore refresh:", cloudErr);
+      }
+    }
+
     res.json({ success: true, overrides: data, deletedExerciseIds: deletedExercises });
   } catch (error: any) {
-    console.error("Failed to read custom exercise overrides file:", error);
-    res.status(500).json({ success: false, error: "Failed to read overrides file." });
+    console.error("Failed to read custom exercise overrides:", error);
+    res.status(500).json({ success: false, error: "Failed to read overrides." });
   }
 });
 
@@ -3924,21 +4144,7 @@ async function uploadFileToFirebaseStorageServer(
   filename: string
 ): Promise<string | null> {
   const bucketName = firebaseConfig.storageBucket || "alex-project-777.firebasestorage.app";
-  
-  let token = "";
-  if (process.env.K_SERVICE) {
-    try {
-      const tokenRes = await fetch("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token", {
-        headers: { "Metadata-Flavor": "Google" }
-      });
-      if (tokenRes.ok) {
-        const tokenData: any = await tokenRes.json();
-        token = tokenData.access_token || "";
-      }
-    } catch (e) {
-      console.warn("[Server Storage Token Error]:", e);
-    }
-  }
+  const token = (await getMetadataServiceAccountToken()) || "";
 
   const cleanFilename = filename.replace(/[^a-zA-Z0-9_.-]/g, "_");
   const encodedName = encodeURIComponent(`uploads/${cleanFilename}`);
@@ -3964,52 +4170,26 @@ async function uploadFileToFirebaseStorageServer(
       const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedName}?alt=media&token=${downloadToken}`;
       console.log(`[Server Cloud Storage OK] Uploaded permanent image URL: ${publicUrl}`);
       return publicUrl;
+    } else if (token && (uploadRes.status === 401 || uploadRes.status === 403)) {
+      markMetadataRestPermissionDenied(uploadRes.status);
     } else {
-      const errText = await uploadRes.text();
-      console.warn(`[Server Cloud Storage REST Error] Status ${uploadRes.status}:`, errText);
-    }
-  } catch (err) {
-    console.error("[Server Cloud Storage Upload Exception]:", err);
-  }
-  return null;
-}
-
-async function uploadFileToSupabaseStorageServer(
-  buffer: Buffer,
-  mimeType: string,
-  filename: string,
-  bucketName = "exercise_media"
-): Promise<string | null> {
-  if (!supabaseServer) return null;
-  try {
-    const cleanFilename = filename.replace(/[^a-zA-Z0-9_.-]/g, "_");
-    const pathName = `uploads/${cleanFilename}`;
-    const { error } = await supabaseServer.storage
-      .from(bucketName)
-      .upload(pathName, buffer, {
-        upsert: true,
-        contentType: mimeType
-      });
-    if (error) {
-      console.warn(`[Supabase Server Storage Warning] Upload notice for ${filename}:`, error.message);
-      return null;
-    }
-    const { data } = supabaseServer.storage.from(bucketName).getPublicUrl(pathName);
-    if (data?.publicUrl) {
-      console.log(`[Supabase Server Storage OK] Uploaded permanent asset URL: ${data.publicUrl}`);
-      return data.publicUrl;
+      const errText = await uploadRes.text().catch(() => "");
+      console.warn(`[Server Cloud Storage REST Notice] Status ${uploadRes.status}: ${extractConciseApiError(errText, uploadRes.status)}`);
     }
   } catch (err: any) {
-    console.warn("[Supabase Server Storage Exception]:", err?.message || err);
+    console.warn("[Server Cloud Storage Upload Notice]:", err?.message || err);
   }
   return null;
 }
 
-// POST endpoint to handle base64 image uploads permanently to cloud storage
+// POST endpoint to handle base64 image uploads permanently to Firebase Storage
 app.post("/api/media/upload", async (req: any, res: any) => {
   try {
+    const authHeader = req.headers.authorization;
+    const reqToken = authHeader && authHeader.startsWith("Bearer ") ? authHeader.split("Bearer ")[1].trim() : undefined;
+
     const payloadData = req.body.fileData || req.body.data;
-    const { filename = `upload_${Date.now()}`, mimeType = "image/png", exerciseId, userId } = req.body;
+    const { filename = `upload_${Date.now()}`, mimeType = "image/png", exerciseId } = req.body;
     if (!payloadData) {
       return res.status(400).json({ success: false, error: "Missing required 'fileData' (base64 string or URL)." });
     }
@@ -4034,24 +4214,25 @@ app.post("/api/media/upload", async (req: any, res: any) => {
     else if (detectedMime.includes("webp")) ext = "webp";
 
     const fullFilename = `${filename}_${Date.now()}.${ext}`;
-    let cloudUrl = await uploadFileToFirebaseStorageServer(buffer, detectedMime, fullFilename);
-    if (!cloudUrl) {
-      cloudUrl = await uploadFileToSupabaseStorageServer(buffer, detectedMime, fullFilename);
-    }
+    const cloudUrl = await uploadFileToFirebaseStorageServer(buffer, detectedMime, fullFilename);
 
     if (cloudUrl) {
+      let firestoreSaved = true;
       if (exerciseId) {
-        await setServerFirestoreDoc("exercise_media", exerciseId, {
+        const fsRes = await setServerFirestoreDoc("exercise_media", exerciseId, {
           exerciseId,
           customMediaUrl: cloudUrl,
+          gifUrl: cloudUrl,
+          imageUrl: cloudUrl,
           customMediaType: detectedMime.includes("video") ? "video" : "image",
           updatedAt: new Date().toISOString()
-        }, true).catch(() => {});
+        }, true, reqToken);
+        firestoreSaved = fsRes.success === true;
       }
-      return res.json({ success: true, url: cloudUrl });
+      return res.json({ success: true, url: cloudUrl, storage: "firebase", firestoreSaved });
     }
 
-    // Direct Static File Storage fallback
+    // Direct Static File Storage fallback on ephemeral disk
     const localFilePath = path.join(ASSETS_DIR, fullFilename);
     fs.writeFileSync(localFilePath, buffer);
     const publicAssetsDir = path.join(process.cwd(), "public", "assets");
@@ -4061,15 +4242,15 @@ app.post("/api/media/upload", async (req: any, res: any) => {
     fs.writeFileSync(path.join(publicAssetsDir, fullFilename), buffer);
 
     const staticLocalUrl = `/assets/${fullFilename}`;
-    console.log(`[Media Upload Server] Stored permanent asset locally: ${staticLocalUrl}`);
-    return res.json({ success: true, url: staticLocalUrl });
+    console.log(`[Media Upload Server] Stored local fallback asset: ${staticLocalUrl}`);
+    return res.json({ success: true, url: staticLocalUrl, storage: "local_fallback", firestoreSaved: false });
   } catch (err: any) {
     console.error("Error in /api/media/upload:", err);
     res.status(500).json({ success: false, error: err?.message || "Failed to upload image." });
   }
 });
 
-// POST to save custom media override to local JSON file
+// POST to save custom media override to Cloud Firestore and local cache
 app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res: any) => {
   let { exerciseId, customMediaUrl, customMediaType } = req.body;
 
@@ -4077,15 +4258,14 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
   const userEmail = req.user?.email?.toLowerCase().trim() || "";
   const isAuthorizedAdmin = req.user && (
     req.user.role === "admin" ||
-    userEmail === "alexfitnesshub@gmail.com" ||
-    userEmail === "muzikworld08@gmail.com"
+    isServerAdminEmail(userEmail)
   );
   if (!isAuthorizedAdmin) {
     console.warn(`[Security Infringement Blocked] User with email ${req.user?.email} attempted custom media upload.`);
     return res.status(403).json({ success: false, error: "Only authorized administrators are permitted to upload custom GIF/media assets." });
   }
 
-  if (!exerciseId) {
+  if (!exerciseId || typeof exerciseId !== "string") {
     return res.status(400).json({ success: false, error: "Exercise ID is required." });
   }
 
@@ -4106,6 +4286,22 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
 
     const isClearingMedia = customMediaUrl === null || customMediaUrl === "" || customMediaUrl === "none" || customMediaUrl === "deleted";
     if (isClearingMedia) {
+      const clearWrite = await setServerFirestoreDoc("exercise_media", exerciseId, {
+        exerciseId,
+        originalUrlOrBase64: null,
+        customMediaUrl: "none",
+        gifUrl: "none",
+        imageUrl: "none",
+        isMediaDeleted: true,
+        customMediaType: customMediaType || "image",
+        updatedAt: new Date().toISOString()
+      }, false, req.authToken);
+
+      if (!clearWrite.success) {
+        console.error("[Firestore Media Backup Delete Error]:", clearWrite.error);
+        return res.status(502).json({ success: false, firestoreOk: false, error: "Cloud Firestore did not confirm media deletion." });
+      }
+
       overrides[exerciseId] = {
         exerciseId,
         customMediaUrl: "none",
@@ -4117,29 +4313,14 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
       try {
         fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
       } catch (e) {}
-      try {
-        await setServerFirestoreDoc("exercise_media", exerciseId, {
-          exerciseId,
-          originalUrlOrBase64: null,
-          customMediaUrl: "none",
-          gifUrl: "none",
-          imageUrl: "none",
-          isMediaDeleted: true,
-          customMediaType: customMediaType || "image",
-          updatedAt: new Date().toISOString()
-        }, false);
-      } catch (dbErr) {
-        console.error("[Firestore Media Backup Delete Error]:", dbErr);
-      }
-      return res.json({ success: true, customMediaUrl: "none" });
+      lastCustomMediaCloudSync = Date.now();
+      return res.json({ success: true, firestoreOk: true, customMediaUrl: "none" });
     } else {
       const rawInputUrl = customMediaUrl;
       const isCloudStorageUrl = typeof rawInputUrl === "string" && (
         rawInputUrl.includes("firebasestorage.googleapis.com") ||
         rawInputUrl.includes("storage.googleapis.com") ||
-        rawInputUrl.includes("firebasestorage.app") ||
-        rawInputUrl.includes("supabase.co/storage") ||
-        rawInputUrl.includes("supabase.in/storage")
+        rawInputUrl.includes("firebasestorage.app")
       );
 
       if (
@@ -4154,7 +4335,7 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
       ) {
         customMediaUrl = rawInputUrl.startsWith("assets/") ? `/${rawInputUrl}` : rawInputUrl;
       } else if (rawInputUrl && rawInputUrl.startsWith("data:")) {
-        // Upload base64 payload to permanent cloud storage
+        // Upload base64 payload to permanent Firebase Storage
         const match = rawInputUrl.match(/^data:([^;]+);base64,(.+)$/);
         if (match) {
           const mimeType = match[1];
@@ -4172,7 +4353,6 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
           if (cloudUploadedUrl) {
             customMediaUrl = cloudUploadedUrl;
           } else {
-            // Write to disk as permanent local asset
             const localFilename = `exercise_custom_${exerciseId}.${ext}`;
             const filePath = path.join(ASSETS_DIR, localFilename);
             fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
@@ -4187,46 +4367,37 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
       }
 
       // Save permanent HTTPS cloud URL to Firestore exercise_media and exercises collections
-      try {
-        const targetEx = EXERCISES.find(e => e.id === exerciseId);
-        await setServerFirestoreDoc("exercise_media", exerciseId, {
-          exerciseId,
-          exerciseName: targetEx?.name || exerciseId,
-          customMediaUrl: customMediaUrl,
-          gifUrl: customMediaUrl,
-          imageUrl: customMediaUrl,
-          originalUrlOrBase64: customMediaUrl,
-          customMediaType: customMediaType || "image",
-          updatedAt: new Date().toISOString()
-        }, false);
-        
-        await setServerFirestoreDoc("exercises", exerciseId, {
-          id: exerciseId,
-          customMediaUrl: customMediaUrl,
-          gifUrl: customMediaUrl,
-          imageUrl: customMediaUrl,
-          customMediaType: customMediaType || "image",
-          updatedAt: new Date().toISOString()
-        }, true);
-        console.log(`[Firestore Media Backup OK] Saved permanent media URL for exercise ID ${exerciseId}: ${customMediaUrl}`);
-      } catch (dbErr) {
-        console.error("[Firestore Media Backup Error]:", dbErr);
+      const targetEx = EXERCISES.find(e => e.id === exerciseId);
+      const mediaWrite = await setServerFirestoreDoc("exercise_media", exerciseId, {
+        exerciseId,
+        exerciseName: targetEx?.name || exerciseId,
+        customMediaUrl: customMediaUrl,
+        gifUrl: customMediaUrl,
+        imageUrl: customMediaUrl,
+        originalUrlOrBase64: customMediaUrl,
+        customMediaType: customMediaType || "image",
+        updatedAt: new Date().toISOString()
+      }, false, req.authToken);
+
+      const exWrite = await setServerFirestoreDoc("exercises", exerciseId, {
+        id: exerciseId,
+        customMediaUrl: customMediaUrl,
+        gifUrl: customMediaUrl,
+        imageUrl: customMediaUrl,
+        customMediaType: customMediaType || "image",
+        updatedAt: new Date().toISOString()
+      }, true, req.authToken);
+
+      if (!mediaWrite.success || !exWrite.success) {
+        console.error("[Firestore Media Backup Error]:", mediaWrite.error || exWrite.error);
+        return res.status(502).json({
+          success: false,
+          firestoreOk: false,
+          error: "Cloud Firestore failed to confirm exercise media save."
+        });
       }
 
-      // Sync to Supabase exercise_media table if active
-      if (supabaseServer) {
-        try {
-          await supabaseServer.from("exercise_media").upsert({
-            exercise_id: exerciseId,
-            media_url: customMediaUrl,
-            media_type: customMediaType || "image",
-            updated_at: new Date().toISOString()
-          });
-          console.log(`[Supabase Media Backup OK] Upserted exercise media record for ${exerciseId}`);
-        } catch (sbErr) {
-          console.warn("[Supabase Media Backup Notice]:", sbErr);
-        }
-      }
+      console.log(`[Firestore Media OK] Saved permanent media URL for exercise ID ${exerciseId}: ${customMediaUrl}`);
 
       const mediaPayload = {
         customMediaUrl,
@@ -4240,7 +4411,6 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
         ...mediaPayload
       };
 
-      const matchedEx = EXERCISES.find(e => e.id === exerciseId);
       if (matchedEx && matchedEx.name) {
         const normName = matchedEx.name.toLowerCase().trim();
         overrides[normName] = {
@@ -4251,10 +4421,10 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
     }
 
     fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
-    console.log(`Successfully saved custom media for exercise ${exerciseId} to local overrides file!`);
+    lastCustomMediaCloudSync = Date.now();
 
     // Synchronize media update across all program schedules in Firestore and local disk
-    await syncExerciseMediaToProgramSchedules(exerciseId, customMediaUrl, matchedEx?.name, req.user?.email || "admin");
+    await syncExerciseMediaToProgramSchedules(exerciseId, customMediaUrl, matchedEx?.name, req.user?.email || "admin", req.authToken);
     
     // Log admin activity on Firebase
     await logAdminActivityOnFirebase(
@@ -4262,20 +4432,21 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
       req.user?.uid || "",
       "CUSTOM_MEDIA_UPLOAD",
       `Uploaded custom demo GIF/media for exercise ${exerciseId}`,
-      { exerciseId, customMediaUrl, customMediaType }
+      { exerciseId, customMediaUrl, customMediaType },
+      req.authToken
     );
 
-    res.json({ success: true, message: "Successfully saved to local server files.", customMediaUrl });
+    res.json({ success: true, firestoreOk: true, message: "Successfully saved to Cloud Firestore.", customMediaUrl });
   } catch (error: any) {
-    console.error("Failed to write custom exercise overrides file:", error);
-    res.status(500).json({ success: false, error: "Failed to write override to file: " + error.message });
+    console.error("Failed to save custom exercise media:", error);
+    res.status(500).json({ success: false, error: "Failed to save custom exercise media: " + error.message });
   }
 });
 
 // POST update exercise details (Name, Sets, Reps, Category, Media, etc.)
 app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
   const { exerciseId, updates } = req.body;
-  if (!exerciseId || !updates || typeof updates !== "object") {
+  if (!exerciseId || typeof exerciseId !== "string" || !updates || typeof updates !== "object") {
     return res.status(400).json({ success: false, error: "exerciseId and updates object are required." });
   }
 
@@ -4298,13 +4469,45 @@ app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
       lastModifiedBy: req.user?.email || "admin"
     };
 
-    overrides[exerciseId] = {
+    const nextEntry = {
       ...(overrides[exerciseId] || {}),
       ...cleanUpdates
     };
 
+    // Persist to Cloud Firestore exercises and exercise_media collections FIRST
+    const exWrite = await setServerFirestoreDoc("exercises", exerciseId, {
+      id: exerciseId,
+      ...nextEntry
+    }, true, req.authToken);
+
+    let mediaWriteOk = true;
+    if (mediaVal) {
+      const mediaWrite = await setServerFirestoreDoc("exercise_media", exerciseId, {
+        exerciseId,
+        exerciseName: cleanUpdates.name || exerciseId,
+        customMediaUrl: mediaVal,
+        gifUrl: mediaVal,
+        imageUrl: mediaVal,
+        customMediaType: cleanUpdates.customMediaType || "image",
+        updatedAt: new Date().toISOString()
+      }, true, req.authToken);
+      mediaWriteOk = mediaWrite.success === true;
+    }
+
+    if (!exWrite.success || !mediaWriteOk) {
+      console.error(`[Firestore Update Error for exercise ${exerciseId}]:`, exWrite.error);
+      return res.status(502).json({
+        success: false,
+        firestoreOk: false,
+        error: "Cloud Firestore did not confirm exercise update."
+      });
+    }
+
+    console.log(`[Firestore OK] Updated exercise ${exerciseId} with new metadata.`);
+
+    overrides[exerciseId] = nextEntry;
     if (cleanUpdates.name) {
-      const normName = cleanUpdates.name.toLowerCase().trim();
+      const normName = String(cleanUpdates.name).toLowerCase().trim();
       overrides[normName] = {
         ...(overrides[normName] || {}),
         ...cleanUpdates
@@ -4312,36 +4515,15 @@ app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
     }
 
     fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
-
-    // Sync to Firestore exercises and exercise_media collections
-    try {
-      await setServerFirestoreDoc("exercises", exerciseId, {
-        id: exerciseId,
-        ...overrides[exerciseId]
-      }, true);
-
-      if (mediaVal) {
-        await setServerFirestoreDoc("exercise_media", exerciseId, {
-          exerciseId,
-          exerciseName: cleanUpdates.name || exerciseId,
-          customMediaUrl: mediaVal,
-          gifUrl: mediaVal,
-          imageUrl: mediaVal,
-          customMediaType: cleanUpdates.customMediaType || "image",
-          updatedAt: new Date().toISOString()
-        }, true);
-      }
-      console.log(`[Firestore OK] Updated exercise ${exerciseId} with new metadata.`);
-    } catch (dbErr) {
-      console.warn(`[Firestore Update Warning for exercise ${exerciseId}]:`, dbErr);
-    }
+    lastCustomMediaCloudSync = Date.now();
 
     // Synchronize updates across all program schedules in Firestore and local disk
     await syncExerciseMediaToProgramSchedules(
       exerciseId, 
       mediaVal || cleanUpdates.customMediaUrl || overrides[exerciseId]?.customMediaUrl, 
       cleanUpdates.name, 
-      req.user?.email || "admin"
+      req.user?.email || "admin",
+      req.authToken
     );
 
     // Log admin activity
@@ -4350,10 +4532,11 @@ app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
       req.user?.uid || "",
       "EXERCISE_UPDATE",
       `Admin updated workout metadata for ${cleanUpdates.name || exerciseId} (Sets: ${cleanUpdates.recommendedSets || 'N/A'}, Reps: ${cleanUpdates.recommendedReps || 'N/A'})`,
-      { exerciseId, updates: cleanUpdates }
+      { exerciseId, updates: cleanUpdates },
+      req.authToken
     );
 
-    res.json({ success: true, message: "Exercise updated successfully.", exercise: overrides[exerciseId] });
+    res.json({ success: true, firestoreOk: true, message: "Exercise updated successfully in Cloud Firestore.", exercise: overrides[exerciseId] });
   } catch (error: any) {
     console.error("Failed to update exercise:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });
@@ -4363,13 +4546,13 @@ app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
 // POST create new workout
 app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
   const { workout } = req.body;
-  if (!workout || !workout.name) {
-    return res.status(400).json({ success: false, error: "Workout data with name is required." });
+  if (!workout || typeof workout.name !== "string" || !workout.name.trim()) {
+    return res.status(400).json({ success: false, error: "Workout data with a valid name is required." });
   }
 
-  const cleanName = (workout.name || "").trim().toLowerCase();
+  const cleanName = workout.name.trim().toLowerCase();
 
-  // 1. Check if workout already exists in master library
+  // 1. Check if workout already exists in master library (unless deleted)
   const existingMaster = EXERCISES.find(e => e.name && e.name.trim().toLowerCase() === cleanName);
   if (existingMaster) {
     return res.status(409).json({
@@ -4382,14 +4565,33 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
     const newId = workout.id || `custom_ex_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const fullWorkout = {
       ...workout,
+      name: workout.name.trim(),
       id: newId,
       createdAt: new Date().toISOString(),
       createdBy: req.user?.email || "admin",
       isCustom: true,
+      isDeleted: false,
       updatedAt: new Date().toISOString()
     };
 
-    // Save to local overrides
+    // 2. Check duplicates in Cloud Firestore exercises collection
+    const [cloudExercises, cloudGenExercises] = await Promise.all([
+      getServerFirestoreCollection("exercises", req.authToken),
+      getServerFirestoreCollection("generated_exercises", req.authToken)
+    ]);
+    const duplicateInCloud = [...cloudExercises, ...cloudGenExercises].find((d) => {
+      const dd = d.data();
+      if (!dd || dd.isDeleted === true) return false;
+      return String(dd.name || "").trim().toLowerCase() === cleanName;
+    });
+    if (duplicateInCloud) {
+      return res.status(409).json({
+        success: false,
+        error: `Workout already exists: A workout named "${duplicateInCloud.data().name}" already exists in Cloud Firestore.`
+      });
+    }
+
+    // Read local overrides cache
     let overrides: Record<string, any> = {};
     if (fs.existsSync(OVERRIDES_FILE_PATH)) {
       try {
@@ -4400,7 +4602,7 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
       }
     }
 
-    const existingOverride = Object.values(overrides).find((o: any) => o?.name && o.name.trim().toLowerCase() === cleanName);
+    const existingOverride = Object.values(overrides).find((o: any) => o && o.isDeleted !== true && o.name && o.name.trim().toLowerCase() === cleanName);
     if (existingOverride) {
       return res.status(409).json({
         success: false,
@@ -4408,23 +4610,33 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
       });
     }
 
+    // 3. Persist to Cloud Firestore collections FIRST
+    const [exWrite, genWrite] = await Promise.all([
+      setServerFirestoreDoc("exercises", newId, fullWorkout, true, req.authToken),
+      setServerFirestoreDoc("generated_exercises", newId, fullWorkout, true, req.authToken)
+    ]);
+
+    if (!exWrite.success || !genWrite.success) {
+      console.error(`[Firestore Create Error for ${newId}]:`, exWrite.error || genWrite.error);
+      return res.status(502).json({
+        success: false,
+        firestoreOk: false,
+        error: "Cloud Firestore did not confirm workout creation."
+      });
+    }
+
+    console.log(`[Firestore OK] Created new custom workout: ${fullWorkout.name} (${newId})`);
+
+    // 4. Update local cache & clear any stale deletion entry for this ID/name
     overrides[newId] = fullWorkout;
     if (cleanName) {
       overrides[cleanName] = fullWorkout;
     }
     fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
-
-    // Save to Firestore collections
-    try {
-      await setServerFirestoreDoc("exercises", newId, fullWorkout, true);
-      await setServerFirestoreDoc("generated_exercises", newId, fullWorkout, true);
-      console.log(`[Firestore OK] Created new custom workout: ${fullWorkout.name} (${newId})`);
-    } catch (dbErr) {
-      console.warn(`[Firestore Create Warning for ${newId}]:`, dbErr);
-    }
+    lastCustomMediaCloudSync = Date.now();
 
     // Synchronize to target program schedules if programs are assigned
-    await addWorkoutToProgramScheduleServer(fullWorkout, req.user?.email || "admin");
+    await addWorkoutToProgramScheduleServer(fullWorkout, req.user?.email || "admin", req.authToken);
 
     // Log admin activity
     await logAdminActivityOnFirebase(
@@ -4432,10 +4644,11 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
       req.user?.uid || "",
       "WORKOUT_CREATE",
       `Admin created new workout "${fullWorkout.name}" with Sets: ${fullWorkout.recommendedSets || '3'} and Reps: ${fullWorkout.recommendedReps || '10-12'}`,
-      { workoutId: newId, workout: fullWorkout }
+      { workoutId: newId, workout: fullWorkout },
+      req.authToken
     );
 
-    res.json({ success: true, message: "Workout created successfully.", workout: fullWorkout });
+    res.json({ success: true, firestoreOk: true, message: "Workout created successfully in Cloud Firestore.", workout: fullWorkout });
   } catch (error: any) {
     console.error("Failed to create workout:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });
@@ -4450,8 +4663,34 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
   }
 
   const cleanName = (exerciseName || "").toLowerCase().trim();
+  const targetDocId = (exerciseId || cleanName.replace(/[^a-z0-9_-]/g, "_")).replace(/[\/\s]/g, "_");
 
   try {
+    // 1. Delete custom docs from Firestore and record permanent deletion tombstone FIRST
+    const [delExRes, delGenRes, delMediaRes, tombstoneRes] = await Promise.all([
+      exerciseId ? deleteServerFirestoreDoc("exercises", exerciseId, req.authToken) : Promise.resolve({ success: true } as { success: boolean; error?: any }),
+      exerciseId ? deleteServerFirestoreDoc("generated_exercises", exerciseId, req.authToken) : Promise.resolve({ success: true } as { success: boolean; error?: any }),
+      exerciseId ? deleteServerFirestoreDoc("exercise_media", exerciseId, req.authToken) : Promise.resolve({ success: true } as { success: boolean; error?: any }),
+      setServerFirestoreDoc("deleted_exercises", targetDocId, {
+        id: exerciseId || targetDocId,
+        name: exerciseName || cleanName,
+        deletedAt: new Date().toISOString(),
+        deletedBy: req.user?.email || "admin"
+      }, true, req.authToken)
+    ]);
+
+    if (!tombstoneRes.success || !delExRes.success || !delGenRes.success || !delMediaRes.success) {
+      console.error(`[Firestore Delete Error for ${targetDocId}]:`, tombstoneRes.error || delExRes.error || delGenRes.error || delMediaRes.error);
+      return res.status(502).json({
+        success: false,
+        firestoreOk: false,
+        error: "Cloud Firestore did not confirm workout deletion."
+      });
+    }
+
+    console.log(`[Firestore OK] Deleted workout & recorded tombstone in deleted_exercises/${targetDocId}`);
+
+    // 2. Clean local overrides cache
     let overrides: Record<string, any> = {};
     if (fs.existsSync(OVERRIDES_FILE_PATH)) {
       try {
@@ -4475,7 +4714,7 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
       fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
     }
 
-    // Persist to DELETED_EXERCISES_FILE_PATH permanently
+    // 3. Persist to DELETED_EXERCISES_FILE_PATH permanently
     try {
       let deletedList: string[] = [];
       if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
@@ -4498,39 +4737,21 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
       console.error("Failed saving to DELETED_EXERCISES_FILE_PATH:", writeDelErr);
     }
 
-    // Mark deleted in Firestore or remove
-    const targetDocId = (exerciseId || cleanName.replace(/[^a-z0-9_-]/g, "_")).replace(/[\/\s]/g, "_");
-    try {
-      if (exerciseId) {
-        await setServerFirestoreDoc("exercises", exerciseId, {
-          id: exerciseId,
-          isDeleted: true,
-          deletedAt: new Date().toISOString()
-        }, true);
-      }
-      await setServerFirestoreDoc("deleted_exercises", targetDocId, {
-        id: exerciseId || targetDocId,
-        name: exerciseName || cleanName,
-        deletedAt: new Date().toISOString(),
-        deletedBy: req.user?.email || "admin"
-      }, true);
-      console.log(`[Firestore OK] Recorded permanent deletion in deleted_exercises/${targetDocId}`);
-    } catch (dbErr) {
-      console.warn(`[Firestore Delete Warning for ${targetDocId}]:`, dbErr);
-    }
+    lastCustomMediaCloudSync = Date.now();
 
     // Purge exercise from all program schedules across local disk and Cloud Firestore
-    await purgeExerciseFromProgramSchedules(exerciseId, cleanName, req.user?.email || "admin");
+    await purgeExerciseFromProgramSchedules(exerciseId, cleanName, req.user?.email || "admin", req.authToken);
 
     await logAdminActivityOnFirebase(
       req.user?.email || "",
       req.user?.uid || "",
       "WORKOUT_DELETE",
       `Admin permanently deleted workout ${exerciseId || cleanName}`,
-      { exerciseId, exerciseName }
+      { exerciseId, exerciseName },
+      req.authToken
     );
 
-    res.json({ success: true, message: "Workout permanently deleted successfully.", deletedExerciseId: exerciseId });
+    res.json({ success: true, firestoreOk: true, message: "Workout permanently deleted from Cloud Firestore.", deletedExerciseId: exerciseId });
   } catch (error: any) {
     console.error("Failed to delete workout:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });
@@ -4608,7 +4829,7 @@ app.post("/api/store/products/delete", requireAdmin, async (req: any, res) => {
 // Allows editing all programs/challenges: delete/add workouts, sets, cardio days,
 // and auto-assigning similar replacements on deletion.
 // ============================================================================
-// CLOUD PERSISTENCE ENGINE (FIRESTORE & SUPABASE) FOR RENDER & LIVE RESILIENCE
+// CLOUD PERSISTENCE ENGINE (CLOUD FIRESTORE AUTHORITATIVE) FOR RENDER & LIVE RESILIENCE
 // Guarantees zero data loss on Render spin-downs, container restarts, or rebuilds.
 // ============================================================================
 
@@ -4616,7 +4837,7 @@ async function fetchProgramOverridesFromCloud(): Promise<Record<string, any>> {
   try {
     let cloudOverrides: Record<string, any> = {};
 
-    // 1. Read all per-program documents from "program_schedules" collection
+    // Read all per-program documents from authoritative Firestore "program_schedules" collection
     const progDocs = await getServerFirestoreCollection("program_schedules");
     for (const d of progDocs) {
       if (d.id === "overrides") continue;
@@ -4631,24 +4852,6 @@ async function fetchProgramOverridesFromCloud(): Promise<Record<string, any>> {
       }
     }
 
-    // 2. Also check Supabase if active
-    if (supabaseServer) {
-      try {
-        const { data: sbList } = await supabaseServer.from("program_schedules").select("*");
-        if (Array.isArray(sbList)) {
-          for (const item of sbList) {
-            if (item.id === "overrides" && item.data) {
-              cloudOverrides = { ...item.data, ...cloudOverrides };
-            } else if (item.id && item.data) {
-              cloudOverrides[item.id] = item.data;
-            }
-          }
-        }
-      } catch (e: any) {
-        console.warn("[Cloud Persistence] Supabase read notice:", e?.message || e);
-      }
-    }
-
     if (Object.keys(cloudOverrides).length > 0) {
       let existing: Record<string, any> = {};
       if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
@@ -4657,14 +4860,14 @@ async function fetchProgramOverridesFromCloud(): Promise<Record<string, any>> {
           if (raw) existing = JSON.parse(raw);
         } catch (e) {}
       }
-      // Replace disk copy per program at program level (cloud wins cleanly)
+      // Replace disk copy per program at program level (Cloud Firestore wins cleanly)
       const merged = { ...existing, ...cloudOverrides };
       fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(merged, null, 2), "utf-8");
       console.log(`[Cloud Persistence OK] Loaded ${Object.keys(merged).length} program overrides from Firestore into cache.`);
       return merged;
     }
   } catch (err) {
-    console.warn("[Cloud Persistence] Notice reading program_schedule_overrides from Firestore:", err);
+    console.warn("[Cloud Persistence] Notice reading program_schedules from Firestore:", err);
   }
   return {};
 }
@@ -4696,23 +4899,16 @@ function stampDayDrillsAddedByAdmin(dayObj: any): any {
 async function persistProgramOverridesToCloud(
   overrides: Record<string, any>,
   userEmail: string = "admin",
-  specificKeys?: string[]
-): Promise<{ firestoreOk: boolean; supabaseOk: boolean; durable: boolean }> {
-  // 1. Write to local disk cache immediately
-  try {
-    fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(overrides, null, 2), "utf-8");
-  } catch (e) {
-    console.warn("[Cloud Persistence] Disk write notice:", e);
-  }
-
+  specificKeys?: string[],
+  userToken?: string
+): Promise<{ firestoreOk: boolean; durable: boolean }> {
   const keysToPersist = specificKeys && specificKeys.length > 0
     ? specificKeys
     : Object.keys(overrides);
 
   let firestoreOk = false;
-  let supabaseOk = false;
 
-  // 2. Persist individual program documents in program_schedules collection concurrently (<100KB each, guaranteed under 1MB limit)
+  // 1. Persist individual program documents in Cloud Firestore program_schedules collection FIRST
   try {
     const fsResults = await Promise.all(
       keysToPersist.map(async (progId) => {
@@ -4723,7 +4919,7 @@ async function persistProgramOverridesToCloud(
             schedule: progData,
             updatedAt: new Date().toISOString(),
             updatedBy: userEmail
-          }, false);
+          }, false, userToken);
         }
         return { success: true };
       })
@@ -4739,45 +4935,21 @@ async function persistProgramOverridesToCloud(
     firestoreOk = false;
   }
 
-  // 3. Persist to Supabase if active
-  if (supabaseServer) {
+  // 2. Write local disk cache only after Firestore attempt (so cache reflects what was committed)
+  if (firestoreOk) {
     try {
-      const sbResults = await Promise.all(
-        keysToPersist.map(async (progId) => {
-          const progData = overrides[progId];
-          if (progData && typeof progData === "object") {
-            const { error } = await supabaseServer.from("program_schedules").upsert({
-              id: progId,
-              data: progData,
-              updated_at: new Date().toISOString()
-            });
-            if (error) {
-              console.warn(`[Cloud Persistence] Supabase upsert error for ${progId}:`, error.message);
-              return false;
-            }
-            return true;
-          }
-          return true;
-        })
-      );
-      supabaseOk = keysToPersist.length > 0 && sbResults.every(Boolean);
-      if (supabaseOk) {
-        console.log(`[Cloud Persistence] Persisted ${keysToPersist.length} overrides to Supabase program_schedules.`);
-      }
-    } catch (err: any) {
-      console.warn("[Cloud Persistence] Supabase save notice:", err?.message || err);
-      supabaseOk = false;
+      fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(overrides, null, 2), "utf-8");
+    } catch (e) {
+      console.warn("[Cloud Persistence] Disk write notice:", e);
     }
+  } else {
+    console.error(`[Cloud Persistence FAILED] Program schedule writes (${keysToPersist.join(", ")}) were NOT confirmed by Cloud Firestore.`);
   }
 
-  const durable = firestoreOk || supabaseOk;
-  if (!durable) {
-    console.error(`[Cloud Persistence FAILED] Program schedule writes (${keysToPersist.join(", ")}) were NOT persisted to Firestore or Supabase.`);
-  }
-  return { firestoreOk, supabaseOk, durable };
+  return { firestoreOk, durable: firestoreOk };
 }
 
-async function purgeExerciseFromProgramSchedules(exerciseId: string, exerciseName?: string, userEmail: string = "admin") {
+async function purgeExerciseFromProgramSchedules(exerciseId: string, exerciseName?: string, userEmail: string = "admin", userToken?: string) {
   try {
     let allOverrides: Record<string, any> = {};
     if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
@@ -4863,7 +5035,7 @@ async function purgeExerciseFromProgramSchedules(exerciseId: string, exerciseNam
 
     if (modified && touchedKeys.length > 0) {
       fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
-      await persistProgramOverridesToCloud(allOverrides, userEmail, touchedKeys);
+      await persistProgramOverridesToCloud(allOverrides, userEmail, touchedKeys, userToken);
       console.log(`[Cloud Persistence OK] Purged workout ${exerciseId || exerciseName} from ${touchedKeys.length} programs in Firestore.`);
     }
   } catch (err) {
@@ -4871,7 +5043,7 @@ async function purgeExerciseFromProgramSchedules(exerciseId: string, exerciseNam
   }
 }
 
-async function syncExerciseMediaToProgramSchedules(exerciseId: string, mediaUrl: string, exerciseName?: string, userEmail: string = "admin") {
+async function syncExerciseMediaToProgramSchedules(exerciseId: string, mediaUrl: string, exerciseName?: string, userEmail: string = "admin", userToken?: string) {
   try {
     let allOverrides: Record<string, any> = {};
     if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
@@ -4952,7 +5124,7 @@ async function syncExerciseMediaToProgramSchedules(exerciseId: string, mediaUrl:
 
     if (modified && touchedKeys.length > 0) {
       fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
-      await persistProgramOverridesToCloud(allOverrides, userEmail, touchedKeys);
+      await persistProgramOverridesToCloud(allOverrides, userEmail, touchedKeys, userToken);
       console.log(`[Cloud Persistence OK] Updated exercise media across ${touchedKeys.length} programs in Firestore.`);
     }
   } catch (err) {
@@ -4960,7 +5132,7 @@ async function syncExerciseMediaToProgramSchedules(exerciseId: string, mediaUrl:
   }
 }
 
-async function addWorkoutToProgramScheduleServer(workout: any, userEmail: string = "admin") {
+async function addWorkoutToProgramScheduleServer(workout: any, userEmail: string = "admin", userToken?: string) {
   try {
     const assignments: string[] = Array.isArray(workout.programAssignments) ? workout.programAssignments : [];
     if (assignments.length === 0) return;
@@ -5035,7 +5207,7 @@ async function addWorkoutToProgramScheduleServer(workout: any, userEmail: string
 
     if (modified) {
       fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
-      await persistProgramOverridesToCloud(allOverrides, userEmail, targetProgIds);
+      await persistProgramOverridesToCloud(allOverrides, userEmail, targetProgIds, userToken);
       console.log(`[Cloud Persistence OK] Added workout ${workout.name} to ${targetProgIds.join(", ")} program schedules in Firestore.`);
     }
   } catch (err) {
@@ -5043,7 +5215,7 @@ async function addWorkoutToProgramScheduleServer(workout: any, userEmail: string
   }
 }
 
-// Full Cloud Hydration on Boot: restores all programs, schedules, drills and challenges from Firestore & Supabase
+// Full Cloud Hydration on Boot: restores all programs, schedules, drills and challenges strictly from Cloud Firestore
 async function hydrateAllDataFromCloud() {
   // 1. Program Schedule Overrides
   try {
@@ -5112,11 +5284,12 @@ async function hydrateAllDataFromCloud() {
       console.warn("[Cloud Hydration] Notice reading exercise_media collection:", mErr);
     }
 
-    // 2b. Query Firestore 'exercises' collection
+    // 2b. Query Firestore 'exercises' collection (ignore tombstoned)
     try {
       const exDocs = await getServerFirestoreCollection("exercises");
       for (const d of exDocs) {
         const docData = d.data();
+        if (docData?.isDeleted === true) continue;
         const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
         if (docData && (mUrl || docData.isCustom || docData.name)) {
           cloudExerciseOverrides[d.id] = {
@@ -5143,6 +5316,7 @@ async function hydrateAllDataFromCloud() {
       const genDocs = await getServerFirestoreCollection("generated_exercises");
       for (const d of genDocs) {
         const docData = d.data();
+        if (docData?.isDeleted === true) continue;
         const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
         if (docData && (mUrl || docData.isCustom || docData.name)) {
           const entry = {
@@ -5167,32 +5341,7 @@ async function hydrateAllDataFromCloud() {
       console.warn("[Cloud Hydration] Notice reading generated_exercises collection:", genErr);
     }
 
-    // 2c. Query Supabase exercise_media table if active
-    if (supabaseServer) {
-      try {
-        const { data: sbMedia } = await supabaseServer.from("exercise_media").select("*");
-        if (Array.isArray(sbMedia)) {
-          for (const row of sbMedia) {
-            if (row.exercise_id && row.media_url) {
-              const mediaEntry = {
-                customMediaUrl: row.media_url,
-                gifUrl: row.media_url,
-                imageUrl: row.media_url,
-                customMediaType: row.media_type || "image"
-              };
-              cloudExerciseOverrides[row.exercise_id] = {
-                ...(cloudExerciseOverrides[row.exercise_id] || {}),
-                ...mediaEntry
-              };
-            }
-          }
-        }
-      } catch (sbErr: any) {
-        console.warn("[Cloud Hydration] Supabase exercise_media notice:", sbErr?.message || sbErr);
-      }
-    }
-
-    // 2d. Check legacy system_settings/exercise_overrides
+    // 2c. Check legacy system_settings/exercise_overrides
     try {
       const snapEx = await getServerFirestoreDoc("system_settings", "exercise_overrides");
       if (snapEx && snapEx.exists) {
@@ -5204,7 +5353,7 @@ async function hydrateAllDataFromCloud() {
       }
     } catch (e) {}
 
-    // 2e. Merge with disk, ensuring cloud overrides take precedence over stale git/disk defaults
+    // 2d. Merge with disk, ensuring cloud overrides take precedence over stale git/disk defaults
     let existingDisk: Record<string, any> = {};
     if (fs.existsSync(OVERRIDES_FILE_PATH)) {
       try {
@@ -5222,11 +5371,13 @@ async function hydrateAllDataFromCloud() {
     console.warn("[Cloud Hydration] Exercise overrides hydration error:", err);
   }
 
-  // 3. Custom Challenges
+  // 3. Custom Challenges (Cloud Firestore authoritative, excluding deleted)
   try {
-    const challengesQuery = await getServerFirestoreQuery("challenges", "id", "!=", "");
-    if (challengesQuery && Array.isArray(challengesQuery.docs) && challengesQuery.docs.length > 0) {
-      const cloudChallenges = challengesQuery.docs.map((d: any) => d.data());
+    const chDocs = await getServerFirestoreCollection("challenges");
+    if (chDocs && chDocs.length > 0) {
+      const cloudChallenges = chDocs
+        .map((d: any) => ({ id: d.id, ...d.data() }))
+        .filter((c: any) => c && c.isDeleted !== true);
       fs.writeFileSync(CHALLENGES_FILE_PATH, JSON.stringify(cloudChallenges, null, 2), "utf-8");
       console.log(`[Cloud Hydration OK] Hydrated ${cloudChallenges.length} custom challenges from Firestore.`);
     }
@@ -5263,15 +5414,7 @@ async function hydrateAllDataFromCloud() {
     console.warn("[Cloud Hydration] PDF hydration notice:", pdfHydrateErr);
   }
 
-  // 5. Automated Data & Files Transfer to new Supabase project (sqaxwqtjvaixqytnluiy)
-  try {
-    const { runSupabaseDataTransfer } = await import("./src/server/supabaseDataTransfer");
-    await runSupabaseDataTransfer(supabaseServer, db);
-  } catch (transferErr) {
-    console.warn("[Cloud Hydration] Supabase transfer notice:", transferErr);
-  }
-
-  // 6. Hydrate deleted exercises from Firestore collection
+  // 5. Hydrate deleted exercises from Firestore collection
   try {
     const deletedDocs = await getServerFirestoreCollection("deleted_exercises");
     if (deletedDocs && deletedDocs.length > 0) {
@@ -5420,8 +5563,8 @@ app.get("/api/diagnostics/schedule-source", async (_req, res) => {
   }
 });
 
-// POST sync overrides directly from/to cloud
-app.post("/api/admin/programs/sync-cloud", async (req: any, res) => {
+// POST sync overrides directly from Cloud Firestore
+app.post("/api/admin/programs/sync-cloud", requireAdmin, async (req: any, res) => {
   try {
     const { overrides: incomingOverrides } = req.body || {};
     let currentDisk: Record<string, any> = {};
@@ -5436,10 +5579,13 @@ app.post("/api/admin/programs/sync-cloud", async (req: any, res) => {
     const merged = { ...cloudData, ...currentDisk, ...(incomingOverrides || {}) };
 
     if (Object.keys(merged).length > 0) {
-      await persistProgramOverridesToCloud(merged, req.user?.email || "admin");
+      const persisted = await persistProgramOverridesToCloud(merged, req.user?.email || "admin", undefined, req.authToken);
+      if (!persisted.firestoreOk) {
+        return res.status(502).json({ success: false, firestoreOk: false, cloudSaved: false, error: "Cloud Firestore did not confirm sync-cloud persistence." });
+      }
     }
 
-    res.json({ success: true, overrides: merged, count: Object.keys(merged).length });
+    res.json({ success: true, firestoreOk: true, cloudSaved: true, overrides: merged, count: Object.keys(merged).length });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -5448,7 +5594,7 @@ app.post("/api/admin/programs/sync-cloud", async (req: any, res) => {
 // POST save day schedule override (workouts, sets, reps, cardio settings, drag-reorder)
 app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any, res) => {
   const { programId, track, targetProgramKey, dayNumber, cycleDay, dayOverride, applyToAllCycleWeeks, totalDays } = req.body;
-  if (!programId || (!dayNumber && !cycleDay) || !dayOverride) {
+  if (!programId || typeof programId !== "string" || (!dayNumber && !cycleDay) || !dayOverride || typeof dayOverride !== "object") {
     return res.status(400).json({ success: false, error: "programId, dayNumber or cycleDay, and dayOverride are required." });
   }
 
@@ -5514,15 +5660,26 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
       }
     });
 
-    // Persist to both local disk and Firestore cloud (targeting modified keys for instant performance)
-    const persisted = await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", targetKeys);
+    // Persist directly to Cloud Firestore (targeting modified keys) and require confirmation
+    const persisted = await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", targetKeys, req.authToken);
+    if (!persisted.firestoreOk) {
+      return res.status(502).json({
+        success: false,
+        cloudSaved: false,
+        firestoreOk: false,
+        error: "Cloud Firestore did not confirm schedule override save. Changes were not confirmed."
+      });
+    }
+
+    lastProgramOverridesCloudSync = Date.now();
 
     await logAdminActivityOnFirebase(
       req.user?.email || "",
       req.user?.uid || "",
       "PROGRAM_DAY_UPDATE",
       `Admin updated program ${programId} ${applyToAllCycleWeeks ? `All Repeating Cycle Day ${computedCycleDay}s` : `Day ${dayNumber}`} schedule`,
-      { programId, dayNumber, cycleDay: computedCycleDay, applyToAllCycleWeeks, cloudSaved: persisted.durable }
+      { programId, dayNumber, cycleDay: computedCycleDay, applyToAllCycleWeeks, cloudSaved: persisted.firestoreOk },
+      req.authToken
     );
 
     const savedOverride = applyToAllCycleWeeks
@@ -5531,13 +5688,11 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
 
     res.json({
       success: true,
-      cloudSaved: persisted.durable,
-      firestoreOk: persisted.firestoreOk,
-      supabaseOk: persisted.supabaseOk,
-      warning: persisted.durable ? undefined : "Saved on this server only. NOT permanent. Check Firestore quota/logs.",
+      cloudSaved: true,
+      firestoreOk: true,
       message: applyToAllCycleWeeks 
         ? `Cycle Day ${computedCycleDay} split applied to all repeating weeks across ${programId} (Days ${computedCycleDay}..${maxDays}).`
-        : `Day ${dayNumber} schedule for ${programId} updated successfully.`,
+        : `Day ${dayNumber} schedule for ${programId} updated successfully in Cloud Firestore.`,
       savedOverride,
       allProgramOverrides: allOverrides[programId]
     });
@@ -5567,7 +5722,6 @@ app.post("/api/admin/programs/save-cycle-template", requireAdmin, async (req: an
 
     const maxDays = Number(totalDays) || 90;
 
-    // Iterate through provided cycle days 1 to 7
     for (let cDay = 1; cDay <= 7; cDay++) {
       const dayData = cycleOverrides[String(cDay)] || cycleOverrides[`cycle_${cDay}`];
       if (!dayData) continue;
@@ -5592,28 +5746,34 @@ app.post("/api/admin/programs/save-cycle-template", requireAdmin, async (req: an
       }
     }
 
-    const persisted = await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", [programId]);
+    const persisted = await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", [programId], req.authToken);
+    if (!persisted.firestoreOk) {
+      return res.status(502).json({
+        success: false,
+        cloudSaved: false,
+        firestoreOk: false,
+        error: "Cloud Firestore did not confirm 7-day cycle template save."
+      });
+    }
+
+    lastProgramOverridesCloudSync = Date.now();
 
     // Sync cycle template metadata to Firestore
-    try {
-      await setServerFirestoreDoc("program_cycle_templates", programId, {
-        programId,
-        cycleOverrides,
-        applyToAllWeeks,
-        totalDays: maxDays,
-        updatedAt: new Date().toISOString()
-      }, true);
-    } catch (fsErr) {
+    await setServerFirestoreDoc("program_cycle_templates", programId, {
+      programId,
+      cycleOverrides,
+      applyToAllWeeks,
+      totalDays: maxDays,
+      updatedAt: new Date().toISOString()
+    }, true, req.authToken).catch((fsErr) => {
       console.warn("Firestore program cycle template sync warning:", fsErr);
-    }
+    });
 
     res.json({
       success: true,
-      cloudSaved: persisted.durable,
-      firestoreOk: persisted.firestoreOk,
-      supabaseOk: persisted.supabaseOk,
-      warning: persisted.durable ? undefined : "Saved on this server only. NOT permanent. Check Firestore quota/logs.",
-      message: `7-Day repeating cadence for ${programId} saved and propagated across all ${maxDays} days.`,
+      cloudSaved: true,
+      firestoreOk: true,
+      message: `7-Day repeating cadence for ${programId} saved to Cloud Firestore across all ${maxDays} days.`,
       programOverrides: allOverrides[programId]
     });
   } catch (error: any) {
@@ -5625,7 +5785,7 @@ app.post("/api/admin/programs/save-cycle-template", requireAdmin, async (req: an
 // POST purge all splits and manifest clean category exercises
 app.post("/api/admin/programs/purge-all-splits", requireAdmin, async (req: any, res) => {
   const { programId, overrides } = req.body;
-  if (!programId || !overrides) {
+  if (!programId || !overrides || typeof overrides !== "object") {
     return res.status(400).json({ success: false, error: "programId and overrides are required." });
   }
 
@@ -5645,26 +5805,32 @@ app.post("/api/admin/programs/purge-all-splits", requireAdmin, async (req: any, 
       stampedProgramOverrides[dk] = stampDayDrillsAddedByAdmin(overrides[dk]);
     }
     allOverrides[programId] = stampedProgramOverrides;
-    const persisted = await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", [programId]);
-
-    try {
-      await setServerFirestoreDoc("program_overrides", `${programId}_all_purged`, {
-        programId,
-        overrides: stampedProgramOverrides,
-        updatedAt: new Date().toISOString(),
-        updatedBy: req.user?.email || "admin"
-      }, true);
-    } catch (fsErr) {
-      console.warn("Firestore sync warning on purge:", fsErr);
+    const persisted = await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", [programId], req.authToken);
+    if (!persisted.firestoreOk) {
+      return res.status(502).json({
+        success: false,
+        cloudSaved: false,
+        firestoreOk: false,
+        error: "Cloud Firestore did not confirm purge-all-splits write."
+      });
     }
+
+    lastProgramOverridesCloudSync = Date.now();
+
+    await setServerFirestoreDoc("program_overrides", `${programId}_all_purged`, {
+      programId,
+      overrides: stampedProgramOverrides,
+      updatedAt: new Date().toISOString(),
+      updatedBy: req.user?.email || "admin"
+    }, true, req.authToken).catch((fsErr) => {
+      console.warn("Firestore sync warning on purge:", fsErr);
+    });
 
     res.json({
       success: true,
-      cloudSaved: persisted.durable,
-      firestoreOk: persisted.firestoreOk,
-      supabaseOk: persisted.supabaseOk,
-      warning: persisted.durable ? undefined : "Saved on this server only. NOT permanent. Check Firestore quota/logs.",
-      message: `Clean category splits successfully purged, manifested, and persisted for ${programId}.`,
+      cloudSaved: true,
+      firestoreOk: true,
+      message: `Clean category splits successfully purged, manifested, and persisted to Cloud Firestore for ${programId}.`,
       programOverrides: allOverrides[programId]
     });
   } catch (error: any) {
@@ -5702,26 +5868,32 @@ app.post("/api/admin/programs/reset-and-clean-all-programs", requireAdmin, async
       }
     }
     const merged = { ...currentOverrides, ...stampedAllOverrides };
-    const persisted = await persistProgramOverridesToCloud(merged, req.user?.email || "admin", Object.keys(stampedAllOverrides));
-
-    try {
-      await setServerFirestoreDoc("program_overrides", "all_programs_sanitized", {
-        overrides: merged,
-        stats,
-        updatedAt: new Date().toISOString(),
-        updatedBy: req.user?.email || "admin"
-      }, true);
-    } catch (fsErr) {
-      console.warn("Firestore sync warning on reset-and-clean-all-programs:", fsErr);
+    const persisted = await persistProgramOverridesToCloud(merged, req.user?.email || "admin", Object.keys(stampedAllOverrides), req.authToken);
+    if (!persisted.firestoreOk) {
+      return res.status(502).json({
+        success: false,
+        cloudSaved: false,
+        firestoreOk: false,
+        error: "Cloud Firestore did not confirm reset-and-clean-all-programs write."
+      });
     }
+
+    lastProgramOverridesCloudSync = Date.now();
+
+    await setServerFirestoreDoc("program_overrides", "all_programs_sanitized", {
+      overrides: merged,
+      stats,
+      updatedAt: new Date().toISOString(),
+      updatedBy: req.user?.email || "admin"
+    }, true, req.authToken).catch((fsErr) => {
+      console.warn("Firestore sync warning on reset-and-clean-all-programs:", fsErr);
+    });
 
     res.json({
       success: true,
-      cloudSaved: persisted.durable,
-      firestoreOk: persisted.firestoreOk,
-      supabaseOk: persisted.supabaseOk,
-      warning: persisted.durable ? undefined : "Saved on this server only. NOT permanent. Check Firestore quota/logs.",
-      message: "All program workouts have been reset and auto-cleaned. Cross-contamination purged and daily routines capped at 10 workouts.",
+      cloudSaved: true,
+      firestoreOk: true,
+      message: "All program workouts have been reset and auto-cleaned in Cloud Firestore. Cross-contamination purged and daily routines capped at 10 workouts.",
       overrides: merged,
       stats
     });
@@ -5768,23 +5940,33 @@ app.post("/api/admin/programs/normalize-cycles", requireAdmin, async (req: any, 
     }
 
     const persisted = touchedPrograms.length > 0
-      ? await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", touchedPrograms)
-      : { firestoreOk: true, supabaseOk: true, durable: true };
+      ? await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", touchedPrograms, req.authToken)
+      : { firestoreOk: true, durable: true };
+
+    if (!persisted.firestoreOk) {
+      return res.status(502).json({
+        success: false,
+        cloudSaved: false,
+        firestoreOk: false,
+        error: "Cloud Firestore did not confirm normalize-cycles update."
+      });
+    }
+
+    lastProgramOverridesCloudSync = Date.now();
 
     await logAdminActivityOnFirebase(
       req.user?.email || "",
       req.user?.uid || "",
       "PROGRAM_NORMALIZE_CYCLES",
       `Normalized cycle schedules: removed ${removedCount} stale numeric day copies across ${touchedPrograms.length} programs.`,
-      { removedCount, touchedPrograms, cloudSaved: persisted.durable }
+      { removedCount, touchedPrograms, cloudSaved: true },
+      req.authToken
     );
 
     res.json({
       success: true,
-      cloudSaved: persisted.durable,
-      firestoreOk: persisted.firestoreOk,
-      supabaseOk: persisted.supabaseOk,
-      warning: persisted.durable ? undefined : "Saved on this server only. NOT permanent. Check Firestore quota/logs.",
+      cloudSaved: true,
+      firestoreOk: true,
       removedCount,
       programsProcessed: Object.keys(allOverrides).length,
       touchedPrograms,
@@ -6001,8 +6183,18 @@ app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any
       }
     }
 
-    // Persist to local disk and Firestore cloud (program_schedules)
-    const persisted = await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", [programId]);
+    // Persist to Cloud Firestore program_schedules and require confirmation
+    const persisted = await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", [programId], req.authToken);
+    if (!persisted.firestoreOk) {
+      return res.status(502).json({
+        success: false,
+        cloudSaved: false,
+        firestoreOk: false,
+        error: "Cloud Firestore did not confirm workout replacement/deletion in schedule."
+      });
+    }
+
+    lastProgramOverridesCloudSync = Date.now();
 
     await logAdminActivityOnFirebase(
       req.user?.email || "",
@@ -6011,15 +6203,14 @@ app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any
       mode === "delete_only"
         ? `Admin deleted "${exerciseToDelete.exerciseName}" from ${programId} Day ${dayNumber || computedCycleDay}.`
         : `Admin replaced "${exerciseToDelete.exerciseName}" with "${resultingReplacement?.exerciseName}" in ${programId}.`,
-      { programId, dayNumber, deletedExerciseId: exerciseId, mode, cloudSaved: persisted.durable }
+      { programId, dayNumber, deletedExerciseId: exerciseId, mode, cloudSaved: true },
+      req.authToken
     );
 
     res.json({
       success: true,
-      cloudSaved: persisted.durable,
-      firestoreOk: persisted.firestoreOk,
-      supabaseOk: persisted.supabaseOk,
-      warning: persisted.durable ? undefined : "Saved on this server only. NOT permanent. Check Firestore quota/logs.",
+      cloudSaved: true,
+      firestoreOk: true,
       message: mode === "delete_only"
         ? `Workout "${exerciseToDelete.exerciseName}" removed from routine.`
         : `Workout "${exerciseToDelete.exerciseName}" replaced with "${resultingReplacement?.exerciseName}".`,
@@ -6225,12 +6416,13 @@ app.post("/api/admin/workouts/purge-restricted-home", requireAdmin, async (req: 
 
 // --- CHALLENGES MANAGEMENT ENDPOINTS ---
 
-// GET all challenges (Flagship + Custom)
-app.get("/api/challenges", async (req, res) => {
+// GET all challenges (Flagship + Custom, Cloud Firestore authoritative)
+app.get("/api/challenges", async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
   try {
     let customChallenges: any[] = [];
     
-    // Read from local file
+    // Read local cache fallback
     if (fs.existsSync(CHALLENGES_FILE_PATH)) {
       try {
         const raw = fs.readFileSync(CHALLENGES_FILE_PATH, "utf-8").trim();
@@ -6240,54 +6432,30 @@ app.get("/api/challenges", async (req, res) => {
       }
     }
 
-    // Try reading from Firestore challenges collection
+    // Read from authoritative Cloud Firestore database (`firebaseConfig.firestoreDatabaseId`)
     try {
-      const dbUrl = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/challenges`;
-      const fsRes = await fetch(dbUrl);
-      if (fsRes.ok) {
-        const data: any = await fsRes.json();
-        if (data.documents && Array.isArray(data.documents)) {
-          const fsChallenges = data.documents.map((doc: any) => {
-            const rawFields = doc.fields || {};
-            const item: any = {};
-            for (const [key, val] of Object.entries<any>(rawFields)) {
-              if (val.stringValue !== undefined) item[key] = val.stringValue;
-              else if (val.integerValue !== undefined) item[key] = Number(val.integerValue);
-              else if (val.doubleValue !== undefined) item[key] = Number(val.doubleValue);
-              else if (val.booleanValue !== undefined) item[key] = val.booleanValue;
-              else if (val.arrayValue !== undefined) {
-                item[key] = (val.arrayValue.values || []).map((v: any) => {
-                  if (v.mapValue) {
-                    const obj: any = {};
-                    for (const [mk, mv] of Object.entries<any>(v.mapValue.fields || {})) {
-                      if (mv.stringValue !== undefined) obj[mk] = mv.stringValue;
-                      else if (mv.integerValue !== undefined) obj[mk] = Number(mv.integerValue);
-                      else if (mv.doubleValue !== undefined) obj[mk] = Number(mv.doubleValue);
-                      else if (mv.booleanValue !== undefined) obj[mk] = mv.booleanValue;
-                    }
-                    return obj;
-                  }
-                  return v.stringValue || v.integerValue || v;
-                });
-              }
-            }
-            return item;
-          });
-
-          // Merge by ID
-          const map = new Map<string, any>();
-          customChallenges.forEach(c => map.set(c.id, c));
-          fsChallenges.forEach((c: any) => {
-            if (c.id) map.set(c.id, { ...(map.get(c.id) || {}), ...c });
-          });
-          customChallenges = Array.from(map.values());
+      const chDocs = await getServerFirestoreCollection("challenges");
+      const map = new Map<string, any>();
+      customChallenges.forEach((c: any) => {
+        if (c && c.id && c.isDeleted !== true) map.set(c.id, c);
+      });
+      chDocs.forEach((d: any) => {
+        const data = d.data();
+        const id = data?.id || d.id;
+        if (!id) return;
+        if (data?.isDeleted === true) {
+          map.delete(id);
+        } else {
+          map.set(id, { ...(map.get(id) || {}), ...data, id });
         }
-      }
+      });
+      customChallenges = Array.from(map.values()).filter((c: any) => c.isDeleted !== true);
+      fs.writeFileSync(CHALLENGES_FILE_PATH, JSON.stringify(customChallenges, null, 2), "utf-8");
     } catch (fsErr) {
       console.warn("Could not fetch remote Firestore challenges, using local:", fsErr);
     }
 
-    res.json({ success: true, challenges: customChallenges });
+    res.json({ success: true, challenges: customChallenges.filter((c: any) => c.isDeleted !== true) });
   } catch (error: any) {
     console.error("Failed to get challenges:", error);
     res.status(500).json({ success: false, error: "Failed to get challenges." });
@@ -6297,7 +6465,7 @@ app.get("/api/challenges", async (req, res) => {
 // POST save / create challenge
 app.post("/api/challenges/save", requireAdmin, async (req: any, res) => {
   const { challenge } = req.body;
-  if (!challenge || !challenge.title) {
+  if (!challenge || typeof challenge.title !== "string" || !challenge.title.trim()) {
     return res.status(400).json({ success: false, error: "Challenge title and data are required." });
   }
 
@@ -6305,6 +6473,7 @@ app.post("/api/challenges/save", requireAdmin, async (req: any, res) => {
     const challengeId = challenge.id || `custom_ch_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const fullChallenge = {
       ...challenge,
+      title: challenge.title.trim(),
       id: challengeId,
       durationDays: Number(challenge.durationDays) || 30,
       isPremium: challenge.isPremium !== undefined ? Boolean(challenge.isPremium) : true,
@@ -6312,10 +6481,24 @@ app.post("/api/challenges/save", requireAdmin, async (req: any, res) => {
       createdAt: challenge.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: req.user?.email || "admin",
-      isCustom: true
+      isCustom: true,
+      isDeleted: false
     };
 
-    // Save to local file
+    // Save to Cloud Firestore FIRST and require confirmation
+    const writeRes = await setServerFirestoreDoc("challenges", challengeId, fullChallenge, true, req.authToken);
+    if (!writeRes.success) {
+      console.error(`[Firestore Challenge Save Error]:`, writeRes.error);
+      return res.status(502).json({
+        success: false,
+        firestoreOk: false,
+        error: "Cloud Firestore did not confirm challenge save."
+      });
+    }
+
+    console.log(`[Firestore OK] Saved custom challenge: ${fullChallenge.title} (${challengeId}) with ${fullChallenge.workouts.length} workouts.`);
+
+    // Update local cache after Firestore confirmation
     let challengesList: any[] = [];
     if (fs.existsSync(CHALLENGES_FILE_PATH)) {
       try {
@@ -6335,24 +6518,17 @@ app.post("/api/challenges/save", requireAdmin, async (req: any, res) => {
 
     fs.writeFileSync(CHALLENGES_FILE_PATH, JSON.stringify(challengesList, null, 2), "utf-8");
 
-    // Save to Firestore challenges collection
-    try {
-      await setServerFirestoreDoc("challenges", challengeId, fullChallenge, true);
-      console.log(`[Firestore OK] Saved custom challenge: ${fullChallenge.title} (${challengeId}) with ${fullChallenge.workouts.length} workouts.`);
-    } catch (dbErr) {
-      console.warn(`[Firestore Challenge Save Warning]:`, dbErr);
-    }
-
     // Log admin activity
     await logAdminActivityOnFirebase(
       req.user?.email || "",
       req.user?.uid || "",
       "CHALLENGE_CREATE",
       `Admin created/updated challenge "${fullChallenge.title}" with ${fullChallenge.workouts.length} workouts`,
-      { challengeId, challenge: fullChallenge }
+      { challengeId, challenge: fullChallenge },
+      req.authToken
     );
 
-    res.json({ success: true, message: "Challenge saved successfully.", challenge: fullChallenge });
+    res.json({ success: true, firestoreOk: true, message: "Challenge saved successfully in Cloud Firestore.", challenge: fullChallenge });
   } catch (error: any) {
     console.error("Failed to save challenge:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });
@@ -6367,6 +6543,16 @@ app.delete("/api/challenges/:id", requireAdmin, async (req: any, res) => {
   }
 
   try {
+    const delRes = await deleteServerFirestoreDoc("challenges", challengeId, req.authToken);
+    if (!delRes.success) {
+      console.error(`[Firestore Challenge Delete Error]:`, delRes.error);
+      return res.status(502).json({
+        success: false,
+        firestoreOk: false,
+        error: "Cloud Firestore did not confirm challenge deletion."
+      });
+    }
+
     let challengesList: any[] = [];
     if (fs.existsSync(CHALLENGES_FILE_PATH)) {
       try {
@@ -6380,29 +6566,34 @@ app.delete("/api/challenges/:id", requireAdmin, async (req: any, res) => {
     challengesList = challengesList.filter(c => c.id !== challengeId);
     fs.writeFileSync(CHALLENGES_FILE_PATH, JSON.stringify(challengesList, null, 2), "utf-8");
 
-    // Delete or mark deleted in Firestore
-    try {
-      await setServerFirestoreDoc("challenges", challengeId, {
-        id: challengeId,
-        isDeleted: true,
-        deletedAt: new Date().toISOString()
-      }, true);
-    } catch (dbErr) {
-      console.warn(`[Firestore Challenge Delete Warning]:`, dbErr);
-    }
-
     await logAdminActivityOnFirebase(
       req.user?.email || "",
       req.user?.uid || "",
       "CHALLENGE_DELETE",
       `Admin deleted challenge ${challengeId}`,
-      { challengeId }
+      { challengeId },
+      req.authToken
     );
 
-    res.json({ success: true, message: "Challenge deleted successfully." });
+    res.json({ success: true, firestoreOk: true, message: "Challenge deleted permanently from Cloud Firestore." });
   } catch (error: any) {
     console.error("Failed to delete challenge:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
+// Admin endpoint to audit/backup and perform one-way legacy Supabase -> Firestore migration (does not overwrite newer Firestore docs)
+app.post("/api/admin/migrate/supabase-to-firestore", requireAdmin, async (req: any, res) => {
+  try {
+    const dryRun = req.body?.dryRun !== false;
+    const summary = await runOneWaySupabaseToFirestoreMigration({
+      firestoreDb: db,
+      dryRun
+    });
+    res.json({ success: true, summary });
+  } catch (error: any) {
+    console.error("Migration utility error:", error);
+    res.status(500).json({ success: false, error: error?.message || "Migration audit failed." });
   }
 });
 
@@ -7333,12 +7524,12 @@ app.get("/api/user/profile-status", async (req: any, res: any) => {
   try {
     let profile: any = null;
     try {
-      const userSnap = await getServerFirestoreDoc("users", decoded.uid);
+      const userSnap = await getServerFirestoreDoc("users", decoded.uid, token);
       if (userSnap.exists) {
         profile = userSnap.data();
       }
-    } catch (e) {
-      console.warn(`[Profile Status DB Error] Failed to read profile for ${decoded.uid}:`, e);
+    } catch (e: any) {
+      console.warn(`[Profile Status DB Notice] Failed to read profile for ${decoded.uid}:`, e?.message || e);
     }
 
     if (!profile) {
@@ -7356,22 +7547,24 @@ app.get("/api/user/profile-status", async (req: any, res: any) => {
         role: "user",
         createdAt: new Date().toISOString()
       };
-      await setServerFirestoreDoc("users", decoded.uid, profile, false);
-      console.log(`[Database Setup] Created default profile for user: ${decoded.uid}`);
+      const createdRes = await setServerFirestoreDoc("users", decoded.uid, profile, false, token);
+      if (createdRes.success) {
+        console.log(`[Database Setup] Created default profile for user: ${decoded.uid}`);
+      }
     }
 
     // Auto-healing: If user is not currently marked premium, check payments collection or Paystack API for existing successful payments
     if (profile.subscriptionStatus !== "premium" && profile.role !== "admin") {
       try {
         const userEmail = decoded.email || profile.email;
-        // Check Firestore payments collection
-        const recentPaymentsSnap = await getServerFirestoreQuery("payments", "userId", "==", decoded.uid);
+        // Check Firestore payments collection using the authenticated user's own token
+        const recentPaymentsSnap = await getServerFirestoreQuery("payments", "userId", "==", decoded.uid, token);
         let validPayment = recentPaymentsSnap.docs.find((d: any) => {
           const data = typeof d.data === "function" ? d.data() : d.data;
           return data && data.status === "success";
         });
-        if (!validPayment && userEmail) {
-          const emailPaymentsSnap = await getServerFirestoreQuery("payments", "email", "==", userEmail);
+        if (!validPayment && userEmail && (isServerAdminEmail(decoded.email) || backendAuth?.currentUser)) {
+          const emailPaymentsSnap = await getServerFirestoreQuery("payments", "email", "==", userEmail, token);
           validPayment = emailPaymentsSnap.docs.find((d: any) => {
             const data = typeof d.data === "function" ? d.data() : d.data;
             return data && data.status === "success";
@@ -7432,7 +7625,7 @@ app.get("/api/user/profile-status", async (req: any, res: any) => {
           badge: "Free Trial",
           isFreeTrial: false,
           freeTrialStatus: "expired"
-        }, true);
+        }, true, token);
       }
     }
 
@@ -8428,7 +8621,6 @@ registerPrintablePdfRoutes(app, {
   paystackSecretKey: PAYSTACK_SECRET_KEY,
   appUrl: APP_URL,
   uploadFileToFirebaseStorageServer,
-  uploadFileToSupabaseStorageServer,
   db
 });
 
@@ -8557,7 +8749,7 @@ async function startServer() {
     console.log(`AlexFitnessHub unified server booted on http://localhost:${PORT} | Git Commit: ${gitCommitHash}`);
   });
 
-  // Automated Cloud Hydration (Firestore & Supabase) runs concurrently on boot
+  // Automated Cloud Hydration (Cloud Firestore) runs concurrently on boot
   hydrateAllDataFromCloud().catch(err => {
     console.warn("[Cloud Hydration] Boot hydration notice:", err);
   });

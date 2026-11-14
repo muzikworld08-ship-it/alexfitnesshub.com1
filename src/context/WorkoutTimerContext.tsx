@@ -53,7 +53,10 @@ export interface WorkoutTimerContextType extends WorkoutTimerState {
   toggleVoice: () => void;
 }
 
-const WorkoutTimerContext = createContext<WorkoutTimerContextType | undefined>(undefined);
+const GLOBAL_WORKOUT_TIMER_CONTEXT_KEY = "__AFH_WORKOUT_TIMER_CONTEXT__";
+const WorkoutTimerContext: React.Context<WorkoutTimerContextType | undefined> =
+  (globalThis as any)[GLOBAL_WORKOUT_TIMER_CONTEXT_KEY] ||
+  ((globalThis as any)[GLOBAL_WORKOUT_TIMER_CONTEXT_KEY] = createContext<WorkoutTimerContextType | undefined>(undefined));
 
 // Web Audio API Sound Synthesizer for high-performance audio alerts without external assets
 const playBeep = (frequency: number, durationMs: number, type: OscillatorType = "sine") => {

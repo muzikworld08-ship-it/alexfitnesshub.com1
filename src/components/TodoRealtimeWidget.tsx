@@ -1,14 +1,12 @@
 import React, { useState } from "react";
-import { Check, Trash2, Plus, RefreshCw, Zap, ShieldCheck, Database, Server } from "lucide-react";
+import { Check, Trash2, Plus, RefreshCw, Zap, ShieldCheck, Server } from "lucide-react";
 import { useRealtimeTodos } from "../hooks/useRealtimeTodos";
-import { useSupabaseAuth } from "../hooks/useSupabaseAuth";
 import { useApp } from "../context/AppContext";
 
 export const TodoRealtimeWidget: React.FC = () => {
   const { user: appUser } = useApp();
-  const { session, user: supabaseUser } = useSupabaseAuth();
   const { todos, loading, syncStatus, addTodo, toggleTodo, deleteTodo, refreshTodos } = useRealtimeTodos(
-    appUser?.uid || supabaseUser?.id
+    appUser?.uid
   );
 
   const [inputTitle, setInputTitle] = useState("");
@@ -32,19 +30,18 @@ export const TodoRealtimeWidget: React.FC = () => {
           <div className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-amber-400 animate-pulse" />
             <h3 className="text-lg font-bold text-white tracking-wide">
-              Dual-Database Real-Time Todos
+              Cloud Real-Time Training Checklist
             </h3>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Synchronized live across <span className="text-emerald-400 font-semibold">Supabase Channel</span> & <span className="text-amber-400 font-semibold">Firebase Channel</span>
+            Synchronized authoritatively via <span className="text-amber-400 font-semibold">Cloud Firestore Realtime</span>
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Sync status pill */}
           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${
-            syncStatus === "syncing" 
-              ? "bg-amber-500/10 border-amber-500/30 text-amber-400" 
+            syncStatus === "syncing"
+              ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
               : syncStatus === "error"
               ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
               : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
@@ -52,37 +49,27 @@ export const TodoRealtimeWidget: React.FC = () => {
             <span className={`w-2 h-2 rounded-full ${
               syncStatus === "syncing" ? "bg-amber-400 animate-ping" : syncStatus === "error" ? "bg-rose-400" : "bg-emerald-400"
             }`} />
-            {syncStatus === "syncing" ? "Syncing DBs..." : syncStatus === "error" ? "Sync Warning" : "Live Realtime Active"}
+            {syncStatus === "syncing" ? "Syncing Firestore..." : syncStatus === "error" ? "Firestore Sync Error" : "Firestore Live Active"}
           </span>
 
           <button
             onClick={() => refreshTodos()}
             className="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
-            title="Manual Sync Refresh"
+            title="Refresh from Cloud Firestore"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-amber-400" : ""}`} />
           </button>
         </div>
       </div>
 
-      {/* Database Storage Badges */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-4">
-        <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/20 text-xs">
-          <Database className="w-4 h-4 text-emerald-400 shrink-0" />
-          <div className="overflow-hidden">
-            <div className="font-semibold text-emerald-300">Supabase Channel</div>
-            <div className="text-slate-400 truncate">
-              {supabaseUser?.email || session?.user?.email ? `Session: ${supabaseUser?.email || session?.user?.email}` : "Public Realtime Enabled"}
-            </div>
-          </div>
-        </div>
-
+      {/* Authoritative Storage Status */}
+      <div className="my-4">
         <div className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-950/30 border border-amber-500/20 text-xs">
           <Server className="w-4 h-4 text-amber-400 shrink-0" />
           <div className="overflow-hidden">
-            <div className="font-semibold text-amber-300">Firebase Channel</div>
+            <div className="font-semibold text-amber-300">Firebase Cloud Firestore Channel</div>
             <div className="text-slate-400 truncate">
-              {appUser?.email ? `Auth: ${appUser.email}` : "Firestore onSnapshot Active"}
+              {appUser?.email ? `Authenticated Athlete: ${appUser.email}` : "Sign in to sync personal tasks"}
             </div>
           </div>
         </div>
@@ -112,11 +99,11 @@ export const TodoRealtimeWidget: React.FC = () => {
         {loading && todos.length === 0 ? (
           <div className="text-center py-8 text-slate-500 text-xs flex flex-col items-center gap-2">
             <RefreshCw className="w-5 h-5 animate-spin text-amber-500" />
-            Connecting to real-time database streams...
+            Connecting to Cloud Firestore stream...
           </div>
         ) : todos.length === 0 ? (
           <div className="text-center py-8 text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">
-            No tasks found. Create a task above to test real-time dual database storage!
+            No tasks found. Create a task above to persist to Cloud Firestore.
           </div>
         ) : (
           todos.map((todo) => (
@@ -147,7 +134,7 @@ export const TodoRealtimeWidget: React.FC = () => {
 
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
-                  Synced
+                  Firestore
                 </span>
                 <button
                   type="button"
@@ -166,7 +153,7 @@ export const TodoRealtimeWidget: React.FC = () => {
       {/* Footer Info */}
       <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500">
         <span className="flex items-center gap-1">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Permanent Database Protection
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Authoritative Firestore Persistence
         </span>
         <span>{todos.length} {todos.length === 1 ? "task" : "tasks"} total</span>
       </div>

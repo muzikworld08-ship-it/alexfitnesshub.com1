@@ -174,6 +174,19 @@ try {
   });
   
   storage = getStorage(app);
+
+  if (typeof window !== "undefined" && db) {
+    (async () => {
+      try {
+        const { getDocFromServer, doc } = await import("firebase/firestore");
+        await getDocFromServer(doc(db, "system_settings", "connection_check"));
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("the client is offline")) {
+          console.warn("[Firebase Firestore Notice] Client is offline; using cached Firestore state.");
+        }
+      }
+    })();
+  }
 } catch (error: any) {
   console.warn("Notice during Firebase initialization:", error?.message || error);
 }

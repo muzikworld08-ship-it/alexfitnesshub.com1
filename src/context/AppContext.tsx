@@ -14,8 +14,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs, query, where, deleteDoc, onSnapshot } from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
-import { auth, db, isMockFirebase, handleFirestoreError, OperationType, cleanFirestoreData, isFirestoreQuotaExhausted, safeFirestoreSetDoc, getFirebaseIdToken } from "../lib/firebase";
-import { supabase, isSupabaseConfigured } from "../utils/supabase/client";
+import { auth, db, isMockFirebase, handleFirestoreError, OperationType, cleanFirestoreData, isFirestoreQuotaExhausted, safeFirestoreSetDoc, safeFirestoreDeleteDoc, getFirebaseIdToken } from "../lib/firebase";
 import { AssetManifestService } from "../services/AssetManifestService";
 import { resolveAthleteTier, persistAthleteTier } from "../utils/athleteContext";
 import { 
@@ -325,7 +324,10 @@ interface AppContextType {
   resetAllSettings: () => Promise<boolean>;
 }
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+const GLOBAL_APP_CONTEXT_KEY = "__AFH_APP_CONTEXT__";
+const AppContext: React.Context<AppContextType | undefined> =
+  (globalThis as any)[GLOBAL_APP_CONTEXT_KEY] ||
+  ((globalThis as any)[GLOBAL_APP_CONTEXT_KEY] = createContext<AppContextType | undefined>(undefined));
 
 const safeSetItem = (key: string, value: string): void => {
   try {
@@ -1030,12 +1032,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (stored) localOverrides = JSON.parse(stored);
         } catch {}
 
-        // 1. Fetch from Local Express Server JSON file
+        // 1. Fetch authoritative overrides & deleted IDs from Express Firestore-backed API (no-store)
         let serverOverrides: Record<string, any> = {};
         let serverDeletedIds: string[] = [];
         try {
           const headers = await getAdminHeaders();
-          const apiRes = await fetch("/api/exercises/custom-media", { headers });
+          const apiRes = await fetch("/api/exercises/custom-media?fresh=true", { headers, cache: "no-store" });
           const apiData = await apiRes.json();
           if (apiData.success && apiData.overrides) {
             serverOverrides = apiData.overrides;
@@ -1047,7 +1049,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           console.warn("Server overrides fetch warning:", sErr);
         }
         
-        // 2. Fetch persistent exercise media records from Supabase DB and Cloud Firestore
+        // 2. Fetch persistent exercise media records authoritatively from Cloud Firestore
         let persistentMediaOverrides: Record<string, any> = {};
         try {
           persistentMediaOverrides = await fetchAllExerciseMediaFromDatabase();
@@ -1290,10 +1292,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const unsub = onSnapshot(collection(db, "exercises"), (snap) => {
         if (snap.empty) return;
         const firestoreMap: Record<string, Partial<Exercise>> = {};
+        const deletedInSnap = new Set<string>();
         const newExercises: Exercise[] = [];
 
         snap.docs.forEach(docSnap => {
           const d = docSnap.data() as any;
+          if (d?.isDeleted === true) {
+            deletedInSnap.add(docSnap.id);
+            if (d.id) deletedInSnap.add(String(d.id));
+            if (d.name) deletedInSnap.add(String(d.name).toLowerCase().trim());
+            return;
+          }
           if (d) {
             firestoreMap[docSnap.id] = d;
             if (d.name && !EXERCISES.some(e => e.id === docSnap.id)) {
@@ -1336,8 +1345,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
 
         setExercisesState(prev => {
-          let changed = false;
-          const updated = prev.map(ex => {
+          let changed = deletedInSnap.size > 0;
+          const filteredPrev = deletedInSnap.size > 0
+            ? prev.filter(ex => !deletedInSnap.has(ex.id) && !deletedInSnap.has((ex.name || "").toLowerCase().trim()))
+            : prev;
+          const updated = filteredPrev.map(ex => {
             const override = firestoreMap[ex.id];
             if (override) {
               changed = true;
@@ -1353,7 +1365,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           // Add newly discovered exercises from Firestore
           for (const newEx of newExercises) {
-            if (!updated.some(u => u.id === newEx.id)) {
+            if (!deletedInSnap.has(newEx.id) && !updated.some(u => u.id === newEx.id)) {
               updated.unshift(newEx);
               changed = true;
             }
@@ -1650,127 +1662,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const syncProfileToSupabase = async (p: UserProfile) => {
-    if (!isSupabaseConfigured) return;
-    try {
-      const { error } = await supabase.from("profiles").upsert({
-        id: p.uid,
-        uid: p.uid,
-        email: p.email,
-        display_name: p.displayName,
-        photo_url: p.photoURL || null,
-        role: p.role,
-        subscription_status: p.subscriptionStatus,
-        subscription_tier: p.subscriptionTier,
-        subscription_plan: p.subscriptionPlan || "none",
-        subscription_activation_date: p.subscriptionActivationDate || null,
-        payment_reference: p.paymentReference || null,
-        fitness_goals: p.fitnessGoals || null,
-        weight: p.weight || null,
-        height: p.height || null,
-        target_weight: p.targetWeight || null,
-        gender: p.gender || null,
-        onboarded: p.onboarded !== undefined ? p.onboarded : false,
-        age: p.age || null,
-        activity_level: p.activityLevel || null,
-        workout_experience: p.workoutExperience || null,
-        workout_preference: p.workoutPreference || null,
-        dietary_preference: p.dietaryPreference || null,
-        available_days: p.availableDays || null,
-        training_location: p.trainingLocation || null,
-        available_equipment: p.availableEquipment || null,
-        food_allergies: p.foodAllergies || null,
-        health_restrictions: p.healthRestrictions || null,
-        daily_schedule: p.dailySchedule || null,
-        wake_up_time: p.wakeUpTime || null,
-        bed_time: p.bedTime || null,
-        country_region: p.countryRegion || null,
-        water_goal: p.waterGoal || 2500,
-        water_intake_today: p.waterIntakeToday || 0,
-        water_last_logged: p.waterLastLogged || null,
-        status: p.status || "active",
-        is_blocked: p.isBlocked || false,
-        updated_at: new Date().toISOString()
-      });
-      if (error) console.warn("[Supabase Profiles] Upsert notice:", error.message);
-    } catch (err) {
-      console.warn("[Supabase Profiles] Background sync error:", err);
-    }
-  };
-
-  const syncWeightLogToSupabase = async (userId: string, log: WeightGoalLog) => {
-    if (!isSupabaseConfigured) return;
-    try {
-      const { error } = await supabase.from("progress_logs").upsert({
-        id: log.id,
-        user_id: userId,
-        weight: log.weight,
-        body_fat: log.bodyFat || null,
-        date: log.date,
-        notes: "",
-        created_at: new Date().toISOString()
-      });
-      if (error) console.warn("[Supabase Progress Logs] Upsert notice:", error.message);
-    } catch (err) {
-      console.warn("[Supabase Progress Logs] Background sync error:", err);
-    }
-  };
-
-  const syncActivityLogToSupabase = async (userId: string, log: ActivityLog) => {
-    if (!isSupabaseConfigured) return;
-    try {
-      const { error } = await supabase.from("activity_logs").upsert({
-        id: log.id,
-        user_id: userId,
-        exercise_id: log.exerciseId,
-        exercise_name: log.exerciseName,
-        date: log.date,
-        weight: log.weight,
-        reps: log.reps,
-        notes: log.notes || null,
-        created_at: new Date().toISOString()
-      });
-      if (error) console.warn("[Supabase Activity Logs] Upsert notice:", error.message);
-    } catch (err) {
-      console.warn("[Supabase Activity Logs] Background sync error:", err);
-    }
-  };
-
-  const syncVitalsLogToSupabase = async (userId: string, log: VitalsLog) => {
-    if (!isSupabaseConfigured) return;
-    try {
-      const { error } = await supabase.from("vitals_logs").upsert({
-        id: log.id,
-        user_id: userId,
-        date: log.date,
-        resting_heart_rate: log.restingHeartRate || null,
-        sleep_duration: log.sleepDuration,
-        hydration_glasses: log.hydrationGlasses,
-        readiness_score: log.readinessScore,
-        energy_level: log.energyLevel || null,
-        notes: log.notes || null,
-        created_at: log.createdAt || new Date().toISOString()
-      });
-      if (error) console.warn("[Supabase Vitals Logs] Upsert notice:", error.message);
-    } catch (err) {
-      console.warn("[Supabase Vitals Logs] Background sync error:", err);
-    }
-  };
-
-  const syncSavedWorkoutsToSupabase = async (userId: string, saves: string[]) => {
-    if (!isSupabaseConfigured) return;
-    try {
-      const { error } = await supabase.from("saved_workouts").upsert({
-        user_id: userId,
-        workout_ids: saves,
-        updated_at: new Date().toISOString()
-      });
-      if (error) console.warn("[Supabase Saved Workouts] Upsert notice:", error.message);
-    } catch (err) {
-      console.warn("[Supabase Saved Workouts] Background sync error:", err);
-    }
-  };
-
   /**
    * Central Unified Auth Success Handler
    * Standardizes session persistence, Firestore synchronization, cached profiles,
@@ -1883,46 +1774,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             onboarded: fetchedData.onboarded !== undefined ? fetchedData.onboarded : !isNewUser
           };
         } else {
-          // Check Supabase profiles table as persistent backend database source if configured
-          if (isSupabaseConfigured) {
-            try {
-              const { data: sbProfile } = await supabase.from("profiles").select("*").eq("uid", uid).maybeSingle();
-              if (sbProfile) {
-                const userIsAdmin = isEmailAdmin(email);
-                const isUserPremium = userIsAdmin || (sbProfile.subscription_status === "premium" || sbProfile.subscription === "premium");
-                profile = {
-                  ...baseProfile,
-                  displayName: sbProfile.display_name || baseProfile.displayName,
-                  photoURL: sbProfile.photo_url || baseProfile.photoURL,
-                  role: userIsAdmin ? "admin" : "user",
-                  subscription: isUserPremium ? "premium" : "free",
-                  subscriptionStatus: isUserPremium ? "premium" : "free",
-                  isPremium: isUserPremium,
-                  premiumAccess: isUserPremium,
-                  subscriptionTier: sbProfile.subscription_tier || baseProfile.subscriptionTier,
-                  subscriptionPlan: sbProfile.subscription_plan || baseProfile.subscriptionPlan,
-                  fitnessGoals: sbProfile.fitness_goals || baseProfile.fitnessGoals,
-                  weight: sbProfile.weight || baseProfile.weight,
-                  height: sbProfile.height || baseProfile.height,
-                  targetWeight: sbProfile.target_weight || baseProfile.targetWeight,
-                  gender: sbProfile.gender || baseProfile.gender,
-                  onboarded: true,
-                  age: sbProfile.age || baseProfile.age,
-                  activityLevel: sbProfile.activity_level || baseProfile.activityLevel,
-                  workoutExperience: sbProfile.workout_experience || baseProfile.workoutExperience,
-                  trainingLocation: sbProfile.training_location || baseProfile.trainingLocation,
-                  waterGoal: sbProfile.water_goal || baseProfile.waterGoal,
-                  waterIntakeToday: sbProfile.water_intake_today || baseProfile.waterIntakeToday
-                };
-              } else {
-                profile = baseProfile;
-              }
-            } catch (sErr) {
-              profile = baseProfile;
-            }
-          } else {
-            profile = baseProfile;
-          }
+          profile = baseProfile;
           safeFirestoreSetDoc(userDocRef, profile, { merge: true }).catch(err => {
             console.warn("Firestore profile background write notice:", err);
           });
@@ -1952,9 +1804,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       localStorage.removeItem("fit_explicitly_logged_out");
       setUser(profile);
-      
-      // Dual sync to Supabase profiles
-      syncProfileToSupabase(profile);
 
       // Update admin analytics active users
       setAllSystemUsers(prev => {
@@ -3003,25 +2852,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .catch((err) => console.warn("Failed to fetch saved_workouts from firestore:", err));
     }
 
-    // Hydrate saved workouts from Supabase if configured
-    if (isSupabaseConfigured) {
-      Promise.resolve(
-        supabase
-          .from("saved_workouts")
-          .select("workout_ids")
-          .eq("user_id", uid)
-          .maybeSingle()
-      )
-        .then(({ data }: any) => {
-          if (data && Array.isArray(data.workout_ids)) {
-            const normalized: string[] = Array.from(new Set(data.workout_ids.map((id: any) => normalizeExerciseId(String(id)))));
-            setSavedWorkouts(normalized);
-            safeSetItem(`fit_saves_${uid}`, JSON.stringify(normalized));
-          }
-        })
-        .catch(() => {});
-    }
-
     const pLogs = localStorage.getItem(`fit_activity_${uid}`);
     if (pLogs) {
       try {
@@ -3286,9 +3116,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           console.warn("Firestore background sync failed, relying on local state:", err);
         });
     }
-
-    // Permanent Dual Sync to Supabase profiles table
-    syncProfileToSupabase(updated);
   };
 
   // --- AUTH SERVICES ---
@@ -3473,7 +3300,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     setSavedWorkouts(nextSaves);
     safeSetItem(`fit_saves_${user.uid}`, JSON.stringify(nextSaves));
-    syncSavedWorkoutsToSupabase(user.uid, nextSaves);
 
     if (!isMockFirebase) {
       safeFirestoreSetDoc(doc(db, "saved_workouts", user.uid), {
@@ -3500,7 +3326,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const nextLogs = [newLog, ...activityLogs];
     setActivityLogs(nextLogs);
     safeSetItem(`fit_activity_${user.uid}`, JSON.stringify(nextLogs));
-    syncActivityLogToSupabase(user.uid, newLog);
 
     // Save to Firestore user_workout_actions if real connection
     if (!isMockFirebase) {
@@ -3539,7 +3364,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const nextLogs = [...weightLogs, newLog].sort((a,b) => a.date.localeCompare(b.date));
     setWeightLogs(nextLogs);
     safeSetItem(`fit_weights_${user.uid}`, JSON.stringify(nextLogs));
-    syncWeightLogToSupabase(user.uid, newLog);
 
     // Save to Firestore progress_logs if real connection
     if (!isMockFirebase) {
@@ -3607,7 +3431,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const nextLogs = [...existingFiltered, newLog].sort((a,b) => a.date.localeCompare(b.date));
     setVitalsLogs(nextLogs);
     safeSetItem(`fit_vitals_${user.uid}`, JSON.stringify(nextLogs));
-    syncVitalsLogToSupabase(user.uid, newLog);
 
     if (!isMockFirebase) {
       setDoc(doc(db, "vitals_logs", newLog.id), {
@@ -5040,36 +4863,44 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         console.warn("Could not cache exercise override locally:", oErr);
       }
 
-      // Persist to server API
+      // Persist to server API with confirmation
+      let serverOk = false;
+      let firestoreOk = false;
       try {
         const headers = await getAdminHeaders();
-        await fetch("/api/exercises/update", {
+        const res = await fetch("/api/exercises/update", {
           method: "POST",
           headers,
           body: JSON.stringify({ exerciseId, updates: normalizedUpdates })
         });
+        const resData = await res.json().catch(() => ({}));
+        if (res.ok && resData?.success && resData?.firestoreOk !== false) {
+          serverOk = true;
+        }
       } catch (e) {
         console.warn("Server exercise update notice:", e);
       }
 
-      // Persist to Firestore
+      // Persist directly to Firestore
       if (!isMockFirebase) {
         try {
           const safeDocId = (exerciseId || "").replace(/[^a-zA-Z0-9_-]/g, "_");
           if (safeDocId) {
             const sanitizedUpdates = cleanFirestoreData({ id: safeDocId, ...normalizedUpdates });
-            await setDoc(doc(db, "exercises", safeDocId), sanitizedUpdates, { merge: true });
+            const exOk = await safeFirestoreSetDoc(doc(db, "exercises", safeDocId), sanitizedUpdates, { merge: true }, true);
 
+            let mediaOk = true;
             if (mediaVal) {
-              await setDoc(doc(db, "exercise_media", safeDocId), {
+              mediaOk = await safeFirestoreSetDoc(doc(db, "exercise_media", safeDocId), {
                 exerciseId: safeDocId,
                 customMediaUrl: mediaVal,
                 gifUrl: mediaVal,
                 imageUrl: mediaVal,
                 customMediaType: normalizedUpdates.customMediaType || "image",
                 updatedAt: new Date().toISOString()
-              }, { merge: true });
+              }, { merge: true }, true);
             }
+            firestoreOk = Boolean(exOk && mediaOk);
           }
         } catch (dbErr) {
           console.warn("Firestore exercise update notice:", dbErr);
@@ -5081,6 +4912,11 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         updateExerciseInAllSchedules(exerciseId, normalizedUpdates);
       } catch (schedErr) {
         console.warn("Notice updating exercise across program schedules:", schedErr);
+      }
+
+      if (!serverOk && !firestoreOk) {
+        console.error("[Firestore Edit Error] Exercise edit could not be confirmed in Firestore or backend.");
+        return false;
       }
 
       logAdminAction("EDIT_WORKOUT", `Edited workout ${exerciseId} (Name: ${updates.name || 'same'}, Sets: ${updates.recommendedSets || 'same'}, Reps: ${updates.recommendedReps || 'same'})`, { exerciseId, updates });
@@ -5195,7 +5031,10 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       console.warn("Notice adding exercise to program schedules:", schedErr);
     }
 
-    // Save to server with timeout
+    // Save to server with confirmation
+    let serverOk = false;
+    let firestoreOk = false;
+    let persistError = "";
     try {
       const headers = await Promise.race([
         getAdminHeaders(),
@@ -5203,31 +5042,44 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
           setTimeout(() => resolve({ "Content-Type": "application/json" }), 2500)
         )
       ]);
-      await Promise.race([
+      const res = await Promise.race([
         fetch("/api/exercises/create", {
           method: "POST",
           headers,
           body: JSON.stringify({ workout: sanitizedExercise })
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Server create timeout")), 4000))
+        new Promise<Response>((_, reject) => setTimeout(() => reject(new Error("Server create timeout")), 5000))
       ]);
-    } catch (e) {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success && data.firestoreOk !== false) {
+        serverOk = true;
+      } else {
+        persistError = data.error || `Server create failed (HTTP ${res.status})`;
+      }
+    } catch (e: any) {
+      persistError = e?.message || "Server create notice";
       console.warn("Server workout creation notice:", e);
     }
 
-    // Save to Firestore with timeout
+    // Confirm write directly in Firestore
     if (!isMockFirebase) {
       try {
-        await Promise.race([
+        const [exOk, genOk] = await Promise.race([
           Promise.all([
-            safeFirestoreSetDoc(doc(db, "exercises", safeId), sanitizedExercise),
-            safeFirestoreSetDoc(doc(db, "generated_exercises", safeId), sanitizedExercise)
+            safeFirestoreSetDoc(doc(db, "exercises", safeId), sanitizedExercise, { merge: false }, true),
+            safeFirestoreSetDoc(doc(db, "generated_exercises", safeId), sanitizedExercise, { merge: false }, true)
           ]),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore write timeout")), 3000))
+          new Promise<[boolean, boolean]>((_, reject) => setTimeout(() => reject(new Error("Firestore write timeout")), 4000))
         ]);
-      } catch (dbErr) {
+        firestoreOk = Boolean(exOk && genOk);
+      } catch (dbErr: any) {
+        persistError = persistError || dbErr?.message || "Firestore write failed";
         console.warn("Firestore workout creation notice:", dbErr);
       }
+    }
+
+    if (!serverOk && !firestoreOk) {
+      throw new Error(persistError || "Failed to confirm exercise creation in Cloud Firestore.");
     }
 
     logAdminAction("ADD_WORKOUT", `Created new workout "${sanitizedExercise.name}" with Sets: ${sets}, Reps: ${reps}`, { workout: sanitizedExercise });
@@ -5309,57 +5161,55 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       console.warn("Notice purging exercise from program schedules:", schedErr);
     }
 
-    // 6. Notify server and Firestore in background without blocking caller for instant delete speed
-    (async () => {
+    // 6. Confirm deletion with Express API and Cloud Firestore
+    let serverDeleted = false;
+    let firestoreDeleted = false;
+    try {
+      const headers = await Promise.race([
+        getAdminHeaders(),
+        new Promise<Record<string, string>>((resolve) => 
+          setTimeout(() => resolve({ "Content-Type": "application/json" }), 1200)
+        )
+      ]);
+      const delRes = await fetch("/api/exercises/delete", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ exerciseId, exerciseName: targetName || optionalName })
+      });
+      const delJson = await delRes.json().catch(() => ({}));
+      if (delRes.ok && delJson.success && delJson.firestoreOk !== false) {
+        serverDeleted = true;
+      }
+    } catch (e) {}
+
+    if (!isMockFirebase) {
       try {
-        const headers = await Promise.race([
-          getAdminHeaders(),
-          new Promise<Record<string, string>>((resolve) => 
-            setTimeout(() => resolve({ "Content-Type": "application/json" }), 1200)
-          )
-        ]);
-        await fetch("/api/exercises/delete", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ exerciseId, exerciseName: targetName || optionalName })
-        });
+        const safeDocId = (exerciseId || "").replace(/[^a-zA-Z0-9_-]/g, "_");
+        const docsToDelete: Promise<any>[] = [];
+        if (safeDocId) {
+          docsToDelete.push(safeFirestoreDeleteDoc(doc(db, "exercises", safeDocId)));
+          docsToDelete.push(safeFirestoreDeleteDoc(doc(db, "generated_exercises", safeDocId)));
+          docsToDelete.push(safeFirestoreDeleteDoc(doc(db, "exercise_media", safeDocId)));
+          docsToDelete.push(safeFirestoreSetDoc(doc(db, "deleted_exercises", safeDocId), {
+            id: exerciseId,
+            name: targetExercise?.name || targetName || exerciseId,
+            deletedAt: new Date().toISOString(),
+            deletedBy: user?.email || "admin"
+          }, { merge: true }, true));
+        }
+        if (targetName) {
+          const safeNameDoc = targetName.replace(/[^a-zA-Z0-9_-]/g, "_");
+          if (safeNameDoc && safeNameDoc !== safeDocId) {
+            docsToDelete.push(safeFirestoreDeleteDoc(doc(db, "exercises", safeNameDoc)));
+            docsToDelete.push(safeFirestoreDeleteDoc(doc(db, "exercise_media", safeNameDoc)));
+          }
+        }
+        const results = await Promise.all(docsToDelete);
+        firestoreDeleted = results.some(Boolean);
       } catch (e) {}
+    }
 
-      if (!isMockFirebase) {
-        try {
-          const safeDocId = (exerciseId || "").replace(/[^a-zA-Z0-9_-]/g, "_");
-          const docsToDelete: Promise<any>[] = [];
-          if (safeDocId) {
-            docsToDelete.push(deleteDoc(doc(db, "exercises", safeDocId)).catch(() => {}));
-            docsToDelete.push(deleteDoc(doc(db, "generated_exercises", safeDocId)).catch(() => {}));
-            docsToDelete.push(deleteDoc(doc(db, "exercise_media", safeDocId)).catch(() => {}));
-            docsToDelete.push(safeFirestoreSetDoc(doc(db, "deleted_exercises", safeDocId), {
-              id: exerciseId,
-              name: targetExercise?.name || targetName || exerciseId,
-              deletedAt: new Date().toISOString(),
-              deletedBy: user?.email || "admin"
-            }, { merge: true }));
-          }
-          if (targetName) {
-            const safeNameDoc = targetName.replace(/[^a-zA-Z0-9_-]/g, "_");
-            if (safeNameDoc && safeNameDoc !== safeDocId) {
-              docsToDelete.push(deleteDoc(doc(db, "exercises", safeNameDoc)).catch(() => {}));
-              docsToDelete.push(deleteDoc(doc(db, "exercise_media", safeNameDoc)).catch(() => {}));
-            }
-          }
-          await Promise.all(docsToDelete);
-        } catch (e) {}
-      }
-
-      // Also remove from Supabase if configured
-      if (isSupabaseConfigured && exerciseId) {
-        try {
-          await supabase.from("exercise_media").delete().eq("exercise_id", exerciseId);
-        } catch (sbErr) {}
-      }
-    })();
-
-    return true;
+    return serverDeleted || firestoreDeleted;
   };
 
   // Challenges CRUD Operations
@@ -5390,25 +5240,40 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       return next;
     });
 
-    // Save to server
+    // Save to server with confirmation
+    let serverOk = false;
+    let firestoreOk = false;
+    let errMsg = "";
     try {
       const headers = await getAdminHeaders();
-      await fetch("/api/challenges/save", {
+      const res = await fetch("/api/challenges/save", {
         method: "POST",
         headers,
         body: JSON.stringify({ challenge: fullChallenge })
       });
-    } catch (e) {
+      const resData = await res.json().catch(() => ({}));
+      if (res.ok && resData?.success && resData?.firestoreOk !== false) {
+        serverOk = true;
+      } else {
+        errMsg = resData?.error || `Server save returned ${res.status}`;
+      }
+    } catch (e: any) {
+      errMsg = e?.message || "Server challenge save error";
       console.warn("Server challenge save notice:", e);
     }
 
     // Save to Firestore
     if (!isMockFirebase) {
       try {
-        await setDoc(doc(db, "challenges", newId), fullChallenge);
-      } catch (dbErr) {
+        firestoreOk = await safeFirestoreSetDoc(doc(db, "challenges", newId), cleanFirestoreData(fullChallenge), { merge: true }, true);
+      } catch (dbErr: any) {
+        errMsg = errMsg || dbErr?.message || "Firestore challenge save error";
         console.warn("Firestore challenge save notice:", dbErr);
       }
+    }
+
+    if (!serverOk && !firestoreOk) {
+      throw new Error(errMsg || "Failed to confirm challenge persistence in Cloud Firestore.");
     }
 
     logAdminAction("CREATE_CHALLENGE", `Created challenge "${fullChallenge.title}" with ${fullChallenge.workouts?.length || 0} workouts`, { challenge: fullChallenge });
@@ -5429,23 +5294,30 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       return next;
     });
 
-    if (updatedObj) {
-      try {
-        const headers = await getAdminHeaders();
-        await fetch("/api/challenges/save", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ challenge: updatedObj })
-        });
-      } catch (e) {}
+    if (!updatedObj) return false;
 
-      if (!isMockFirebase) {
-        try {
-          await setDoc(doc(db, "challenges", challengeId), updatedObj, { merge: true });
-        } catch (e) {}
+    let serverOk = false;
+    let firestoreOk = false;
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch("/api/challenges/save", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ challenge: updatedObj })
+      });
+      const resData = await res.json().catch(() => ({}));
+      if (res.ok && resData?.success && resData?.firestoreOk !== false) {
+        serverOk = true;
       }
+    } catch (e) {}
+
+    if (!isMockFirebase) {
+      try {
+        firestoreOk = await safeFirestoreSetDoc(doc(db, "challenges", challengeId), cleanFirestoreData(updatedObj), { merge: true }, true);
+      } catch (e) {}
     }
-    return true;
+
+    return serverOk || firestoreOk;
   };
 
   const deleteCustomChallenge = async (challengeId: string): Promise<boolean> => {
@@ -5455,20 +5327,27 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       return next;
     });
 
+    let serverOk = false;
+    let firestoreOk = false;
     try {
       const headers = await getAdminHeaders();
-      await fetch(`/api/challenges/${challengeId}`, {
+      const res = await fetch(`/api/challenges/${encodeURIComponent(challengeId)}`, {
         method: "DELETE",
         headers
       });
+      const resData = await res.json().catch(() => ({}));
+      if (res.ok && resData?.success && resData?.firestoreOk !== false) {
+        serverOk = true;
+      }
     } catch (e) {}
 
     if (!isMockFirebase) {
       try {
         await deleteDoc(doc(db, "challenges", challengeId));
+        firestoreOk = true;
       } catch (e) {}
     }
-    return true;
+    return serverOk || firestoreOk;
   };
 
   const contextValue = React.useMemo(() => ({

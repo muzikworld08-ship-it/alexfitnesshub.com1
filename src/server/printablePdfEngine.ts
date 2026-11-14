@@ -369,18 +369,6 @@ export async function recoverMasterPdfIfNeeded(filename: string): Promise<boolea
         }
       }
     }
-
-    // Tertiary Search: Check Supabase Storage default bucket
-    try {
-      const publicSbUrl = `https://sqaxwqtjvaixqytnluiy.supabase.co/storage/v1/object/public/exercise_media/${encodeURIComponent(filename)}`;
-      const sbRes = await fetch(publicSbUrl).catch(() => null);
-      if (sbRes && sbRes.ok) {
-        const buf = await sbRes.arrayBuffer();
-        fs.writeFileSync(filePath, Buffer.from(buf));
-        console.log(`[PDF Engine OK] Recovered master PDF from Supabase Storage: ${filename}`);
-        return true;
-      }
-    } catch {}
   } catch (err) {
     console.warn(`[PDF Engine Notice] Could not recover master PDF ${filename}:`, err);
   }

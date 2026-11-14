@@ -63,7 +63,10 @@ interface StoreContextType {
   resetToDefaultProducts: () => Promise<void>;
 }
 
-const StoreContext = createContext<StoreContextType | undefined>(undefined);
+const GLOBAL_STORE_CONTEXT_KEY = "__AFH_STORE_CONTEXT__";
+const StoreContext: React.Context<StoreContextType | undefined> =
+  (globalThis as any)[GLOBAL_STORE_CONTEXT_KEY] ||
+  ((globalThis as any)[GLOBAL_STORE_CONTEXT_KEY] = createContext<StoreContextType | undefined>(undefined));
 
 const CART_STORAGE_KEY = "afh_fitness_wear_cart_v1";
 const PROMO_STORAGE_KEY = "afh_applied_promo_v1";

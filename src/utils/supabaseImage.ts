@@ -1,5 +1,3 @@
-import { supabase } from "./supabase/client";
-
 export interface SupabaseImageOptions {
   width?: number;
   height?: number;

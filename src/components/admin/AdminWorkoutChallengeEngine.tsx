@@ -30,7 +30,6 @@ import { useApp } from "../../context/AppContext";
 import { getChallengeWorkouts } from "../../data/challenges";
 import { auth, db, safeFirestoreSetDoc, getFirebaseIdToken } from "../../lib/firebase";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
-import { supabase, isSupabaseConfigured } from "../../utils/supabase/client";
 import DeleteWorkoutConfirmModal, { DeleteWorkoutTarget } from "./DeleteWorkoutConfirmModal";
 import ExerciseReplacementModal from "./ExerciseReplacementModal";
 import AddWorkoutModal from "./AddWorkoutModal";
@@ -283,7 +282,7 @@ export default function AdminWorkoutChallengeEngine() {
   const [isValidating, setIsValidating] = useState<boolean>(false);
   const [auditTimestamp, setAuditTimestamp] = useState<string | null>(null);
 
-  // Load Overrides from Server, Firestore, Supabase & LocalStorage
+  // Load Overrides from Server, Cloud Firestore & LocalStorage
   const refreshOverrides = useCallback(async () => {
     setIsLoadingOverrides(true);
     let loaded = false;
@@ -322,34 +321,10 @@ export default function AdminWorkoutChallengeEngine() {
           setServerOverrides(prev => ({ ...prev, ...firestoreOverrides }));
           setScheduleOverridesFromRemote(firestoreOverrides);
           loaded = true;
-          console.log(`[Dual-Persist Recovery OK] Recovered ${Object.keys(firestoreOverrides).length} programs from Firestore program_schedules collection.`);
+          console.log(`[Firestore Recovery OK] Recovered ${Object.keys(firestoreOverrides).length} programs from Firestore program_schedules collection.`);
         }
       }
     } catch (e) {}
-
-    // Direct Supabase self-healing fallback
-    if (isSupabaseConfigured) {
-      try {
-        const { data: sbData } = await supabase.from("program_schedules").select("*");
-        if (Array.isArray(sbData) && sbData.length > 0) {
-          const sbOverrides: Record<string, any> = {};
-          for (const item of sbData) {
-            if (item.id && item.data && typeof item.data === "object") {
-              if (item.id === "overrides") {
-                Object.assign(sbOverrides, item.data);
-              } else {
-                sbOverrides[item.id] = item.data;
-              }
-            }
-          }
-          if (Object.keys(sbOverrides).length > 0) {
-            setServerOverrides(prev => ({ ...prev, ...sbOverrides }));
-            setScheduleOverridesFromRemote(sbOverrides);
-            loaded = true;
-          }
-        }
-      } catch (e) {}
-    }
 
     // Cache fallback
     if (!loaded) {
@@ -814,22 +789,6 @@ export default function AdminWorkoutChallengeEngine() {
       console.error(`[Firestore Admin Persist ERROR] Failed writing to Firestore:`, fsErr);
     }
 
-    // Direct dual-persistence to Supabase
-    if (isSupabaseConfigured) {
-      const fullProgSchedule: Record<string, any> = {
-        ...(serverOverrides[selectedProgramId] || {}),
-        [dayKey]: updatedDayData,
-        ...(isCycleSplitting ? { [cycleKey]: updatedDayData } : {})
-      };
-      Promise.resolve(
-        supabase.from("program_schedules").upsert({
-          id: selectedProgramId,
-          data: fullProgSchedule,
-          updated_at: new Date().toISOString()
-        })
-      ).catch(() => {});
-    }
-
     try {
       const token = await getFirebaseIdToken();
       const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -851,7 +810,7 @@ export default function AdminWorkoutChallengeEngine() {
       });
 
       const resData = await res.json().catch(() => ({}));
-      if (res.ok) {
+      if (res.ok && resData?.success !== false && resData?.cloudSaved !== false && resData?.firestoreOk !== false) {
         console.log(`[Server Admin API SUCCESS] Successfully persisted schedule for ${selectedProgramId} Day ${effectiveDayNumber}`);
         setServerOverrides(prev => {
           const next = { ...prev };
@@ -876,12 +835,6 @@ export default function AdminWorkoutChallengeEngine() {
           broadcastOverridesUpdated(next);
           return next;
         });
-
-        if (resData?.cloudSaved === false) {
-          setSaveSuccessMsg(null);
-          setSaveErrorMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
-          return false;
-        }
 
         setSaveErrorMsg(null);
         setSaveSuccessMsg(`Routine for ${targetTier.toUpperCase()} manifested successfully!`);
@@ -1513,36 +1466,15 @@ export default function AdminWorkoutChallengeEngine() {
             }, { merge: false }).catch(() => {});
           }
         } catch (fsErr) {
-          console.warn("Direct Firestore dual-persistence notice:", fsErr);
-        }
-
-        // Direct client-side dual persistence to Supabase
-        if (isSupabaseConfigured) {
-          Promise.resolve(
-            supabase.from("program_schedules").upsert({
-              id: selectedProgramId,
-              data: next[selectedProgramId] || dayData,
-              updated_at: new Date().toISOString()
-            })
-          ).catch(() => {});
-
-          if (targetProgKey !== selectedProgramId) {
-            Promise.resolve(
-              supabase.from("program_schedules").upsert({
-                id: targetProgKey,
-                data: next[targetProgKey] || dayData,
-                updated_at: new Date().toISOString()
-              })
-            ).catch(() => {});
-          }
+          console.warn("Direct Firestore persistence notice:", fsErr);
         }
 
         return next;
       });
 
-      if (data.cloudSaved === false) {
+      if (data.cloudSaved === false || data.firestoreOk === false) {
         setSaveSuccessMsg(null);
-        setSaveErrorMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
+        setSaveErrorMsg("Saved on this server only. NOT confirmed in Firestore. Check Firestore rules/quota/logs.");
       } else {
         setSaveErrorMsg(null);
         setSaveSuccessMsg(`Day ${effectiveDayNumber} (${splitTitle}) configuration successfully saved and manifested!`);
