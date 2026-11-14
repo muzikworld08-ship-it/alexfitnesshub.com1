@@ -469,40 +469,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         discount: discountAmount,
         totalAmount: orderTotal,
         currency: "NGN",
-        paymentStatus: paymentReference ? "paid" : "pending",
+        // Orders can only be marked "paid" server-side after verified Paystack transaction / webhook confirmation
+        paymentStatus: "pending",
         paymentReference: paymentReference || `REF-${Date.now()}`,
-        orderStatus: "processing",
+        orderStatus: "pending",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
-      // Save order to Firestore
+      // Save pending order to Firestore (finalized by server /api/payments/store/verify or webhook)
       await setDoc(doc(db, "orders", orderId), newOrder);
 
-      // Decrement stock in Firestore products
-      for (const item of cart) {
-        try {
-          const productRef = doc(db, "products", item.productId);
-          const currentProd = products.find(p => p.id === item.productId);
-          if (currentProd) {
-            const newOverallStock = Math.max(0, currentProd.stock - item.quantity);
-            const newSizeStock = { ...(currentProd.sizeStock || {}) };
-            if (newSizeStock[item.size] !== undefined) {
-              newSizeStock[item.size] = Math.max(0, (newSizeStock[item.size] ?? 0) - item.quantity);
-            }
-            await updateDoc(productRef, {
-              stock: newOverallStock,
-              sizeStock: newSizeStock,
-              updatedAt: new Date().toISOString()
-            });
-          }
-        } catch (stockErr) {
-          console.warn("Could not update product stock:", stockErr);
-        }
-      }
-
       setLastCompletedOrder(newOrder);
-      clearCart();
       setIsCheckoutOpen(false);
 
       return { success: true, orderId, orderNumber };

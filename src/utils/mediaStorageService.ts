@@ -91,8 +91,11 @@ export async function uploadMediaToCloud(
       });
 
       if (downloadURL) {
-        console.log(`[MediaStorage OK] Permanent Firebase Storage URL created: ${downloadURL}`);
-        return downloadURL;
+        const versionedUrl = downloadURL.includes("v=")
+          ? downloadURL
+          : `${downloadURL}${downloadURL.includes("?") ? "&" : "?"}v=${Date.now()}`;
+        console.log(`[MediaStorage OK] Permanent Firebase Storage URL created: ${versionedUrl}`);
+        return versionedUrl;
       }
     } catch (fbErr) {
       console.warn("[MediaStorage] Firebase Storage direct upload failed, attempting authenticated server upload:", fbErr);
@@ -100,6 +103,7 @@ export async function uploadMediaToCloud(
   }
 
   // 2. Secondary Attempt: Backend Server Firebase Storage Upload (/api/media/upload)
+  let serverUploadError = "Server cloud upload failed.";
   try {
     if (onProgress) onProgress(60, "Uploading to Firebase Storage via server...");
     const reader = new FileReader();
@@ -124,25 +128,18 @@ export async function uploadMediaToCloud(
       })
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.url && (data.url.startsWith("http://") || data.url.startsWith("https://") || data.url.startsWith("/assets/"))) {
-        console.log(`[MediaStorage OK] Permanent Server Upload URL created: ${data.url}`);
-        return data.url;
-      }
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success && data.url && (data.url.startsWith("http://") || data.url.startsWith("https://") || data.url.startsWith("/assets/"))) {
+      console.log(`[MediaStorage OK] Permanent Server Upload URL created: ${data.url}`);
+      return data.url;
     }
-  } catch (srvErr) {
+    serverUploadError = data?.error || `Upload endpoint returned HTTP ${res.status}`;
+  } catch (srvErr: any) {
+    serverUploadError = srvErr?.message || serverUploadError;
     console.warn("[MediaStorage] Server cloud upload fallback warning:", srvErr);
   }
 
-  // 3. Offline preview Data URL fallback (caller must still check persistence)
-  if (onProgress) onProgress(80, "Converting file to data URL stream...");
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => resolve(e.target?.result as string);
-    reader.onerror = (e) => reject(e);
-    reader.readAsDataURL(fileBlob as Blob);
-  });
+  throw new Error(serverUploadError || "Cloud media upload failed. Please check Firebase Storage configuration or paste a valid HTTPS media URL.");
 }
 
 /**

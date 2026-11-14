@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useStore } from "../../context/StoreContext";
 import { useApp } from "../../context/AppContext";
+import { getFirebaseIdToken } from "../../lib/firebase";
 import { StoreDeliveryInfo, StoreOrder } from "../../types";
 
 const NIGERIAN_STATES = [
@@ -79,7 +80,7 @@ export const CheckoutModal: React.FC = () => {
     return true;
   };
 
-  // Process checkout via Paystack or direct confirmation
+  // Process checkout strictly via authoritative server Paystack initialization
   const handlePaystackCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -88,64 +89,36 @@ export const CheckoutModal: React.FC = () => {
     setErrorMessage(null);
 
     try {
-      // 1. Try server store payment initialization via live Paystack gateway
-      try {
-        const initRes = await fetch("/api/payments/store/initialize", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: deliveryInfo.customerEmail,
-            customerName: deliveryInfo.customerName,
-            customerPhone: deliveryInfo.customerPhone,
-            totalAmount: orderTotal,
-            deliveryInfo,
-            items: cart
-          })
-        });
-        const initData = await initRes.json();
-        if (initData.success && initData.authorization_url) {
-          // Record order in Firestore first, then redirect to live Paystack
-          const result = await submitStoreOrder(deliveryInfo, initData.reference);
-          if (result.success) {
-            window.location.href = initData.authorization_url;
-            return;
-          }
-        }
-      } catch (srvErr) {
-        console.warn("Server store payment endpoint fallback:", srvErr);
+      const idToken = await getFirebaseIdToken().catch(() => null);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (idToken) {
+        headers.Authorization = `Bearer ${idToken}`;
       }
 
-      // 2. Direct secure submission (or fallback if direct card or sandbox)
-      const ref = `PAYSTACK_REF_${Date.now()}_${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      const result = await submitStoreOrder(deliveryInfo, ref);
-
-      if (result.success && result.orderId) {
-        const completed: StoreOrder = {
-          id: result.orderId,
-          orderNumber: result.orderNumber || "AFH-ORD",
-          userId: user?.uid || "guest",
+      const initRes = await fetch("/api/payments/store/initialize", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          email: deliveryInfo.customerEmail,
           customerName: deliveryInfo.customerName,
-          customerEmail: deliveryInfo.customerEmail,
           customerPhone: deliveryInfo.customerPhone,
-          shippingAddress: deliveryInfo,
-          items: [...cart],
-          subtotal: cartSubtotal,
-          shippingFee,
-          discount: discountAmount,
-          totalAmount: orderTotal,
-          currency: "NGN",
-          paymentStatus: "paid",
-          paymentReference: ref,
-          orderStatus: "processing",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        setConfirmedOrder(completed);
-        setLastCompletedOrder(completed);
-      } else {
-        throw new Error(result.error || "Failed to finalize order.");
+          promoCode: appliedPromoCode || undefined,
+          deliveryInfo,
+          items: cart
+        })
+      });
+
+      const initData = await initRes.json().catch(() => ({}));
+      if (!initRes.ok || !initData?.success || !initData?.authorization_url) {
+        throw new Error(
+          initData?.error ||
+            "Unable to initialize secure Paystack payment. Please verify your details or try again shortly."
+        );
       }
 
+      // Server /api/payments/store/initialize already persisted the pending order with authoritative pricing;
+      // redirect immediately to Paystack so verification confirms paid status on callback/webhook.
+      window.location.href = initData.authorization_url;
     } catch (err: any) {
       console.error("[Checkout] Error:", err);
       setErrorMessage(err.message || "An unexpected error occurred during checkout.");

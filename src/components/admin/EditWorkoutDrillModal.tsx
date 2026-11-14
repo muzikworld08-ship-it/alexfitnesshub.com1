@@ -42,6 +42,7 @@ export default function EditWorkoutDrillModal({
   );
   const [isUploading, setIsUploading] = useState(false);
   const [isGifCleared, setIsGifCleared] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (exercise) {
@@ -86,10 +87,11 @@ export default function EditWorkoutDrillModal({
     if (!file) return;
 
     if (file.size > 25 * 1024 * 1024) {
-      alert("File is too large. Please select a GIF or video under 25MB.");
+      setUploadError("File is too large. Please select a GIF or video under 25MB.");
       return;
     }
 
+    setUploadError(null);
     setIsUploading(true);
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -100,30 +102,31 @@ export default function EditWorkoutDrillModal({
           const token = await getFirebaseIdToken();
           const uploadHeaders: Record<string, string> = { "Content-Type": "application/json" };
           if (token) uploadHeaders["Authorization"] = `Bearer ${token}`;
-          // Upload directly to permanent assets via server API
           const res = await fetch("/api/media/upload", {
             method: "POST",
             headers: uploadHeaders,
             body: JSON.stringify({
               fileData: base64,
               filename: `drill_${(exercise.id || 'ex').replace(/[^a-zA-Z0-9]/g, '_')}`,
+              mimeType: file.type || "image/gif",
               exerciseId: exercise.id
             })
           });
-          const result = await res.json();
-          if (result && result.success && result.url) {
+          const result = await res.json().catch(() => ({}));
+          if (res.ok && result && result.success && result.url) {
             setGifUrl(result.url);
+            setUploadError(null);
           } else {
-            setGifUrl(base64);
+            setUploadError(result?.error || "Cloud upload failed. Please try again or paste a direct GIF URL.");
           }
-        } catch {
-          setGifUrl(base64);
+        } catch (err: any) {
+          setUploadError(err?.message || "Network error uploading media to cloud storage.");
         }
       }
       setIsUploading(false);
     };
     reader.onerror = () => {
-      alert("Failed to read file.");
+      setUploadError("Failed to read file from device.");
       setIsUploading(false);
     };
     reader.readAsDataURL(file);
@@ -265,14 +268,20 @@ export default function EditWorkoutDrillModal({
                 onChange={(e) => {
                   setGifUrl(e.target.value);
                   setIsGifCleared(false);
+                  setUploadError(null);
                 }}
                 placeholder="Paste URL or click Upload GIF above..."
                 className="w-full pl-8 pr-3 py-2 rounded-xl bg-neutral-900 border border-neutral-700 text-white text-xs font-mono focus:outline-none focus:border-blue-500"
               />
               <Link2 className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
             </div>
+            {uploadError && (
+              <div className="p-2.5 rounded-xl bg-red-950/60 border border-red-500/40 text-red-300 text-[11px] font-medium">
+                {uploadError}
+              </div>
+            )}
             <p className="text-[10px] text-neutral-500 leading-tight">
-              Upload a local GIF/MP4 directly or paste an external URL. Click "Delete GIF" to clear and remove the media permanently.
+              Upload a local GIF/MP4 directly to Firebase Storage or paste an external URL. Click "Delete GIF" to clear and remove the media permanently.
             </p>
           </div>
 
@@ -435,10 +444,11 @@ export default function EditWorkoutDrillModal({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-blue-600/30"
+              disabled={isUploading}
+              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-blue-600/30 disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              <span>Save Drill Parameters</span>
+              <span>{isUploading ? "Uploading..." : "Save Drill Parameters"}</span>
             </button>
           </div>
         </form>

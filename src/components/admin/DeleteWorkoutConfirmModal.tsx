@@ -19,6 +19,7 @@ interface DeleteWorkoutConfirmModalProps {
   isLoading?: boolean;
   onConfirm: () => void | Promise<void>;
   onDeleteOnly?: () => void | Promise<void>;
+  onGlobalDelete?: () => void | Promise<void>;
   onAutoReplace?: () => void | Promise<void>;
   onChooseReplacement?: () => void;
   onCancel: () => void;
@@ -30,6 +31,7 @@ export default function DeleteWorkoutConfirmModal({
   isLoading = false,
   onConfirm,
   onDeleteOnly,
+  onGlobalDelete,
   onAutoReplace,
   onChooseReplacement,
   onCancel
@@ -47,6 +49,12 @@ export default function DeleteWorkoutConfirmModal({
     const action = onDeleteOnly || onConfirm;
     if (action) {
       action();
+    }
+  };
+
+  const handleTriggerGlobalDelete = () => {
+    if (onGlobalDelete) {
+      onGlobalDelete();
     }
   };
 
@@ -150,7 +158,7 @@ export default function DeleteWorkoutConfirmModal({
               Choose your workout removal strategy:
             </p>
 
-            {/* 1. Delete Only (Instant Permanent Remove - Primary) */}
+            {/* 1. Remove From This Routine Day Only (Primary Safe Action) */}
             <button
               type="button"
               onClick={handleTriggerDeleteOnly}
@@ -163,13 +171,13 @@ export default function DeleteWorkoutConfirmModal({
                   </div>
                   <div>
                     <h5 className="text-xs font-black text-red-200 uppercase tracking-wider flex items-center gap-1.5">
-                      Delete Drill Only
+                      Remove From This Routine Only
                       <span className="text-[10px] font-mono text-red-300 bg-red-950 px-1.5 py-0.2 rounded font-bold border border-red-800/50">
-                        Permanent
+                        This Day/Tier
                       </span>
                     </h5>
                     <p className="text-[11px] text-neutral-300 mt-0.5">
-                      Permanently removes this workout drill from this routine and purges its GIF demonstration.
+                      Removes this drill from this program routine day &amp; tier without deleting it from the exercise library or other programs.
                     </p>
                   </div>
                 </div>
@@ -201,6 +209,32 @@ export default function DeleteWorkoutConfirmModal({
               </div>
             </button>
 
+            {/* 3. Optional Global Archive & Delete Everywhere */}
+            {onGlobalDelete && (
+              <button
+                type="button"
+                onClick={handleTriggerGlobalDelete}
+                className="w-full text-left p-3 rounded-2xl bg-neutral-950/40 border border-neutral-800 hover:border-rose-500/40 hover:bg-rose-950/20 transition-all group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-neutral-800 text-rose-400 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h5 className="text-[11px] font-black text-rose-300 uppercase tracking-wider">
+                        Archive &amp; Delete From Entire Platform
+                      </h5>
+                      <p className="text-[10px] text-neutral-400 mt-0.5">
+                        Removes across all programs and archives in Deleted Exercises (restorable anytime).
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-neutral-500 group-hover:text-rose-400 shrink-0" />
+                </div>
+              </button>
+            )}
+
             {/* Manual Replacement Link */}
             {onChooseReplacement && (
               <div className="pt-1 flex items-center justify-between text-xs">
@@ -222,14 +256,14 @@ export default function DeleteWorkoutConfirmModal({
             )}
           </div>
         ) : (
-          /* General Workout Library Deletion Mode */
+          /* General Workout Library Deletion Mode (Soft Archive with Restore) */
           <div className="space-y-4 pt-1">
             <div className="p-3.5 rounded-2xl bg-red-950/20 border border-red-900/40 text-left">
               <p className="text-xs text-neutral-300 font-medium">
-                Are you sure you want to permanently delete <strong className="text-white font-bold">{target.name}</strong> from the exercise library?
+                Archive and remove <strong className="text-white font-bold">{target.name}</strong> from the active exercise library?
               </p>
               <p className="text-[11px] text-neutral-400 mt-1">
-                This removes the workout, its demonstration GIF, and all progressive overload records immediately across the platform.
+                It will immediately disappear from all athlete programs and search results. An archived snapshot is saved in Deleted Exercises so you can restore it anytime.
               </p>
             </div>
 
@@ -247,7 +281,7 @@ export default function DeleteWorkoutConfirmModal({
                 className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-red-950/40 active:scale-95"
               >
                 <Trash2 className="w-4 h-4 text-white" />
-                <span>Delete Permanently</span>
+                <span>Archive &amp; Delete</span>
               </button>
             </div>
           </div>

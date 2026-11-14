@@ -294,17 +294,21 @@ function FitnessAppContent() {
   const viewHistoryRef = React.useRef<string[]>([]);
   const isNavigatingHistoryRef = React.useRef<boolean>(false);
 
-  // Initialize history state on mount
+  // Initialize history state on mount (preserve search/query params for payment verification callbacks)
   React.useEffect(() => {
     if (typeof window !== "undefined" && window.history) {
       if (!window.history.state || !window.history.state.view) {
-        window.history.replaceState({ view: currentView }, "", window.location.pathname);
+        window.history.replaceState(
+          { view: currentView },
+          "",
+          window.location.pathname + window.location.search
+        );
       }
       viewHistoryRef.current = [currentView];
     }
   }, []);
 
-  // Keep window.location.pathname & state in sync with currentView
+  // Keep window.location.pathname & state in sync with currentView without stripping initial callback query params
   React.useEffect(() => {
     if (isNavigatingHistoryRef.current) {
       isNavigatingHistoryRef.current = false;
@@ -318,8 +322,14 @@ function FitnessAppContent() {
     }
 
     const targetPath = VIEW_TO_PATH_MAP[currentView] || "/";
-    if (window.location.pathname !== targetPath || window.history.state?.view !== currentView) {
+    if (window.location.pathname !== targetPath) {
       window.history.pushState({ view: currentView }, "", targetPath);
+    } else if (window.history.state?.view !== currentView) {
+      window.history.replaceState(
+        { view: currentView },
+        "",
+        window.location.pathname + window.location.search
+      );
     }
   }, [currentView]);
 

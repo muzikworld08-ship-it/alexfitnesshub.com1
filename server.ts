@@ -62,6 +62,7 @@ import { EXERCISES, getExerciseGifUrl } from "./src/data/exercises";
 import { getWorkoutForProgramAndDay, normalizeProgramId } from "./src/data/challengeEngineDatabase";
 import { registerPrintablePdfRoutes } from "./src/server/printablePdfRoutes";
 import { runOneWaySupabaseToFirestoreMigration } from "./src/server/migrateSupabaseToFirestore";
+import { INITIAL_STORE_PRODUCTS } from "./src/data/storeProducts";
 
 // Load environment variables
 dotenv.config();
@@ -4141,10 +4142,12 @@ app.get("/api/exercises/custom-media", async (req, res) => {
 async function uploadFileToFirebaseStorageServer(
   buffer: Buffer,
   mimeType: string,
-  filename: string
+  filename: string,
+  userToken?: string
 ): Promise<string | null> {
   const bucketName = firebaseConfig.storageBucket || "alex-project-777.firebasestorage.app";
-  const token = (await getMetadataServiceAccountToken()) || "";
+  const saToken = (await getMetadataServiceAccountToken()) || "";
+  const token = saToken || userToken || "";
 
   const cleanFilename = filename.replace(/[^a-zA-Z0-9_.-]/g, "_");
   const encodedName = encodeURIComponent(`uploads/${cleanFilename}`);
@@ -4167,10 +4170,10 @@ async function uploadFileToFirebaseStorageServer(
     if (uploadRes.ok) {
       const data: any = await uploadRes.json();
       const downloadToken = data.downloadTokens || data.token || "permanent";
-      const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedName}?alt=media&token=${downloadToken}`;
+      const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedName}?alt=media&token=${downloadToken}&v=${Date.now()}`;
       console.log(`[Server Cloud Storage OK] Uploaded permanent image URL: ${publicUrl}`);
       return publicUrl;
-    } else if (token && (uploadRes.status === 401 || uploadRes.status === 403)) {
+    } else if (saToken && (uploadRes.status === 401 || uploadRes.status === 403)) {
       markMetadataRestPermissionDenied(uploadRes.status);
     } else {
       const errText = await uploadRes.text().catch(() => "");
@@ -4214,7 +4217,7 @@ app.post("/api/media/upload", async (req: any, res: any) => {
     else if (detectedMime.includes("webp")) ext = "webp";
 
     const fullFilename = `${filename}_${Date.now()}.${ext}`;
-    const cloudUrl = await uploadFileToFirebaseStorageServer(buffer, detectedMime, fullFilename);
+    const cloudUrl = await uploadFileToFirebaseStorageServer(buffer, detectedMime, fullFilename, reqToken);
 
     if (cloudUrl) {
       let firestoreSaved = true;
@@ -4232,7 +4235,7 @@ app.post("/api/media/upload", async (req: any, res: any) => {
       return res.json({ success: true, url: cloudUrl, storage: "firebase", firestoreSaved });
     }
 
-    // Direct Static File Storage fallback on ephemeral disk
+    // Direct Static File Storage fallback on local disk (non-durable on ephemeral containers)
     const localFilePath = path.join(ASSETS_DIR, fullFilename);
     fs.writeFileSync(localFilePath, buffer);
     const publicAssetsDir = path.join(process.cwd(), "public", "assets");
@@ -4242,8 +4245,14 @@ app.post("/api/media/upload", async (req: any, res: any) => {
     fs.writeFileSync(path.join(publicAssetsDir, fullFilename), buffer);
 
     const staticLocalUrl = `/assets/${fullFilename}`;
-    console.log(`[Media Upload Server] Stored local fallback asset: ${staticLocalUrl}`);
-    return res.json({ success: true, url: staticLocalUrl, storage: "local_fallback", firestoreSaved: false });
+    console.warn(`[Media Upload Server Notice] Firebase Storage REST unavailable; wrote ephemeral local fallback asset: ${staticLocalUrl}`);
+    return res.json({
+      success: true,
+      url: staticLocalUrl,
+      storage: "local_fallback",
+      firestoreSaved: false,
+      warning: "Cloud Storage upload could not be confirmed; asset saved on server disk cache only."
+    });
   } catch (err: any) {
     console.error("Error in /api/media/upload:", err);
     res.status(500).json({ success: false, error: err?.message || "Failed to upload image." });
@@ -4348,20 +4357,16 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
           else if (mimeType.includes("webp")) ext = "webp";
 
           const filename = `exercise_custom_${exerciseId}_${Date.now()}.${ext}`;
-          const cloudUploadedUrl = await uploadFileToFirebaseStorageServer(buffer, mimeType, filename);
+          const cloudUploadedUrl = await uploadFileToFirebaseStorageServer(buffer, mimeType, filename, req.authToken);
 
           if (cloudUploadedUrl) {
             customMediaUrl = cloudUploadedUrl;
           } else {
-            const localFilename = `exercise_custom_${exerciseId}.${ext}`;
-            const filePath = path.join(ASSETS_DIR, localFilename);
-            fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
-            const publicAssetsDir = path.join(process.cwd(), "public", "assets");
-            if (!fs.existsSync(publicAssetsDir)) {
-              fs.mkdirSync(publicAssetsDir, { recursive: true });
-            }
-            fs.writeFileSync(path.join(publicAssetsDir, localFilename), Buffer.from(base64Data, "base64"));
-            customMediaUrl = `/assets/${localFilename}`;
+            return res.status(502).json({
+              success: false,
+              firestoreOk: false,
+              error: "Cloud Storage upload failed. Please retry upload or provide an HTTPS media URL instead of raw base64."
+            });
           }
         }
       }
@@ -4627,7 +4632,29 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
 
     console.log(`[Firestore OK] Created new custom workout: ${fullWorkout.name} (${newId})`);
 
-    // 4. Update local cache & clear any stale deletion entry for this ID/name
+    // 4. Clear any prior deletion tombstones for this ID / normalized name so created workout renders cleanly
+    try {
+      const cleanNameDoc = cleanName.replace(/[^a-z0-9_-]/g, "_");
+      await Promise.all([
+        deleteServerFirestoreDoc("deleted_exercises", newId, req.authToken),
+        cleanNameDoc ? deleteServerFirestoreDoc("deleted_exercises", cleanNameDoc, req.authToken) : Promise.resolve({ success: true })
+      ]);
+      if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
+        const rawDel = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
+        if (rawDel) {
+          const delArr: string[] = JSON.parse(rawDel);
+          const filteredDel = delArr.filter(d => {
+            const dl = String(d || "").toLowerCase().trim();
+            return dl !== newId.toLowerCase() && dl !== cleanName;
+          });
+          fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(filteredDel, null, 2), "utf-8");
+        }
+      }
+    } catch (tombErr) {
+      console.warn("[Workout Create] Tombstone cleanup warning:", tombErr);
+    }
+
+    // 5. Update local cache cleanly
     overrides[newId] = fullWorkout;
     if (cleanName) {
       overrides[cleanName] = fullWorkout;
@@ -4655,9 +4682,9 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
   }
 });
 
-// POST delete workout
+// POST global soft-delete / archive workout from master library & all schedules (recoverable via /api/exercises/restore)
 app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
-  const { exerciseId, exerciseName } = req.body;
+  const { exerciseId, exerciseName, exerciseSnapshot } = req.body;
   if (!exerciseId && !exerciseName) {
     return res.status(400).json({ success: false, error: "exerciseId or exerciseName is required." });
   }
@@ -4666,14 +4693,35 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
   const targetDocId = (exerciseId || cleanName.replace(/[^a-z0-9_-]/g, "_")).replace(/[\/\s]/g, "_");
 
   try {
-    // 1. Delete custom docs from Firestore and record permanent deletion tombstone FIRST
+    // Capture complete snapshot prior to removal so admin can safely restore later
+    let archivedSnapshot: any = exerciseSnapshot && typeof exerciseSnapshot === "object" ? exerciseSnapshot : null;
+    if (!archivedSnapshot && exerciseId) {
+      const existingMaster = EXERCISES.find(e => e.id === exerciseId || (cleanName && e.name?.toLowerCase().trim() === cleanName));
+      if (existingMaster) {
+        archivedSnapshot = { ...existingMaster };
+      } else {
+        const [exSnap, genSnap] = await Promise.all([
+          getServerFirestoreDoc("exercises", exerciseId, req.authToken),
+          getServerFirestoreDoc("generated_exercises", exerciseId, req.authToken)
+        ]);
+        if (exSnap.exists && exSnap.data()) archivedSnapshot = exSnap.data();
+        else if (genSnap.exists && genSnap.data()) archivedSnapshot = genSnap.data();
+      }
+    }
+
+    // 1. Delete active docs & record soft-delete archive + tombstone in deleted_exercises FIRST
     const [delExRes, delGenRes, delMediaRes, tombstoneRes] = await Promise.all([
       exerciseId ? deleteServerFirestoreDoc("exercises", exerciseId, req.authToken) : Promise.resolve({ success: true } as { success: boolean; error?: any }),
       exerciseId ? deleteServerFirestoreDoc("generated_exercises", exerciseId, req.authToken) : Promise.resolve({ success: true } as { success: boolean; error?: any }),
       exerciseId ? deleteServerFirestoreDoc("exercise_media", exerciseId, req.authToken) : Promise.resolve({ success: true } as { success: boolean; error?: any }),
       setServerFirestoreDoc("deleted_exercises", targetDocId, {
         id: exerciseId || targetDocId,
-        name: exerciseName || cleanName,
+        name: exerciseName || archivedSnapshot?.name || cleanName,
+        isDeleted: true,
+        archivedExercise: archivedSnapshot || {
+          id: exerciseId || targetDocId,
+          name: exerciseName || cleanName
+        },
         deletedAt: new Date().toISOString(),
         deletedBy: req.user?.email || "admin"
       }, true, req.authToken)
@@ -4688,7 +4736,7 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
       });
     }
 
-    console.log(`[Firestore OK] Deleted workout & recorded tombstone in deleted_exercises/${targetDocId}`);
+    console.log(`[Firestore OK] Archived & tombstoned workout in deleted_exercises/${targetDocId}`);
 
     // 2. Clean local overrides cache
     let overrides: Record<string, any> = {};
@@ -4746,15 +4794,142 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
       req.user?.email || "",
       req.user?.uid || "",
       "WORKOUT_DELETE",
-      `Admin permanently deleted workout ${exerciseId || cleanName}`,
+      `Admin archived & deleted workout ${exerciseId || cleanName}`,
       { exerciseId, exerciseName },
       req.authToken
     );
 
-    res.json({ success: true, firestoreOk: true, message: "Workout permanently deleted from Cloud Firestore.", deletedExerciseId: exerciseId });
+    res.json({ success: true, firestoreOk: true, message: "Workout archived & deleted from Cloud Firestore.", deletedExerciseId: exerciseId });
   } catch (error: any) {
     console.error("Failed to delete workout:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
+// GET archived / deleted exercises for Admin recovery desk
+app.get("/api/exercises/archived", requireAdmin, async (req: any, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    const docs = await getServerFirestoreCollection("deleted_exercises", req.authToken);
+    const archived = docs
+      .filter((d) => d.data()?.isDeleted !== false)
+      .map((d) => {
+        const data = d.data() || {};
+        return {
+          docId: d.id,
+          id: data.id || d.id,
+          name: data.name || data.archivedExercise?.name || d.id,
+          deletedAt: data.deletedAt || null,
+          deletedBy: data.deletedBy || "admin",
+          archivedExercise: data.archivedExercise || null
+        };
+      })
+      .sort((a, b) => String(b.deletedAt || "").localeCompare(String(a.deletedAt || "")));
+
+    res.json({ success: true, archived });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || "Failed to load archived exercises.", archived: [] });
+  }
+});
+
+// POST restore an archived / deleted exercise back to active catalog & clear tombstones
+app.post("/api/exercises/restore", requireAdmin, async (req: any, res) => {
+  const { docId, exerciseId, exerciseName } = req.body || {};
+  if (!docId && !exerciseId && !exerciseName) {
+    return res.status(400).json({ success: false, error: "docId, exerciseId, or exerciseName is required." });
+  }
+
+  try {
+    const docs = await getServerFirestoreCollection("deleted_exercises", req.authToken);
+    const cleanTargetName = String(exerciseName || "").toLowerCase().trim();
+    const matched = docs.find((d) => {
+      const dd = d.data() || {};
+      if (docId && d.id === docId) return true;
+      if (exerciseId && (dd.id === exerciseId || d.id === exerciseId)) return true;
+      if (cleanTargetName && String(dd.name || "").toLowerCase().trim() === cleanTargetName) return true;
+      return false;
+    });
+
+    const recordData = matched?.data() || {};
+    const restoredId = String(recordData.id || exerciseId || matched?.id || `restored_${Date.now()}`).replace(/[\/\s]/g, "_");
+    const restoredName = String(recordData.name || exerciseName || recordData.archivedExercise?.name || restoredId).trim();
+    const masterMatch = EXERCISES.find((e) => e.id === restoredId || e.name.toLowerCase().trim() === restoredName.toLowerCase());
+
+    const restoredExercise = {
+      ...(masterMatch || {}),
+      ...(recordData.archivedExercise || {}),
+      id: restoredId,
+      name: restoredName,
+      isDeleted: false,
+      restoredAt: new Date().toISOString(),
+      restoredBy: req.user?.email || "admin",
+      updatedAt: new Date().toISOString()
+    };
+
+    // 1. Restore in Firestore exercises/generated_exercises and delete tombstone doc
+    const docsToDelete = Array.from(new Set([
+      matched?.id,
+      docId,
+      restoredId,
+      restoredName.toLowerCase().trim().replace(/[^a-z0-9_-]/g, "_")
+    ].filter(Boolean) as string[]));
+
+    const [exWrite, genWrite, ...delTombRes] = await Promise.all([
+      setServerFirestoreDoc("exercises", restoredId, restoredExercise, true, req.authToken),
+      setServerFirestoreDoc("generated_exercises", restoredId, restoredExercise, true, req.authToken),
+      ...docsToDelete.map((tid) => deleteServerFirestoreDoc("deleted_exercises", tid, req.authToken))
+    ]);
+
+    if (!exWrite.success || !genWrite.success || delTombRes.some((r) => !r.success)) {
+      return res.status(502).json({
+        success: false,
+        firestoreOk: false,
+        error: "Cloud Firestore did not confirm exercise restoration."
+      });
+    }
+
+    // 2. Remove from DELETED_EXERCISES_FILE_PATH & update local overrides cache
+    try {
+      if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
+        const rawDel = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
+        if (rawDel) {
+          const delArr: string[] = JSON.parse(rawDel);
+          const normName = restoredName.toLowerCase().trim();
+          const filtered = delArr.filter((entry) => {
+            const eLower = String(entry || "").toLowerCase().trim();
+            return eLower !== restoredId.toLowerCase() && eLower !== normName && !docsToDelete.map(x => x.toLowerCase()).includes(eLower);
+          });
+          fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(filtered, null, 2), "utf-8");
+        }
+      }
+
+      let overrides: Record<string, any> = {};
+      if (fs.existsSync(OVERRIDES_FILE_PATH)) {
+        const rawOvr = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
+        if (rawOvr) overrides = JSON.parse(rawOvr);
+      }
+      overrides[restoredId] = restoredExercise;
+      overrides[restoredName.toLowerCase().trim()] = restoredExercise;
+      fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
+    } catch (diskErr) {
+      console.warn("[Workout Restore] Local cache update notice:", diskErr);
+    }
+
+    lastCustomMediaCloudSync = Date.now();
+
+    await logAdminActivityOnFirebase(
+      req.user?.email || "",
+      req.user?.uid || "",
+      "WORKOUT_RESTORE",
+      `Admin restored archived workout "${restoredName}" (${restoredId})`,
+      { restoredId, restoredName },
+      req.authToken
+    );
+
+    res.json({ success: true, firestoreOk: true, message: `Restored "${restoredName}" to exercise catalog.`, exercise: restoredExercise });
+  } catch (err: any) {
+    console.error("Failed to restore exercise:", err);
+    res.status(500).json({ success: false, error: err?.message || "Failed to restore exercise." });
   }
 });
 
@@ -4853,18 +5028,10 @@ async function fetchProgramOverridesFromCloud(): Promise<Record<string, any>> {
     }
 
     if (Object.keys(cloudOverrides).length > 0) {
-      let existing: Record<string, any> = {};
-      if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-        try {
-          const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-          if (raw) existing = JSON.parse(raw);
-        } catch (e) {}
-      }
-      // Replace disk copy per program at program level (Cloud Firestore wins cleanly)
-      const merged = { ...existing, ...cloudOverrides };
-      fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(merged, null, 2), "utf-8");
-      console.log(`[Cloud Persistence OK] Loaded ${Object.keys(merged).length} program overrides from Firestore into cache.`);
-      return merged;
+      // Cloud Firestore is strictly authoritative — overwrite local disk cache directly without preserving stale disk keys
+      fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(cloudOverrides, null, 2), "utf-8");
+      console.log(`[Cloud Persistence OK] Loaded ${Object.keys(cloudOverrides).length} authoritative program overrides from Firestore.`);
+      return cloudOverrides;
     }
   } catch (err) {
     console.warn("[Cloud Persistence] Notice reading program_schedules from Firestore:", err);
@@ -5248,15 +5415,42 @@ async function hydrateAllDataFromCloud() {
     console.warn("[Cloud Hydration] Program overrides hydration notice:", err);
   }
 
-  // 2. Exercise Overrides & Catalog
+  // 2. Deleted Exercises Tombstones FIRST (so tombstoned exercises never re-appear in overrides cache)
+  const tombstoneSet = new Set<string>();
+  try {
+    const deletedDocs = await getServerFirestoreCollection("deleted_exercises");
+    if (deletedDocs && deletedDocs.length > 0) {
+      const currentDeleted: string[] = [];
+      for (const d of deletedDocs) {
+        const dData = d.data();
+        const delId = String(dData?.id || d.id || "").trim();
+        const delName = String(dData?.name || "").toLowerCase().trim();
+        if (delId) {
+          tombstoneSet.add(delId.toLowerCase());
+          if (!currentDeleted.includes(delId)) currentDeleted.push(delId);
+        }
+        if (delName) {
+          tombstoneSet.add(delName);
+          if (!currentDeleted.includes(delName)) currentDeleted.push(delName);
+        }
+      }
+      fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(currentDeleted, null, 2), "utf-8");
+      console.log(`[Cloud Hydration OK] Hydrated ${deletedDocs.length} deleted exercise tombstones from Firestore.`);
+    }
+  } catch (delHydrateErr) {
+    console.warn("[Cloud Hydration] Deleted exercises hydration notice:", delHydrateErr);
+  }
+
+  // 3. Exercise Overrides & Catalog (Cloud Firestore authoritative, excluding tombstones)
   try {
     let cloudExerciseOverrides: Record<string, any> = {};
 
-    // 2a. Query Firestore 'exercise_media' collection
+    // 3a. Query Firestore 'exercise_media' collection
     try {
       const mediaDocs = await getServerFirestoreCollection("exercise_media");
       for (const d of mediaDocs) {
         const docData = d.data();
+        if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) continue;
         const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl || docData?.originalUrlOrBase64;
         if (mUrl) {
           const mediaEntry = {
@@ -5272,11 +5466,13 @@ async function hydrateAllDataFromCloud() {
           };
           if (docData.exerciseName) {
             const normName = docData.exerciseName.toLowerCase().trim();
-            cloudExerciseOverrides[normName] = {
-              ...(cloudExerciseOverrides[normName] || {}),
-              ...docData,
-              ...mediaEntry
-            };
+            if (!tombstoneSet.has(normName)) {
+              cloudExerciseOverrides[normName] = {
+                ...(cloudExerciseOverrides[normName] || {}),
+                ...docData,
+                ...mediaEntry
+              };
+            }
           }
         }
       }
@@ -5284,12 +5480,12 @@ async function hydrateAllDataFromCloud() {
       console.warn("[Cloud Hydration] Notice reading exercise_media collection:", mErr);
     }
 
-    // 2b. Query Firestore 'exercises' collection (ignore tombstoned)
+    // 3b. Query Firestore 'exercises' collection (ignore tombstoned)
     try {
       const exDocs = await getServerFirestoreCollection("exercises");
       for (const d of exDocs) {
         const docData = d.data();
-        if (docData?.isDeleted === true) continue;
+        if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) continue;
         const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
         if (docData && (mUrl || docData.isCustom || docData.name)) {
           cloudExerciseOverrides[d.id] = {
@@ -5299,11 +5495,13 @@ async function hydrateAllDataFromCloud() {
           };
           if (docData.name) {
             const normName = docData.name.toLowerCase().trim();
-            cloudExerciseOverrides[normName] = {
-              ...(cloudExerciseOverrides[normName] || {}),
-              ...docData,
-              ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-            };
+            if (!tombstoneSet.has(normName)) {
+              cloudExerciseOverrides[normName] = {
+                ...(cloudExerciseOverrides[normName] || {}),
+                ...docData,
+                ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+              };
+            }
           }
         }
       }
@@ -5311,12 +5509,12 @@ async function hydrateAllDataFromCloud() {
       console.warn("[Cloud Hydration] Notice reading exercises collection:", exErr);
     }
 
-    // 2b-2. Query Firestore 'generated_exercises' collection
+    // 3b-2. Query Firestore 'generated_exercises' collection
     try {
       const genDocs = await getServerFirestoreCollection("generated_exercises");
       for (const d of genDocs) {
         const docData = d.data();
-        if (docData?.isDeleted === true) continue;
+        if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) continue;
         const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
         if (docData && (mUrl || docData.isCustom || docData.name)) {
           const entry = {
@@ -5330,10 +5528,12 @@ async function hydrateAllDataFromCloud() {
           };
           if (docData.name) {
             const normName = docData.name.toLowerCase().trim();
-            cloudExerciseOverrides[normName] = {
-              ...(cloudExerciseOverrides[normName] || {}),
-              ...entry
-            };
+            if (!tombstoneSet.has(normName)) {
+              cloudExerciseOverrides[normName] = {
+                ...(cloudExerciseOverrides[normName] || {}),
+                ...entry
+              };
+            }
           }
         }
       }
@@ -5341,7 +5541,7 @@ async function hydrateAllDataFromCloud() {
       console.warn("[Cloud Hydration] Notice reading generated_exercises collection:", genErr);
     }
 
-    // 2c. Check legacy system_settings/exercise_overrides
+    // 3c. Check legacy system_settings/exercise_overrides
     try {
       const snapEx = await getServerFirestoreDoc("system_settings", "exercise_overrides");
       if (snapEx && snapEx.exists) {
@@ -5353,7 +5553,7 @@ async function hydrateAllDataFromCloud() {
       }
     } catch (e) {}
 
-    // 2d. Merge with disk, ensuring cloud overrides take precedence over stale git/disk defaults
+    // 3d. Cloud overrides win; strip any tombstoned items cleanly
     let existingDisk: Record<string, any> = {};
     if (fs.existsSync(OVERRIDES_FILE_PATH)) {
       try {
@@ -5363,10 +5563,15 @@ async function hydrateAllDataFromCloud() {
     }
 
     const mergedEx = { ...existingDisk, ...cloudExerciseOverrides };
-    if (Object.keys(mergedEx).length > 0) {
-      fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(mergedEx, null, 2), "utf-8");
-      console.log(`[Cloud Hydration OK] Hydrated and secured ${Object.keys(mergedEx).length} exercise overrides from Cloud Firestore.`);
+    for (const k of Object.keys(mergedEx)) {
+      const item = mergedEx[k];
+      const itemName = String(item?.name || item?.exerciseName || "").toLowerCase().trim();
+      if (item?.isDeleted === true || tombstoneSet.has(k.toLowerCase()) || (itemName && tombstoneSet.has(itemName))) {
+        delete mergedEx[k];
+      }
     }
+    fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(mergedEx, null, 2), "utf-8");
+    console.log(`[Cloud Hydration OK] Hydrated ${Object.keys(mergedEx).length} active exercise overrides from Cloud Firestore.`);
   } catch (err) {
     console.warn("[Cloud Hydration] Exercise overrides hydration error:", err);
   }
@@ -5414,41 +5619,39 @@ async function hydrateAllDataFromCloud() {
     console.warn("[Cloud Hydration] PDF hydration notice:", pdfHydrateErr);
   }
 
-  // 5. Hydrate deleted exercises from Firestore collection
-  try {
-    const deletedDocs = await getServerFirestoreCollection("deleted_exercises");
-    if (deletedDocs && deletedDocs.length > 0) {
-      let currentDeleted: string[] = [];
-      if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
-        try {
-          const raw = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
-          if (raw) currentDeleted = JSON.parse(raw);
-        } catch (e) {}
-      }
-      for (const d of deletedDocs) {
-        const dData = d.data();
-        if (dData?.id && !currentDeleted.includes(dData.id)) currentDeleted.push(dData.id);
-        if (dData?.name && !currentDeleted.includes(dData.name.toLowerCase().trim())) currentDeleted.push(dData.name.toLowerCase().trim());
-      }
-      fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(currentDeleted, null, 2), "utf-8");
-      console.log(`[Cloud Hydration OK] Hydrated ${deletedDocs.length} deleted exercise records from Firestore.`);
-    }
-  } catch (delHydrateErr) {
-    console.warn("[Cloud Hydration] Deleted exercises hydration notice:", delHydrateErr);
-  }
-
   console.log("[Cloud Hydration Complete] Render server boot state fully secured against data loss.");
 }
 
 // GET all permanently deleted exercises
-app.get("/api/exercises/deleted", (req, res) => {
+app.get("/api/exercises/deleted", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
   try {
     let deletedList: string[] = [];
     if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
       const raw = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
       if (raw) deletedList = JSON.parse(raw);
     }
-    res.json({ success: true, deletedExercises: deletedList });
+
+    const cloudDocs = await getServerFirestoreCollection("deleted_exercises").catch(() => null);
+    if (Array.isArray(cloudDocs)) {
+      const cloudTombstones: string[] = [];
+      for (const docSnap of cloudDocs) {
+        const d = typeof docSnap?.data === "function" ? docSnap.data() : docSnap;
+        if (!d || d.isDeleted === false) continue;
+        const docId = docSnap?.id || d.id;
+        if (docId) cloudTombstones.push(String(docId));
+        if (d.exerciseId) cloudTombstones.push(String(d.exerciseId));
+        if (d.name) cloudTombstones.push(String(d.name).toLowerCase().trim());
+      }
+      deletedList = Array.from(new Set(cloudTombstones));
+      try {
+        fs.mkdirSync(path.dirname(DELETED_EXERCISES_FILE_PATH), { recursive: true });
+        fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(deletedList, null, 2), "utf-8");
+      } catch {}
+      return res.json({ success: true, authoritative: true, deletedExercises: deletedList });
+    }
+
+    res.json({ success: true, authoritative: false, deletedExercises: deletedList });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message, deletedExercises: [] });
   }
@@ -5477,7 +5680,7 @@ app.get(["/api/admin/programs/overrides", "/api/programs/schedules"], async (req
       try {
         const cloudData = await fetchProgramOverridesFromCloud();
         if (cloudData && Object.keys(cloudData).length > 0) {
-          overrides = { ...overrides, ...cloudData };
+          overrides = cloudData;
           lastProgramOverridesCloudSync = Date.now();
           source = "cloud";
         }
@@ -5576,7 +5779,7 @@ app.post("/api/admin/programs/sync-cloud", requireAdmin, async (req: any, res) =
     }
 
     const cloudData = await fetchProgramOverridesFromCloud();
-    const merged = { ...cloudData, ...currentDisk, ...(incomingOverrides || {}) };
+    const merged = { ...currentDisk, ...cloudData, ...(incomingOverrides || {}) };
 
     if (Object.keys(merged).length > 0) {
       const persisted = await persistProgramOverridesToCloud(merged, req.user?.email || "admin", undefined, req.authToken);
@@ -6221,6 +6424,134 @@ app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any
   } catch (error: any) {
     console.error("Failed to delete and replace workout:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });
+  }
+});
+
+// POST remove a single drill from ONE program/day/tier WITHOUT touching deleted_exercises or global library
+app.post("/api/admin/programs/remove-drill", requireAdmin, async (req: any, res) => {
+  const {
+    programId,
+    track,
+    targetProgramKey,
+    dayNumber,
+    cycleDay,
+    tier = "beginner",
+    exerciseId,
+    exerciseName,
+    applyToAllCycleWeeks = true,
+    totalDays = 90
+  } = req.body || {};
+
+  if (!programId || (!dayNumber && !cycleDay) || (!exerciseId && !exerciseName)) {
+    return res.status(400).json({ success: false, error: "programId, dayNumber or cycleDay, and exerciseId or exerciseName are required." });
+  }
+
+  const normalizedTier = String(tier).toLowerCase().includes("adv")
+    ? "advanced"
+    : String(tier).toLowerCase().includes("inter")
+    ? "intermediate"
+    : "beginner";
+
+  try {
+    let allOverrides: Record<string, any> = {};
+    const cloudLatest = await fetchProgramOverridesFromCloud();
+    if (cloudLatest && Object.keys(cloudLatest).length > 0) {
+      allOverrides = cloudLatest;
+    } else if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+      try {
+        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+        if (raw) allOverrides = JSON.parse(raw);
+      } catch {}
+    }
+
+    const targetId = String(exerciseId || "").toLowerCase().trim();
+    const targetName = String(exerciseName || "").toLowerCase().trim();
+    const matchesTarget = (item: any) => {
+      if (!item) return false;
+      const itemId = String(item.id || item.exerciseId || "").toLowerCase().trim();
+      const itemName = String(item.exerciseName || item.name || "").toLowerCase().trim();
+      if (targetId && itemId === targetId) return true;
+      if (targetName && itemName === targetName) return true;
+      return false;
+    };
+
+    const targetKeys = Array.from(new Set([
+      programId,
+      targetProgramKey,
+      track ? `${programId}_${track}` : null
+    ].filter(Boolean))) as string[];
+
+    const computedCycleDay = Number(cycleDay) || (((Number(dayNumber) - 1) % 7) + 1);
+    const maxDays = Number(totalDays) || 90;
+
+    for (const key of targetKeys) {
+      if (!allOverrides[key] || typeof allOverrides[key] !== "object") {
+        allOverrides[key] = {};
+      }
+      const scheduleKey = applyToAllCycleWeeks ? `cycle_${computedCycleDay}` : String(dayNumber);
+      const existingDay = allOverrides[key][scheduleKey] || allOverrides[key][String(dayNumber)] || allOverrides[key][`cycle_${computedCycleDay}`] || {};
+      const nextLevels = { ...(existingDay.levels || {}) };
+
+      const filterList = (arr: any) => Array.isArray(arr) ? arr.filter((ex: any) => !matchesTarget(ex)) : arr;
+
+      if (normalizedTier === "beginner") {
+        nextLevels.beginner = filterList(nextLevels.beginner ?? existingDay.beginnerExercises ?? existingDay.exercises ?? []);
+      } else if (normalizedTier === "intermediate") {
+        nextLevels.intermediate = filterList(nextLevels.intermediate ?? existingDay.intermediateExercises ?? []);
+      } else {
+        nextLevels.advanced = filterList(nextLevels.advanced ?? existingDay.advancedExercises ?? []);
+      }
+
+      const updatedDay: any = {
+        ...existingDay,
+        levels: nextLevels,
+        [`${normalizedTier}Exercises`]: nextLevels[normalizedTier],
+        ...(normalizedTier === "beginner" ? { exercises: nextLevels.beginner } : {}),
+        updatedAt: new Date().toISOString(),
+        updatedBy: req.user?.email || "admin",
+        ...(applyToAllCycleWeeks ? { cycleDay: computedCycleDay } : { dayNumber: Number(dayNumber), isOneOff: true })
+      };
+
+      allOverrides[key][scheduleKey] = updatedDay;
+      if (applyToAllCycleWeeks) {
+        for (let d = computedCycleDay; d <= maxDays; d += 7) {
+          if (allOverrides[key][String(d)]?.isOneOff !== true) {
+            delete allOverrides[key][String(d)];
+          }
+        }
+      }
+    }
+
+    const persisted = await persistProgramOverridesToCloud(allOverrides, req.user?.email || "admin", targetKeys, req.authToken);
+    if (!persisted.firestoreOk) {
+      return res.status(502).json({
+        success: false,
+        cloudSaved: false,
+        firestoreOk: false,
+        error: "Cloud Firestore did not confirm single-routine drill removal."
+      });
+    }
+
+    lastProgramOverridesCloudSync = Date.now();
+    await logAdminActivityOnFirebase(
+      req.user?.email || "",
+      req.user?.uid || "",
+      "PROGRAM_DRILL_REMOVE",
+      `Admin removed drill "${exerciseName || exerciseId}" strictly from ${programId} Day ${dayNumber || computedCycleDay} (${normalizedTier}) without affecting global library.`,
+      { programId, dayNumber, cycleDay: computedCycleDay, tier: normalizedTier, exerciseId, exerciseName },
+      req.authToken
+    );
+
+    res.json({
+      success: true,
+      cloudSaved: true,
+      firestoreOk: true,
+      message: `Removed drill from ${programId} (${normalizedTier}). Global library preserved.`,
+      allProgramOverrides: allOverrides[programId]
+    });
+  } catch (err: any) {
+    console.error("Failed single-row drill removal:", err);
+    res.status(500).json({ success: false, error: err?.message || "Failed removing drill." });
   }
 });
 
@@ -7326,6 +7657,178 @@ Proper hydration is the foundation of peak performance. To maximize your results
   }
 });
 
+// Authoritative subscription pricing helper (NGN)
+function computeExpectedSubscriptionAmountNGN(plan: string, months?: number): number {
+  const cleanPlan = String(plan || "monthly").toLowerCase().trim();
+  const numMonths = Math.max(1, Number(months || (cleanPlan === "yearly" ? 12 : cleanPlan === "multi" ? 3 : 1)));
+  if (cleanPlan === "yearly") return 215989;
+  if (cleanPlan === "multi") {
+    if (numMonths === 2) return 35999;
+    if (numMonths === 3) return 49999;
+    if (numMonths === 4) return 63999;
+    if (numMonths === 5) return 77999;
+    if (numMonths === 6) return 89999;
+    return 19999 * numMonths;
+  }
+  return 19999;
+}
+
+// Authoritative store pricing helper (recomputes prices, promo & shipping server-side)
+async function computeAuthoritativeStoreOrderTotals(
+  items: any[],
+  promoCode?: string | null
+): Promise<{
+  validatedItems: any[];
+  subtotal: number;
+  shippingFee: number;
+  discountAmount: number;
+  totalAmount: number;
+}> {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error("Order must contain at least one item.");
+  }
+
+  // Merge INITIAL_STORE_PRODUCTS with latest Firestore products so admin-updated/added items work seamlessly
+  const catalogById = new Map<string, any>();
+  for (const p of INITIAL_STORE_PRODUCTS) {
+    catalogById.set(p.id, p);
+  }
+  try {
+    const cloudProducts = await getServerFirestoreCollection("products");
+    for (const d of cloudProducts) {
+      const pData = d.data();
+      if (pData && typeof pData === "object") {
+        catalogById.set(d.id, { ...pData, id: d.id });
+      }
+    }
+  } catch (err) {
+    console.warn("[Store Pricing] Notice loading cloud catalog, using baseline catalog:", err);
+  }
+
+  let subtotal = 0;
+  const validatedItems: any[] = [];
+  for (const rawItem of items) {
+    const prodId = String(rawItem?.productId || rawItem?.id || "").trim();
+    const qty = Math.floor(Number(rawItem?.quantity || 0));
+    if (!prodId || !Number.isFinite(qty) || qty < 1 || qty > 50) {
+      throw new Error("Invalid item quantity or missing productId.");
+    }
+    const catalogProd = catalogById.get(prodId);
+    if (!catalogProd) {
+      throw new Error(`Product "${prodId}" is no longer available in the catalog.`);
+    }
+    const unitPrice = Number(catalogProd.price);
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      throw new Error(`Invalid price configured for product "${catalogProd.name || prodId}".`);
+    }
+    subtotal += unitPrice * qty;
+    validatedItems.push({
+      id: rawItem.id || `${prodId}-${rawItem.size || "M"}-${rawItem.color || "Default"}`,
+      productId: prodId,
+      name: catalogProd.name || rawItem.name || "AlexFitnessHub Apparel",
+      category: catalogProd.category || rawItem.category || "Apparel",
+      price: unitPrice,
+      image: catalogProd.frontImage || catalogProd.images?.[0] || rawItem.image || "",
+      size: String(rawItem.size || "M"),
+      color: String(rawItem.color || "Black"),
+      colorHex: rawItem.colorHex || "",
+      quantity: qty
+    });
+  }
+
+  const shippingFee = subtotal >= 50000 || subtotal === 0 ? 0 : 3500;
+  const cleanPromo = String(promoCode || "").trim().toUpperCase();
+  let discountAmount = 0;
+  if (cleanPromo === "ALEXFIT10") {
+    discountAmount = Math.round(subtotal * 0.10);
+  } else if (cleanPromo === "IRONPRIME" || cleanPromo === "ALEXFIT15") {
+    discountAmount = Math.round(subtotal * 0.15);
+  } else if (cleanPromo === "FREESHIP") {
+    discountAmount = shippingFee;
+  }
+
+  const totalAmount = Math.max(0, subtotal - discountAmount + shippingFee);
+  return { validatedItems, subtotal, shippingFee, discountAmount, totalAmount };
+}
+
+// Helper to process Store Order payment idempotently and decrement stock once
+async function finalizeStoreOrderPayment(reference: string, txData: any) {
+  let targetOrderSnap = await getServerFirestoreQuery("orders", "paymentReference", "==", reference);
+  let docEntry = targetOrderSnap?.docs?.[0];
+  let orderId = docEntry?.id || txData?.metadata?.orderId || "";
+  let orderData: any = docEntry ? (typeof docEntry.data === "function" ? docEntry.data() : docEntry.data) : null;
+
+  if (!orderData && orderId) {
+    const directSnap = await getServerFirestoreDoc("orders", orderId);
+    if (directSnap.exists) {
+      orderData = directSnap.data();
+    }
+  }
+
+  if (!orderData) {
+    throw new Error(`Store order not found for payment reference ${reference}`);
+  }
+
+  // Amount check against server-computed orderTotal
+  const expectedKobo = Math.round(Number(orderData.totalAmount || 0)) * 100;
+  if (typeof txData?.amount === "number" && expectedKobo > 0 && txData.amount < expectedKobo) {
+    throw new Error(`Paid amount (${txData.amount} kobo) is less than order total (${expectedKobo} kobo).`);
+  }
+
+  if (orderData.paymentStatus === "paid" && orderData.stockDeducted === true) {
+    return { success: true, alreadyProcessed: true, order: orderData };
+  }
+
+  const updatedOrder = {
+    ...orderData,
+    paymentStatus: "paid",
+    orderStatus: orderData.orderStatus === "pending_payment" ? "processing" : (orderData.orderStatus || "processing"),
+    paidAt: orderData.paidAt || txData?.paid_at || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    stockDeducted: true
+  };
+
+  await setServerFirestoreDoc("orders", orderData.id || orderId, updatedOrder, true);
+  await setServerFirestoreDoc("payments", reference, {
+    reference,
+    type: "store_apparel_order",
+    orderId: orderData.id || orderId,
+    userId: orderData.userId || "guest",
+    email: orderData.customerEmail || "",
+    amount: orderData.totalAmount,
+    currency: txData?.currency || "NGN",
+    status: "success",
+    paidAt: updatedOrder.paidAt,
+    updatedAt: new Date().toISOString()
+  }, true);
+
+  // Decrement inventory once when stockDeducted transitions from false -> true
+  if (!orderData.stockDeducted && Array.isArray(orderData.items)) {
+    for (const item of orderData.items) {
+      try {
+        const prodSnap = await getServerFirestoreDoc("products", item.productId);
+        if (prodSnap.exists && prodSnap.data()) {
+          const prod = prodSnap.data();
+          const newStock = Math.max(0, Number(prod.stock || 0) - Number(item.quantity || 1));
+          const newSizeStock = { ...(prod.sizeStock || {}) };
+          if (item.size && newSizeStock[item.size] !== undefined) {
+            newSizeStock[item.size] = Math.max(0, Number(newSizeStock[item.size] || 0) - Number(item.quantity || 1));
+          }
+          await setServerFirestoreDoc("products", item.productId, {
+            stock: newStock,
+            sizeStock: newSizeStock,
+            updatedAt: new Date().toISOString()
+          }, true);
+        }
+      } catch (stockErr) {
+        console.warn("[Store Verify Stock Update Notice]:", stockErr);
+      }
+    }
+  }
+
+  return { success: true, alreadyProcessed: false, order: updatedOrder };
+}
+
 // Helper to process successful payment idempotently and guarantee Premium Athlete activation
 async function processSuccessfulPayment(reference: string, verifyData: any, fallbackData?: { userId?: string; plan?: string; months?: number }) {
   const paymentSnap = await getServerFirestoreDoc("payments", reference);
@@ -7353,20 +7856,26 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
     });
   }
 
-  let userId = metadata.userId || 
+  let userId = pendingDoc?.userId ||
+               metadata.userId || 
                metadata.uid || 
                metadata.user_id || 
                customFieldsMap.user_id || 
                customFieldsMap.userId || 
                verifyData.customer?.metadata?.userId || 
                verifyData.customer?.metadata?.uid || 
-               fallbackData?.userId || 
-               pendingDoc?.userId;
+               fallbackData?.userId;
 
-  const plan = metadata.plan || customFieldsMap.plan || fallbackData?.plan || pendingDoc?.plan || "monthly";
-  const months = Number(metadata.months || customFieldsMap.months || fallbackData?.months || pendingDoc?.months || (plan === "yearly" ? 12 : plan === "multi" ? 3 : 1));
-  const amountNGN = metadata.amountNGN || (verifyData.amount ? verifyData.amount / 100 : pendingDoc?.amount || (plan === "yearly" ? 215989 : 19999));
+  const plan = pendingDoc?.plan || metadata.plan || customFieldsMap.plan || fallbackData?.plan || "monthly";
+  const months = Number(pendingDoc?.months || metadata.months || customFieldsMap.months || fallbackData?.months || (plan === "yearly" ? 12 : plan === "multi" ? 3 : 1));
+  const expectedAmountNGN = computeExpectedSubscriptionAmountNGN(plan, months);
+  const amountNGN = pendingDoc?.amount || metadata.amountNGN || (verifyData.amount ? verifyData.amount / 100 : expectedAmountNGN);
   const email = verifyData.customer?.email || metadata.email || pendingDoc?.email || "";
+
+  // Enforce currency when provided by gateway
+  if (verifyData?.currency && String(verifyData.currency).toUpperCase() !== "NGN") {
+    throw new Error(`Invalid payment currency (${verifyData.currency}). Expected NGN.`);
+  }
 
   // If userId is missing, attempt email-based user lookup in Firestore
   if (!userId && email) {
@@ -7437,7 +7946,7 @@ async function processSuccessfulPayment(reference: string, verifyData: any, fall
     uid: userId,
     email: userEmail,
     displayName: existingProfile.displayName || (userEmail ? userEmail.split("@")[0] : "Athlete"),
-    role: isDesignatedAdmin ? "admin" : "user", // Strictly keeps normal subscribers as role = "user" (no admin privileges)
+    role: isDesignatedAdmin ? "admin" : "user",
     subscription: "premium",
     subscriptionStatus: "premium",
     isPremium: true,
@@ -7533,7 +8042,6 @@ app.get("/api/user/profile-status", async (req: any, res: any) => {
     }
 
     if (!profile) {
-      // Create a default free profile for new users securely on their first load
       profile = {
         uid: decoded.uid,
         email: decoded.email || "",
@@ -7557,7 +8065,6 @@ app.get("/api/user/profile-status", async (req: any, res: any) => {
     if (profile.subscriptionStatus !== "premium" && profile.role !== "admin") {
       try {
         const userEmail = decoded.email || profile.email;
-        // Check Firestore payments collection using the authenticated user's own token
         const recentPaymentsSnap = await getServerFirestoreQuery("payments", "userId", "==", decoded.uid, token);
         let validPayment = recentPaymentsSnap.docs.find((d: any) => {
           const data = typeof d.data === "function" ? d.data() : d.data;
@@ -7580,7 +8087,6 @@ app.get("/api/user/profile-status", async (req: any, res: any) => {
           });
           profile = healResult.profile;
         } else if (PAYSTACK_SECRET_KEY && userEmail) {
-          // Check Paystack transaction history directly for this customer email
           try {
             const paystackRes = await fetch(`https://api.paystack.co/transaction?customer=${encodeURIComponent(userEmail)}&status=success`, {
               headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }
@@ -7589,12 +8095,16 @@ app.get("/api/user/profile-status", async (req: any, res: any) => {
             if (paystackData?.status && Array.isArray(paystackData.data) && paystackData.data.length > 0) {
               const successfulTx = paystackData.data.find((tx: any) => tx.status === "success");
               if (successfulTx) {
-                console.log(`[Auto-Healing Paystack API] Found confirmed Paystack transaction ${successfulTx.reference} for email ${userEmail}. Restoring Premium.`);
-                const healResult = await processSuccessfulPayment(successfulTx.reference, successfulTx, {
-                  userId: decoded.uid,
-                  plan: successfulTx.metadata?.plan || "monthly"
-                });
-                profile = healResult.profile;
+                const healPlan = successfulTx.metadata?.plan || "monthly";
+                const expectedKobo = computeExpectedSubscriptionAmountNGN(healPlan, successfulTx.metadata?.months) * 100;
+                if (typeof successfulTx.amount === "number" && successfulTx.amount >= expectedKobo) {
+                  console.log(`[Auto-Healing Paystack API] Found confirmed Paystack transaction ${successfulTx.reference} for email ${userEmail}. Restoring Premium.`);
+                  const healResult = await processSuccessfulPayment(successfulTx.reference, successfulTx, {
+                    userId: decoded.uid,
+                    plan: healPlan
+                  });
+                  profile = healResult.profile;
+                }
               }
             }
           } catch (paystackErr: any) {
@@ -7729,39 +8239,40 @@ app.get("/api/payments/config", (req, res) => {
 
 // Securely initialize checkout on Paystack
 app.post("/api/payments/initialize", async (req, res) => {
-  const { plan, email, userId, months } = req.body;
-  
-  // Strict request body validation
-  if (!plan || !email || !userId) {
+  const { plan, email, userId: bodyUserId, months } = req.body;
+
+  // Bind to authenticated Firebase UID when Authorization header is provided
+  let userId = bodyUserId;
+  let userEmail = email;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.split("Bearer ")[1];
+    const decoded = await verifyFirebaseIdToken(token);
+    if (decoded?.uid) {
+      if (bodyUserId && bodyUserId !== decoded.uid) {
+        return res.status(403).json({ success: false, error: "Authenticated user does not match requested checkout userId." });
+      }
+      userId = decoded.uid;
+      userEmail = userEmail || decoded.email;
+    }
+  }
+
+  if (!plan || !userEmail || !userId) {
     console.warn("[Checkout Creation Failed] Missing plan, email, or userId in request body.");
     return res.status(400).json({ success: false, error: "plan, email, and userId are required parameters." });
   }
 
   const numMonths = Number(months || (plan === "yearly" ? 12 : plan === "multi" ? 3 : 1));
-
-  let amountNGN = 19999;
-  if (plan === "yearly") {
-    amountNGN = 215989;
-  } else if (plan === "multi") {
-    if (numMonths === 2) amountNGN = 35999;
-    else if (numMonths === 3) amountNGN = 49999;
-    else if (numMonths === 4) amountNGN = 63999;
-    else if (numMonths === 5) amountNGN = 77999;
-    else if (numMonths === 6) amountNGN = 89999;
-    else amountNGN = 19999 * numMonths;
-  }
-
+  const amountNGN = computeExpectedSubscriptionAmountNGN(plan, numMonths);
   const amountInKobo = amountNGN * 100;
   const reference = "ref_ps_" + crypto.randomBytes(8).toString("hex").toUpperCase();
-  
-  // Dynamically resolve base URL if APP_URL is not set
+
   const requestBaseUrl = APP_URL || `${req.protocol}://${req.get("host")}`;
   const resolvedCallbackUrl = `${requestBaseUrl.replace(/\/$/, "")}/payment/success`;
 
-  // Save pending payment record in Firestore payments collection FIRST
   await setServerFirestoreDoc("payments", reference, {
     userId,
-    email,
+    email: userEmail,
     plan,
     months: numMonths,
     amount: amountNGN,
@@ -7772,18 +8283,17 @@ app.post("/api/payments/initialize", async (req, res) => {
 
   console.log(`[Checkout Creation] Initializing Paystack transaction:
   - User ID: ${userId}
-  - Email: ${email}
+  - Email: ${userEmail}
   - Plan: ${plan} (${numMonths} months)
   - Amount: NGN ${amountNGN} (${amountInKobo} Kobo)
   - Reference: ${reference}
   - Callback URL: ${resolvedCallbackUrl}`);
 
-  // Require real Paystack secret key
   if (!PAYSTACK_SECRET_KEY) {
     console.warn(`[Checkout Creation Failed] PAYSTACK_SECRET_KEY environment variable is missing.`);
-    return res.status(400).json({
+    return res.status(503).json({
       success: false,
-      error: "Paystack secret key is not configured on the server. Please set PAYSTACK_SECRET_KEY in Environment Settings."
+      error: "Paystack secret key is not configured on the server. Online card checkout is currently unavailable."
     });
   }
 
@@ -7795,33 +8305,21 @@ app.post("/api/payments/initialize", async (req, res) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        email,
+        email: userEmail,
         amount: amountInKobo,
         reference,
         callback_url: resolvedCallbackUrl,
         metadata: {
           userId,
           uid: userId,
-          email,
+          email: userEmail,
           plan,
           months: numMonths,
           amountNGN,
           custom_fields: [
-            {
-              display_name: "User ID",
-              variable_name: "user_id",
-              value: userId
-            },
-            {
-              display_name: "Plan",
-              variable_name: "plan",
-              value: plan
-            },
-            {
-              display_name: "Email",
-              variable_name: "email",
-              value: email
-            }
+            { display_name: "User ID", variable_name: "user_id", value: userId },
+            { display_name: "Plan", variable_name: "plan", value: plan },
+            { display_name: "Email", variable_name: "email", value: userEmail }
           ]
         }
       })
@@ -7831,7 +8329,6 @@ app.post("/api/payments/initialize", async (req, res) => {
     console.log(`[Paystack Initialize Response] HTTP Status: ${response.status}`, data);
 
     if (data && data.status && data.data) {
-      console.log(`[Redirect to Paystack] Redirecting user ${userId} to authorization url for reference ${reference}`);
       return res.json({
         success: true,
         authorization_url: data.data.authorization_url,
@@ -7854,29 +8351,81 @@ app.post("/api/payments/initialize", async (req, res) => {
   }
 });
 
-// Securely initialize Store Checkout on Paystack
+// Securely initialize Store Checkout on Paystack (server recomputes authoritative price & promo discount)
 app.post("/api/payments/store/initialize", async (req, res) => {
-  const { email, customerName, customerPhone, totalAmount, deliveryInfo, items } = req.body;
+  const { email, customerName, customerPhone, deliveryInfo, items, promoCode } = req.body || {};
 
-  if (!email || !totalAmount) {
-    return res.status(400).json({ success: false, error: "email and totalAmount are required." });
+  if (!email || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ success: false, error: "Valid email and cart items are required." });
   }
-
-  const amountNGN = Math.round(Number(totalAmount));
-  const amountInKobo = amountNGN * 100;
-  const reference = "ref_afh_store_" + crypto.randomBytes(8).toString("hex").toUpperCase();
-
-  const requestBaseUrl = APP_URL || `${req.protocol}://${req.get("host")}`;
-  const resolvedCallbackUrl = `${requestBaseUrl.replace(/\/$/, "")}/store?success=true&ref=${reference}`;
 
   if (!PAYSTACK_SECRET_KEY) {
-    console.warn("[Store Checkout] PAYSTACK_SECRET_KEY is not configured; returning simulated success reference.");
-    return res.json({
-      success: true,
-      reference,
-      simulated: true
+    console.warn("[Store Checkout] PAYSTACK_SECRET_KEY is not configured; refusing unverified store payment.");
+    return res.status(503).json({
+      success: false,
+      error: "Online payment gateway is not configured on the server. Order cannot be marked paid without Paystack confirmation."
     });
   }
+
+  let authUserId = "guest";
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const decoded = await verifyFirebaseIdToken(authHeader.split("Bearer ")[1]);
+    if (decoded?.uid) authUserId = decoded.uid;
+  }
+
+  let totals;
+  try {
+    totals = await computeAuthoritativeStoreOrderTotals(items, promoCode);
+  } catch (calcErr: any) {
+    return res.status(400).json({ success: false, error: calcErr.message || "Invalid order items." });
+  }
+
+  const amountNGN = Math.round(totals.totalAmount);
+  const amountInKobo = amountNGN * 100;
+  const reference = "ref_afh_store_" + crypto.randomBytes(8).toString("hex").toUpperCase();
+  const orderId = `order_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
+  const orderNumber = `AFH-${Math.floor(10000 + Math.random() * 90000)}`;
+
+  const pendingOrder = {
+    id: orderId,
+    orderNumber,
+    userId: authUserId,
+    customerName: customerName || deliveryInfo?.customerName || "",
+    customerEmail: String(email).trim().toLowerCase(),
+    customerPhone: customerPhone || deliveryInfo?.customerPhone || "",
+    shippingAddress: deliveryInfo || {},
+    items: totals.validatedItems,
+    subtotal: totals.subtotal,
+    shippingFee: totals.shippingFee,
+    discount: totals.discountAmount,
+    promoCode: promoCode ? String(promoCode).trim().toUpperCase() : null,
+    totalAmount: amountNGN,
+    currency: "NGN",
+    paymentStatus: "pending",
+    paymentReference: reference,
+    orderStatus: "pending",
+    stockDeducted: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  await Promise.all([
+    setServerFirestoreDoc("orders", orderId, pendingOrder, false).catch(e => console.warn("Pending order write notice:", e)),
+    setServerFirestoreDoc("payments", reference, {
+      reference,
+      type: "store_apparel_order",
+      orderId,
+      userId: authUserId,
+      email: pendingOrder.customerEmail,
+      amount: amountNGN,
+      status: "pending",
+      createdAt: new Date().toISOString()
+    }, false).catch(() => {})
+  ]);
+
+  const requestBaseUrl = APP_URL || `${req.protocol}://${req.get("host")}`;
+  const resolvedCallbackUrl = `${requestBaseUrl.replace(/\/$/, "")}/store?success=true&ref=${reference}&orderId=${orderId}`;
 
   try {
     const response = await fetch("https://api.paystack.co/transaction/initialize", {
@@ -7886,22 +8435,25 @@ app.post("/api/payments/store/initialize", async (req, res) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        email,
+        email: pendingOrder.customerEmail,
         amount: amountInKobo,
         reference,
         callback_url: resolvedCallbackUrl,
         metadata: {
           type: "store_apparel_order",
-          customerName,
-          customerPhone,
+          orderId,
+          orderNumber,
+          userId: authUserId,
+          customerName: pendingOrder.customerName,
+          customerPhone: pendingOrder.customerPhone,
           deliveryAddress: deliveryInfo?.address,
           city: deliveryInfo?.city,
           state: deliveryInfo?.state,
-          itemCount: items?.length || 1,
+          itemCount: totals.validatedItems.length,
           custom_fields: [
-            { display_name: "Customer", variable_name: "customer_name", value: customerName },
-            { display_name: "Phone", variable_name: "customer_phone", value: customerPhone },
-            { display_name: "Delivery State", variable_name: "delivery_state", value: deliveryInfo?.state }
+            { display_name: "Order Number", variable_name: "order_number", value: orderNumber },
+            { display_name: "Customer", variable_name: "customer_name", value: pendingOrder.customerName },
+            { display_name: "Phone", variable_name: "customer_phone", value: pendingOrder.customerPhone }
           ]
         }
       })
@@ -7913,6 +8465,9 @@ app.post("/api/payments/store/initialize", async (req, res) => {
         success: true,
         authorization_url: data.data.authorization_url,
         reference,
+        orderId,
+        orderNumber,
+        computedTotal: amountNGN,
         access_code: data.data.access_code
       });
     } else {
@@ -7930,6 +8485,40 @@ app.post("/api/payments/store/initialize", async (req, res) => {
   }
 });
 
+// Verify Store Checkout payment & finalize order cleanly
+app.post("/api/payments/store/verify", async (req, res) => {
+  const reference = String(req.body?.reference || req.query?.reference || req.body?.trxref || "").trim();
+  if (!reference) {
+    return res.status(400).json({ success: false, error: "Payment reference is required." });
+  }
+  if (!PAYSTACK_SECRET_KEY) {
+    return res.status(503).json({ success: false, error: "Payment gateway secret key is not configured on backend." });
+  }
+
+  try {
+    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+      headers: {
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        "Content-Type": "application/json"
+      }
+    });
+    const data = await verifyRes.json();
+    if (!data?.status || !data?.data) {
+      return res.status(400).json({ success: false, error: data?.message || "Paystack verification failed." });
+    }
+    const tx = data.data;
+    if (tx.status !== "success") {
+      return res.status(400).json({ success: false, error: `Payment status is ${tx.status}.` });
+    }
+
+    const result = await finalizeStoreOrderPayment(reference, tx);
+    return res.json({ success: true, order: result.order, alreadyProcessed: result.alreadyProcessed });
+  } catch (err: any) {
+    console.error("[Store Verify Exception]", err);
+    return res.status(500).json({ success: false, error: err?.message || "Failed verifying store payment." });
+  }
+});
+
 // Directly verify Paystack transaction reference and upgrade user
 app.post("/api/payments/verify", async (req, res) => {
   const reference = (req.body.reference || req.query.reference || req.body.trxref || req.query.trxref) as string;
@@ -7940,29 +8529,54 @@ app.post("/api/payments/verify", async (req, res) => {
     return res.status(400).json({ success: false, error: "Payment reference is required to verify the transaction." });
   }
 
-  // Retrieve authenticated user from Bearer token if present
+  // Handle store order verification if reference is a store reference
+  if (reference.startsWith("ref_afh_store_")) {
+    if (!PAYSTACK_SECRET_KEY) {
+      return res.status(503).json({ success: false, error: "Paystack secret key is missing on backend." });
+    }
+    try {
+      const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+        headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" }
+      });
+      const data = await verifyRes.json();
+      if (!data?.status || data?.data?.status !== "success") {
+        return res.status(400).json({ success: false, error: `Payment status is ${data?.data?.status || "unverified"}.` });
+      }
+      const result = await finalizeStoreOrderPayment(reference, data.data);
+      return res.json({ success: true, order: result.order, alreadyProcessed: result.alreadyProcessed });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message || "Failed verifying store transaction." });
+    }
+  }
+
+  // Retrieve authenticated user from Bearer token (preferred authoritative identity)
   const authHeader = req.headers.authorization;
   let token = "";
   if (authHeader && authHeader.startsWith("Bearer ")) {
     token = authHeader.split("Bearer ")[1];
   }
 
-  let authenticatedEmail = req.body.email || "";
-  let authenticatedUid = req.body.userId || "";
+  let authenticatedEmail = "";
+  let authenticatedUid = "";
 
   if (token) {
     const decoded = await verifyFirebaseIdToken(token);
     if (decoded) {
-      authenticatedEmail = decoded.email || authenticatedEmail;
-      authenticatedUid = decoded.uid || authenticatedUid;
+      authenticatedEmail = decoded.email || "";
+      authenticatedUid = decoded.uid || "";
     }
   }
 
-  console.log(`[Transaction Verification] Verification call for reference: ${reference} by ${authenticatedUid || "guest"}`);
+  console.log(`[Transaction Verification] Verification call for reference: ${reference} by ${authenticatedUid || "callback"}`);
 
   // Fetch pending record if available
   const pendingDocSnap = await getServerFirestoreDoc("payments", reference);
   const pendingPayment = pendingDocSnap.exists ? pendingDocSnap.data() : null;
+
+  // Guard against hijacking another user's payment reference via arbitrary req.body.userId
+  if (pendingPayment?.userId && authenticatedUid && pendingPayment.userId !== authenticatedUid) {
+    return res.status(403).json({ success: false, error: "Payment reference belongs to a different user account." });
+  }
 
   if (pendingPayment && pendingPayment.status === "success") {
     const targetUserId = pendingPayment.userId || authenticatedUid;
@@ -7980,11 +8594,11 @@ app.post("/api/payments/verify", async (req, res) => {
     }
   }
 
-  const targetUid = authenticatedUid || pendingPayment?.userId;
+  const targetUid = pendingPayment?.userId || authenticatedUid || undefined;
 
   if (!PAYSTACK_SECRET_KEY) {
     console.warn("[Transaction Verification Failed] PAYSTACK_SECRET_KEY environment variable is not configured.");
-    return res.status(400).json({
+    return res.status(503).json({
       success: false,
       error: "Paystack secret key is missing on backend. Unable to verify payment."
     });
@@ -8013,9 +8627,22 @@ app.post("/api/payments/verify", async (req, res) => {
       return res.status(400).json({ success: false, error: `Payment status is ${tx.status}. Subscription cannot be activated.` });
     }
 
+    // Validate paid amount matches expected subscription price (in kobo)
+    const effectivePlan = pendingPayment?.plan || tx.metadata?.plan || requestedPlan || "monthly";
+    const effectiveMonths = Number(pendingPayment?.months || tx.metadata?.months || (effectivePlan === "yearly" ? 12 : effectivePlan === "multi" ? 3 : 1));
+    const expectedAmountKobo = computeExpectedSubscriptionAmountNGN(effectivePlan, effectiveMonths) * 100;
+    if (typeof tx.amount !== "number" || tx.amount < expectedAmountKobo) {
+      console.warn(`[Payment Amount Mismatch] Expected >= ${expectedAmountKobo} kobo for ${effectivePlan}, received ${tx.amount} kobo`);
+      return res.status(400).json({
+        success: false,
+        error: "Paid amount does not match the selected subscription plan price."
+      });
+    }
+
     const result = await processSuccessfulPayment(reference, tx, {
       userId: targetUid,
-      plan: requestedPlan || pendingPayment?.plan
+      plan: effectivePlan,
+      months: effectiveMonths
     });
 
     console.log(`[Transaction Verified Success] User membership upgraded successfully for reference: ${reference}`);
@@ -8030,48 +8657,53 @@ app.post("/api/payments/verify", async (req, res) => {
 });
 
 // PAYSTACK WEBHOOK HANDLER
-// Receives events asynchronously from Paystack, verifies SHA-512 signature using raw body, and returns HTTP 200 quickly
+// Receives events asynchronously from Paystack, strictly enforces SHA-512 signature, and returns HTTP 200 idempotently
 app.post(["/api/payments/webhook", "/api/paystack/webhook", "/api/webhook"], async (req: any, res: any) => {
   const paystackSignature = (req.headers["x-paystack-signature"] || req.headers["x-paystack-signature-512"] || "") as string;
   const rawBodyIntepreter = req.rawBody ? (Buffer.isBuffer(req.rawBody) ? req.rawBody : Buffer.from(req.rawBody)) : Buffer.from(typeof req.body === "string" ? req.body : JSON.stringify(req.body || {}));
+  const candidates = [PAYSTACK_SECRET_KEY, PAYSTACK_WEBHOOK_SECRET].filter(Boolean);
 
-  // 1. Signature Verification with raw request body if secret key is present
-  if (paystackSignature) {
-    let isValid = false;
-    const candidates = [PAYSTACK_SECRET_KEY, PAYSTACK_WEBHOOK_SECRET].filter(Boolean);
-    
-    for (const secret of candidates) {
-      try {
-        const computedHash = crypto.createHmac("sha512", secret).update(rawBodyIntepreter).digest("hex");
-        if (computedHash.toLowerCase() === paystackSignature.toLowerCase()) {
-          isValid = true;
-          break;
-        }
-      } catch (err: any) {
-        console.warn("[Paystack Webhook] Signature comparison issue:", err.message);
-      }
-    }
-
-    if (!isValid && candidates.length > 0) {
-      console.warn(`[Paystack Webhook] Signature verification failed for header: ${paystackSignature}`);
-      return res.status(400).json({ status: "error", message: "Invalid signature" });
-    }
-    console.log("[Paystack Webhook] Signature verified successfully with SHA-512.");
-  } else if ((PAYSTACK_SECRET_KEY || PAYSTACK_WEBHOOK_SECRET) && !paystackSignature) {
-    // In local dev/test or if testing via UI, log warning
-    console.warn("[Paystack Webhook Notice] Missing x-paystack-signature header from request.");
+  // Fail closed if no Paystack signing secret is configured on the server
+  if (candidates.length === 0) {
+    console.warn("[Paystack Webhook Blocked] PAYSTACK_SECRET_KEY / PAYSTACK_WEBHOOK_SECRET is not configured.");
+    return res.status(503).json({ status: "error", message: "Webhook signature secret is not configured on backend." });
   }
+
+  if (!paystackSignature) {
+    console.warn("[Paystack Webhook Blocked] Missing required x-paystack-signature header.");
+    return res.status(401).json({ status: "error", message: "Missing webhook signature" });
+  }
+
+  let isValid = false;
+  const providedBuf = Buffer.from(paystackSignature.trim().toLowerCase(), "utf8");
+  for (const secret of candidates) {
+    try {
+      const computedHash = crypto.createHmac("sha512", secret).update(rawBodyIntepreter).digest("hex").toLowerCase();
+      const computedBuf = Buffer.from(computedHash, "utf8");
+      if (computedBuf.length === providedBuf.length && crypto.timingSafeEqual(computedBuf, providedBuf)) {
+        isValid = true;
+        break;
+      }
+    } catch (err: any) {
+      console.warn("[Paystack Webhook] Signature comparison issue:", err.message);
+    }
+  }
+
+  if (!isValid) {
+    console.warn("[Paystack Webhook Blocked] Invalid HMAC-SHA512 signature.");
+    return res.status(401).json({ status: "error", message: "Invalid webhook signature" });
+  }
+  console.log("[Paystack Webhook] Signature verified successfully with SHA-512.");
 
   const eventPayload = req.body || {};
   const eventName = eventPayload?.event || "";
   console.log(`[Paystack Webhook Event Received] Event: ${eventName}`);
 
-  // If this is a test webhook from Paystack Dashboard with no data, acknowledge immediately
   if (!eventPayload.data && (!eventName || eventName === "test")) {
     return res.status(200).json({ status: "success", message: "Paystack test webhook acknowledged successfully." });
   }
 
-  // 2. Handle successful charge & subscription events
+  // Handle successful charge & subscription events
   if (
     eventName === "charge.success" || 
     eventName === "subscription.create" || 
@@ -8087,7 +8719,7 @@ app.post(["/api/payments/webhook", "/api/paystack/webhook", "/api/webhook"], asy
     }
 
     try {
-      // Direct verification with Paystack to ensure highest security and latest payload
+      // Direct verification with Paystack to confirm amount & latest status
       let authoritativeTx = tx;
       if (PAYSTACK_SECRET_KEY && (eventName === "charge.success" || tx.reference)) {
         try {
@@ -8104,7 +8736,7 @@ app.post(["/api/payments/webhook", "/api/paystack/webhook", "/api/webhook"], asy
             console.log(`[Paystack Webhook] Authoritative Paystack verification confirmed for ref: ${verifyRef}`);
           }
         } catch (vErr: any) {
-          console.warn(`[Paystack Webhook Verification Notice] Falling back to webhook payload:`, vErr.message);
+          console.warn(`[Paystack Webhook Verification Notice]:`, vErr.message);
         }
       }
 
@@ -8115,15 +8747,34 @@ app.post(["/api/payments/webhook", "/api/paystack/webhook", "/api/webhook"], asy
         return res.status(200).json({ status: "skipped", reason: `Transaction status is ${status}` });
       }
 
-      // Handle Printable PDF orders idempotently without interfering with membership subscriptions
-      const isPdfOrder = (reference && reference.startsWith("ref_afh_pdf_")) || 
+      // 1. Handle Store Apparel Orders idempotently
+      const isStoreOrder = (reference && String(reference).startsWith("ref_afh_store_")) ||
+                           (txFinal.metadata && txFinal.metadata.type === "store_apparel_order");
+      if (isStoreOrder) {
+        const storeRes = await finalizeStoreOrderPayment(reference, txFinal);
+        return res.status(200).json({ status: "success", reference, type: "store_apparel_order", alreadyProcessed: storeRes.alreadyProcessed });
+      }
+
+      // 2. Handle Printable PDF orders idempotently (with Firestore lookup fallback if Render restarted)
+      const isPdfOrder = (reference && String(reference).startsWith("ref_afh_pdf_")) || 
                          (txFinal.metadata && (txFinal.metadata.type === "printable_pdf" || txFinal.metadata.productType === "printable_pdf"));
       if (isPdfOrder) {
         console.log(`[Paystack Webhook] Detected Printable PDF order reference: ${reference}`);
-        const { getPdfOrders, saveOrUpdateOrder, generatePersonalizedPdf, getPdfProducts, generateMasterPdfFallback } = await import("./src/server/printablePdfEngine");
+        const { getPdfOrders, saveOrUpdateOrder, generatePersonalizedPdf, getPdfProducts } = await import("./src/server/printablePdfEngine");
         const pdfOrders = getPdfOrders();
-        let targetOrder = pdfOrders.find((o: any) => o.paymentReference === reference || (txFinal.metadata && txFinal.metadata.orderId && o.id === txFinal.metadata.orderId));
+        let targetOrder: any = pdfOrders.find((o: any) => o.paymentReference === reference || (txFinal.metadata && txFinal.metadata.orderId && o.id === txFinal.metadata.orderId));
+        if (!targetOrder) {
+          const fsOrderSnap = await getServerFirestoreQuery("printable_pdf_orders", "paymentReference", "==", reference);
+          if (fsOrderSnap?.docs?.[0]) {
+            targetOrder = typeof fsOrderSnap.docs[0].data === "function" ? fsOrderSnap.docs[0].data() : fsOrderSnap.docs[0].data;
+          }
+        }
         if (targetOrder) {
+          const expectedPdfKobo = Math.round(Number(targetOrder.amountNGN || 0)) * 100;
+          if (typeof txFinal.amount === "number" && expectedPdfKobo > 0 && txFinal.amount < expectedPdfKobo) {
+            console.warn(`[Paystack Webhook PDF Rejected] Paid amount ${txFinal.amount} < expected ${expectedPdfKobo}`);
+            return res.status(200).json({ status: "rejected", reason: "Amount mismatch" });
+          }
           if (targetOrder.paymentStatus === "paid" && targetOrder.pdfGenerationStatus === "ready") {
             return res.status(200).json({ status: "success", reference, alreadyProcessed: true, type: "printable_pdf" });
           }
@@ -8152,10 +8803,19 @@ app.post(["/api/payments/webhook", "/api/paystack/webhook", "/api/webhook"], asy
         }
       }
 
-      const result = await processSuccessfulPayment(reference, txFinal);
-      console.log(`[Paystack Webhook Success] Processed reference ${reference}. User upgraded successfully. Already processed: ${result.alreadyProcessed}`);
-      
-      // Always return HTTP 200 quickly to acknowledge receipt to Paystack
+      // 3. Validate Subscription Payment Amount before upgrading user
+      const paymentSnap = await getServerFirestoreDoc("payments", reference);
+      const pendingPayment = paymentSnap.exists ? paymentSnap.data() : null;
+      const hookPlan = pendingPayment?.plan || txFinal.metadata?.plan || "monthly";
+      const hookMonths = Number(pendingPayment?.months || txFinal.metadata?.months || (hookPlan === "yearly" ? 12 : hookPlan === "multi" ? 3 : 1));
+      const expectedSubKobo = computeExpectedSubscriptionAmountNGN(hookPlan, hookMonths) * 100;
+      if (typeof txFinal.amount === "number" && txFinal.amount < expectedSubKobo) {
+        console.warn(`[Paystack Webhook Blocked] Subscription paid amount ${txFinal.amount} kobo < expected ${expectedSubKobo} kobo for ${hookPlan}.`);
+        return res.status(200).json({ status: "rejected", reason: "Subscription amount mismatch" });
+      }
+
+      const result = await processSuccessfulPayment(reference, txFinal, { plan: hookPlan, months: hookMonths });
+      console.log(`[Paystack Webhook Success] Processed reference ${reference}. Already processed: ${result.alreadyProcessed}`);
       return res.status(200).json({ status: "success", reference, alreadyProcessed: result.alreadyProcessed });
     } catch (err: any) {
       console.error(`[Paystack Webhook Processing Error] Reference: ${reference}`, err);
@@ -8163,7 +8823,7 @@ app.post(["/api/payments/webhook", "/api/paystack/webhook", "/api/webhook"], asy
     }
   }
 
-  // 3. Handle failed or abandoned charge events
+  // Handle failed or abandoned charge events
   if (eventPayload?.event === "charge.failed") {
     const tx = eventPayload.data || {};
     const reference = tx.reference || tx.trxref;
@@ -8179,7 +8839,7 @@ app.post(["/api/payments/webhook", "/api/paystack/webhook", "/api/webhook"], asy
     return res.status(200).json({ status: "recorded_failure", reference });
   }
 
-  // 4. Handle refund / reversal events
+  // Handle refund / reversal events
   if (eventPayload?.event === "refund.processed" || eventPayload?.event === "transfer.reversed") {
     const tx = eventPayload.data || {};
     const reference = tx.transaction_reference || tx.reference;
@@ -8194,7 +8854,6 @@ app.post(["/api/payments/webhook", "/api/paystack/webhook", "/api/webhook"], asy
     return res.status(200).json({ status: "recorded_reversal", reference });
   }
 
-  // Acknowledge other event types (e.g. invoice.update, subscription.create)
   return res.status(200).json({ status: "ignored", event: eventPayload?.event || "unknown" });
 });
 

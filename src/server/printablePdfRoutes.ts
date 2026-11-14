@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, query, where } from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
 import { 
   getPdfProducts, 
@@ -60,6 +60,49 @@ export function registerPrintablePdfRoutes(
   if (options.db) {
     routeDb = options.db;
     setEngineDb(options.db);
+  }
+
+  async function findPdfOrderWithFirestoreFallback(opts: { orderId?: string; reference?: string; downloadToken?: string }): Promise<PrintablePdfOrder | null> {
+    const orders = getPdfOrders();
+    const localMatch = orders.find((o) =>
+      (opts.reference && o.paymentReference === opts.reference) ||
+      (opts.orderId && o.id === opts.orderId) ||
+      (opts.downloadToken && o.downloadToken === opts.downloadToken)
+    );
+    if (localMatch) return localMatch;
+
+    if (!routeDb) return null;
+    try {
+      if (opts.orderId) {
+        const snap = await getDoc(doc(routeDb, "printable_pdf_orders", opts.orderId));
+        if (snap.exists()) {
+          const ord = snap.data() as PrintablePdfOrder;
+          saveOrUpdateOrder(ord);
+          return ord;
+        }
+      }
+      if (opts.reference) {
+        const q = query(collection(routeDb, "printable_pdf_orders"), where("paymentReference", "==", opts.reference));
+        const qSnap = await getDocs(q);
+        if (!qSnap.empty) {
+          const ord = qSnap.docs[0].data() as PrintablePdfOrder;
+          saveOrUpdateOrder(ord);
+          return ord;
+        }
+      }
+      if (opts.downloadToken) {
+        const q = query(collection(routeDb, "printable_pdf_orders"), where("downloadToken", "==", opts.downloadToken));
+        const qSnap = await getDocs(q);
+        if (!qSnap.empty) {
+          const ord = qSnap.docs[0].data() as PrintablePdfOrder;
+          saveOrUpdateOrder(ord);
+          return ord;
+        }
+      }
+    } catch (fbErr) {
+      console.warn("[PDF Routes] Firestore order lookup notice:", fbErr);
+    }
+    return null;
   }
 
   // 1. GET /api/printable-pdfs - List public active products synced permanently from Firestore
@@ -255,8 +298,7 @@ export function registerPrintablePdfRoutes(
         return res.status(400).json({ success: false, error: "Payment reference or orderId is required." });
       }
 
-      const orders = getPdfOrders();
-      let order = orders.find((o) => (reference && o.paymentReference === reference) || (orderId && o.id === orderId));
+      let order = await findPdfOrderWithFirestoreFallback({ reference, orderId });
       if (!order) {
         return res.status(404).json({ success: false, error: "Order not found." });
       }
@@ -285,18 +327,32 @@ export function registerPrintablePdfRoutes(
           });
           clearTimeout(timeoutId);
           const verifyData: any = await verifyRes.json();
-          if (!verifyData?.status || verifyData?.data?.status !== "success") {
+          if (!verifyRes.ok || !verifyData?.status || verifyData?.data?.status !== "success") {
             return res.status(400).json({
               success: false,
               error: `Transaction status is ${verifyData?.data?.status || "unverified"}. Payment not completed.`
             });
           }
+          const paidKobo = Number(verifyData?.data?.amount || 0);
+          const expectedKobo = Math.round(Number(order.amountNGN || 0) * 100);
+          if (expectedKobo > 0 && paidKobo < expectedKobo) {
+            return res.status(400).json({
+              success: false,
+              error: `Payment amount mismatch (expected >= ₦${order.amountNGN}).`
+            });
+          }
         } catch (vErr: any) {
-          console.warn("[PDF Verify Warning] Paystack verification notice:", vErr.message);
-          if (vErr.name === "AbortError") {
+          console.error("[PDF Verify Error] Paystack verification failed:", vErr?.message || vErr);
+          if (vErr?.name === "AbortError") {
             return res.status(504).json({ success: false, error: "Payment verification timed out contacting Paystack." });
           }
+          return res.status(502).json({ success: false, error: "Failed to verify payment with Paystack gateway." });
         }
+      } else if (!paystackSecretKey && !order.simulated) {
+        return res.status(503).json({
+          success: false,
+          error: "Paystack gateway is not configured on the server."
+        });
       }
 
       // Mark order as PAID
@@ -352,10 +408,10 @@ export function registerPrintablePdfRoutes(
   });
 
   // 5. GET /api/printable-pdfs/order/status/:orderId - Status polling for download page
-  app.get("/api/printable-pdfs/order/status/:orderId", (req: Request, res: Response) => {
+  app.get("/api/printable-pdfs/order/status/:orderId", async (req: Request, res: Response) => {
     try {
-      const orders = getPdfOrders();
-      const order = orders.find((o) => o.id === req.params.orderId || o.paymentReference === req.params.orderId);
+      const paramId = String(req.params.orderId);
+      const order = await findPdfOrderWithFirestoreFallback({ orderId: paramId, reference: paramId });
       if (!order) {
         return res.status(404).json({ success: false, error: "Order not found." });
       }
@@ -368,13 +424,12 @@ export function registerPrintablePdfRoutes(
   // 6. GET /api/printable-pdfs/download/:token - Secure PDF delivery endpoint
   app.get("/api/printable-pdfs/download/:token", async (req: Request, res: Response) => {
     try {
-      const token = req.params.token;
+      const token = String(req.params.token || "");
       if (!token) {
         return res.status(400).send("Download token is required.");
       }
 
-      const orders = getPdfOrders();
-      const order = orders.find((o) => o.downloadToken === token);
+      const order = await findPdfOrderWithFirestoreFallback({ downloadToken: token });
 
       if (!order) {
         return res.status(404).send("Invalid or expired download link.");

@@ -210,7 +210,7 @@ export default function AdminWorkoutChallengeEngine() {
   useEffect(() => {
     const unsub = subscribeScheduleOverrides((updated) => {
       if (updated && typeof updated === "object" && Object.keys(updated).length > 0) {
-        setServerOverrides(prev => ({ ...prev, ...updated }));
+        setServerOverrides(updated);
       }
     });
     return () => unsub();
@@ -318,7 +318,7 @@ export default function AdminWorkoutChallengeEngine() {
           }
         });
         if (Object.keys(firestoreOverrides).length > 0) {
-          setServerOverrides(prev => ({ ...prev, ...firestoreOverrides }));
+          setServerOverrides(firestoreOverrides);
           setScheduleOverridesFromRemote(firestoreOverrides);
           loaded = true;
           console.log(`[Firestore Recovery OK] Recovered ${Object.keys(firestoreOverrides).length} programs from Firestore program_schedules collection.`);
@@ -714,9 +714,11 @@ export default function AdminWorkoutChallengeEngine() {
     const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
 
     // Direct dual-persistence to Firestore per-program document (<100KB, guaranteed safe under 1MB limit)
+    let fsWriteSuccess = false;
     try {
+      const latestOverrides = getScheduleOverrides();
       const fullProgSchedule: Record<string, any> = {
-        ...(serverOverrides[selectedProgramId] || {})
+        ...(latestOverrides[selectedProgramId] || serverOverrides[selectedProgramId] || {})
       };
 
       if (isCycleSplitting) {
@@ -730,17 +732,7 @@ export default function AdminWorkoutChallengeEngine() {
         fullProgSchedule[dayKey] = { ...updatedDayData, dayNumber: effectiveDayNumber, isOneOff: true };
       }
 
-      console.log(`[Firestore Admin Persist] Attempting write to program_schedules/${selectedProgramId}`, {
-        programId: selectedProgramId,
-        dayKey,
-        cycleKey,
-        isCycleSplitting,
-        exerciseCount: sanitizedExercises.length,
-        tier: targetTier,
-        adminEmail
-      });
-
-      const fsWriteSuccess = await safeFirestoreSetDoc(
+      fsWriteSuccess = await safeFirestoreSetDoc(
         doc(db, "program_schedules", selectedProgramId),
         {
           programId: selectedProgramId,
@@ -752,15 +744,9 @@ export default function AdminWorkoutChallengeEngine() {
         true // bypassQuota for authorized Admin operations
       );
 
-      if (fsWriteSuccess) {
-        console.log(`[Firestore Admin Persist SUCCESS] Successfully persisted to program_schedules/${selectedProgramId}`);
-      } else {
-        console.warn(`[Firestore Admin Persist WARNING] safeFirestoreSetDoc did not confirm for ${selectedProgramId}, relying on API fallback`);
-      }
-
       if (targetProgKey !== selectedProgramId) {
         const fullTargetSchedule: Record<string, any> = {
-          ...(serverOverrides[targetProgKey] || {})
+          ...(latestOverrides[targetProgKey] || serverOverrides[targetProgKey] || {})
         };
         if (isCycleSplitting) {
           fullTargetSchedule[cycleKey] = { ...updatedDayData, cycleDay: computedCycleDay };
@@ -783,7 +769,6 @@ export default function AdminWorkoutChallengeEngine() {
           { merge: false },
           true
         );
-        console.log(`[Firestore Admin Persist SUCCESS] Successfully persisted alias program_schedules/${targetProgKey}`);
       }
     } catch (fsErr) {
       console.error(`[Firestore Admin Persist ERROR] Failed writing to Firestore:`, fsErr);
@@ -810,8 +795,7 @@ export default function AdminWorkoutChallengeEngine() {
       });
 
       const resData = await res.json().catch(() => ({}));
-      if (res.ok && resData?.success !== false && resData?.cloudSaved !== false && resData?.firestoreOk !== false) {
-        console.log(`[Server Admin API SUCCESS] Successfully persisted schedule for ${selectedProgramId} Day ${effectiveDayNumber}`);
+      if (res.ok && resData?.success !== false && (resData?.cloudSaved !== false || fsWriteSuccess)) {
         setServerOverrides(prev => {
           const next = { ...prev };
           keysToUpdate.forEach(pid => {
@@ -841,16 +825,20 @@ export default function AdminWorkoutChallengeEngine() {
         setTimeout(() => setSaveSuccessMsg(null), 3000);
         return true;
       } else {
-        const errText = resData?.error || await res.text().catch(() => "Request failed");
-        console.warn(`[Server Admin API Notice] Returned status ${res.status}: ${errText}`);
         setSaveSuccessMsg(null);
-        setSaveErrorMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
+        setSaveErrorMsg(resData?.error || "Could not confirm permanent Cloud Firestore save. Please try again.");
         return false;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Server Admin API Error] Failed saving reordered exercises:", err);
+      if (fsWriteSuccess) {
+        setSaveErrorMsg(null);
+        setSaveSuccessMsg(`Routine for ${targetTier.toUpperCase()} saved to Cloud Firestore.`);
+        setTimeout(() => setSaveSuccessMsg(null), 3000);
+        return true;
+      }
       setSaveSuccessMsg(null);
-      setSaveErrorMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
+      setSaveErrorMsg(err?.message || "Could not confirm permanent Cloud Firestore save. Please check network/permissions.");
       return false;
     }
   };
@@ -934,7 +922,7 @@ export default function AdminWorkoutChallengeEngine() {
   };
 
   // Add Exercise Handler with Category/Tier routing (Beginner, Intermediate, Advanced)
-  const handleAddExercise = (newEx: ChallengeExerciseItem, targetTier?: "Beginner" | "Intermediate" | "Advanced") => {
+  const handleAddExercise = async (newEx: ChallengeExerciseItem, targetTier?: "Beginner" | "Intermediate" | "Advanced") => {
     const activeTierTarget = (targetTier 
       ? (targetTier.toLowerCase() as "beginner" | "intermediate" | "advanced")
       : selectedDifficultyLevel);
@@ -967,7 +955,7 @@ export default function AdminWorkoutChallengeEngine() {
     })();
 
     if (currentTierExercises.some(e => (e.exerciseName || (e as any).name || "").toLowerCase().trim() === name.toLowerCase())) {
-      alert(`Workout already exists!\n\n"${name}" is already included in this ${activeTierTarget.toUpperCase()} routine.`);
+      setSaveErrorMsg(`"${name}" is already included in this ${activeTierTarget.toUpperCase()} routine.`);
       return;
     }
 
@@ -989,46 +977,47 @@ export default function AdminWorkoutChallengeEngine() {
     };
 
     const updated = [...currentTierExercises, finalEx];
-    handleReorderExercises(updated, activeTierTarget);
+    const ok = await handleReorderExercises(updated, activeTierTarget);
 
-    // Persist custom media/GIF globally so it remains permanent across all views & exercises
-    if (assignedGif) {
+    if (ok && assignedGif) {
       try {
-        const rawName = name;
-        const match = libraryExercises.find(e => (e.name || "").toLowerCase().trim() === rawName.toLowerCase().trim() || e.id === (newEx.exerciseId || newEx.id));
+        const match = libraryExercises.find(e => (e.name || "").toLowerCase().trim() === name.toLowerCase().trim() || e.id === (newEx.exerciseId || newEx.id));
         const targetId = match?.id || finalEx.exerciseId || finalEx.id;
         uploadExerciseMedia(targetId, assignedGif, "image");
-      } catch (e) {}
+      } catch {}
     }
 
-    setSaveSuccessMsg(`Added "${name}" to the ${activeTierTarget.toUpperCase()} routine!`);
-    setTimeout(() => setSaveSuccessMsg(null), 3000);
+    if (ok) {
+      setSaveSuccessMsg(`Added "${name}" to the ${activeTierTarget.toUpperCase()} routine!`);
+      setTimeout(() => setSaveSuccessMsg(null), 3000);
+    }
   };
 
   // Save edited exercise drill parameters
-  const handleSaveEditedExercise = (updatedEx: ChallengeExerciseItem) => {
+  const handleSaveEditedExercise = async (updatedEx: ChallengeExerciseItem) => {
     const updated = activeExercises.map(ex => ex.id === updatedEx.id ? updatedEx : ex);
-    handleReorderExercises(updated, selectedDifficultyLevel);
+    const ok = await handleReorderExercises(updated, selectedDifficultyLevel);
 
-    // Also persist custom media/GIF globally so it remains permanent across all views & exercises
     const rawName = updatedEx.exerciseName || (updatedEx as any).name || "";
     const match = libraryExercises.find(e => (e.name || "").toLowerCase().trim() === rawName.toLowerCase().trim() || e.id === updatedEx.id);
     const targetId = match?.id || updatedEx.id;
 
     if (updatedEx.gifUrl && updatedEx.gifUrl !== "none") {
       try {
-        uploadExerciseMedia(targetId, updatedEx.gifUrl, "image");
-      } catch (e) {}
+        await uploadExerciseMedia(targetId, updatedEx.gifUrl, "image");
+      } catch {}
     } else {
       try {
-        uploadExerciseMedia(targetId, "none", "image");
-        if (rawName) uploadExerciseMedia(rawName, "none", "image");
-      } catch (e) {}
+        await uploadExerciseMedia(targetId, "none", "image");
+        if (rawName) await uploadExerciseMedia(rawName, "none", "image");
+      } catch {}
     }
 
-    setSaveSuccessMsg(`Updated parameters for "${updatedEx.exerciseName}" in ${selectedDifficultyLevel.toUpperCase()} routine!`);
-    setTimeout(() => setSaveSuccessMsg(null), 3000);
-    setEditingExercise(null);
+    if (ok) {
+      setSaveSuccessMsg(`Updated parameters for "${updatedEx.exerciseName}" in ${selectedDifficultyLevel.toUpperCase()} routine!`);
+      setTimeout(() => setSaveSuccessMsg(null), 3000);
+      setEditingExercise(null);
+    }
   };
 
   // Replace Exercise with Chosen Exercise
@@ -1085,17 +1074,16 @@ export default function AdminWorkoutChallengeEngine() {
       setTargetToReplace(null);
     } catch (err: any) {
       console.error("Replacement error:", err);
-      alert("Failed replacing workout: " + (err?.message || "Unknown error"));
+      setSaveErrorMsg("Failed replacing workout: " + (err?.message || "Unknown error"));
     } finally {
       setIsReplacing(false);
     }
   };
 
-  // Delete Only (Permanently remove workout from this routine)
+  // Row-Only Drill Removal: removes strictly from THIS program/day/tier routine without touching other tiers/programs or global library
   const handleDeleteOnly = async (targetParam?: any) => {
     const target = targetParam || targetToDelete;
     if (!target) return;
-    // Dismiss modal immediately so user sees deletion take effect without hanging
     setTargetToDelete(null);
     setIsDeleting(true);
 
@@ -1104,18 +1092,6 @@ export default function AdminWorkoutChallengeEngine() {
       const targetExId = target.exerciseId;
       const targetName = (target.exerciseName || target.name || "").toLowerCase().trim();
       const targetNameClean = targetName.replace(/[^a-z0-9]/g, "");
-      const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
-
-      console.log(`[Firestore Admin Transaction] Beginning permanent deletion of drill "${target.exerciseName || target.name}"`, {
-        targetId,
-        targetExId,
-        targetName,
-        programId: selectedProgramId,
-        dayNumber: effectiveDayNumber,
-        cycleDay: ((effectiveDayNumber - 1) % 7) + 1,
-        tier: selectedDifficultyLevel,
-        adminEmail
-      });
 
       const filterOutTarget = (list: ChallengeExerciseItem[]) => {
         if (!Array.isArray(list)) return [];
@@ -1132,96 +1108,109 @@ export default function AdminWorkoutChallengeEngine() {
 
       const updated = filterOutTarget(activeExercises);
 
-      // Clean across all tiers so deleted drill never re-emerges from tier fallback
+      // Update ONLY the currently active tier so other tiers stay completely untouched
       const existingLevels = currentDayOverride?.levels || {};
       const nextLevels: Record<string, ChallengeExerciseItem[]> = {
-        beginner: filterOutTarget(Array.isArray(existingLevels.beginner) ? existingLevels.beginner : (Array.isArray(currentDayOverride?.beginnerExercises) ? currentDayOverride.beginnerExercises : activeExercises)),
-        intermediate: filterOutTarget(Array.isArray(existingLevels.intermediate) ? existingLevels.intermediate : (Array.isArray(currentDayOverride?.intermediateExercises) ? currentDayOverride.intermediateExercises : activeExercises)),
-        advanced: filterOutTarget(Array.isArray(existingLevels.advanced) ? existingLevels.advanced : (Array.isArray(currentDayOverride?.advancedExercises) ? currentDayOverride.advancedExercises : [])),
+        ...existingLevels,
+        [selectedDifficultyLevel]: updated
       };
-      nextLevels[selectedDifficultyLevel] = updated;
 
-      // 1. Persist updated routine with drill removed (dual-write to Firestore + Server API)
-      const cloudOk = await handleReorderExercises(updated, selectedDifficultyLevel, nextLevels);
-
-      // 2. Permanently record deletion in localStorage fit_deleted_exercises
-      if (typeof window !== "undefined" && window.localStorage) {
-        try {
-          const delRaw = window.localStorage.getItem("fit_deleted_exercises");
-          let delList: string[] = delRaw ? JSON.parse(delRaw) : [];
-          if (!Array.isArray(delList)) delList = [];
-          if (targetId && !delList.includes(targetId)) delList.push(targetId);
-          if (targetExId && !delList.includes(targetExId)) delList.push(targetExId);
-          if (targetName && !delList.includes(targetName)) delList.push(targetName);
-          window.localStorage.setItem("fit_deleted_exercises", JSON.stringify(delList));
-        } catch {}
-      }
-
-      // 3. Write directly to Firestore deleted_exercises collection
-      const delDocId = (targetId || targetNameClean || `del_${Date.now()}`).replace(/[\/\s]/g, "_");
-      try {
-        await safeFirestoreSetDoc(
-          doc(db, "deleted_exercises", delDocId),
-          {
-            id: targetId || delDocId,
-            exerciseId: targetExId || null,
-            name: target.exerciseName || target.name,
-            programId: selectedProgramId,
-            dayNumber: effectiveDayNumber,
-            cycleDay: ((effectiveDayNumber - 1) % 7) + 1,
-            deletedAt: new Date().toISOString(),
-            deletedBy: adminEmail
-          },
-          { merge: true },
-          true // bypassQuota for authorized Admin operations
-        );
-        console.log(`[Firestore Admin Transaction SUCCESS] Recorded drill deletion in deleted_exercises/${delDocId}`);
-      } catch (delFsErr) {
-        console.error(`[Firestore Admin Transaction ERROR] Could not log deleted drill to deleted_exercises:`, delFsErr);
-      }
-
-      // 4. Notify backend API of drill deletion
+      // 1. Call atomic remove-drill endpoint for this program/day/tier
+      let apiRemoved = false;
       try {
         const token = await getFirebaseIdToken();
-        const delHeaders: Record<string, string> = {
-          "Content-Type": "application/json"
-        };
-        if (token) delHeaders["Authorization"] = `Bearer ${token}`;
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
 
-        const delRes = await fetch("/api/exercises/delete", {
+        const remRes = await fetch("/api/admin/programs/remove-drill", {
           method: "POST",
-          headers: delHeaders,
+          headers,
           body: JSON.stringify({
-            exerciseId: targetId,
-            exerciseName: target.exerciseName || target.name,
             programId: selectedProgramId,
-            dayNumber: effectiveDayNumber
+            track: (selectedProgramId === "home_180" || selectedProgramId.includes("home")) ? adminTrack : undefined,
+            dayNumber: effectiveDayNumber,
+            cycleDay: ((effectiveDayNumber - 1) % 7) + 1,
+            applyToAllCycleWeeks: viewMode === "cycle" || applyToAllCycleWeeks,
+            totalDays: currentProgramMeta.totalDays,
+            tier: selectedDifficultyLevel,
+            exerciseId: targetId,
+            exerciseName: target.exerciseName || target.name
           })
         });
-        const delData = await delRes.json();
-        console.log(`[Server Admin API Delete OK]`, delData);
-      } catch (apiErr) {
-        console.warn(`[Server Admin API Delete Notice]:`, apiErr);
+        const remData = await remRes.json().catch(() => ({}));
+        if (remRes.ok && remData?.success && remData?.cloudSaved !== false) {
+          apiRemoved = true;
+        }
+      } catch (remErr) {
+        console.warn("[Admin remove-drill] Falling back to direct schedule save:", remErr);
       }
 
-      // 5. Permanently delete drill and custom GIF from global AppContext & databases
-      if (deleteWorkout) {
-        await deleteWorkout(targetId, target.exerciseName || target.name);
-      }
-      if (uploadExerciseMedia) {
-        try {
-          await uploadExerciseMedia(targetId, "none", "image");
-          if (targetName) await uploadExerciseMedia(targetName, "none", "image");
-        } catch {}
-      }
+      // 2. Persist full day state cleanly to Firestore + overrides store
+      const cloudOk = await handleReorderExercises(updated, selectedDifficultyLevel, nextLevels);
 
-      if (cloudOk) {
-        setSaveSuccessMsg(`Permanently removed "${target.exerciseName || target.name}" and purged its media.`);
+      if (cloudOk || apiRemoved) {
+        setSaveErrorMsg(null);
+        setSaveSuccessMsg(`Removed "${target.exerciseName || target.name}" from ${selectedDifficultyLevel.toUpperCase()} routine.`);
         setTimeout(() => setSaveSuccessMsg(null), 3000);
+      } else {
+        setSaveErrorMsg("Could not confirm routine update in Cloud Firestore.");
       }
     } catch (err: any) {
-      console.error("[Firestore Admin Transaction ERROR] Delete only error:", err);
-      alert("Failed to delete workout: " + (err?.message || "Unknown error"));
+      console.error("[Firestore Admin Transaction ERROR] Routine drill removal error:", err);
+      setSaveErrorMsg("Failed to remove workout: " + (err?.message || "Unknown error"));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Explicit Global Soft-Delete + Archive everywhere across platform
+  const handleGlobalArchiveDelete = async (targetParam?: any) => {
+    const target = targetParam || targetToDelete;
+    if (!target) return;
+    setTargetToDelete(null);
+    setIsDeleting(true);
+
+    try {
+      const targetId = target.id;
+      const targetExId = target.exerciseId;
+      const targetName = (target.exerciseName || target.name || "").toLowerCase().trim();
+      const targetNameClean = targetName.replace(/[^a-z0-9]/g, "");
+
+      const filterOutTarget = (list: ChallengeExerciseItem[]) => {
+        if (!Array.isArray(list)) return [];
+        return list.filter((ex: ChallengeExerciseItem) => {
+          if (!ex) return false;
+          if (targetId && (ex.id === targetId || (ex as any).exerciseId === targetId)) return false;
+          if (targetExId && (ex.id === targetExId || (ex as any).exerciseId === targetExId)) return false;
+          const n = (ex.exerciseName || (ex as any).name || "").toLowerCase().trim();
+          if (targetName && n === targetName) return false;
+          if (targetNameClean && n.replace(/[^a-z0-9]/g, "") === targetNameClean) return false;
+          return true;
+        });
+      };
+
+      const updated = filterOutTarget(activeExercises);
+      const existingLevels = currentDayOverride?.levels || {};
+      const nextLevels: Record<string, ChallengeExerciseItem[]> = {
+        ...existingLevels,
+        [selectedDifficultyLevel]: updated
+      };
+
+      const cloudOk = await handleReorderExercises(updated, selectedDifficultyLevel, nextLevels);
+      let globalDeleted = false;
+      if (deleteWorkout) {
+        globalDeleted = await deleteWorkout(targetExId || targetId, target.exerciseName || target.name);
+      }
+
+      if (cloudOk || globalDeleted) {
+        setSaveErrorMsg(null);
+        setSaveSuccessMsg(`Archived and removed "${target.exerciseName || target.name}" across the platform.`);
+        setTimeout(() => setSaveSuccessMsg(null), 3500);
+      } else {
+        setSaveErrorMsg("Could not confirm global archive in Cloud Firestore.");
+      }
+    } catch (err: any) {
+      setSaveErrorMsg("Failed to archive workout: " + (err?.message || "Unknown error"));
     } finally {
       setIsDeleting(false);
     }
@@ -1322,7 +1311,7 @@ export default function AdminWorkoutChallengeEngine() {
       }
     } catch (err: any) {
       console.error("Auto-replace error:", err);
-      alert("Failed to auto-replace: " + (err?.message || "Unknown error"));
+      setSaveErrorMsg("Failed to auto-replace: " + (err?.message || "Unknown error"));
     } finally {
       setIsDeleting(false);
     }
@@ -1482,7 +1471,7 @@ export default function AdminWorkoutChallengeEngine() {
       }
     } catch (err: any) {
       console.error("Save day configuration error:", err);
-      alert("Error saving: " + (err?.message || "Unknown error"));
+      setSaveErrorMsg("Error saving: " + (err?.message || "Unknown error"));
     } finally {
       setIsSaving(false);
     }
@@ -2752,6 +2741,7 @@ export default function AdminWorkoutChallengeEngine() {
         isLoading={isDeleting}
         onConfirm={() => handleDeleteOnly(targetToDelete)}
         onDeleteOnly={() => handleDeleteOnly(targetToDelete)}
+        onGlobalDelete={() => handleGlobalArchiveDelete(targetToDelete)}
         onAutoReplace={() => handleAutoReplace(targetToDelete)}
         onChooseReplacement={() => {
           const item = targetToDelete;

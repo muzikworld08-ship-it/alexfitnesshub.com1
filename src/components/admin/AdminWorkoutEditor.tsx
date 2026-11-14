@@ -74,7 +74,7 @@ const PROGRAM_OPTIONS = [
 ];
 
 export default function AdminWorkoutEditor() {
-  const { exercises, editExercise, addWorkout, deleteWorkout, uploadExerciseMedia, getAdminHeaders } = useApp();
+  const { exercises, editExercise, addWorkout, deleteWorkout, restoreDeletedExercise, uploadExerciseMedia, getAdminHeaders } = useApp();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -144,6 +144,50 @@ export default function AdminWorkoutEditor() {
     }
   };
 
+  // Archived / Deleted Exercises Recovery State
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [archivedExercises, setArchivedExercises] = useState<any[]>([]);
+  const [isLoadingArchived, setIsLoadingArchived] = useState(false);
+  const [restoringDocId, setRestoringDocId] = useState<string | null>(null);
+
+  const loadArchivedExercises = async () => {
+    setIsLoadingArchived(true);
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch("/api/exercises/archived", { headers, cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.success && Array.isArray(data.archived)) {
+        setArchivedExercises(data.archived);
+      } else {
+        setCloudErrorMsg(data?.error || "Could not load archived exercises.");
+      }
+    } catch (err: any) {
+      setCloudErrorMsg(err?.message || "Failed loading archived exercises.");
+    } finally {
+      setIsLoadingArchived(false);
+    }
+  };
+
+  const handleRestoreArchivedExercise = async (item: any) => {
+    const docId = item?.docId || item?.id;
+    if (!docId) return;
+    setRestoringDocId(docId);
+    try {
+      const res = await restoreDeletedExercise(docId, item?.name);
+      if (res.success) {
+        setArchivedExercises(prev => prev.filter(a => (a.docId || a.id) !== docId));
+        setAudienceNotice(`Restored "${item?.name || docId}" back to the active exercise catalog.`);
+        setTimeout(() => setAudienceNotice(null), 4500);
+      } else {
+        setCloudErrorMsg(res.error || "Failed to restore archived exercise.");
+      }
+    } catch (err: any) {
+      setCloudErrorMsg(err?.message || "Error restoring exercise.");
+    } finally {
+      setRestoringDocId(null);
+    }
+  };
+
   // Custom Delete Modal Confirmation State
   const [deleteModalTarget, setDeleteModalTarget] = useState<DeleteWorkoutTarget | null>(null);
   const [isDeletingWorkout, setIsDeletingWorkout] = useState(false);
@@ -157,10 +201,16 @@ export default function AdminWorkoutEditor() {
     setDeleteModalTarget(null);
     setIsDeletingWorkout(true);
     try {
-      await deleteWorkout(targetId, targetName);
+      const ok = await deleteWorkout(targetId, targetName);
+      if (!ok) {
+        setCloudErrorMsg(`Warning: "${targetName}" removal could not be confirmed in Cloud Firestore.`);
+      } else {
+        setAudienceNotice(`Archived "${targetName}" and removed from active workout library. Use "Archived / Deleted" to restore anytime.`);
+        setTimeout(() => setAudienceNotice(null), 4500);
+      }
     } catch (e: any) {
       console.error("Failed deleting workout:", e);
-      alert("Error deleting workout: " + (e?.message || "Internal server error"));
+      setCloudErrorMsg("Error deleting workout: " + (e?.message || "Internal server error"));
     } finally {
       setIsDeletingWorkout(false);
     }
@@ -224,10 +274,11 @@ export default function AdminWorkoutEditor() {
         setCloudErrorMsg("Saved on this server only. NOT permanent. Check Firestore quota/logs.");
       } else {
         setCloudErrorMsg(null);
-        alert(`Success! All program workouts have been reset and auto-cleaned.\n\n• ${cleanRes.stats.totalProgramsCleaned} programs sanitized\n• ${cleanRes.stats.totalDaysReset} program days verified\n• ${cleanRes.stats.totalMismatchesRemoved} mismatched exercises purged (e.g. cross-contaminations removed)\n• All daily routines capped at maximum 10 workouts daily.`);
+        setAudienceNotice(`Cleaned ${cleanRes.stats.totalProgramsCleaned} programs (${cleanRes.stats.totalMismatchesRemoved} mismatched drills removed, 10 drills/day cap enforced).`);
+        setTimeout(() => setAudienceNotice(null), 5000);
       }
     } catch (err: any) {
-      alert("Error resetting programs: " + (err?.message || "Unknown error"));
+      setCloudErrorMsg("Error resetting programs: " + (err?.message || "Unknown error"));
     } finally {
       setIsResettingPrograms(false);
     }
@@ -363,7 +414,7 @@ export default function AdminWorkoutEditor() {
   const handleSaveEdit = async () => {
     if (!editingExercise) return;
     if (!editForm.name?.trim()) {
-      alert("Workout name cannot be empty.");
+      setCloudErrorMsg("Workout name cannot be empty.");
       return;
     }
 
@@ -382,15 +433,20 @@ export default function AdminWorkoutEditor() {
       updatedForm.muscleGroups = muscles;
       updatedForm.categories = Array.from(new Set([cat, ...(updatedForm.categories || [])]));
 
-      await editExercise(editingExercise.id, updatedForm);
+      const ok = await editExercise(editingExercise.id, updatedForm);
+      if (!ok) {
+        setCloudErrorMsg("Could not confirm changes in Cloud Firestore. Please check your connection/permissions.");
+        return;
+      }
+      setCloudErrorMsg(null);
       setEditSuccessMsg("Workout updated successfully!");
       setTimeout(() => {
         setEditingExercise(null);
         setEditSuccessMsg("");
-      }, 1000);
-    } catch (err) {
+      }, 900);
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to save changes. Please try again.");
+      setCloudErrorMsg(err?.message || "Failed to save changes. Please try again.");
     } finally {
       setIsSavingEdit(false);
     }
@@ -407,15 +463,20 @@ export default function AdminWorkoutEditor() {
   const handleSaveQuickEdit = async (exId: string) => {
     setIsSavingQuick(true);
     try {
-      await editExercise(exId, {
+      const ok = await editExercise(exId, {
         name: quickName.trim(),
         recommendedSets: quickSets.trim(),
         recommendedReps: quickReps.trim()
       });
+      if (!ok) {
+        setCloudErrorMsg("Quick edit could not be confirmed in Cloud Firestore.");
+        return;
+      }
+      setCloudErrorMsg(null);
       setQuickEditId(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to update workout.");
+      setCloudErrorMsg(err?.message || "Failed to update workout.");
     } finally {
       setIsSavingQuick(false);
     }
@@ -425,14 +486,14 @@ export default function AdminWorkoutEditor() {
   const handleSaveNewWorkout = async () => {
     const rawName = (newWorkout.name || "").trim();
     if (!rawName) {
-      alert("Please provide a workout name.");
+      setCloudErrorMsg("Please provide a workout name.");
       return;
     }
 
     const cleanLower = rawName.toLowerCase();
     const existing = exercises.find(ex => ex.name.toLowerCase().trim() === cleanLower);
     if (existing) {
-      alert(`Workout already exists!\n\nA workout named "${existing.name}" is already present in the exercise library. Duplicate workouts are not permitted. Please choose a different name or edit the existing workout.`);
+      setCloudErrorMsg(`Workout "${existing.name}" already exists in the library. Please choose a different name or edit it.`);
       return;
     }
 
@@ -449,6 +510,7 @@ export default function AdminWorkoutEditor() {
         imageUrl: mediaUrl
       });
 
+      setCloudErrorMsg(null);
       setIsAddModalOpen(false);
       setNewWorkout({
         name: "",
@@ -463,9 +525,9 @@ export default function AdminWorkoutEditor() {
         customMediaType: "image"
       });
       setNewMediaInput("");
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to create workout.");
+      setCloudErrorMsg(err?.message || "Failed to create workout.");
     } finally {
       setIsSavingNew(false);
     }
@@ -476,7 +538,7 @@ export default function AdminWorkoutEditor() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 25 * 1024 * 1024) {
-      alert("File exceeds 25MB limit.");
+      setCloudErrorMsg("Uploaded media file exceeds 25MB limit.");
       return;
     }
 
@@ -491,9 +553,10 @@ export default function AdminWorkoutEditor() {
       } else {
         setEditForm(prev => ({ ...prev, customMediaUrl: cloudUrl, customMediaType: isVideo ? "video" : "image" }));
       }
-    } catch (err) {
+      setCloudErrorMsg(null);
+    } catch (err: any) {
       console.error("Cloud upload error:", err);
-      alert("Failed to upload image/video. You can also paste an image URL.");
+      setCloudErrorMsg(err?.message || "Failed to upload image/video. You can also paste an HTTPS media URL.");
     }
   };
 
@@ -582,6 +645,19 @@ export default function AdminWorkoutEditor() {
             >
               <RotateCcw className={`w-3.5 h-3.5 ${isResettingPrograms ? "animate-spin" : ""}`} />
               <span>{isResettingPrograms ? "Resetting All Programs..." : "Reset & Clean All Programs"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsArchiveModalOpen(true);
+                loadArchivedExercises();
+              }}
+              className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-sans font-black uppercase tracking-wider text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              title="View soft-deleted archived exercises and restore them back to the catalog"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-slate-600" />
+              <span>Archived / Deleted</span>
             </button>
           </div>
         </div>
@@ -2385,6 +2461,93 @@ export default function AdminWorkoutEditor() {
                 className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white text-xs font-black uppercase tracking-wider rounded-xl transition cursor-pointer"
               >
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Archived / Deleted Exercises Recovery Modal */}
+      {isArchiveModalOpen && (
+        <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full border border-slate-200 shadow-2xl p-6 sm:p-7 space-y-5 max-h-[85vh] flex flex-col">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <span className="text-[10px] font-mono font-black uppercase text-slate-500 tracking-wider">Soft-Delete Recovery Vault</span>
+                <h3 className="text-lg font-black text-slate-900 uppercase font-sans">
+                  Archived / Deleted Exercises
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Restore any previously archived exercise back to the active catalog and Cloud Firestore.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsArchiveModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+              {isLoadingArchived ? (
+                <div className="py-10 text-center text-xs font-bold text-slate-500 flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-red-600" />
+                  Loading archived exercises from Cloud Firestore...
+                </div>
+              ) : archivedExercises.length === 0 ? (
+                <div className="py-10 text-center text-xs text-slate-500 bg-slate-50 rounded-2xl border border-slate-200">
+                  No archived or deleted exercises found.
+                </div>
+              ) : (
+                archivedExercises.map((item) => {
+                  const docId = item.docId || item.id;
+                  const isRestoring = restoringDocId === docId;
+                  return (
+                    <div
+                      key={docId}
+                      className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-black text-slate-900 truncate">
+                          {item.name || item.archivedExercise?.name || docId}
+                        </div>
+                        <div className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
+                          ID: {item.id || docId} {item.deletedAt ? `• Archived ${new Date(item.deletedAt).toLocaleDateString()}` : ""}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={isRestoring}
+                        onClick={() => handleRestoreArchivedExercise(item)}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50 shrink-0"
+                      >
+                        {isRestoring ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                        <span>{isRestoring ? "Restoring..." : "Restore Exercise"}</span>
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={loadArchivedExercises}
+                disabled={isLoadingArchived}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingArchived ? "animate-spin" : ""}`} />
+                <span>Refresh</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsArchiveModalOpen(false)}
+                className="px-5 py-2 bg-slate-900 hover:bg-black text-white text-xs font-black uppercase tracking-wider rounded-xl transition cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>

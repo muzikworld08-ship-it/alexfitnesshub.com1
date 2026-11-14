@@ -428,13 +428,15 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
   const [contactMessage, setContactMessage] = useState("");
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
 
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!contactEmail || !contactName) {
-      alert("Please provide valid name and email targets.");
+      setContactError("Please provide valid name and email targets.");
       return;
     }
+    setContactError(null);
     setIsSubmittingContact(true);
     setTimeout(() => {
       setIsSubmittingContact(false);
@@ -2761,6 +2763,12 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                     placeholder="Describe your current lifting stats, weekly training splits, and any dietary requirements..."
                   />
                 </div>
+
+                {contactError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700">
+                    {contactError}
+                  </div>
+                )}
 
                 {/* Submit button */}
                 <button

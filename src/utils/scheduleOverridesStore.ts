@@ -76,13 +76,18 @@ export async function refreshScheduleOverridesFromServer(): Promise<Record<strin
           if (delRes.ok) {
             const delData = await delRes.json();
             if (delData?.deletedExercises && Array.isArray(delData.deletedExercises)) {
-              const existingRaw = window.localStorage.getItem("fit_deleted_exercises");
-              let existing: string[] = [];
-              if (existingRaw) {
-                try { existing = JSON.parse(existingRaw); } catch {}
+              if (delData.authoritative) {
+                const fresh = Array.from(new Set(delData.deletedExercises.filter((x: any) => typeof x === "string")));
+                window.localStorage.setItem("fit_deleted_exercises", JSON.stringify(fresh));
+              } else {
+                const existingRaw = window.localStorage.getItem("fit_deleted_exercises");
+                let existing: string[] = [];
+                if (existingRaw) {
+                  try { existing = JSON.parse(existingRaw); } catch {}
+                }
+                const merged = Array.from(new Set([...existing, ...delData.deletedExercises]));
+                window.localStorage.setItem("fit_deleted_exercises", JSON.stringify(merged));
               }
-              const merged = Array.from(new Set([...existing, ...delData.deletedExercises]));
-              window.localStorage.setItem("fit_deleted_exercises", JSON.stringify(merged));
             }
           }
         } catch {}
@@ -229,11 +234,11 @@ export function setScheduleOverridesFromRemote(
 export function setScheduleOverridesFromAdmin(data: Record<string, any>): void {
   if (!data || typeof data !== "object") return;
   const now = new Date().toISOString();
-  // Deep merge per program key when admin saves one program so other programs stay intact
+  // Replace per program key cleanly so deleted numeric day keys never resurrect
   const current = memoryOverrides || {};
   const merged: Record<string, any> = { ...current };
   for (const [k, v] of Object.entries(data)) {
-    merged[k] = { ...(current[k] || {}), ...(v as any) };
+    merged[k] = v;
   }
 
   memoryOverrides = merged;
@@ -494,4 +499,98 @@ export function addExerciseToProgramSchedule(
 
   setScheduleOverridesFromAdmin(next);
   return next;
+}
+
+/**
+ * Removes a single drill strictly from one program/day/tier routine without
+ * adding it to deleted_exercises or modifying other programs or untouched tiers.
+ */
+export function removeDrillFromProgramSchedule(opts: {
+  programId: string;
+  dayNumber: number;
+  tier: "beginner" | "intermediate" | "advanced";
+  exerciseId?: string;
+  exerciseName?: string;
+  isCycleMode?: boolean;
+  totalDays?: number;
+}): { updatedOverrides: Record<string, any>; removedCount: number } {
+  const current = getScheduleOverrides();
+  const next: Record<string, any> = JSON.parse(JSON.stringify(current));
+  const progData = next[opts.programId] ? { ...next[opts.programId] } : {};
+
+  const safeDay = Math.max(1, Number(opts.dayNumber) || 1);
+  const cycleDay = ((safeDay - 1) % 7) + 1;
+  const dayKey = String(safeDay);
+  const cycleKey = `cycle_${cycleDay}`;
+  const isCycle = opts.isCycleMode !== false;
+  const targetSlotKey = isCycle ? cycleKey : dayKey;
+
+  const existingDay = progData[targetSlotKey] || progData[cycleKey] || progData[dayKey];
+  if (!existingDay || typeof existingDay !== "object") {
+    return { updatedOverrides: next, removedCount: 0 };
+  }
+
+  const targetId = String(opts.exerciseId || "").toLowerCase().trim();
+  const targetName = String(opts.exerciseName || "").toLowerCase().trim();
+  const targetNameClean = targetName.replace(/[^a-z0-9]/g, "");
+
+  let removedCount = 0;
+  const filterList = (list: any[]) => {
+    if (!Array.isArray(list)) return [];
+    return list.filter((item: any) => {
+      if (!item) return false;
+      const itemId = String(item.id || item.exerciseId || "").toLowerCase().trim();
+      const itemName = String(item.exerciseName || item.name || "").toLowerCase().trim();
+      const itemClean = itemName.replace(/[^a-z0-9]/g, "");
+      if (targetId && (itemId === targetId || String(item.exerciseId || "").toLowerCase().trim() === targetId)) {
+        removedCount++;
+        return false;
+      }
+      if (targetName && itemName === targetName) {
+        removedCount++;
+        return false;
+      }
+      if (targetNameClean && itemClean === targetNameClean) {
+        removedCount++;
+        return false;
+      }
+      return true;
+    });
+  };
+
+  const dayCopy = JSON.parse(JSON.stringify(existingDay));
+  dayCopy.levels = dayCopy.levels && typeof dayCopy.levels === "object" ? { ...dayCopy.levels } : {};
+  const tierKey = `${opts.tier}Exercises` as "beginnerExercises" | "intermediateExercises" | "advancedExercises";
+
+  const currentTierList = Array.isArray(dayCopy.levels[opts.tier])
+    ? dayCopy.levels[opts.tier]
+    : (Array.isArray(dayCopy[tierKey])
+      ? dayCopy[tierKey]
+      : (opts.tier === "beginner" && Array.isArray(dayCopy.exercises) ? dayCopy.exercises : []));
+
+  const filteredTierList = filterList(currentTierList);
+  dayCopy.levels[opts.tier] = filteredTierList;
+  dayCopy[tierKey] = filteredTierList;
+  if (opts.tier === "beginner") {
+    dayCopy.exercises = filteredTierList;
+  }
+
+  if (isCycle) {
+    dayCopy.cycleDay = cycleDay;
+    progData[cycleKey] = dayCopy;
+    const maxDays = opts.totalDays || 180;
+    for (let d = cycleDay; d <= maxDays; d += 7) {
+      if (progData[String(d)]?.isOneOff !== true) {
+        delete progData[String(d)];
+      }
+    }
+  } else {
+    dayCopy.dayNumber = safeDay;
+    dayCopy.isOneOff = true;
+    progData[dayKey] = dayCopy;
+  }
+
+  next[opts.programId] = progData;
+  setScheduleOverridesFromAdmin(next);
+  return { updatedOverrides: next, removedCount };
 }

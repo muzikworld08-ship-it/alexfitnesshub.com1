@@ -267,6 +267,7 @@ interface AppContextType {
   editExercise: (exerciseId: string, updates: Partial<Exercise>) => Promise<boolean>;
   addWorkout: (workout: Partial<Exercise>) => Promise<Exercise>;
   deleteWorkout: (exerciseId: string, optionalName?: string) => Promise<boolean>;
+  restoreDeletedExercise: (exerciseIdOrDocId: string, optionalName?: string) => Promise<{ success: boolean; exercise?: Exercise; error?: string }>;
 
   // Challenges Management
   customChallenges: PremiumChallenge[];
@@ -3919,8 +3920,14 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
   const uploadExerciseMedia = async (exerciseId: string, mediaUrl: string | null, mediaType?: "image" | "video") => {
     let finalMediaUrl = mediaUrl;
+    let serverMediaOk = false;
+    let firestoreMediaOk = false;
 
-    // 1. Persist to local server-side JSON file (and translate physical Base64 payload into static files)
+    if (finalMediaUrl && finalMediaUrl.startsWith("data:") && finalMediaUrl.length > 500000) {
+      throw new Error("Large inline data URLs cannot be saved directly. Upload the GIF/video file to cloud storage first.");
+    }
+
+    // 1. Persist to server and Firebase Storage/Firestore via authenticated endpoint
     try {
       const headers = await getAdminHeaders();
 
@@ -3941,16 +3948,16 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         const textErr = await res.text();
         data = { success: false, error: textErr || `Server returned status ${res.status}` };
       }
-      if (!data.success) {
-        console.warn("Local server save notice:", data.error);
+      if (!res.ok || !data.success || data.firestoreOk === false) {
+        console.warn("Server custom media save notice:", data.error);
       } else {
-        console.log(`Saved custom exercise media to local server files.`);
+        serverMediaOk = true;
         if (data.customMediaUrl) {
           finalMediaUrl = data.customMediaUrl;
         }
       }
     } catch (err) {
-      console.warn("Notice: custom media local file save:", err);
+      console.warn("Notice: custom media server save:", err);
     }
 
     // 2. Update React Local Client State and LocalStorage with the clean local path
@@ -4015,40 +4022,46 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         const matchingIds = updatedExercises.filter(ex => ex.customMediaUrl === mediaValue).map(ex => ex.id);
         const uniqueIds = Array.from(new Set([exerciseId, ...matchingIds]));
 
-        let safeFirestoreUrl = mediaValue;
-        if (safeFirestoreUrl && safeFirestoreUrl.startsWith("data:") && safeFirestoreUrl.length > 800000) {
-          safeFirestoreUrl = "none";
+        if (mediaValue && mediaValue.startsWith("data:") && mediaValue.length > 500000) {
+          throw new Error("Media payload exceeds Firestore limit. Upload via Cloud Storage.");
         }
 
+        let allWritten = true;
         for (const mId of uniqueIds) {
-          const docRef = doc(db, "exercises", mId);
-          await setDoc(docRef, {
-            id: mId,
-            customMediaUrl: safeFirestoreUrl,
-            gifUrl: safeFirestoreUrl,
-            imageUrl: safeFirestoreUrl,
+          const safeDocId = mId.replace(/[^a-zA-Z0-9_-]/g, "_");
+          const ok = await safeFirestoreSetDoc(doc(db, "exercises", safeDocId), {
+            id: safeDocId,
+            customMediaUrl: mediaValue,
+            gifUrl: mediaValue,
+            imageUrl: mediaValue,
             isMediaDeleted: isCleared,
             customMediaType: mediaType || null,
             updatedAt: new Date().toISOString()
-          }, { merge: true });
+          }, { merge: true }, true);
+          if (!ok) allWritten = false;
         }
 
-        const mediaDocRef = doc(db, "exercise_media", exerciseId);
-        await setDoc(mediaDocRef, {
-          exerciseId,
+        const safeMediaDocId = exerciseId.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const mediaDocOk = await safeFirestoreSetDoc(doc(db, "exercise_media", safeMediaDocId), {
+          exerciseId: safeMediaDocId,
           exerciseName: targetEx?.name || exerciseId,
-          customMediaUrl: safeFirestoreUrl,
-          gifUrl: safeFirestoreUrl,
-          imageUrl: safeFirestoreUrl,
+          customMediaUrl: mediaValue,
+          gifUrl: mediaValue,
+          imageUrl: mediaValue,
           isMediaDeleted: isCleared,
           customMediaType: mediaType || "image",
           updatedAt: new Date().toISOString()
-        }, { merge: true });
+        }, { merge: true }, true);
 
+        firestoreMediaOk = Boolean(allWritten && mediaDocOk);
         console.log(`Saved custom exercise media to Cloud Firestore across ${uniqueIds.length} exercise documents!`);
       } catch (err) {
         console.warn("Notice saving custom media to Cloud Firestore:", err);
       }
+    }
+
+    if (!serverMediaOk && !firestoreMediaOk) {
+      console.warn(`[Media Sync Warning] Could not confirm Firestore media persistence for ${exerciseId}.`);
     }
 
     // 4. Update GIF URL across all program schedules immediately so live program pages synchronize
@@ -5031,6 +5044,22 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       console.warn("Notice adding exercise to program schedules:", schedErr);
     }
 
+    // Clear matching ID / normalized name from local deleted tombstones before saving
+    try {
+      const storedDel = localStorage.getItem("fit_deleted_exercises");
+      if (storedDel) {
+        const parsedDel = JSON.parse(storedDel);
+        if (Array.isArray(parsedDel)) {
+          const normCreated = (sanitizedExercise.name || "").toLowerCase().trim();
+          const filteredDel = parsedDel.filter((d: string) => {
+            const c = String(d || "").toLowerCase().trim();
+            return c !== safeId.toLowerCase() && (!normCreated || c !== normCreated);
+          });
+          safeSetItem("fit_deleted_exercises", JSON.stringify(filteredDel));
+        }
+      }
+    } catch {}
+
     // Save to server with confirmation
     let serverOk = false;
     let firestoreOk = false;
@@ -5061,7 +5090,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       console.warn("Server workout creation notice:", e);
     }
 
-    // Confirm write directly in Firestore
+    // Confirm write directly in Firestore and remove any tombstone in deleted_exercises
     if (!isMockFirebase) {
       try {
         const [exOk, genOk] = await Promise.race([
@@ -5071,6 +5100,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
           ]),
           new Promise<[boolean, boolean]>((_, reject) => setTimeout(() => reject(new Error("Firestore write timeout")), 4000))
         ]);
+        await safeFirestoreDeleteDoc(doc(db, "deleted_exercises", safeId)).catch(() => {});
         firestoreOk = Boolean(exOk && genOk);
       } catch (dbErr: any) {
         persistError = persistError || dbErr?.message || "Firestore write failed";
@@ -5079,6 +5109,12 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     }
 
     if (!serverOk && !firestoreOk) {
+      // Roll back optimistic state so UI doesn't retain unpersisted exercise
+      setExercisesState(prev => {
+        const rolledBack = prev.filter(e => e.id !== safeId);
+        safeSetItem("fit_exercises", JSON.stringify(rolledBack));
+        return rolledBack;
+      });
       throw new Error(persistError || "Failed to confirm exercise creation in Cloud Firestore.");
     }
 
@@ -5164,6 +5200,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     // 6. Confirm deletion with Express API and Cloud Firestore
     let serverDeleted = false;
     let firestoreDeleted = false;
+    const archivedSnapshot = targetExercise ? cleanFirestoreData(targetExercise) : undefined;
     try {
       const headers = await Promise.race([
         getAdminHeaders(),
@@ -5174,7 +5211,11 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       const delRes = await fetch("/api/exercises/delete", {
         method: "POST",
         headers,
-        body: JSON.stringify({ exerciseId, exerciseName: targetName || optionalName })
+        body: JSON.stringify({
+          exerciseId,
+          exerciseName: targetExercise?.name || targetName || optionalName,
+          exerciseSnapshot: archivedSnapshot
+        })
       });
       const delJson = await delRes.json().catch(() => ({}));
       if (delRes.ok && delJson.success && delJson.firestoreOk !== false) {
@@ -5190,12 +5231,14 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
           docsToDelete.push(safeFirestoreDeleteDoc(doc(db, "exercises", safeDocId)));
           docsToDelete.push(safeFirestoreDeleteDoc(doc(db, "generated_exercises", safeDocId)));
           docsToDelete.push(safeFirestoreDeleteDoc(doc(db, "exercise_media", safeDocId)));
-          docsToDelete.push(safeFirestoreSetDoc(doc(db, "deleted_exercises", safeDocId), {
+          docsToDelete.push(safeFirestoreSetDoc(doc(db, "deleted_exercises", safeDocId), cleanFirestoreData({
             id: exerciseId,
             name: targetExercise?.name || targetName || exerciseId,
+            archivedExercise: archivedSnapshot,
+            isDeleted: true,
             deletedAt: new Date().toISOString(),
             deletedBy: user?.email || "admin"
-          }, { merge: true }, true));
+          }), { merge: true }, true));
         }
         if (targetName) {
           const safeNameDoc = targetName.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -5210,6 +5253,66 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     }
 
     return serverDeleted || firestoreDeleted;
+  };
+
+  const restoreDeletedExercise = async (
+    exerciseIdOrDocId: string,
+    optionalName?: string
+  ): Promise<{ success: boolean; exercise?: Exercise; error?: string }> => {
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch("/api/exercises/restore", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ docId: exerciseIdOrDocId, exerciseId: exerciseIdOrDocId, exerciseName: optionalName })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) {
+        return { success: false, error: data?.error || `Failed to restore exercise (HTTP ${res.status})` };
+      }
+
+      const restored: Exercise | undefined = data.restoredExercise;
+      const restoredId = restored?.id || exerciseIdOrDocId;
+      const restoredName = (restored?.name || optionalName || "").toLowerCase().trim();
+
+      // Remove from fit_deleted_exercises cache
+      try {
+        const rawDel = localStorage.getItem("fit_deleted_exercises");
+        if (rawDel) {
+          const arr = JSON.parse(rawDel);
+          if (Array.isArray(arr)) {
+            const cleaned = arr.filter((d: string) => {
+              const c = String(d || "").toLowerCase().trim();
+              return c !== String(restoredId).toLowerCase() &&
+                c !== String(exerciseIdOrDocId).toLowerCase() &&
+                (!restoredName || c !== restoredName);
+            });
+            safeSetItem("fit_deleted_exercises", JSON.stringify(cleaned));
+          }
+        }
+      } catch {}
+
+      // Add restored exercise back to catalog state
+      if (restored) {
+        setExercisesState(prev => {
+          const next = [restored, ...prev.filter(e => e.id !== restored.id)];
+          safeSetItem("fit_exercises", JSON.stringify(next));
+          return next;
+        });
+      }
+
+      if (!isMockFirebase) {
+        const safeDocId = String(exerciseIdOrDocId || "").replace(/[^a-zA-Z0-9_-]/g, "_");
+        if (safeDocId) {
+          await safeFirestoreDeleteDoc(doc(db, "deleted_exercises", safeDocId)).catch(() => {});
+        }
+      }
+
+      logAdminAction("RESTORE_WORKOUT", `Restored archived exercise "${restored?.name || exerciseIdOrDocId}"`, { exerciseId: restoredId });
+      return { success: true, exercise: restored };
+    } catch (err: any) {
+      return { success: false, error: err?.message || "Failed to restore exercise." };
+    }
   };
 
   // Challenges CRUD Operations
@@ -5429,6 +5532,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     editExercise,
     addWorkout,
     deleteWorkout,
+    restoreDeletedExercise,
 
     customChallenges,
     allChallenges,
@@ -5518,6 +5622,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     editExercise,
     addWorkout,
     deleteWorkout,
+    restoreDeletedExercise,
     customChallenges,
     allChallenges,
     addCustomChallenge,

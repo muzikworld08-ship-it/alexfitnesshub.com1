@@ -1,13 +1,13 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { 
   ShoppingBag, Search, Filter, Sparkles, Star, Zap, 
   RotateCcw, Eye, ShieldCheck, Truck, ArrowRight, 
   Check, Flame, ChevronRight, SlidersHorizontal, RefreshCw,
-  PackageSearch, X
+  PackageSearch, X, CheckCircle2, AlertCircle, Loader2
 } from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import { useApp, isEmailAdmin } from "../context/AppContext";
-import { Product, ProductCategory } from "../types";
+import { Product, ProductCategory, StoreOrder } from "../types";
 import { StoreHeroBanner } from "./store/StoreHeroBanner";
 import { StoreFilterBar, ViewMode, PriceRange, SortOption } from "./store/StoreFilterBar";
 import { StoreProductCard } from "./store/StoreProductCard";
@@ -29,7 +29,9 @@ export const StoreView: React.FC<StoreViewProps> = ({ setView }) => {
     addToCart,
     buyNow,
     setSelectedProductForDetail,
-    resetToDefaultProducts
+    resetToDefaultProducts,
+    clearCart,
+    setLastCompletedOrder
   } = useStore();
 
   const { user } = useApp();
@@ -49,6 +51,57 @@ export const StoreView: React.FC<StoreViewProps> = ({ setView }) => {
 
   // Admin Permanent Deletion Modal State
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+
+  // Paystack Store Order Callback Verification State
+  const [verifyingOrder, setVerifyingOrder] = useState(false);
+  const [verifiedOrder, setVerifiedOrder] = useState<StoreOrder | null>(null);
+  const [paymentVerifyError, setPaymentVerifyError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const ref = (params.get("ref") || params.get("reference") || params.get("trxref") || "").trim();
+    if (!ref) return;
+
+    let cancelled = false;
+    setVerifyingOrder(true);
+    setPaymentVerifyError(null);
+
+    fetch("/api/payments/store/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reference: ref })
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.success || !data?.order) {
+          throw new Error(data?.error || "Could not confirm store order payment.");
+        }
+        return data.order as StoreOrder;
+      })
+      .then((order) => {
+        if (cancelled) return;
+        setVerifiedOrder(order);
+        setLastCompletedOrder(order);
+        clearCart();
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        setPaymentVerifyError(err?.message || "Store payment verification failed.");
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setVerifyingOrder(false);
+          try {
+            window.history.replaceState(window.history.state, "", window.location.pathname);
+          } catch {}
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clearCart, setLastCompletedOrder]);
 
   const categories: ("All" | ProductCategory)[] = [
     "All",
@@ -173,6 +226,70 @@ export const StoreView: React.FC<StoreViewProps> = ({ setView }) => {
 
       {/* 3. MAIN CATALOG / EXPLORATION CANVAS */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+
+        {/* Paystack Order Verification Feedback Banners */}
+        {verifyingOrder && (
+          <div className="mb-6 p-4 rounded-2xl bg-slate-900 text-white flex items-center gap-3 shadow-sm">
+            <Loader2 className="w-5 h-5 text-red-500 animate-spin shrink-0" />
+            <div className="text-xs font-bold">
+              Confirming your Paystack order payment with the server...
+            </div>
+          </div>
+        )}
+
+        {paymentVerifyError && (
+          <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5 text-xs">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-black uppercase tracking-wider text-[11px]">Payment Verification Notice</p>
+                <p className="mt-0.5 font-medium">{paymentVerifyError}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPaymentVerifyError(null)}
+              className="p-1 text-red-500 hover:text-red-700 cursor-pointer"
+              aria-label="Dismiss payment error"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {verifiedOrder && (
+          <div className="mb-6 p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="space-y-1 text-xs">
+                <p className="font-black uppercase tracking-wider text-emerald-700">
+                  Payment Verified &bull; Order #{verifiedOrder.orderNumber} Confirmed
+                </p>
+                <p className="text-emerald-900 font-medium">
+                  Total paid: <strong className="font-mono">₦{Number(verifiedOrder.totalAmount || 0).toLocaleString()}</strong>. Confirmation details recorded for <strong>{verifiedOrder.customerEmail}</strong>.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <a
+                href={`https://wa.me/2349015798601?text=Hello%20Coach%20Alex,%20I%20just%20paid%20for%20order%20%23${verifiedOrder.orderNumber}%20on%20ALEXFITNESSHUB%20Store!`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider transition"
+              >
+                Track on WhatsApp
+              </a>
+              <button
+                type="button"
+                onClick={() => setVerifiedOrder(null)}
+                className="p-2 text-emerald-700 hover:bg-emerald-100 rounded-lg cursor-pointer"
+                aria-label="Dismiss confirmation"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
         
         {/* Results Metadata Bar */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200/80 mb-6">

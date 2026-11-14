@@ -76,9 +76,11 @@ export default function AdminDashboard() {
   const [congratsLoading, setCongratsLoading] = useState(false);
   const [congratsStatus, setCongratsStatus] = useState<string | null>(null);
 
+  const [mediaFeedback, setMediaFeedback] = useState<string | null>(null);
+
   const handleSendCongratsEmail = async () => {
     if (!congratsEmailTo) {
-      alert("Please enter a valid recipient email address.");
+      setCongratsStatus("Please enter a valid recipient email address.");
       return;
     }
     setCongratsLoading(true);
@@ -112,10 +114,11 @@ export default function AdminDashboard() {
     e.target.value = "";
 
     if (file.size > 20 * 1024 * 1024) {
-      alert("File size exceeds 20MB limit. Please upload a compressed GIF, image, or video.");
+      setMediaFeedback("File size exceeds 20MB limit. Please upload a compressed GIF, image, or video.");
       return;
     }
 
+    setMediaFeedback(null);
     setUploadingId(exerciseId);
     const isVideo = file.type.startsWith("video/");
 
@@ -127,9 +130,9 @@ export default function AdminDashboard() {
       
       setMediaUpdateSuccess(exerciseId);
       setTimeout(() => setMediaUpdateSuccess(null), 3500);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to upload media:", err);
-      alert("Failed to update media. Please try again.");
+      setMediaFeedback(err?.message || "Failed to update media. Please try again.");
     } finally {
       setUploadingId(null);
     }
@@ -143,15 +146,16 @@ export default function AdminDashboard() {
     const isVideo = rawUrl.toLowerCase().endsWith(".mp4") || rawUrl.toLowerCase().endsWith(".webm");
 
     try {
+      setMediaFeedback(null);
       await saveExerciseMediaToDatabase(exerciseId, rawUrl, isVideo ? "video" : "image");
       await uploadExerciseMedia(exerciseId, rawUrl, isVideo ? "video" : "image");
       AssetManifestService.recordUploadedAssetSignature(exerciseId, rawUrl, isVideo ? "video" : "image");
       setMediaUpdateSuccess(exerciseId);
       setTimeout(() => setMediaUpdateSuccess(null), 3500);
       setUrlInputs(prev => ({ ...prev, [exerciseId]: "" }));
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to set media URL:", err);
-      alert("Failed to set media URL.");
+      setMediaFeedback(err?.message || "Failed to set media URL.");
     } finally {
       setUploadingId(null);
     }
@@ -628,15 +632,28 @@ export default function AdminDashboard() {
                   Global Workout Image & GIF Demonstrator
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-2xl font-medium">
-                  Upload an animated GIF, MP4 video, or image for any workout. Files are permanently synced to Supabase Storage & Cloud Firestore and survive container resets.
+                  Upload an animated GIF, MP4 video, or image for any workout. Files are permanently synced to Firebase Storage & Cloud Firestore and survive container resets.
                 </p>
               </div>
 
               <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-2xl text-xs font-bold flex items-center gap-2 shrink-0">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Supabase & Firestore Sync Active</span>
+                <span>Cloud Firestore Sync Active</span>
               </div>
             </div>
+
+            {mediaFeedback && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700 flex items-center justify-between gap-2">
+                <span>{mediaFeedback}</span>
+                <button
+                  type="button"
+                  onClick={() => setMediaFeedback(null)}
+                  className="text-red-500 hover:text-red-800 font-bold px-2 cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
 
             {/* Exact GIF Count Progress Bar & Quick Status Pills */}
             <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">
