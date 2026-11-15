@@ -14,7 +14,7 @@ import { findMatchingExercise } from "../utils/exerciseMatching";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
 import { getExerciseGifUrl } from "../data/exercises";
 import { resolveAuthenticExercise } from "../data/authoritativeExerciseMap";
-import { getSupabaseCdnUrl } from "../utils/supabaseImage";
+import { getMediaCdnUrl } from "../utils/mediaCdn";
 import { isImageCached, markImageCached } from "../utils/imageCache";
 
 interface WorkoutVisualProps {
@@ -57,7 +57,15 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
 
   // Guaranteed authentic matching GIF resolved through authoritative dataset mapping
   const authentic = React.useMemo(() => {
-    const candidate = customMediaUrl || exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl;
+    const pickValid = (u?: string | null) => {
+      const s = String(u || "").trim();
+      return s && !["none", "deleted", "null"].includes(s.toLowerCase()) ? s : "";
+    };
+    const candidate =
+      pickValid(customMediaUrl) ||
+      pickValid(exercise?.customMediaUrl) ||
+      pickValid(exercise?.gifUrl) ||
+      pickValid(exercise?.imageUrl);
     return resolveAuthenticExercise(targetName, candidate, displayCategory);
   }, [targetName, customMediaUrl, exercise?.customMediaUrl, exercise?.gifUrl, exercise?.imageUrl, displayCategory]);
 
@@ -118,7 +126,7 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
     if (!url) return "";
     const isGif = url.toLowerCase().includes(".gif");
     if (isGif) return url;
-    const cdnOptimized = getSupabaseCdnUrl(url, {
+    const cdnOptimized = getMediaCdnUrl(url, {
       width: isCard ? 500 : 900,
       quality: 80,
       format: "webp",

@@ -405,14 +405,56 @@ export async function safeFirestoreDeleteDoc(docRef: any): Promise<boolean> {
   }
 }
 
-export async function getFirebaseIdToken(): Promise<string | null> {
+function isJwtUnexpired(token: string): boolean {
   try {
-    if (auth?.currentUser) {
-      return await auth.currentUser.getIdToken();
+    const parts = token.split(".");
+    if (parts.length !== 3) return false;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded));
+    if (typeof payload?.exp === "number") {
+      // Require at least 15 seconds remaining validity
+      return payload.exp > Math.floor(Date.now() / 1000) + 15;
     }
-    if (typeof window !== "undefined") {
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearFirebaseIdToken(): void {
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem("fit_id_token");
+    } catch {}
+  }
+}
+
+export async function getFirebaseIdToken(forceRefresh: boolean = false): Promise<string | null> {
+  try {
+    // Wait briefly for Firebase Auth persistence hydration if currentUser isn't populated yet
+    if (auth && !auth.currentUser && typeof (auth as any).authStateReady === "function") {
+      try {
+        await Promise.race([
+          (auth as any).authStateReady(),
+          new Promise<void>((resolve) => setTimeout(resolve, 2000))
+        ]);
+      } catch {}
+    }
+
+    if (auth?.currentUser) {
+      const freshToken = await auth.currentUser.getIdToken(forceRefresh);
+      if (freshToken && typeof window !== "undefined") {
+        try {
+          localStorage.setItem("fit_id_token", freshToken);
+        } catch {}
+      }
+      return freshToken;
+    }
+
+    if (typeof window !== "undefined" && !forceRefresh) {
       const stored = localStorage.getItem("fit_id_token");
-      if (stored && stored.split(".").length === 3) {
+      if (stored && stored.split(".").length === 3 && isJwtUnexpired(stored)) {
         return stored;
       }
     }
@@ -420,6 +462,35 @@ export async function getFirebaseIdToken(): Promise<string | null> {
     console.warn("[Firebase Auth] Could not retrieve ID token:", err);
   }
   return null;
+}
+
+/**
+ * Authenticated fetch wrapper for admin endpoints.
+ * Automatically injects Firebase Bearer ID token and retries once with forceRefresh=true on 401.
+ */
+export async function fetchWithFirebaseAuth(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const token = await getFirebaseIdToken(false);
+  const headers = new Headers(init.headers || {});
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  let res = await fetch(input, { ...init, headers });
+  if (res.status === 401) {
+    const refreshedToken = await getFirebaseIdToken(true);
+    if (refreshedToken && refreshedToken !== token) {
+      const retryHeaders = new Headers(init.headers || {});
+      if (!retryHeaders.has("Content-Type")) {
+        retryHeaders.set("Content-Type", "application/json");
+      }
+      retryHeaders.set("Authorization", `Bearer ${refreshedToken}`);
+      res = await fetch(input, { ...init, headers: retryHeaders });
+    }
+  }
+  return res;
 }
 
 export { app, db, auth, storage, isMockFirebase };

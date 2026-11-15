@@ -16,7 +16,7 @@ import { purgeRestrictedHomeWorkouts, PurgeRestrictedHomeResult } from "../../ut
 import DeleteWorkoutConfirmModal, { DeleteWorkoutTarget } from "./DeleteWorkoutConfirmModal";
 import { resetAndCleanAllProgramSplits } from "../../utils/dynamicWorkoutEngine";
 import { getScheduleOverrides, setScheduleOverridesFromAdmin } from "../../utils/scheduleOverridesStore";
-import { auth, getFirebaseIdToken } from "../../lib/firebase";
+import { auth, fetchWithFirebaseAuth } from "../../lib/firebase";
 import { 
   STRONG_MEN_EXERCISE_BLOCKLIST, 
   isWomenWorkoutEligibleExercise, 
@@ -153,8 +153,7 @@ export default function AdminWorkoutEditor() {
   const loadArchivedExercises = async () => {
     setIsLoadingArchived(true);
     try {
-      const headers = await getAdminHeaders();
-      const res = await fetch("/api/exercises/archived", { headers, cache: "no-store" });
+      const res = await fetchWithFirebaseAuth("/api/exercises/archived", { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data?.success && Array.isArray(data.archived)) {
         setArchivedExercises(data.archived);
@@ -232,7 +231,7 @@ export default function AdminWorkoutEditor() {
       const res = await purgeRestrictedHomeWorkouts((msg) => setPurgeStatusText(msg), headers);
       setPurgeResult(res);
     } catch (err: any) {
-      alert("Purge error: " + (err?.message || "Unknown error"));
+      setCloudErrorMsg("Purge error: " + (err?.message || "Unknown error"));
     } finally {
       setIsPurgingHome(false);
       setPurgeStatusText("");
@@ -256,14 +255,8 @@ export default function AdminWorkoutEditor() {
       // Save locally & broadcast
       setScheduleOverridesFromAdmin(cleanRes.updatedOverrides);
 
-      // Send to server
-      const token = await getFirebaseIdToken();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const res = await fetch("/api/admin/programs/reset-and-clean-all-programs", {
+      const res = await fetchWithFirebaseAuth("/api/admin/programs/reset-and-clean-all-programs", {
         method: "POST",
-        headers,
         body: JSON.stringify({
           allOverrides: cleanRes.updatedOverrides,
           stats: cleanRes.stats

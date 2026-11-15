@@ -95,14 +95,18 @@ export function resolveAuthenticExercise(
         const overridesObj = JSON.parse(overridesRaw);
         const directOverride = overridesObj[cleanName] || overridesObj[cleanLower] || Object.values(overridesObj).find((o: any) => o?.name && o.name.toLowerCase().trim() === cleanLower);
         if (directOverride) {
-          const customUrl = directOverride.customMediaUrl ?? directOverride.gifUrl ?? directOverride.imageUrl;
-          if (customUrl === "none" || customUrl === "deleted" || customUrl === "" || directOverride.isDeleted) {
+          if (directOverride.isDeleted) {
             return {
               name: cleanName,
               gifUrl: "",
               muscleGroup: directOverride.category || targetCat
             };
           }
+          const pickValid = (u: any) => {
+            const s = String(u || "").trim();
+            return s && !["none", "deleted", "null"].includes(s.toLowerCase()) ? s : "";
+          };
+          const customUrl = pickValid(directOverride.customMediaUrl) || pickValid(directOverride.gifUrl) || pickValid(directOverride.imageUrl);
           if (customUrl) {
             return {
               name: cleanName,

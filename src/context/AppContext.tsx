@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { 
   signOut, 
-  onAuthStateChanged, 
+  onAuthStateChanged,
+  onIdTokenChanged,
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -14,7 +15,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs, query, where, deleteDoc, onSnapshot } from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
-import { auth, db, isMockFirebase, handleFirestoreError, OperationType, cleanFirestoreData, isFirestoreQuotaExhausted, safeFirestoreSetDoc, safeFirestoreDeleteDoc, getFirebaseIdToken } from "../lib/firebase";
+import { auth, db, isMockFirebase, handleFirestoreError, OperationType, cleanFirestoreData, isFirestoreQuotaExhausted, safeFirestoreSetDoc, safeFirestoreDeleteDoc, getFirebaseIdToken, clearFirebaseIdToken } from "../lib/firebase";
 import { AssetManifestService } from "../services/AssetManifestService";
 import { resolveAthleteTier, persistAthleteTier } from "../utils/athleteContext";
 import { 
@@ -265,7 +266,7 @@ interface AppContextType {
   uploadExerciseMedia: (exerciseId: string, mediaUrl: string | null, mediaType?: "image" | "video") => Promise<void>;
   addExerciseToLibrary: (workout: Exercise) => Promise<void>;
   editExercise: (exerciseId: string, updates: Partial<Exercise>) => Promise<boolean>;
-  addWorkout: (workout: Partial<Exercise>) => Promise<Exercise>;
+  addWorkout: (workout: Partial<Exercise> & { reuseIfExists?: boolean }) => Promise<Exercise>;
   deleteWorkout: (exerciseId: string, optionalName?: string) => Promise<boolean>;
   restoreDeletedExercise: (exerciseIdOrDocId: string, optionalName?: string) => Promise<{ success: boolean; exercise?: Exercise; error?: string }>;
 
@@ -319,7 +320,7 @@ interface AppContextType {
   setWorkoutFilters: (filters: Partial<WorkoutLibraryFilters>) => void;
 
   // Admin Request Helper
-  getAdminHeaders: () => Promise<Record<string, string>>;
+  getAdminHeaders: (forceRefresh?: boolean) => Promise<Record<string, string>>;
 
   // Settings Management
   resetAllSettings: () => Promise<boolean>;
@@ -349,7 +350,10 @@ const safeSetItem = (key: string, value: string): void => {
 
 const ADMIN_EMAILS = [
   "alexfitnesshub@gmail.com",
-  "muzikworld08@gmail.com"
+  "muzikworld08@gmail.com",
+  "admin@alexfitnesshub.com",
+  "admin@alexfitness.com",
+  "coach@alexfitness.com"
 ];
 
 export const isEmailAdmin = (email?: string) => {
@@ -871,8 +875,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [customChallenges]);
 
   // Reliable admin request headers helper
-  const getAdminHeaders = async (): Promise<Record<string, string>> => {
-    const token = await getFirebaseIdToken();
+  const getAdminHeaders = async (forceRefresh: boolean = false): Promise<Record<string, string>> => {
+    const token = await getFirebaseIdToken(forceRefresh);
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
     return headers;
@@ -1060,16 +1064,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         let firestoreOverrides: Record<string, any> = {};
         if (!isMockFirebase) {
-          try {
-            const snap = await getDocs(collection(db, "exercises"));
-            snap.docs.forEach(d => {
-              const data = d.data();
-              if (data && !data.isDeleted) {
-                firestoreOverrides[d.id] = data;
-              }
-            });
-          } catch (fErr) {
-            console.warn("Firestore custom exercise overrides fetch notice (using server + local cache):", fErr);
+          for (const colName of ["exercises", "generated_exercises"]) {
+            try {
+              const snap = await getDocs(collection(db, colName));
+              snap.docs.forEach(d => {
+                const data = d.data();
+                if (data && !data.isDeleted) {
+                  firestoreOverrides[d.id] = {
+                    ...(firestoreOverrides[d.id] || {}),
+                    ...data,
+                    ...(colName === "generated_exercises" ? { isCustom: true } : {})
+                  };
+                }
+              });
+            } catch (fErr) {
+              console.warn(`Firestore ${colName} overrides fetch notice (using server + local cache):`, fErr);
+            }
           }
         }
 
@@ -1089,6 +1099,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
+        const isUsableMedia = (u: any): u is string => {
+          if (!u || typeof u !== "string") return false;
+          const t = u.trim().toLowerCase();
+          return Boolean(t && t !== "none" && t !== "deleted" && t !== "null");
+        };
+        const stripPlaceholderMedia = (obj: Record<string, any>) => {
+          const cleaned = { ...obj };
+          delete cleaned.isMediaDeleted;
+          const valid = [cleaned.customMediaUrl, cleaned.gifUrl, cleaned.imageUrl].find(isUsableMedia);
+          if (valid) {
+            cleaned.customMediaUrl = valid;
+            cleaned.gifUrl = valid;
+            cleaned.imageUrl = valid;
+          } else {
+            for (const f of ["customMediaUrl", "gifUrl", "imageUrl"]) {
+              if (f in cleaned && !isUsableMedia(cleaned[f])) {
+                delete cleaned[f];
+              }
+            }
+          }
+          return cleaned;
+        };
+
         // Deep merge per-key: authoritative Firestore and server overrides take priority over stale local caches
         const allOverrideKeys = new Set([
           ...Object.keys(localOverrides),
@@ -1098,18 +1131,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ]);
         const mergedOverrides: Record<string, any> = {};
         allOverrideKeys.forEach(k => {
-          const localEntry = { ...(localOverrides[k] || {}) };
-          const persistentEntry = { ...(persistentMediaOverrides[k] || {}) };
-          const serverEntry = { ...(serverOverrides[k] || {}) };
-          const firestoreEntry = { ...(firestoreOverrides[k] || {}) };
+          const localEntry = stripPlaceholderMedia(localOverrides[k] || {});
+          const persistentEntry = stripPlaceholderMedia(persistentMediaOverrides[k] || {});
+          const serverEntry = stripPlaceholderMedia(serverOverrides[k] || {});
+          const firestoreEntry = stripPlaceholderMedia(firestoreOverrides[k] || {});
 
           // Authoritative order: local cache first, then persistent media, server, and finally Firestore overrides on top
-          mergedOverrides[k] = {
+          mergedOverrides[k] = stripPlaceholderMedia({
             ...localEntry,
             ...persistentEntry,
             ...serverEntry,
             ...firestoreEntry
-          };
+          });
         });
 
         // Persist combined overrides to localStorage so they never disappear
@@ -1136,20 +1169,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
             let finalEx: Exercise = { ...ex };
             if (prevMatch && prevMatch.id === ex.id) {
+              const prevMedia = [prevMatch.customMediaUrl].find(isUsableMedia);
               finalEx = {
                 ...finalEx,
-                customMediaUrl: prevMatch.customMediaUrl || finalEx.customMediaUrl,
+                customMediaUrl: prevMedia || (isUsableMedia(finalEx.customMediaUrl) ? finalEx.customMediaUrl : ""),
                 customMediaType: prevMatch.customMediaType || finalEx.customMediaType,
                 ...(prevMatch.isCustom && prevMatch.name ? { name: prevMatch.name } : {})
               };
             }
             if (override) {
-              const newMedia = override.customMediaUrl || override.gifUrl || override.imageUrl;
+              const newMedia = [override.customMediaUrl, override.gifUrl, override.imageUrl].find(isUsableMedia);
               finalEx = { 
                 ...finalEx, 
                 ...(newMedia ? { customMediaUrl: newMedia, gifUrl: newMedia, imageUrl: newMedia, customMediaType: override.customMediaType || finalEx.customMediaType } : {}),
                 ...(override.id === ex.id && override.isCustom && override.name ? { name: override.name } : {})
               };
+            }
+            if (!isUsableMedia(finalEx.gifUrl)) {
+              const fallbackGif = getExerciseGifUrl(finalEx.name, finalEx.category);
+              if (fallbackGif) finalEx.gifUrl = fallbackGif;
             }
 
             // Sync sets/reps string
@@ -1160,14 +1198,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             return finalEx;
           });
 
-          // Avoid duplicates and deleted items for custom added workouts (do NOT auto-add generated exercises)
+          // Avoid duplicates and deleted items for custom/admin-saved workouts
           const customMap = new Map<string, Exercise>();
           const seenNames = new Set<string>(baseList.map(b => (b.name || "").toLowerCase().trim()).filter(Boolean));
 
-          // Only genuine custom exercises saved by admin in mergedOverrides
+          // Any admin-saved custom or Firestore-persisted exercise
           Object.keys(mergedOverrides).forEach(key => {
             const val = mergedOverrides[key];
-            if (!val || typeof val !== "object" || !val.name) return;
+            if (!val || typeof val !== "object" || !val.name || val.isDeleted === true) return;
 
             const normName = (val.name || "").toLowerCase().trim();
             const canonicalId = (val.id && typeof val.id === "string" && val.id.length > 0) ? val.id : key;
@@ -1179,21 +1217,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             const isBase = baseList.some(b => b.id === canonicalId || b.id === key || (b.name || "").toLowerCase().trim() === normName);
             if (isBase) return;
 
-            if (val.isCustom === true) {
+            const isValidSavedExercise =
+              val.isCustom === true ||
+              Boolean(val.id && val.name && (val.category || (Array.isArray(val.muscleGroups) && val.muscleGroups.length > 0)));
+
+            if (isValidSavedExercise) {
+              const resolvedGif =
+                [val.customMediaUrl, val.gifUrl, val.imageUrl].find(isUsableMedia) ||
+                getExerciseGifUrl(val.name, val.category || "Gym Workouts");
+              const resolvedCategory = val.category || "Gym Workouts";
+              const resolvedCategories = Array.isArray(val.categories) && val.categories.length > 0 ? val.categories : [resolvedCategory];
+
               if (!seenNames.has(normName) && !customMap.has(canonicalId)) {
                 seenNames.add(normName);
                 customMap.set(canonicalId, {
                   id: canonicalId,
                   name: val.name,
-                  category: val.category || "Gym Workouts",
+                  category: resolvedCategory,
+                  categories: resolvedCategories,
                   difficulty: val.difficulty || "Intermediate",
                   muscleGroups: val.muscleGroups || ["Chest"],
                   equipment: val.equipment || ["Dumbbells"],
                   recommendedSets: val.recommendedSets || "3-4",
                   recommendedReps: val.recommendedReps || "10-12",
                   recommendedSetsReps: `${val.recommendedSets || "3-4"} Sets x ${val.recommendedReps || "10-12"} Reps`,
-                  isCustom: true,
-                  ...val
+                  ...val,
+                  gifUrl: resolvedGif,
+                  imageUrl: resolvedGif,
+                  customMediaUrl: [val.customMediaUrl].find(isUsableMedia) || resolvedGif,
+                  isCustom: true
                 } as Exercise);
               } else if (customMap.has(canonicalId)) {
                 const existing = customMap.get(canonicalId)!;
@@ -1201,6 +1253,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   ...existing,
                   ...val,
                   id: canonicalId,
+                  category: resolvedCategory,
+                  categories: resolvedCategories,
+                  gifUrl: resolvedGif,
+                  imageUrl: resolvedGif,
+                  customMediaUrl: [val.customMediaUrl].find(isUsableMedia) || resolvedGif,
                   isCustom: true
                 });
               }
@@ -1814,10 +1871,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return nextList;
       });
 
-      // Special action: Admin activity logs
+      // Persist fresh ID token immediately and log admin activity
       if (profile.role === "admin") {
         try {
-          const token = await firebaseUser.getIdToken();
+          const token = await firebaseUser.getIdToken(true);
+          if (token) safeSetItem("fit_id_token", token);
           await fetch("/api/admin/log-activity", {
             method: "POST",
             headers: {
@@ -2007,6 +2065,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   freeTrialDaysRemaining: 0,
                   onboarded: fetched.onboarded !== undefined ? fetched.onboarded : true
                 };
+                // Ensure authorized admin emails always have role: "admin" synced in Firestore
+                if (isAdmin && fetched.role !== "admin") {
+                  safeFirestoreSetDoc(userDocRef, {
+                    role: "admin",
+                    subscriptionStatus: "premium",
+                    isPremium: true,
+                    premiumAccess: true
+                  }, { merge: true }).catch(() => {});
+                }
                 // Cache in local storage for subsequent offline loads
                 safeSetItem(`fit_user_${profile.uid}`, JSON.stringify(profile));
                 safeSetItem("fit_last_known_user", JSON.stringify(profile));
@@ -2242,10 +2309,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
+    const unsubscribeToken = onIdTokenChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const token = await firebaseUser.getIdToken();
+          if (token) {
+            safeSetItem("fit_id_token", token);
+          }
+        } catch {}
+      } else {
+        clearFirebaseIdToken();
+      }
+    });
+
     loadPopupTestimonials();
 
     return () => {
       unsubscribe();
+      unsubscribeToken();
       if (userDocUnsubscribe) userDocUnsubscribe();
     };
   }, []);
@@ -3276,7 +3357,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("fit_explicitly_logged_out", "true");
     localStorage.removeItem("fit_saved_email");
     localStorage.removeItem("fit_active_uid");
+    localStorage.removeItem("fit_last_known_user");
     localStorage.removeItem("fit_attempted_view");
+    clearFirebaseIdToken();
     try {
       if (auth) await signOut(auth);
     } catch (e) {
@@ -3960,10 +4043,11 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       console.warn("Notice: custom media server save:", err);
     }
 
-    // 2. Update React Local Client State and LocalStorage with the clean local path
+    // 2. Update React Local Client State and LocalStorage cleanly without masking active exercises with "none"
     const isCleared = !finalMediaUrl || finalMediaUrl === "none" || finalMediaUrl === "deleted";
-    const mediaValue = isCleared ? "none" : finalMediaUrl;
     const targetEx = exercises.find(e => e.id === exerciseId);
+    const restoredDefaultGif = getExerciseGifUrl(targetEx?.name || exerciseId, targetEx?.category);
+    const mediaValue = isCleared ? restoredDefaultGif : finalMediaUrl;
 
     const updatedExercises = exercises.map(ex => {
       const isMatch = ex.id === exerciseId ||
@@ -3972,12 +4056,12 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
                       (targetEx && isExerciseMatch(targetEx.name, ex.name));
 
       if (isMatch) {
+        const nextGif = isCleared ? (getExerciseGifUrl(ex.name, ex.category) || ex.gifUrl || "") : finalMediaUrl!;
         return { 
           ...ex, 
-          customMediaUrl: mediaValue, 
-          gifUrl: mediaValue,
-          imageUrl: mediaValue,
-          isMediaDeleted: isCleared,
+          customMediaUrl: isCleared ? "" : finalMediaUrl!,
+          gifUrl: nextGif,
+          imageUrl: nextGif,
           customMediaType: mediaType || undefined 
         };
       }
@@ -3986,40 +4070,56 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     setExercisesState(updatedExercises);
     safeSetItem("fit_exercises", JSON.stringify(updatedExercises));
 
-    // Save to fit_custom_exercise_overrides in localStorage permanently
+    // Save to fit_custom_exercise_overrides in localStorage cleanly
     try {
       const storedOverridesStr = localStorage.getItem("fit_custom_exercise_overrides");
       let currentOverrides: Record<string, any> = {};
       if (storedOverridesStr) {
         try { currentOverrides = JSON.parse(storedOverridesStr); } catch {}
       }
-      const overrideData = {
-        customMediaUrl: mediaValue,
-        gifUrl: mediaValue,
-        imageUrl: mediaValue,
-        customMediaType: mediaType || "image",
-        isMediaDeleted: isCleared
-      };
-      currentOverrides[exerciseId] = {
-        ...(currentOverrides[exerciseId] || {}),
-        ...overrideData
-      };
-      if (targetEx && targetEx.name) {
-        const normName = targetEx.name.toLowerCase().trim();
-        currentOverrides[normName] = {
-          ...(currentOverrides[normName] || {}),
+      if (isCleared) {
+        if (currentOverrides[exerciseId]) {
+          delete currentOverrides[exerciseId].customMediaUrl;
+          delete currentOverrides[exerciseId].isMediaDeleted;
+        }
+        if (targetEx && targetEx.name) {
+          const normName = targetEx.name.toLowerCase().trim();
+          if (currentOverrides[normName]) {
+            delete currentOverrides[normName].customMediaUrl;
+            delete currentOverrides[normName].isMediaDeleted;
+          }
+        }
+      } else {
+        const overrideData = {
+          customMediaUrl: mediaValue,
+          gifUrl: mediaValue,
+          imageUrl: mediaValue,
+          customMediaType: mediaType || "image",
+          isMediaDeleted: false
+        };
+        currentOverrides[exerciseId] = {
+          ...(currentOverrides[exerciseId] || {}),
           ...overrideData
         };
+        if (targetEx && targetEx.name) {
+          const normName = targetEx.name.toLowerCase().trim();
+          currentOverrides[normName] = {
+            ...(currentOverrides[normName] || {}),
+            ...overrideData
+          };
+        }
       }
       safeSetItem("fit_custom_exercise_overrides", JSON.stringify(currentOverrides));
     } catch (oErr) {
       console.warn("Could not save to fit_custom_exercise_overrides:", oErr);
     }
 
-    // 3. Persist same clean path to real Cloud Firestore (so other users see it instantly across all matching variations)
+    // 3. Persist same clean path to real Cloud Firestore (never stamp "none" onto active exercises)
     if (!isMockFirebase) {
       try {
-        const matchingIds = updatedExercises.filter(ex => ex.customMediaUrl === mediaValue).map(ex => ex.id);
+        const matchingIds = isCleared
+          ? [exerciseId]
+          : updatedExercises.filter(ex => ex.customMediaUrl === mediaValue).map(ex => ex.id);
         const uniqueIds = Array.from(new Set([exerciseId, ...matchingIds]));
 
         if (mediaValue && mediaValue.startsWith("data:") && mediaValue.length > 500000) {
@@ -4027,28 +4127,30 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         }
 
         let allWritten = true;
-        for (const mId of uniqueIds) {
-          const safeDocId = mId.replace(/[^a-zA-Z0-9_-]/g, "_");
-          const ok = await safeFirestoreSetDoc(doc(db, "exercises", safeDocId), {
-            id: safeDocId,
-            customMediaUrl: mediaValue,
-            gifUrl: mediaValue,
-            imageUrl: mediaValue,
-            isMediaDeleted: isCleared,
-            customMediaType: mediaType || null,
-            updatedAt: new Date().toISOString()
-          }, { merge: true }, true);
-          if (!ok) allWritten = false;
+        if (!isCleared) {
+          for (const mId of uniqueIds) {
+            const safeDocId = mId.replace(/[^a-zA-Z0-9_-]/g, "_");
+            const ok = await safeFirestoreSetDoc(doc(db, "exercises", safeDocId), {
+              id: safeDocId,
+              customMediaUrl: mediaValue,
+              gifUrl: mediaValue,
+              imageUrl: mediaValue,
+              isMediaDeleted: false,
+              customMediaType: mediaType || null,
+              updatedAt: new Date().toISOString()
+            }, { merge: true }, true);
+            if (!ok) allWritten = false;
+          }
         }
 
         const safeMediaDocId = exerciseId.replace(/[^a-zA-Z0-9_-]/g, "_");
         const mediaDocOk = await safeFirestoreSetDoc(doc(db, "exercise_media", safeMediaDocId), {
           exerciseId: safeMediaDocId,
           exerciseName: targetEx?.name || exerciseId,
-          customMediaUrl: mediaValue,
+          customMediaUrl: isCleared ? "" : mediaValue,
           gifUrl: mediaValue,
           imageUrl: mediaValue,
-          isMediaDeleted: isCleared,
+          isMediaDeleted: false,
           customMediaType: mediaType || "image",
           updatedAt: new Date().toISOString()
         }, { merge: true }, true);
@@ -4067,7 +4169,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     // 4. Update GIF URL across all program schedules immediately so live program pages synchronize
     try {
       updateExerciseInAllSchedules(exerciseId, {
-        customMediaUrl: mediaValue,
+        customMediaUrl: isCleared ? "" : mediaValue,
         gifUrl: mediaValue,
         imageUrl: mediaValue,
         name: targetEx?.name
@@ -4940,11 +5042,14 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     }
   };
 
-  const addWorkout = async (workoutData: Partial<Exercise>): Promise<Exercise> => {
+  const addWorkout = async (workoutData: Partial<Exercise> & { reuseIfExists?: boolean }): Promise<Exercise> => {
     const workoutName = (workoutData.name || "").trim();
     if (workoutName) {
       const existing = exercises.find(e => (e.name || "").toLowerCase().trim() === workoutName.toLowerCase());
       if (existing) {
+        if (workoutData.reuseIfExists) {
+          return existing;
+        }
         throw new Error(`Workout already exists: A workout named "${existing.name}" already exists in the workout library.`);
       }
     }
@@ -4954,45 +5059,54 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     const sets = workoutData.recommendedSets || "3";
     const reps = workoutData.recommendedReps || "10-12";
     const setsReps = workoutData.recommendedSetsReps || `${sets} Sets x ${reps} Reps`;
+    const cleanInputMedia = [workoutData.customMediaUrl, workoutData.gifUrl, workoutData.imageUrl].find(
+      u => typeof u === "string" && u.trim() && !["none", "deleted", "null"].includes(u.trim().toLowerCase())
+    ) || getExerciseGifUrl(workoutName || "Custom Workout", workoutData.category || "Gym Workouts");
+
+    const { reuseIfExists: _ignoreReuse, ...cleanWorkoutPayload } = workoutData;
+    const resolvedCategory = cleanWorkoutPayload.category || "Gym Workouts";
+    const resolvedCategories = cleanWorkoutPayload.categories && cleanWorkoutPayload.categories.length > 0
+      ? Array.from(new Set([resolvedCategory, ...cleanWorkoutPayload.categories]))
+      : [resolvedCategory];
 
     const fullExercise: Exercise = {
+      ...cleanWorkoutPayload,
       id: safeId,
-      name: workoutData.name || "Custom Workout",
-      muscleGroups: workoutData.muscleGroups && workoutData.muscleGroups.length > 0 ? workoutData.muscleGroups : [workoutData.category || "Full Body"],
-      difficulty: workoutData.difficulty || "Intermediate",
-      instructions: workoutData.instructions && workoutData.instructions.length > 0 ? workoutData.instructions : [
+      name: workoutName || "Custom Workout",
+      muscleGroups: cleanWorkoutPayload.muscleGroups && cleanWorkoutPayload.muscleGroups.length > 0 ? cleanWorkoutPayload.muscleGroups : [resolvedCategory],
+      difficulty: cleanWorkoutPayload.difficulty || "Intermediate",
+      instructions: cleanWorkoutPayload.instructions && cleanWorkoutPayload.instructions.length > 0 ? cleanWorkoutPayload.instructions : [
         `Set up your starting position and brace your core tightly.`,
-        `Execute ${workoutData.name || 'the exercise'} through the full range of motion.`,
+        `Execute ${workoutName || "the exercise"} through the full range of motion.`,
         `Hold contraction at peak for 1 second, then lower under control.`
       ],
-      equipment: workoutData.equipment && workoutData.equipment.length > 0 ? workoutData.equipment : ["Bodyweight"],
-      category: workoutData.category || "Gym Workouts",
-      categories: workoutData.categories && workoutData.categories.length > 0 ? workoutData.categories : [workoutData.category || "Gym Workouts"],
-      commonMistakes: workoutData.commonMistakes || ["Rushing the movement or using excessive momentum."],
-      safetyTips: workoutData.safetyTips || ["Maintain a neutral spine and controlled breathing."],
-      alternativeExercises: workoutData.alternativeExercises || ["Standard Pushups"],
-      progressionVariations: workoutData.progressionVariations || ["Increase resistance or hold eccentric count for 3 seconds."],
-      isPremium: workoutData.isPremium !== undefined ? workoutData.isPremium : true,
-      startingPosition: workoutData.startingPosition || `Assume stable starting stance with core braced.`,
-      movementExecution: workoutData.movementExecution || `Execute deliberate contraction through target muscle group.`,
-      finishingPosition: workoutData.finishingPosition || `Return smoothly to starting position.`,
-      regressionVariations: workoutData.regressionVariations || ["Perform with lighter load or bodyweight assistance."],
-      musclesWorked: workoutData.musclesWorked || [workoutData.category || "Full Body"],
-      gifUrl: workoutData.customMediaUrl || workoutData.gifUrl || workoutData.imageUrl || "",
-      imageUrl: workoutData.customMediaUrl || workoutData.imageUrl || workoutData.gifUrl || "",
-      customMediaUrl: workoutData.customMediaUrl || "",
-      customMediaType: workoutData.customMediaType || "image",
-      description: workoutData.description || `${workoutData.name} targets key muscular chains to build strength and hypertrophy.`,
-      duration: workoutData.duration || "45s",
+      equipment: cleanWorkoutPayload.equipment && cleanWorkoutPayload.equipment.length > 0 ? cleanWorkoutPayload.equipment : ["Bodyweight"],
+      commonMistakes: cleanWorkoutPayload.commonMistakes || ["Rushing the movement or using excessive momentum."],
+      safetyTips: cleanWorkoutPayload.safetyTips || ["Maintain a neutral spine and controlled breathing."],
+      alternativeExercises: cleanWorkoutPayload.alternativeExercises || ["Standard Pushups"],
+      progressionVariations: cleanWorkoutPayload.progressionVariations || ["Increase resistance or hold eccentric count for 3 seconds."],
+      isPremium: cleanWorkoutPayload.isPremium !== undefined ? cleanWorkoutPayload.isPremium : true,
+      startingPosition: cleanWorkoutPayload.startingPosition || `Assume stable starting stance with core braced.`,
+      movementExecution: cleanWorkoutPayload.movementExecution || `Execute deliberate contraction through target muscle group.`,
+      finishingPosition: cleanWorkoutPayload.finishingPosition || `Return smoothly to starting position.`,
+      regressionVariations: cleanWorkoutPayload.regressionVariations || ["Perform with lighter load or bodyweight assistance."],
+      musclesWorked: cleanWorkoutPayload.musclesWorked || [resolvedCategory],
+      customMediaType: cleanWorkoutPayload.customMediaType || "image",
+      description: cleanWorkoutPayload.description || `${workoutName || "Custom Workout"} targets key muscular chains to build strength and hypertrophy.`,
+      duration: cleanWorkoutPayload.duration || "45s",
       recommendedSets: sets,
       recommendedReps: reps,
       recommendedSetsReps: setsReps,
-      restTime: workoutData.restTime || "60s",
-      caloriesBurned: workoutData.caloriesBurned || 110,
-      benefits: workoutData.benefits || ["Increases functional power and muscular endurance."],
-      trainerTips: workoutData.trainerTips || "Focus on intense mind-muscle connection and controlled tempo.",
-      safetyNotes: workoutData.safetyNotes || "Warm up thoroughly before working sets.",
-      ...workoutData,
+      restTime: cleanWorkoutPayload.restTime || "60s",
+      caloriesBurned: cleanWorkoutPayload.caloriesBurned || 110,
+      benefits: cleanWorkoutPayload.benefits || ["Increases functional power and muscular endurance."],
+      trainerTips: cleanWorkoutPayload.trainerTips || "Focus on intense mind-muscle connection and controlled tempo.",
+      safetyNotes: cleanWorkoutPayload.safetyNotes || "Warm up thoroughly before working sets.",
+      category: resolvedCategory,
+      categories: resolvedCategories,
+      gifUrl: cleanInputMedia,
+      imageUrl: cleanInputMedia,
+      customMediaUrl: cleanInputMedia,
       isCustom: true
     };
 
@@ -5060,25 +5174,25 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       }
     } catch {}
 
-    // Save to server with confirmation
+    // Save to server with confirmation (retrying once on 401 with refreshed Firebase token)
     let serverOk = false;
     let firestoreOk = false;
     let persistError = "";
     try {
-      const headers = await Promise.race([
-        getAdminHeaders(),
-        new Promise<Record<string, string>>((resolve) => 
-          setTimeout(() => resolve({ "Content-Type": "application/json" }), 2500)
-        )
-      ]);
-      const res = await Promise.race([
-        fetch("/api/exercises/create", {
+      let headers = await getAdminHeaders(false);
+      let res = await fetch("/api/exercises/create", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ workout: sanitizedExercise })
+      });
+      if (res.status === 401) {
+        headers = await getAdminHeaders(true);
+        res = await fetch("/api/exercises/create", {
           method: "POST",
           headers,
           body: JSON.stringify({ workout: sanitizedExercise })
-        }),
-        new Promise<Response>((_, reject) => setTimeout(() => reject(new Error("Server create timeout")), 5000))
-      ]);
+        });
+      }
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success && data.firestoreOk !== false) {
         serverOk = true;
@@ -5202,13 +5316,8 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     let firestoreDeleted = false;
     const archivedSnapshot = targetExercise ? cleanFirestoreData(targetExercise) : undefined;
     try {
-      const headers = await Promise.race([
-        getAdminHeaders(),
-        new Promise<Record<string, string>>((resolve) => 
-          setTimeout(() => resolve({ "Content-Type": "application/json" }), 1200)
-        )
-      ]);
-      const delRes = await fetch("/api/exercises/delete", {
+      let headers = await getAdminHeaders(false);
+      let delRes = await fetch("/api/exercises/delete", {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -5217,6 +5326,18 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
           exerciseSnapshot: archivedSnapshot
         })
       });
+      if (delRes.status === 401) {
+        headers = await getAdminHeaders(true);
+        delRes = await fetch("/api/exercises/delete", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            exerciseId,
+            exerciseName: targetExercise?.name || targetName || optionalName,
+            exerciseSnapshot: archivedSnapshot
+          })
+        });
+      }
       const delJson = await delRes.json().catch(() => ({}));
       if (delRes.ok && delJson.success && delJson.firestoreOk !== false) {
         serverDeleted = true;

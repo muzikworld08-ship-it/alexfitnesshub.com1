@@ -141,4 +141,78 @@ describe("ALEXFITNESSHUB Production Repair & Launch Verification Suite", () => {
       "Firestore orders rule must enforce pending paymentStatus on non-admin creates"
     );
   });
+
+  it("6. Zero Supabase files, dependencies, imports, or proxy routes remain in codebase", () => {
+    const pkgSrc = fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8");
+    const serverSrc = fs.readFileSync(path.join(process.cwd(), "server.ts"), "utf8");
+    const envExampleSrc = fs.readFileSync(path.join(process.cwd(), ".env.example"), "utf8");
+
+    assert.ok(!/supabase/i.test(pkgSrc), "package.json must not reference supabase packages");
+    assert.ok(!/supabase/i.test(serverSrc), "server.ts must not contain Supabase imports or routes");
+    assert.ok(!/supabase/i.test(envExampleSrc), ".env.example must not list Supabase env vars");
+    assert.ok(!fs.existsSync(path.join(process.cwd(), "supabase_schema.sql")), "supabase_schema.sql must be deleted");
+    assert.ok(!fs.existsSync(path.join(process.cwd(), "src/utils/supabase")), "src/utils/supabase directory must be deleted");
+    assert.ok(!fs.existsSync(path.join(process.cwd(), "src/hooks/useSupabaseAuth.ts")), "useSupabaseAuth.ts must be deleted");
+  });
+
+  it("7. Admin access token helper & auth parity cover all authorized emails with 401 retry", () => {
+    const firebaseSrc = fs.readFileSync(path.join(process.cwd(), "src/lib/firebase.ts"), "utf8");
+    const appCtxSrc = fs.readFileSync(path.join(process.cwd(), "src/context/AppContext.tsx"), "utf8");
+    const serverSrc = fs.readFileSync(path.join(process.cwd(), "server.ts"), "utf8");
+    const rulesSrc = fs.readFileSync(path.join(process.cwd(), "firestore.rules"), "utf8");
+
+    assert.ok(firebaseSrc.includes("export async function fetchWithFirebaseAuth"), "firebase.ts must export fetchWithFirebaseAuth");
+    assert.ok(firebaseSrc.includes("res.status === 401") && firebaseSrc.includes("getFirebaseIdToken(true)"), "fetchWithFirebaseAuth must retry once on 401 with refreshed token");
+
+    const requiredAdmins = [
+      "alexfitnesshub@gmail.com",
+      "muzikworld08@gmail.com",
+      "admin@alexfitnesshub.com",
+      "admin@alexfitness.com",
+      "coach@alexfitness.com"
+    ];
+    for (const email of requiredAdmins) {
+      assert.ok(appCtxSrc.includes(email), `AppContext must authorize admin email ${email}`);
+      assert.ok(serverSrc.includes(email), `server.ts must authorize admin email ${email}`);
+      assert.ok(rulesSrc.includes(email), `firestore.rules must authorize admin email ${email}`);
+    }
+  });
+
+  it("8. UnifiedExerciseMedia and custom_exercise_overrides never hide active exercise GIFs with 'none' or empty masks", () => {
+    const unifiedSrc = fs.readFileSync(path.join(process.cwd(), "src/components/UnifiedExerciseMedia.tsx"), "utf8");
+    const overridesObj = JSON.parse(
+      fs.readFileSync(path.join(process.cwd(), "src/data/custom_exercise_overrides.json"), "utf8")
+    );
+
+    assert.ok(!unifiedSrc.includes('mediaUrl === ""'), "UnifiedExerciseMedia must not hide GIFs when mediaUrl is empty string");
+    assert.ok(!unifiedSrc.includes("isMediaDeleted"), "UnifiedExerciseMedia must not blank out active GIFs on stale isMediaDeleted flags");
+    assert.ok(unifiedSrc.includes("getExerciseGifUrl"), "UnifiedExerciseMedia must fall back to canonical getExerciseGifUrl");
+
+    for (const [k, val] of Object.entries<any>(overridesObj)) {
+      if (!val || typeof val !== "object") continue;
+      assert.ok(!val.isMediaDeleted, `Override key "${k}" must not contain poison isMediaDeleted flag`);
+      assert.notStrictEqual(val.gifUrl, "none", `Override key "${k}" must not contain gifUrl="none"`);
+      assert.notStrictEqual(val.customMediaUrl, "none", `Override key "${k}" must not contain customMediaUrl="none"`);
+    }
+  });
+
+  it("9. Challenge Engine persists custom drills to Firebase library, exposes 1-click Remove, and restores tombstoned creates", () => {
+    const engineSrc = fs.readFileSync(path.join(process.cwd(), "src/components/admin/AdminWorkoutChallengeEngine.tsx"), "utf8");
+    const modalSrc = fs.readFileSync(path.join(process.cwd(), "src/components/admin/AddWorkoutModal.tsx"), "utf8");
+    const appCtxSrc = fs.readFileSync(path.join(process.cwd(), "src/context/AppContext.tsx"), "utf8");
+    const serverSrc = fs.readFileSync(path.join(process.cwd(), "server.ts"), "utf8");
+
+    assert.ok(engineSrc.includes("await addWorkout("), "Challenge Engine must persist newly created drills to library/Firestore via addWorkout");
+    assert.ok(engineSrc.includes("handleDeleteOnly(exercise)"), "Challenge Engine must provide 1-click Remove action on drill rows");
+    assert.ok(!modalSrc.includes("alert("), "AddWorkoutModal must use inline banner notices instead of window.alert");
+    assert.ok(appCtxSrc.includes('"generated_exercises"') && appCtxSrc.includes("collection(db, colName)"), "AppContext must hydrate generated_exercises from Firestore");
+    assert.ok(serverSrc.includes("isMasterTombstoned"), "server /api/exercises/create must check tombstones so deleted workouts can be re-created cleanly");
+  });
+
+  it("10. WorkoutLibrary matches categories case-insensitively so admin-added workouts display publicly", () => {
+    const libSrc = fs.readFileSync(path.join(process.cwd(), "src/components/WorkoutLibrary.tsx"), "utf8");
+    assert.ok(libSrc.includes("selCatLower"), "WorkoutLibrary must filter categories case-insensitively");
+    assert.ok(libSrc.includes("canonicalCaseMap"), "WorkoutLibrary must normalize grouped category sections cleanly");
+  });
 });
+

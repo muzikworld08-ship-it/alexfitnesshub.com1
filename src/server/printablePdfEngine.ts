@@ -325,8 +325,8 @@ export async function recoverMasterPdfIfNeeded(filename: string): Promise<boolea
         }
       }
 
-      // Priority 3: Cloud Storage URL fallback (Supabase / Firebase)
-      const cloudUrl = data?.cloudUrl || data?.supabaseUrl || data?.downloadUrl;
+      // Priority 3: Cloud Storage URL fallback (Firebase Storage)
+      const cloudUrl = data?.cloudUrl || data?.firebaseUrl || data?.downloadUrl;
       if (cloudUrl && (cloudUrl.startsWith("http://") || cloudUrl.startsWith("https://"))) {
         const res = await fetch(cloudUrl);
         if (res.ok) {
@@ -348,8 +348,8 @@ export async function recoverMasterPdfIfNeeded(filename: string): Promise<boolea
           prodData.id === filename.replace(/\.pdf$/i, "") ||
           filename.includes(prodData.id)
         ) {
-          // If product has a direct cloud URL or Supabase URL
-          const url = prodData.masterPdfCloudUrl || prodData.cloudUrl || prodData.supabaseUrl;
+          // If product has a direct cloud URL
+          const url = prodData.masterPdfCloudUrl || prodData.cloudUrl || prodData.firebaseUrl;
           if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
             const fRes = await fetch(url).catch(() => null);
             if (fRes && fRes.ok) {

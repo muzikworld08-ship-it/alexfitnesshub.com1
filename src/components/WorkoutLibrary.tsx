@@ -730,31 +730,40 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
 
   // Dynamic filter lists
   const categoriesList = useMemo(() => {
-    const list = new Set<string>();
-    if (Array.isArray(exercises)) {
-      exercises.forEach(e => {
-        if (e) {
-          if (e.categories && Array.isArray(e.categories)) {
-            e.categories.forEach(cat => {
-              if (cat) list.add(cat);
-            });
-          } else if (e.category) {
-            list.add(e.category);
-          }
-        }
-      });
-    }
     const ordered = [
       "Chest", "Back", "Shoulders", "Legs", "Biceps", "Triceps", "Forearms", "Core", "Abs", "Glutes", "Calves", "Neck",
       "Cardio", "HIIT", "Calisthenics", "Home Workouts", "Gym Workouts", "Mobility", "Stretching", "Recovery", "Warm Up", "Cool Down",
       "Yoga", "Pilates", "Functional Training", "Strength", "Powerlifting", "Olympic Lifting", "Bodybuilding", "Cross Training",
-      "Athletic Performance", "Senior Fitness", "Pregnancy Safe", "Beginner", "Intermediate", "Advanced"
+      "Athletic Performance", "Senior Fitness", "Pregnancy Safe", "Full Body"
     ];
-    const present = Array.from(list);
-    const sorted = ordered.filter(o => present.some(p => p && p.toLowerCase() === o.toLowerCase()));
-    present.forEach(p => {
-      if (p && !sorted.some(s => s.toLowerCase() === p.toLowerCase())) {
-        sorted.push(p);
+    const mapLowerToCanonical = new Map<string, string>();
+    ordered.forEach(o => mapLowerToCanonical.set(o.toLowerCase(), o));
+
+    const presentLower = new Set<string>();
+    const extras: string[] = [];
+    if (Array.isArray(exercises)) {
+      exercises.forEach(e => {
+        if (!e) return;
+        const cats = [
+          ...(Array.isArray(e.categories) ? e.categories : []),
+          ...(e.category ? [e.category] : [])
+        ];
+        cats.forEach(rawCat => {
+          const cat = String(rawCat || "").trim();
+          if (!cat) return;
+          const lower = cat.toLowerCase();
+          presentLower.add(lower);
+          if (!mapLowerToCanonical.has(lower)) {
+            mapLowerToCanonical.set(lower, cat);
+            extras.push(cat);
+          }
+        });
+      });
+    }
+    const sorted = ordered.filter(o => presentLower.has(o.toLowerCase()));
+    extras.forEach(ext => {
+      if (!sorted.some(s => s.toLowerCase() === ext.toLowerCase())) {
+        sorted.push(ext);
       }
     });
     return ["All", ...sorted];
@@ -821,11 +830,14 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
       const exDifficulty = ex.difficulty || "Beginner";
       const exName = ex.name || "";
       
-      // Filter by Category, Difficulty, Muscle, Equipment, Type and Goal
-      const matchesCategory = selectedCategory === "All" || 
-        exCategory === selectedCategory || 
-        exCategories.includes(selectedCategory);
-      const matchesDifficulty = selectedDifficulty === "All" || exDifficulty === selectedDifficulty;
+      // Filter by Category, Difficulty, Muscle, Equipment, Type and Goal (case-insensitive across category & categories)
+      const selCatLower = selectedCategory.toLowerCase().trim();
+      const matchesCategory = selectedCategory === "All" ||
+        exCategory.toLowerCase().trim() === selCatLower ||
+        exCategories.some(c => String(c || "").toLowerCase().trim() === selCatLower) ||
+        (selCatLower === "abs" && (exCategory.toLowerCase() === "core" || exCategories.some(c => String(c || "").toLowerCase() === "core"))) ||
+        (selCatLower === "core" && (exCategory.toLowerCase() === "abs" || exCategories.some(c => String(c || "").toLowerCase() === "abs")));
+      const matchesDifficulty = selectedDifficulty === "All" || exDifficulty.toLowerCase().trim() === selectedDifficulty.toLowerCase().trim();
       
       let matchesMuscleGroup = selectedMuscleGroup === "All";
       if (!matchesMuscleGroup) {
@@ -1156,31 +1168,36 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
     return filteredExercises;
   }, [filteredExercises]);
 
-  // Group matching exercises by category for an incredibly clean, organized, non-scattered presentation
+  // Group matching exercises by canonical category casing for clean presentation across public tabs
   const groupedExercises = useMemo(() => {
     const groups: Record<string, Exercise[]> = {};
-    
+    const canonicalCaseMap = new Map<string, string>();
+    categoriesList.forEach(c => {
+      if (c && c !== "All") canonicalCaseMap.set(c.toLowerCase().trim(), c);
+    });
+
     filteredExercises.forEach(ex => {
-      const cat = ex.category || "General";
+      const rawCat = String(ex.category || (Array.isArray(ex.categories) && ex.categories[0]) || "General").trim();
+      const cat = canonicalCaseMap.get(rawCat.toLowerCase()) || rawCat || "General";
       if (!groups[cat]) {
         groups[cat] = [];
       }
       groups[cat].push(ex);
     });
     
-    // Sort each category so core exercises appear first inside the category section
+    // Sort each category so admin-custom & core exercises appear cleanly inside the category section
     Object.keys(groups).forEach(cat => {
       groups[cat] = groups[cat].sort((a, b) => {
-        const aIsCore = a.id.startsWith("core-ex-");
-        const bIsCore = b.id.startsWith("core-ex-");
-        if (aIsCore && !bIsCore) return -1;
-        if (!aIsCore && bIsCore) return 1;
+        const aIsPriority = a.isCustom || a.id.startsWith("core-ex-");
+        const bIsPriority = b.isCustom || b.id.startsWith("core-ex-");
+        if (aIsPriority && !bIsPriority) return -1;
+        if (!aIsPriority && bIsPriority) return 1;
         return 0;
       });
     });
 
     return groups;
-  }, [filteredExercises]);
+  }, [filteredExercises, categoriesList]);
 
   // Programs mapping for the search term
   const filteredPrograms = useMemo(() => {

@@ -1,6 +1,6 @@
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { doc, collection, getDocs } from "firebase/firestore";
-import { storage, db, isMockFirebase, safeFirestoreSetDoc, getFirebaseIdToken } from "../lib/firebase";
+import { storage, db, isMockFirebase, safeFirestoreSetDoc, fetchWithFirebaseAuth } from "../lib/firebase";
 
 export interface ExerciseMediaRecord {
   exerciseId: string;
@@ -113,13 +113,8 @@ export async function uploadMediaToCloud(
       reader.readAsDataURL(fileBlob as Blob);
     });
 
-    const token = await getFirebaseIdToken();
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-
-    const res = await fetch("/api/media/upload", {
+    const res = await fetchWithFirebaseAuth("/api/media/upload", {
       method: "POST",
-      headers,
       body: JSON.stringify({
         fileData: dataUrl,
         filename: `media_${cleanId}`,
@@ -162,38 +157,58 @@ export async function saveExerciseMediaToDatabase(
     try {
       const mediaDocRef = doc(db, "exercise_media", exerciseId);
       const exDocRef = doc(db, "exercises", exerciseId);
-      const [mOk, eOk] = await Promise.all([
-        safeFirestoreSetDoc(
+      const cleanMediaUrl = mediaUrl && !["none", "deleted", "null"].includes(mediaUrl.trim().toLowerCase()) ? mediaUrl.trim() : "";
+
+      if (cleanMediaUrl) {
+        const [mOk, eOk] = await Promise.all([
+          safeFirestoreSetDoc(
+            mediaDocRef,
+            {
+              exerciseId,
+              customMediaUrl: cleanMediaUrl,
+              gifUrl: cleanMediaUrl,
+              imageUrl: cleanMediaUrl,
+              originalUrlOrBase64: cleanMediaUrl,
+              isMediaDeleted: false,
+              customMediaType: mediaType,
+              updatedAt: timestamp
+            },
+            { merge: true },
+            true
+          ),
+          safeFirestoreSetDoc(
+            exDocRef,
+            {
+              id: exerciseId,
+              customMediaUrl: cleanMediaUrl,
+              gifUrl: cleanMediaUrl,
+              imageUrl: cleanMediaUrl,
+              isMediaDeleted: false,
+              customMediaType: mediaType,
+              updatedAt: timestamp
+            },
+            { merge: true },
+            true
+          )
+        ]);
+        firestoreDirectOk = mOk && eOk;
+      } else {
+        const mOk = await safeFirestoreSetDoc(
           mediaDocRef,
           {
             exerciseId,
-            customMediaUrl: mediaUrl || "none",
-            gifUrl: mediaUrl || "none",
-            imageUrl: mediaUrl || "none",
-            originalUrlOrBase64: mediaUrl || null,
-            isMediaDeleted: !mediaUrl || mediaUrl === "none" || mediaUrl === "deleted",
+            customMediaUrl: "",
+            originalUrlOrBase64: null,
+            isMediaDeleted: false,
             customMediaType: mediaType,
             updatedAt: timestamp
           },
           { merge: true },
           true
-        ),
-        safeFirestoreSetDoc(
-          exDocRef,
-          {
-            id: exerciseId,
-            customMediaUrl: mediaUrl || "none",
-            gifUrl: mediaUrl || "none",
-            imageUrl: mediaUrl || "none",
-            customMediaType: mediaType,
-            updatedAt: timestamp
-          },
-          { merge: true },
-          true
-        )
-      ]);
+        );
+        firestoreDirectOk = mOk;
+      }
 
-      firestoreDirectOk = mOk && eOk;
       if (firestoreDirectOk) {
         console.log(`[Firestore Media DB OK] Confirmed media record for exercise ${exerciseId}`);
       } else {
@@ -207,15 +222,8 @@ export async function saveExerciseMediaToDatabase(
 
   // B. Confirm persistence via backend Express server endpoint (Firestore REST + server cache)
   try {
-    const token = await getFirebaseIdToken();
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
-    const res = await fetch("/api/exercises/save-custom-media", {
+    const res = await fetchWithFirebaseAuth("/api/exercises/save-custom-media", {
       method: "POST",
-      headers,
       body: JSON.stringify({
         exerciseId,
         customMediaUrl: mediaUrl,
@@ -226,7 +234,7 @@ export async function saveExerciseMediaToDatabase(
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.success && data.firestoreOk !== false) {
       serverOk = true;
-      if (data.customMediaUrl) {
+      if (data.customMediaUrl && !["none", "deleted", "null"].includes(String(data.customMediaUrl).trim().toLowerCase())) {
         serverFinalUrl = data.customMediaUrl;
       }
     } else {
@@ -252,8 +260,14 @@ export async function saveExerciseMediaToDatabase(
 export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string, { customMediaUrl: string; customMediaType: "image" | "video" }>> {
   const result: Record<string, { customMediaUrl: string; customMediaType: "image" | "video" }> = {};
 
+  const isUsableUrl = (u: any): u is string => {
+    if (!u || typeof u !== "string") return false;
+    const t = u.trim().toLowerCase();
+    return Boolean(t && t !== "none" && t !== "deleted" && t !== "null");
+  };
+
   const setEntry = (key: string, url: string, type: "image" | "video") => {
-    if (!key || !url) return;
+    if (!key || !isUsableUrl(url)) return;
     result[key] = { customMediaUrl: url, customMediaType: type };
 
     const cleanKey = key.replace(/^exercise[-_]/, "").replace(/^exercise/, "");
@@ -278,11 +292,8 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
       mediaSnap.forEach((docSnap) => {
         const d = docSnap.data();
         if (deletedSet.has(docSnap.id) || (d?.exerciseId && deletedSet.has(d.exerciseId))) return;
-        if (d?.isMediaDeleted) {
-          setEntry(docSnap.id, "none", "image");
-          return;
-        }
-        const url = d.customMediaUrl || d.gifUrl || d.imageUrl || d.originalUrlOrBase64 || d.url;
+        const candidates = [d.customMediaUrl, d.gifUrl, d.imageUrl, d.originalUrlOrBase64, d.url];
+        const url = candidates.find(isUsableUrl);
         if (url) {
           setEntry(docSnap.id, url, d.customMediaType === "video" ? "video" : "image");
           if (d.exerciseName) {
@@ -294,21 +305,23 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
       console.warn("[MediaStorage] Firestore exercise_media fetch notice:", e);
     }
 
-    try {
-      const exSnap = await getDocs(collection(db, "exercises"));
-      exSnap.forEach((docSnap) => {
-        const d = docSnap.data();
-        if (d?.isDeleted || deletedSet.has(docSnap.id)) return;
-        const url = d.customMediaUrl || d.gifUrl || d.imageUrl;
-        if (url) {
-          setEntry(docSnap.id, url, d.customMediaType === "video" ? "video" : "image");
-          if (d.name) {
-            setEntry(d.name.toLowerCase().trim(), url, d.customMediaType === "video" ? "video" : "image");
+    for (const colName of ["exercises", "generated_exercises"]) {
+      try {
+        const exSnap = await getDocs(collection(db, colName));
+        exSnap.forEach((docSnap) => {
+          const d = docSnap.data();
+          if (d?.isDeleted || deletedSet.has(docSnap.id)) return;
+          const url = [d.customMediaUrl, d.gifUrl, d.imageUrl].find(isUsableUrl);
+          if (url) {
+            setEntry(docSnap.id, url, d.customMediaType === "video" ? "video" : "image");
+            if (d.name) {
+              setEntry(d.name.toLowerCase().trim(), url, d.customMediaType === "video" ? "video" : "image");
+            }
           }
-        }
-      });
-    } catch (e) {
-      console.warn("[MediaStorage] Firestore exercises fetch notice:", e);
+        });
+      } catch (e) {
+        console.warn(`[MediaStorage] Firestore ${colName} fetch notice:`, e);
+      }
     }
 
     try {
@@ -317,7 +330,7 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
         const d = docSnap.data();
         const id = d.assetId || docSnap.id;
         if (deletedSet.has(id)) return;
-        const url = d.mediaUrl || d.url;
+        const url = [d.mediaUrl, d.url].find(isUsableUrl);
         if (url) {
           setEntry(id, url, d.mediaType === "video" ? "video" : "image");
         }

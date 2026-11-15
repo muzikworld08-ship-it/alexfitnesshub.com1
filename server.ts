@@ -61,15 +61,12 @@ import {
 import { EXERCISES, getExerciseGifUrl } from "./src/data/exercises";
 import { getWorkoutForProgramAndDay, normalizeProgramId } from "./src/data/challengeEngineDatabase";
 import { registerPrintablePdfRoutes } from "./src/server/printablePdfRoutes";
-import { runOneWaySupabaseToFirestoreMigration } from "./src/server/migrateSupabaseToFirestore";
 import { INITIAL_STORE_PRODUCTS } from "./src/data/storeProducts";
 
 // Load environment variables
 dotenv.config();
 
-// Supabase database/storage integration is RETIRED. Cloud Firestore & Firebase Storage are authoritative.
-const supabaseServer: any = null;
-console.log("[Database Mode] Cloud Firestore is the sole authoritative database (Supabase retired).");
+console.log("[Database Mode] Cloud Firestore & Firebase Storage are the sole authoritative database.");
 
 // Initialize Resend Client
 const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
@@ -309,76 +306,33 @@ app.get("/assets/:filename", async (req, res, next) => {
 // Expose the assets directory so that local GIF/image/video overrides can be served seamlessly
 app.use("/assets", express.static(ASSETS_DIR));
 
-// --- SUPABASE CDN IMAGE PROXY & OPTIMIZATION ROUTE ---
+// --- CDN IMAGE PROXY & CACHE REDIRECT ROUTE ---
 const handleCdnImageProxy = async (req: any, res: any) => {
   try {
     const rawUrl = (req.query.url as string) || "";
-    const width = req.query.width ? parseInt(req.query.width as string, 10) : undefined;
-    const height = req.query.height ? parseInt(req.query.height as string, 10) : undefined;
-    const quality = req.query.quality ? parseInt(req.query.quality as string, 10) : 80;
-    const format = (req.query.format as string) || "webp";
-    const resize = (req.query.resize as string) || "cover";
-
     if (!rawUrl) {
       return res.status(400).json({ error: "Missing required 'url' parameter." });
     }
 
-    const defaultSupabaseUrl = "https://sqaxwqtjvaixqytnluiy.supabase.co";
-    const legacySupabaseUrl = "https://ilfjiotgkdedgssachoe.supabase.co";
-
-    let targetCdnUrl = rawUrl;
-    if (targetCdnUrl.includes("ilfjiotgkdedgssachoe.supabase.co")) {
-      targetCdnUrl = targetCdnUrl.replace(/ilfjiotgkdedgssachoe\.supabase\.co/g, "sqaxwqtjvaixqytnluiy.supabase.co");
+    if (rawUrl.startsWith("/")) {
+      res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+      return res.redirect(302, rawUrl);
     }
 
-    // Check if URL is a Supabase Storage URL
-    if (rawUrl.includes("supabase.co/storage/") || rawUrl.includes("supabase.in/storage/")) {
-      if (rawUrl.includes("/storage/v1/object/public/")) {
-        targetCdnUrl = rawUrl.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
-      }
-      const queryParams = new URLSearchParams();
-      if (width && width > 0) queryParams.set("width", width.toString());
-      if (height && height > 0) queryParams.set("height", height.toString());
-      if (quality) queryParams.set("quality", quality.toString());
-      if (format && format !== "origin") queryParams.set("format", format);
-      if (resize) queryParams.set("resize", resize);
-
-      const queryString = queryParams.toString();
-      targetCdnUrl = queryString ? (targetCdnUrl.includes("?") ? `${targetCdnUrl}&${queryString}` : `${targetCdnUrl}?${queryString}`) : targetCdnUrl;
-
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-      return res.redirect(302, targetCdnUrl);
+    if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+      res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+      return res.redirect(302, rawUrl);
     }
 
-    // Handle relative Supabase bucket key paths
-    if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://") && !rawUrl.startsWith("/")) {
-      const bucket = rawUrl.startsWith("exercise_media/") ? "" : "exercise_media/";
-      targetCdnUrl = `${defaultSupabaseUrl}/storage/v1/render/image/public/${bucket}${rawUrl}`;
-      const queryParams = new URLSearchParams();
-      if (width && width > 0) queryParams.set("width", width.toString());
-      if (height && height > 0) queryParams.set("height", height.toString());
-      if (quality) queryParams.set("quality", quality.toString());
-      if (format && format !== "origin") queryParams.set("format", format);
-      if (resize) queryParams.set("resize", resize);
-
-      const queryString = queryParams.toString();
-      if (queryString) targetCdnUrl += `?${queryString}`;
-
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-      return res.redirect(302, targetCdnUrl);
-    }
-
-    // For external image URLs, set caching headers and redirect
     res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
-    return res.redirect(302, rawUrl);
+    return res.redirect(302, `/assets/${rawUrl.replace(/^\/+/, "")}`);
   } catch (err: any) {
     console.warn("[CDN Image Proxy Error]:", err?.message || err);
-    return res.status(500).json({ error: "Failed to optimize image via CDN proxy." });
+    return res.status(500).json({ error: "Failed to route image via CDN proxy." });
   }
 };
 
 app.get("/api/cdn-image", handleCdnImageProxy);
-app.get("/api/supabase-image-proxy", handleCdnImageProxy);
 
 // Configure high payload limits to allow massive Base64 images/videos to save correctly
 app.use(express.json({
@@ -1240,7 +1194,7 @@ async function getGooglePublicKeys() {
   }
 }
 
-async function verifyFirebaseIdToken(token: string): Promise<{ uid: string; email?: string; premium?: boolean } | null> {
+async function verifyFirebaseIdToken(token: string): Promise<{ uid: string; email?: string; email_verified?: boolean; premium?: boolean } | null> {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) {
@@ -1252,9 +1206,9 @@ async function verifyFirebaseIdToken(token: string): Promise<{ uid: string; emai
 
     const projectId = firebaseConfig.projectId;
 
-    // 1. Basic validation
+    // 1. Basic validation (allow 30s clock skew tolerance)
     const nowSecs = Math.floor(Date.now() / 1000);
-    if (payload.exp < nowSecs) {
+    if (typeof payload.exp === "number" && payload.exp < nowSecs - 30) {
       console.warn("Token expired");
       return null;
     }
@@ -1267,10 +1221,15 @@ async function verifyFirebaseIdToken(token: string): Promise<{ uid: string; emai
       return null;
     }
 
-    // 2. Signature verification
+    // 2. Signature verification (refresh Google public keys once if kid is missing due to key rotation)
     const kid = header.kid;
-    const keys = await getGooglePublicKeys();
-    const cert = keys[kid];
+    let keys = await getGooglePublicKeys();
+    let cert = keys[kid];
+    if (!cert) {
+      googleKeysExpiry = 0;
+      keys = await getGooglePublicKeys();
+      cert = keys[kid];
+    }
     if (!cert) {
       console.warn("Public key not found for kid:", kid);
       return null;
@@ -1285,7 +1244,12 @@ async function verifyFirebaseIdToken(token: string): Promise<{ uid: string; emai
       return null;
     }
 
-    return { uid: payload.sub, email: payload.email, premium: payload.premium };
+    return {
+      uid: payload.sub,
+      email: payload.email,
+      email_verified: Boolean(payload.email_verified),
+      premium: payload.premium
+    };
   } catch (error) {
     console.error("Error verifying Firebase ID token:", error);
     return null;
@@ -1312,11 +1276,9 @@ async function checkPremiumStatus(req: any, res: any, next: any) {
   }
 
   // 0. Bypass database check for admin emails
-  if (decoded.email && (
-    decoded.email.toLowerCase().trim() === "alexfitnesshub@gmail.com" ||
-    decoded.email.toLowerCase().trim() === "muzikworld08@gmail.com"
-  )) {
+  if (decoded.email && isServerAdminEmail(decoded.email)) {
     console.log(`[Auth Security] Admin user verified via email claim in checkPremiumStatus: ${decoded.email}`);
+    req.authToken = token;
     req.user = { uid: decoded.uid, email: decoded.email, role: "admin", subscriptionStatus: "premium" };
     return next();
   }
@@ -1337,10 +1299,7 @@ async function checkPremiumStatus(req: any, res: any, next: any) {
     }
 
     const profile = userSnap.data();
-    const isAdmin = profile.role === "admin" || (decoded.email && (
-      decoded.email.toLowerCase().trim() === "alexfitnesshub@gmail.com" ||
-      decoded.email.toLowerCase().trim() === "muzikworld08@gmail.com"
-    ));
+    const isAdmin = profile.role === "admin" || isServerAdminEmail(decoded.email);
     const isPremiumStatus = profile.subscriptionStatus === "premium" || 
                             profile.subscriptionStatus === "active" ||
                             profile.subscription === "premium" ||
@@ -1405,11 +1364,9 @@ async function requirePremium(req: any, res: any, next: any) {
   }
 
   // 0. Bypass database check for admin emails
-  if (decoded.email && (
-    decoded.email.toLowerCase().trim() === "alexfitnesshub@gmail.com" ||
-    decoded.email.toLowerCase().trim() === "muzikworld08@gmail.com"
-  )) {
+  if (decoded.email && isServerAdminEmail(decoded.email)) {
     console.log(`[Auth Security] Admin user verified via email claim in requirePremium: ${decoded.email}`);
+    req.authToken = token;
     req.user = { uid: decoded.uid, email: decoded.email, role: "admin", subscriptionStatus: "premium" };
     return next();
   }
@@ -1426,10 +1383,7 @@ async function requirePremium(req: any, res: any, next: any) {
     }
 
     const profile = userSnap.data();
-    const isAdmin = profile.role === "admin" || (decoded.email && (
-      decoded.email.toLowerCase().trim() === "alexfitnesshub@gmail.com" ||
-      decoded.email.toLowerCase().trim() === "muzikworld08@gmail.com"
-    ));
+    const isAdmin = profile.role === "admin" || isServerAdminEmail(decoded.email);
     const isPremiumStatus = profile.subscriptionStatus === "premium" || 
                             profile.subscriptionStatus === "active" ||
                             profile.subscription === "premium" ||
@@ -4035,32 +3989,56 @@ app.get("/api/exercises/custom-media", async (req, res) => {
           }
         }
 
+        const isValidServerMedia = (u: any): u is string => {
+          if (!u || typeof u !== "string") return false;
+          const t = u.trim().toLowerCase();
+          return Boolean(t && t !== "none" && t !== "deleted" && t !== "null");
+        };
+        const sanitizeOverrideEntry = (entry: any) => {
+          if (!entry || typeof entry !== "object") return entry;
+          const cleaned = { ...entry };
+          delete cleaned.isMediaDeleted;
+          const validMedia = [cleaned.customMediaUrl, cleaned.gifUrl, cleaned.imageUrl, cleaned.originalUrlOrBase64].find(isValidServerMedia) || "";
+          if (validMedia) {
+            cleaned.customMediaUrl = validMedia;
+            cleaned.gifUrl = validMedia;
+            cleaned.imageUrl = validMedia;
+          } else {
+            for (const f of ["customMediaUrl", "gifUrl", "imageUrl"]) {
+              if (f in cleaned && !isValidServerMedia(cleaned[f])) {
+                delete cleaned[f];
+              }
+            }
+          }
+          return cleaned;
+        };
+
         const freshOverrides: Record<string, any> = {};
 
         mediaDocs.forEach(d => {
           const docData = d.data();
           if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) return;
-          const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl || docData?.originalUrlOrBase64;
+          const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl, docData?.originalUrlOrBase64].find(isValidServerMedia);
           if (mUrl) {
-            freshOverrides[d.id] = {
+            freshOverrides[d.id] = sanitizeOverrideEntry({
               ...(freshOverrides[d.id] || {}),
               ...docData,
               customMediaUrl: mUrl,
               gifUrl: mUrl,
               imageUrl: mUrl,
               customMediaType: docData.customMediaType || "image"
-            };
+            });
             if (docData.exerciseName) {
               const normName = docData.exerciseName.toLowerCase().trim();
               if (!tombstoneSet.has(normName)) {
-                freshOverrides[normName] = {
+                freshOverrides[normName] = sanitizeOverrideEntry({
                   ...(freshOverrides[normName] || {}),
                   ...docData,
                   customMediaUrl: mUrl,
                   gifUrl: mUrl,
                   imageUrl: mUrl,
                   customMediaType: docData.customMediaType || "image"
-                };
+                });
               }
             }
           }
@@ -4069,21 +4047,21 @@ app.get("/api/exercises/custom-media", async (req, res) => {
         exDocs.forEach(d => {
           const docData = d.data();
           if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) return;
-          const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
+          const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl].find(isValidServerMedia);
           if (docData && (mUrl || docData.isCustom || docData.name)) {
-            freshOverrides[d.id] = {
+            freshOverrides[d.id] = sanitizeOverrideEntry({
               ...(freshOverrides[d.id] || {}),
               ...docData,
               ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-            };
+            });
             if (docData.name) {
               const normName = docData.name.toLowerCase().trim();
               if (!tombstoneSet.has(normName)) {
-                freshOverrides[normName] = {
+                freshOverrides[normName] = sanitizeOverrideEntry({
                   ...(freshOverrides[normName] || {}),
                   ...docData,
                   ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-                };
+                });
               }
             }
           }
@@ -4092,35 +4070,37 @@ app.get("/api/exercises/custom-media", async (req, res) => {
         genDocs.forEach(d => {
           const docData = d.data();
           if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) return;
-          const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
+          const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl].find(isValidServerMedia);
           if (docData && (mUrl || docData.isCustom || docData.name)) {
-            freshOverrides[d.id] = {
+            freshOverrides[d.id] = sanitizeOverrideEntry({
               ...(freshOverrides[d.id] || {}),
               ...docData,
               isCustom: true,
               ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-            };
+            });
             if (docData.name) {
               const normName = docData.name.toLowerCase().trim();
               if (!tombstoneSet.has(normName)) {
-                freshOverrides[normName] = {
+                freshOverrides[normName] = sanitizeOverrideEntry({
                   ...(freshOverrides[normName] || {}),
                   ...docData,
                   isCustom: true,
                   ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-                };
+                });
               }
             }
           }
         });
 
-        // Merge cloud authority over local cache and strip tombstoned exercises
+        // Merge cloud authority over local cache, strip tombstones & any stale placeholder GIF masks
         data = { ...data, ...freshOverrides };
         for (const k of Object.keys(data)) {
           const item = data[k];
           const itemName = String(item?.name || item?.exerciseName || "").toLowerCase().trim();
           if (item?.isDeleted === true || tombstoneSet.has(k.toLowerCase()) || (itemName && tombstoneSet.has(itemName))) {
             delete data[k];
+          } else {
+            data[k] = sanitizeOverrideEntry(item);
           }
         }
 
@@ -4298,32 +4278,30 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
       const clearWrite = await setServerFirestoreDoc("exercise_media", exerciseId, {
         exerciseId,
         originalUrlOrBase64: null,
-        customMediaUrl: "none",
-        gifUrl: "none",
-        imageUrl: "none",
-        isMediaDeleted: true,
+        customMediaUrl: "",
+        isMediaDeleted: false,
         customMediaType: customMediaType || "image",
         updatedAt: new Date().toISOString()
-      }, false, req.authToken);
+      }, true, req.authToken);
 
       if (!clearWrite.success) {
-        console.error("[Firestore Media Backup Delete Error]:", clearWrite.error);
-        return res.status(502).json({ success: false, firestoreOk: false, error: "Cloud Firestore did not confirm media deletion." });
+        console.error("[Firestore Media Backup Clear Error]:", clearWrite.error);
+        return res.status(502).json({ success: false, firestoreOk: false, error: "Cloud Firestore did not confirm custom media clear." });
       }
 
-      overrides[exerciseId] = {
-        exerciseId,
-        customMediaUrl: "none",
-        gifUrl: "none",
-        imageUrl: "none",
-        isMediaDeleted: true,
-        updatedAt: new Date().toISOString()
-      };
+      if (overrides[exerciseId]) {
+        const cleaned = { ...overrides[exerciseId] };
+        delete cleaned.customMediaUrl;
+        delete cleaned.isMediaDeleted;
+        if (cleaned.gifUrl === "none") delete cleaned.gifUrl;
+        if (cleaned.imageUrl === "none") delete cleaned.imageUrl;
+        overrides[exerciseId] = cleaned;
+      }
       try {
         fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
       } catch (e) {}
       lastCustomMediaCloudSync = Date.now();
-      return res.json({ success: true, firestoreOk: true, customMediaUrl: "none" });
+      return res.json({ success: true, firestoreOk: true, customMediaUrl: "" });
     } else {
       const rawInputUrl = customMediaUrl;
       const isCloudStorageUrl = typeof rawInputUrl === "string" && (
@@ -4557,17 +4535,45 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
 
   const cleanName = workout.name.trim().toLowerCase();
 
-  // 1. Check if workout already exists in master library (unless deleted)
-  const existingMaster = EXERCISES.find(e => e.name && e.name.trim().toLowerCase() === cleanName);
-  if (existingMaster) {
-    return res.status(409).json({
-      success: false,
-      error: `Workout already exists: A workout named "${existingMaster.name}" already exists in the exercise library.`
-    });
-  }
-
   try {
-    const newId = workout.id || `custom_ex_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    // 0. Gather tombstones so previously deleted exercises can always be re-created cleanly without false 409 blocks
+    const tombstoneSet = new Set<string>();
+    try {
+      if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
+        const rawDel = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
+        if (rawDel) {
+          const parsedDel = JSON.parse(rawDel);
+          if (Array.isArray(parsedDel)) {
+            parsedDel.forEach((d: any) => {
+              const s = String(d || "").trim().toLowerCase();
+              if (s) tombstoneSet.add(s);
+            });
+          }
+        }
+      }
+      const deletedDocs = await getServerFirestoreCollection("deleted_exercises", req.authToken);
+      deletedDocs.forEach((d: any) => {
+        const dd = d.data();
+        if (d.id) tombstoneSet.add(String(d.id).trim().toLowerCase());
+        if (dd?.id) tombstoneSet.add(String(dd.id).trim().toLowerCase());
+        if (dd?.name) tombstoneSet.add(String(dd.name).trim().toLowerCase());
+      });
+    } catch {}
+
+    // 1. Check if workout already exists in master library (unless deleted/tombstoned or upsertIfExists requested)
+    const existingMaster = EXERCISES.find(e => e.name && e.name.trim().toLowerCase() === cleanName);
+    const isMasterTombstoned = existingMaster
+      ? tombstoneSet.has(existingMaster.id.toLowerCase()) || tombstoneSet.has(cleanName)
+      : false;
+    if (existingMaster && !isMasterTombstoned && !workout.upsertIfExists) {
+      return res.status(409).json({
+        success: false,
+        existingExercise: existingMaster,
+        error: `Workout already exists: A workout named "${existingMaster.name}" already exists in the exercise library.`
+      });
+    }
+
+    const newId = workout.id || (isMasterTombstoned && existingMaster ? existingMaster.id : `custom_ex_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
     const fullWorkout = {
       ...workout,
       name: workout.name.trim(),
@@ -4576,10 +4582,11 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
       createdBy: req.user?.email || "admin",
       isCustom: true,
       isDeleted: false,
+      isMediaDeleted: false,
       updatedAt: new Date().toISOString()
     };
 
-    // 2. Check duplicates in Cloud Firestore exercises collection
+    // 2. Check duplicates in Cloud Firestore exercises collection (unless tombstoned or upsertIfExists requested)
     const [cloudExercises, cloudGenExercises] = await Promise.all([
       getServerFirestoreCollection("exercises", req.authToken),
       getServerFirestoreCollection("generated_exercises", req.authToken)
@@ -4587,11 +4594,14 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
     const duplicateInCloud = [...cloudExercises, ...cloudGenExercises].find((d) => {
       const dd = d.data();
       if (!dd || dd.isDeleted === true) return false;
+      const dId = String(dd.id || d.id || "").trim().toLowerCase();
+      if (tombstoneSet.has(dId) || tombstoneSet.has(cleanName)) return false;
       return String(dd.name || "").trim().toLowerCase() === cleanName;
     });
-    if (duplicateInCloud) {
+    if (duplicateInCloud && !workout.upsertIfExists) {
       return res.status(409).json({
         success: false,
+        existingExercise: duplicateInCloud.data(),
         error: `Workout already exists: A workout named "${duplicateInCloud.data().name}" already exists in Cloud Firestore.`
       });
     }
@@ -4607,10 +4617,17 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
       }
     }
 
-    const existingOverride = Object.values(overrides).find((o: any) => o && o.isDeleted !== true && o.name && o.name.trim().toLowerCase() === cleanName);
-    if (existingOverride) {
+    const existingOverride = Object.values(overrides).find((o: any) => {
+      if (!o || o.isDeleted === true || !o.name) return false;
+      const oName = o.name.trim().toLowerCase();
+      const oId = String(o.id || "").trim().toLowerCase();
+      if (tombstoneSet.has(oId) || tombstoneSet.has(oName)) return false;
+      return oName === cleanName;
+    });
+    if (existingOverride && !workout.upsertIfExists) {
       return res.status(409).json({
         success: false,
+        existingExercise: existingOverride,
         error: `Workout already exists: A workout named "${existingOverride.name}" already exists in the exercise library.`
       });
     }
@@ -5441,9 +5458,32 @@ async function hydrateAllDataFromCloud() {
     console.warn("[Cloud Hydration] Deleted exercises hydration notice:", delHydrateErr);
   }
 
-  // 3. Exercise Overrides & Catalog (Cloud Firestore authoritative, excluding tombstones)
+  // 3. Exercise Overrides & Catalog (Cloud Firestore authoritative, excluding tombstones & stripping placeholder GIF masks)
   try {
     let cloudExerciseOverrides: Record<string, any> = {};
+    const isValidHydrateMedia = (u: any): u is string => {
+      if (!u || typeof u !== "string") return false;
+      const t = u.trim().toLowerCase();
+      return Boolean(t && t !== "none" && t !== "deleted" && t !== "null");
+    };
+    const sanitizeHydratedEntry = (entry: any) => {
+      if (!entry || typeof entry !== "object") return entry;
+      const cleaned = { ...entry };
+      delete cleaned.isMediaDeleted;
+      const validUrl = [cleaned.customMediaUrl, cleaned.gifUrl, cleaned.imageUrl, cleaned.originalUrlOrBase64].find(isValidHydrateMedia) || "";
+      if (validUrl) {
+        cleaned.customMediaUrl = validUrl;
+        cleaned.gifUrl = validUrl;
+        cleaned.imageUrl = validUrl;
+      } else {
+        for (const f of ["customMediaUrl", "gifUrl", "imageUrl"]) {
+          if (f in cleaned && !isValidHydrateMedia(cleaned[f])) {
+            delete cleaned[f];
+          }
+        }
+      }
+      return cleaned;
+    };
 
     // 3a. Query Firestore 'exercise_media' collection
     try {
@@ -5451,7 +5491,7 @@ async function hydrateAllDataFromCloud() {
       for (const d of mediaDocs) {
         const docData = d.data();
         if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) continue;
-        const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl || docData?.originalUrlOrBase64;
+        const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl, docData?.originalUrlOrBase64].find(isValidHydrateMedia);
         if (mUrl) {
           const mediaEntry = {
             customMediaUrl: mUrl,
@@ -5459,19 +5499,19 @@ async function hydrateAllDataFromCloud() {
             imageUrl: mUrl,
             customMediaType: docData.customMediaType || "image"
           };
-          cloudExerciseOverrides[d.id] = {
+          cloudExerciseOverrides[d.id] = sanitizeHydratedEntry({
             ...(cloudExerciseOverrides[d.id] || {}),
             ...docData,
             ...mediaEntry
-          };
+          });
           if (docData.exerciseName) {
             const normName = docData.exerciseName.toLowerCase().trim();
             if (!tombstoneSet.has(normName)) {
-              cloudExerciseOverrides[normName] = {
+              cloudExerciseOverrides[normName] = sanitizeHydratedEntry({
                 ...(cloudExerciseOverrides[normName] || {}),
                 ...docData,
                 ...mediaEntry
-              };
+              });
             }
           }
         }
@@ -5486,21 +5526,21 @@ async function hydrateAllDataFromCloud() {
       for (const d of exDocs) {
         const docData = d.data();
         if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) continue;
-        const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
+        const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl].find(isValidHydrateMedia);
         if (docData && (mUrl || docData.isCustom || docData.name)) {
-          cloudExerciseOverrides[d.id] = {
+          cloudExerciseOverrides[d.id] = sanitizeHydratedEntry({
             ...(cloudExerciseOverrides[d.id] || {}),
             ...docData,
             ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-          };
+          });
           if (docData.name) {
             const normName = docData.name.toLowerCase().trim();
             if (!tombstoneSet.has(normName)) {
-              cloudExerciseOverrides[normName] = {
+              cloudExerciseOverrides[normName] = sanitizeHydratedEntry({
                 ...(cloudExerciseOverrides[normName] || {}),
                 ...docData,
                 ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-              };
+              });
             }
           }
         }
@@ -5515,13 +5555,13 @@ async function hydrateAllDataFromCloud() {
       for (const d of genDocs) {
         const docData = d.data();
         if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) continue;
-        const mUrl = docData?.customMediaUrl || docData?.gifUrl || docData?.imageUrl;
+        const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl].find(isValidHydrateMedia);
         if (docData && (mUrl || docData.isCustom || docData.name)) {
-          const entry = {
+          const entry = sanitizeHydratedEntry({
             ...docData,
             isCustom: true,
             ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-          };
+          });
           cloudExerciseOverrides[d.id] = {
             ...(cloudExerciseOverrides[d.id] || {}),
             ...entry
@@ -5553,7 +5593,7 @@ async function hydrateAllDataFromCloud() {
       }
     } catch (e) {}
 
-    // 3d. Cloud overrides win; strip any tombstoned items cleanly
+    // 3d. Cloud overrides win; strip any tombstoned items & placeholder masks cleanly
     let existingDisk: Record<string, any> = {};
     if (fs.existsSync(OVERRIDES_FILE_PATH)) {
       try {
@@ -5568,6 +5608,8 @@ async function hydrateAllDataFromCloud() {
       const itemName = String(item?.name || item?.exerciseName || "").toLowerCase().trim();
       if (item?.isDeleted === true || tombstoneSet.has(k.toLowerCase()) || (itemName && tombstoneSet.has(itemName))) {
         delete mergedEx[k];
+      } else {
+        mergedEx[k] = sanitizeHydratedEntry(item);
       }
     }
     fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(mergedEx, null, 2), "utf-8");
@@ -6913,20 +6955,7 @@ app.delete("/api/challenges/:id", requireAdmin, async (req: any, res) => {
   }
 });
 
-// Admin endpoint to audit/backup and perform one-way legacy Supabase -> Firestore migration (does not overwrite newer Firestore docs)
-app.post("/api/admin/migrate/supabase-to-firestore", requireAdmin, async (req: any, res) => {
-  try {
-    const dryRun = req.body?.dryRun !== false;
-    const summary = await runOneWaySupabaseToFirestoreMigration({
-      firestoreDb: db,
-      dryRun
-    });
-    res.json({ success: true, summary });
-  } catch (error: any) {
-    console.error("Migration utility error:", error);
-    res.status(500).json({ success: false, error: error?.message || "Migration audit failed." });
-  }
-});
+
 
 // --- WORKOUT VIDEOS YOUTUBE SEARCH & PROXY ENDPOINTS WITH LOCAL FALLBACK & IN-MEMORY CACHE ---
 
@@ -8041,24 +8070,41 @@ app.get("/api/user/profile-status", async (req: any, res: any) => {
       console.warn(`[Profile Status DB Notice] Failed to read profile for ${decoded.uid}:`, e?.message || e);
     }
 
+    const decodedIsAdmin = isServerAdminEmail(decoded.email);
     if (!profile) {
       profile = {
         uid: decoded.uid,
         email: decoded.email || "",
         displayName: decoded.email ? decoded.email.split("@")[0] : "Athlete",
-        subscriptionStatus: "free",
-        subscriptionTier: "basic",
-        accountType: "Free Trial",
-        badge: "Free Trial",
-        isFreeTrial: true,
-        freeTrialStatus: "active",
-        role: "user",
+        subscriptionStatus: decodedIsAdmin ? "premium" : "free",
+        subscriptionTier: decodedIsAdmin ? "yearly" : "basic",
+        isPremium: decodedIsAdmin,
+        premiumAccess: decodedIsAdmin,
+        accountType: decodedIsAdmin ? "Admin Athlete" : "Free Trial",
+        badge: decodedIsAdmin ? "Admin Athlete" : "Free Trial",
+        isFreeTrial: !decodedIsAdmin,
+        freeTrialStatus: decodedIsAdmin ? "none" : "active",
+        role: decodedIsAdmin ? "admin" : "user",
         createdAt: new Date().toISOString()
       };
       const createdRes = await setServerFirestoreDoc("users", decoded.uid, profile, false, token);
       if (createdRes.success) {
-        console.log(`[Database Setup] Created default profile for user: ${decoded.uid}`);
+        console.log(`[Database Setup] Created default profile for user: ${decoded.uid} (role: ${profile.role})`);
       }
+    } else if (decodedIsAdmin && (profile.role !== "admin" || profile.subscriptionStatus !== "premium")) {
+      profile = {
+        ...profile,
+        role: "admin",
+        subscriptionStatus: "premium",
+        subscriptionTier: profile.subscriptionTier || "yearly",
+        isPremium: true,
+        premiumAccess: true,
+        accountType: "Admin Athlete",
+        badge: "Admin Athlete",
+        isFreeTrial: false,
+        freeTrialStatus: "none"
+      };
+      await setServerFirestoreDoc("users", decoded.uid, profile, true, token).catch(() => {});
     }
 
     // Auto-healing: If user is not currently marked premium, check payments collection or Paystack API for existing successful payments

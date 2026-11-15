@@ -160,7 +160,7 @@ export const AdminAssetManager: React.FC = () => {
         setUploadStatusPhase("Phase 1: Validating file integrity...");
         await new Promise((r) => setTimeout(r, 200));
 
-        // Upload to Firebase / Supabase persistent cloud storage
+        // Upload to Firebase Storage persistent cloud storage
         finalMediaUrl = await uploadMediaToCloud(
           selectedFile, 
           exerciseId, 
@@ -175,7 +175,7 @@ export const AdminAssetManager: React.FC = () => {
         setUploadProgress(50);
       }
 
-      // Phase 3: Persist URL to Supabase DB + Cloud Firestore + App State
+      // Phase 3: Persist URL to Cloud Firestore + App State
       setUploadStatusPhase("Phase 3: Deploying asset & syncing database records...");
       setUploadProgress(85);
 
@@ -271,7 +271,7 @@ export const AdminAssetManager: React.FC = () => {
           Admin Access Restricted
         </h3>
         <p className="text-xs text-slate-600 leading-relaxed max-w-md mx-auto">
-          The <code className="bg-white px-2 py-0.5 rounded border border-rose-200 text-rose-700 font-bold font-mono">AdminAssetManager</code> module is strictly restricted to administrator <code className="bg-white px-2 py-0.5 rounded border border-rose-200 text-rose-700 font-bold font-mono">alexfitnesshub@gmail.com</code>.
+          The <code className="bg-white px-2 py-0.5 rounded border border-rose-200 text-rose-700 font-bold font-mono">AdminAssetManager</code> module is strictly restricted to authorized administrators (<code className="bg-white px-2 py-0.5 rounded border border-rose-200 text-rose-700 font-bold font-mono">alexfitnesshub@gmail.com</code>).
         </p>
       </div>
     );
@@ -289,7 +289,7 @@ export const AdminAssetManager: React.FC = () => {
               ADMINISTRATIVE ASSET ENGINE
             </span>
             <span className="text-[10px] font-mono text-slate-400">
-              [Authorized: alexfitnesshub@gmail.com]
+              [Authorized: Admin Account]
             </span>
           </div>
           <h2 className="text-xl font-black text-slate-900 mt-2 tracking-tight flex items-center gap-2">

@@ -80,9 +80,12 @@ export default function AddWorkoutModal({
     }
   }, [targetDifficulty, isOpen]);
 
+  // Inline Notice State (replaces window.alert inside iframes)
+  const [formNotice, setFormNotice] = useState<{ type: "error" | "info"; text: string; existingExercise?: Exercise } | null>(null);
+
   // Custom Form State
   const [customName, setCustomName] = useState("");
-  const [customCategory, setCustomCategory] = useState(isWomenProgram ? "Glute & Lower Body Shaping" : "Strength");
+  const [customCategory, setCustomCategory] = useState(isWomenProgram ? "Glute & Lower Body Shaping" : "Chest");
   const [customMuscleGroup, setCustomMuscleGroup] = useState(isWomenProgram ? "Glutes, Hamstrings" : "");
   const [customEquipment, setCustomEquipment] = useState(isWomenProgram ? "Bodyweight / Dumbbells" : "Dumbbells");
   const [customDifficulty, setCustomDifficulty] = useState<"Beginner" | "Intermediate" | "Advanced">(
@@ -151,9 +154,13 @@ export default function AddWorkoutModal({
   if (!isOpen) return null;
 
   const handleSelectFromLibrary = (ex: Exercise) => {
+    setFormNotice(null);
     const cleanName = ex.name.toLowerCase().trim();
     if (currentExercises && currentExercises.some(ce => (ce.exerciseName || (ce as any).name || "").toLowerCase().trim() === cleanName)) {
-      alert(`Workout already exists!\n\n"${ex.name}" is already included in Day ${dayNumber} of this workout routine.`);
+      setFormNotice({
+        type: "info",
+        text: `"${ex.name}" is already included in Day ${dayNumber} of this workout routine.`
+      });
       return;
     }
 
@@ -165,10 +172,11 @@ export default function AddWorkoutModal({
 
     const newEx: ChallengeExerciseItem = {
       id: `ex_${programId}_d${dayNumber}_${Date.now()}`,
+      exerciseId: ex.id,
       programId: programId as any,
       programName: programId,
       dayNumber: Number(dayNumber),
-      category: ex.category || (isWomenProgram ? "Women Sculpt" : "General Strength"),
+      category: ex.category || (isWomenProgram ? "Women Sculpt" : "Chest"),
       muscleGroup: ex.muscleGroups || ["Full Body"],
       exerciseName: ex.name,
       equipment: Array.isArray(ex.equipment) ? ex.equipment : (ex.equipment ? [String(ex.equipment)] : ["Bodyweight"]),
@@ -191,26 +199,37 @@ export default function AddWorkoutModal({
 
   const handleCreateCustom = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormNotice(null);
     const cleanCustom = customName.trim();
     if (!cleanCustom) return;
 
     // Check if duplicate in this day's workout
     const cleanLower = cleanCustom.toLowerCase();
     if (currentExercises && currentExercises.some(ce => (ce.exerciseName || (ce as any).name || "").toLowerCase().trim() === cleanLower)) {
-      alert(`Workout already exists!\n\nA workout named "${cleanCustom}" is already included in Day ${dayNumber} of this routine.`);
+      setFormNotice({
+        type: "info",
+        text: `A workout named "${cleanCustom}" is already included in Day ${dayNumber} of this routine.`
+      });
       return;
     }
 
-    // Check if already in library
+    // Check if already in library — offer immediate 1-click button to add existing workout instead of dead-end alert
     const existingLib = libraryExercises.find(le => le.name.toLowerCase().trim() === cleanLower);
     if (existingLib) {
-      alert(`Workout already exists!\n\nA workout named "${existingLib.name}" already exists in the exercise library. Please choose a unique name or select it from the Library tab.`);
+      setFormNotice({
+        type: "info",
+        text: `"${existingLib.name}" is already in the workout library under "${existingLib.category}". Add it directly to Day ${dayNumber} or rename your custom drill.`,
+        existingExercise: existingLib
+      });
       return;
     }
 
     // Ensure workouts assigned as female only appear in Women Confidence
     if (!isWomenProgram && targetAudience === "Women") {
-      alert("A workout assigned as female can only be added to the Women Confidence Program. Please select Unisex or Men for this program.");
+      setFormNotice({
+        type: "error",
+        text: "A workout assigned as female can only be added to the Women Confidence Program. Select Unisex or Men for this program."
+      });
       return;
     }
 
@@ -243,7 +262,10 @@ export default function AddWorkoutModal({
         gifUrl: customGifUrl
       };
       if (!isHomeEligibleExercise(probeEx)) {
-        alert("Cannot add to 180 Home Workout Program: Exercises with barbells, dumbbells, or gym machines are not permitted. Please use Bodyweight, Mat, or Zero Equipment.");
+        setFormNotice({
+          type: "error",
+          text: "Cannot add to 180 Home Workout Program: Exercises with barbells, dumbbells, or gym machines are not permitted. Use Bodyweight, Mat, or Zero Equipment."
+        });
         return;
       }
     }
@@ -253,7 +275,10 @@ export default function AddWorkoutModal({
       const probeLower = `${customName} ${customCategory} ${customInstructions}`.toLowerCase();
       for (const blocked of STRONG_MEN_EXERCISE_BLOCKLIST) {
         if (probeLower.includes(blocked)) {
-          alert(`Cannot add to Women Confidence Program:\n\nMovement '${blocked}' is identified as a heavy bodybuilding / male-focused exercise (such as cable fly, heavy bench, etc.) and is not permitted in Women's Confidence.\n\nPlease prescribe a feminine sculpting, posture, or glute activation movement instead.`);
+          setFormNotice({
+            type: "error",
+            text: `Movement '${blocked}' is identified as a heavy bodybuilding exercise and is not permitted in Women's Confidence. Prescribe a sculpting, posture, or glute drill instead.`
+          });
           return;
         }
       }
@@ -418,7 +443,7 @@ export default function AddWorkoutModal({
 
             <button
               type="button"
-              onClick={() => setActiveTab("custom")}
+              onClick={() => { setActiveTab("custom"); setFormNotice(null); }}
               className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer ${
                 activeTab === "custom"
                   ? isWomenProgram ? "bg-rose-600 text-white shadow-xs" : "bg-red-600 text-white shadow-xs"
@@ -429,6 +454,38 @@ export default function AddWorkoutModal({
               <span>{isWomenProgram ? "Create Custom Women Workout" : "Create Custom Workout Drill"}</span>
             </button>
           </div>
+
+          {formNotice && (
+            <div className={`mt-3 p-3 rounded-2xl border text-xs flex flex-wrap items-center justify-between gap-2 ${
+              formNotice.type === "error"
+                ? "bg-red-950/60 border-red-700/60 text-red-200"
+                : "bg-amber-950/60 border-amber-700/60 text-amber-200"
+            }`}>
+              <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{formNotice.text}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {formNotice.existingExercise && (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectFromLibrary(formNotice.existingExercise!)}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition cursor-pointer"
+                  >
+                    + Add Existing to {activeTier}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setFormNotice(null)}
+                  className="p-1 rounded-lg hover:bg-white/10 text-neutral-300 cursor-pointer"
+                  aria-label="Dismiss notice"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Tab 1: Library Browser */}
@@ -566,7 +623,10 @@ export default function AddWorkoutModal({
                             return (
                               <button
                                 type="button"
-                                onClick={() => alert(`Workout already exists!\n\n"${ex.name}" is already included in Day ${dayNumber} of this workout routine.`)}
+                                onClick={() => setFormNotice({
+                                  type: "info",
+                                  text: `"${ex.name}" is already included in Day ${dayNumber} of this workout routine.`
+                                })}
                                 className="px-3 py-1.5 rounded-xl bg-neutral-800 text-neutral-400 text-xs font-bold flex items-center gap-1.5 border border-neutral-700 cursor-pointer"
                                 title="This workout is already in this routine"
                               >

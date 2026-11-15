@@ -1,6 +1,6 @@
 import { ref, uploadBytes, getDownloadURL, deleteObject, listAll } from "firebase/storage";
 import { storage, getFirebaseIdToken } from "../lib/firebase";
-import { getSupabaseCdnUrl, SupabaseImageOptions } from "../utils/supabaseImage";
+import { getMediaCdnUrl, MediaImageOptions } from "../utils/mediaCdn";
 
 export const MEDIA_BUCKET_NAME = "exercise_media";
 
@@ -62,18 +62,18 @@ export function getAdminMediaUrl(pathName: string): string {
   if (cleanPath.startsWith("http://") || cleanPath.startsWith("https://") || cleanPath.startsWith("assets/")) {
     return cleanPath.startsWith("assets/") ? `/${cleanPath}` : cleanPath;
   }
-  return getSupabaseCdnUrl(cleanPath);
+  return getMediaCdnUrl(cleanPath);
 }
 
 export const getPublicMediaUrl = getAdminMediaUrl;
 
-export function getOptimizedMediaUrl(rawUrl?: string, options: SupabaseImageOptions = {}): string {
+export function getOptimizedMediaUrl(rawUrl?: string, options: MediaImageOptions = {}): string {
   if (!rawUrl) return "";
   const resolved = resolveAdminMediaUrl(rawUrl);
-  return getSupabaseCdnUrl(resolved, options);
+  return getMediaCdnUrl(resolved, options);
 }
 
-export function resolveAdminMediaUrl(rawUrl?: string, options?: SupabaseImageOptions): string {
+export function resolveAdminMediaUrl(rawUrl?: string, options?: MediaImageOptions): string {
   if (!rawUrl) return "";
   const trimmed = rawUrl.trim();
   let baseResolved = trimmed;
@@ -93,7 +93,7 @@ export function resolveAdminMediaUrl(rawUrl?: string, options?: SupabaseImageOpt
   }
 
   if (options && Object.keys(options).length > 0) {
-    return getSupabaseCdnUrl(baseResolved, options);
+    return getMediaCdnUrl(baseResolved, options);
   }
   return baseResolved;
 }

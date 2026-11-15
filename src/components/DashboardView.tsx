@@ -451,7 +451,7 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
                           Realtime <span className="text-[#D32F2F]">Database Todos</span>
                         </h2>
                         <p className="text-xs text-slate-500 mt-1">
-                          Live, bidirectional task synchronization across Supabase Channel and Firebase Firestore.
+                          Live, bidirectional task synchronization backed by Firebase Firestore.
                         </p>
                       </div>
                       <TodoRealtimeWidget />

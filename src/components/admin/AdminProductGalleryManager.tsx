@@ -77,7 +77,7 @@ export const AdminProductGalleryManager: React.FC<AdminProductGalleryManagerProp
     setErrorMsg(null);
 
     try {
-      // Attempt Supabase upload or fallback to base64 data URL
+      // Attempt Firebase Storage upload or fallback to base64 data URL
       const path = `store/products/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
       let finalUrl = "";
       try {

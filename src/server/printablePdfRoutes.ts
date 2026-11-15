@@ -51,12 +51,11 @@ export function registerPrintablePdfRoutes(
     paystackSecretKey: string;
     appUrl?: string;
     uploadFileToFirebaseStorageServer?: (buffer: Buffer, mime: string, name: string) => Promise<string | null>;
-    uploadFileToSupabaseStorageServer?: (buffer: Buffer, mime: string, name: string) => Promise<string | null>;
     db?: any;
   }
 ) {
   ensurePdfDirectories();
-  const { requireAdmin, paystackSecretKey, appUrl, uploadFileToFirebaseStorageServer, uploadFileToSupabaseStorageServer } = options;
+  const { requireAdmin, paystackSecretKey, appUrl, uploadFileToFirebaseStorageServer } = options;
   if (options.db) {
     routeDb = options.db;
     setEngineDb(options.db);

@@ -569,7 +569,7 @@ export default function HomeWorkoutChallengeView() {
     e.preventDefault();
     if (!adminMediaUrl.trim()) return;
 
-    setAdminUploadStatus("Uploading & syncing to Supabase / Firestore...");
+    setAdminUploadStatus("Uploading & syncing to Firebase Storage / Firestore...");
     try {
       const res = await saveExerciseMediaToDatabase(
         adminSelectedExerciseKey,

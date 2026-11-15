@@ -28,7 +28,7 @@ import { getExerciseGifUrl, Exercise, EXERCISES } from "../../data/exercises";
 import { ChallengeValidationService } from "../../services/challengeValidationService";
 import { useApp } from "../../context/AppContext";
 import { getChallengeWorkouts } from "../../data/challenges";
-import { auth, db, safeFirestoreSetDoc, getFirebaseIdToken } from "../../lib/firebase";
+import { auth, db, safeFirestoreSetDoc, getFirebaseIdToken, fetchWithFirebaseAuth } from "../../lib/firebase";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import DeleteWorkoutConfirmModal, { DeleteWorkoutTarget } from "./DeleteWorkoutConfirmModal";
 import ExerciseReplacementModal from "./ExerciseReplacementModal";
@@ -185,7 +185,7 @@ const PROGRAM_CANONICAL_SPLITS: Record<string, Record<number, { title: string; f
 };
 
 export default function AdminWorkoutChallengeEngine() {
-  const { exercises: libraryExercises, allChallenges, user, deleteWorkout, uploadExerciseMedia } = useApp();
+  const { exercises: libraryExercises, allChallenges, user, addWorkout, deleteWorkout, uploadExerciseMedia } = useApp();
 
   // Selected Program & Mode
   const [selectedProgramId, setSelectedProgramId] = useState<string>("immortal_90");
@@ -616,15 +616,13 @@ export default function AdminWorkoutChallengeEngine() {
       let rawCandidate = ex.gifUrl !== undefined ? ex.gifUrl : ((ex as any).customMediaUrl !== undefined ? (ex as any).customMediaUrl : undefined);
       let gif: string = "";
 
-      if (rawCandidate === "none" || rawCandidate === "deleted" || rawCandidate === "" || rawCandidate === null) {
-        gif = "none";
-      } else if (rawCandidate) {
+      if (rawCandidate && !["none", "deleted", "null"].includes(String(rawCandidate).trim().toLowerCase())) {
         gif = rawCandidate;
       } else {
         gif = getExerciseGifUrl(name, ex.category, seenGifs);
       }
 
-      if (gif && gif !== "none") {
+      if (gif) {
         seenGifs.add(gif);
       }
 
@@ -775,13 +773,8 @@ export default function AdminWorkoutChallengeEngine() {
     }
 
     try {
-      const token = await getFirebaseIdToken();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const res = await fetch("/api/admin/programs/save-day-override", {
+      const res = await fetchWithFirebaseAuth("/api/admin/programs/save-day-override", {
         method: "POST",
-        headers,
         body: JSON.stringify({
           programId: selectedProgramId,
           track: (selectedProgramId === "home_180" || selectedProgramId.includes("home")) ? adminTrack : undefined,
@@ -959,8 +952,8 @@ export default function AdminWorkoutChallengeEngine() {
       return;
     }
 
-    const usedGifsInRoutine = new Set<string>(currentTierExercises.map(e => e.gifUrl).filter((u): u is string => !!u));
-    let assignedGif = newEx.gifUrl;
+    const usedGifsInRoutine = new Set<string>(currentTierExercises.map(e => e.gifUrl).filter((u): u is string => !!u && u !== "none"));
+    let assignedGif = newEx.gifUrl && newEx.gifUrl !== "none" ? newEx.gifUrl : "";
     if (!assignedGif || usedGifsInRoutine.has(assignedGif)) {
       assignedGif = getExerciseGifUrl(name, newEx.category, usedGifsInRoutine);
     }
@@ -979,17 +972,63 @@ export default function AdminWorkoutChallengeEngine() {
     const updated = [...currentTierExercises, finalEx];
     const ok = await handleReorderExercises(updated, activeTierTarget);
 
+    // Ensure every admin-added drill in Challenge Engine also persists permanently to Cloud Firestore
+    // `exercises` & `generated_exercises` collections so it is visible on the public website under its category.
+    const existingLibMatch = libraryExercises.find(
+      e => (e.name || "").toLowerCase().trim() === name.toLowerCase() || (newEx.exerciseId && e.id === newEx.exerciseId) || e.id === newEx.id
+    );
+    let targetLibraryId = existingLibMatch?.id || finalEx.exerciseId || finalEx.id;
+
+    if (!existingLibMatch && addWorkout) {
+      try {
+        const persistedExercise = await addWorkout({
+          id: targetLibraryId,
+          name,
+          category: newEx.category || "Gym Workouts",
+          categories: [newEx.category || "Gym Workouts"],
+          difficulty: assignedDiff,
+          muscleGroups: Array.isArray(newEx.muscleGroup)
+            ? newEx.muscleGroup
+            : newEx.muscleGroup
+            ? [String(newEx.muscleGroup)]
+            : [newEx.category || "Full Body"],
+          equipment: Array.isArray(newEx.equipment)
+            ? newEx.equipment
+            : newEx.equipment
+            ? [String(newEx.equipment)]
+            : ["Bodyweight"],
+          instructions: Array.isArray(newEx.instructions) && newEx.instructions.length > 0
+            ? newEx.instructions
+            : ["Execute movement with controlled tempo and strict posture."],
+          recommendedSets: String(newEx.sets || 3),
+          recommendedReps: String(newEx.reps || "10-12"),
+          restTime: newEx.restTime || "60s",
+          gifUrl: assignedGif,
+          imageUrl: assignedGif,
+          customMediaUrl: assignedGif,
+          customMediaType: "image",
+          genderSuitability: newEx.genderSuitability,
+          womenCategories: newEx.womenCategories,
+          reuseIfExists: true
+        });
+        if (persistedExercise?.id) {
+          targetLibraryId = persistedExercise.id;
+        }
+      } catch (libErr) {
+        console.warn("[ChallengeEngine] Exercise already in library or sync deferred:", libErr);
+      }
+    }
+
     if (ok && assignedGif) {
       try {
-        const match = libraryExercises.find(e => (e.name || "").toLowerCase().trim() === name.toLowerCase().trim() || e.id === (newEx.exerciseId || newEx.id));
-        const targetId = match?.id || finalEx.exerciseId || finalEx.id;
-        uploadExerciseMedia(targetId, assignedGif, "image");
+        await uploadExerciseMedia(targetLibraryId, assignedGif, "image");
       } catch {}
     }
 
     if (ok) {
-      setSaveSuccessMsg(`Added "${name}" to the ${activeTierTarget.toUpperCase()} routine!`);
-      setTimeout(() => setSaveSuccessMsg(null), 3000);
+      setSaveErrorMsg(null);
+      setSaveSuccessMsg(`Added "${name}" to ${activeTierTarget.toUpperCase()} routine & saved permanently to Firebase!`);
+      setTimeout(() => setSaveSuccessMsg(null), 3500);
     }
   };
 
@@ -1002,14 +1041,13 @@ export default function AdminWorkoutChallengeEngine() {
     const match = libraryExercises.find(e => (e.name || "").toLowerCase().trim() === rawName.toLowerCase().trim() || e.id === updatedEx.id);
     const targetId = match?.id || updatedEx.id;
 
-    if (updatedEx.gifUrl && updatedEx.gifUrl !== "none") {
+    if (updatedEx.gifUrl && !["none", "deleted", "null"].includes(updatedEx.gifUrl.trim().toLowerCase())) {
       try {
         await uploadExerciseMedia(targetId, updatedEx.gifUrl, "image");
       } catch {}
     } else {
       try {
-        await uploadExerciseMedia(targetId, "none", "image");
-        if (rawName) await uploadExerciseMedia(rawName, "none", "image");
+        await uploadExerciseMedia(targetId, null, "image");
       } catch {}
     }
 
@@ -1118,13 +1156,8 @@ export default function AdminWorkoutChallengeEngine() {
       // 1. Call atomic remove-drill endpoint for this program/day/tier
       let apiRemoved = false;
       try {
-        const token = await getFirebaseIdToken();
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-
-        const remRes = await fetch("/api/admin/programs/remove-drill", {
+        const remRes = await fetchWithFirebaseAuth("/api/admin/programs/remove-drill", {
           method: "POST",
-          headers,
           body: JSON.stringify({
             programId: selectedProgramId,
             track: (selectedProgramId === "home_180" || selectedProgramId.includes("home")) ? adminTrack : undefined,
@@ -1280,13 +1313,8 @@ export default function AdminWorkoutChallengeEngine() {
         // Notify server in background
         (async () => {
           try {
-            const token = await getFirebaseIdToken();
-            const headers: Record<string, string> = { "Content-Type": "application/json" };
-            if (token) headers["Authorization"] = `Bearer ${token}`;
-
-            const repRes = await fetch("/api/admin/programs/delete-and-replace", {
+            const repRes = await fetchWithFirebaseAuth("/api/admin/programs/delete-and-replace", {
               method: "POST",
-              headers,
               body: JSON.stringify({
                 programId: selectedProgramId,
                 dayNumber: effectiveDayNumber,
@@ -1383,17 +1411,12 @@ export default function AdminWorkoutChallengeEngine() {
         advancedExercises: cardioState.isCardio ? [] : (selectedDifficultyLevel === "advanced" ? activeExercises : (nextLevels.advanced || currentDayOverride?.advancedExercises || [])),
       };
 
-      const token = await getFirebaseIdToken();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
       const targetProgKey = (selectedProgramId === "home_180" && adminTrack) 
         ? `${selectedProgramId}_${adminTrack}` 
         : selectedProgramId;
 
-      const res = await fetch("/api/admin/programs/save-day-override", {
+      const res = await fetchWithFirebaseAuth("/api/admin/programs/save-day-override", {
         method: "POST",
-        headers,
         body: JSON.stringify({
           programId: selectedProgramId,
           track: (selectedProgramId === "home_180" || selectedProgramId.includes("home")) ? adminTrack : undefined,
@@ -1528,9 +1551,9 @@ export default function AdminWorkoutChallengeEngine() {
         }
         setTimeout(() => setSaveSuccessMsg(null), 5000);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Purge error:", err);
-      alert("Error purging workouts: " + (err as any)?.message);
+      setSaveErrorMsg("Error purging workouts: " + (err?.message || "Unknown error"));
     } finally {
       setIsPurging(false);
     }
@@ -1596,13 +1619,8 @@ export default function AdminWorkoutChallengeEngine() {
       });
 
       // Persist to backend server
-      const token = await getFirebaseIdToken();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const purgeRes = await fetch("/api/admin/programs/purge-all-splits", {
+      const purgeRes = await fetchWithFirebaseAuth("/api/admin/programs/purge-all-splits", {
         method: "POST",
-        headers,
         body: JSON.stringify({
           programId: selectedProgramId,
           overrides: updatedOverrides
@@ -1625,9 +1643,9 @@ export default function AdminWorkoutChallengeEngine() {
         );
         setTimeout(() => setSaveSuccessMsg(null), 6000);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Purge all error:", err);
-      alert("Error purging all splits: " + (err as any)?.message);
+      setSaveErrorMsg("Error purging all splits: " + (err?.message || "Unknown error"));
     } finally {
       setIsPurging(false);
     }
@@ -1639,13 +1657,8 @@ export default function AdminWorkoutChallengeEngine() {
   const handleNormalizeCycles = async () => {
     setIsNormalizingCycles(true);
     try {
-      const token = await getFirebaseIdToken();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const res = await fetch("/api/admin/programs/normalize-cycles", {
-        method: "POST",
-        headers
+      const res = await fetchWithFirebaseAuth("/api/admin/programs/normalize-cycles", {
+        method: "POST"
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Failed normalizing cycles");
@@ -1685,13 +1698,8 @@ export default function AdminWorkoutChallengeEngine() {
       setServerOverrides(cleanRes.updatedOverrides);
       setScheduleOverridesFromAdmin(cleanRes.updatedOverrides);
 
-      const token = await getFirebaseIdToken();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const resetRes = await fetch("/api/admin/programs/reset-and-clean-all-programs", {
+      const resetRes = await fetchWithFirebaseAuth("/api/admin/programs/reset-and-clean-all-programs", {
         method: "POST",
-        headers,
         body: JSON.stringify({
           allOverrides: cleanRes.updatedOverrides,
           stats: cleanRes.stats
@@ -2638,20 +2646,37 @@ export default function AdminWorkoutChallengeEngine() {
                         <span className="hidden sm:inline">Replace</span>
                       </button>
 
-                      {/* Delete Button */}
+                      {/* One-Click Remove from this drill routine */}
                       <button
                         type="button"
                         draggable={false}
+                        disabled={isDeleting}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteOnly(exercise);
+                        }}
+                        className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-red-950/40 hover:bg-red-950/70 text-red-400 border border-red-900/50 text-xs font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        title="Remove workout once from this drill"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Remove</span>
+                      </button>
+
+                      {/* Global Delete / Archive options modal */}
+                      <button
+                        type="button"
+                        draggable={false}
+                        disabled={isDeleting}
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           e.stopPropagation();
                           setTargetToDelete(exercise);
                         }}
-                        className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-red-950/40 hover:bg-red-950/70 text-red-400 border border-red-900/50 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                        title="Delete workout"
+                        className="p-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-red-300 border border-neutral-800 text-xs font-bold transition flex items-center justify-center cursor-pointer disabled:opacity-50"
+                        title="Archive or replace workout options"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Delete</span>
+                        <Sliders className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>

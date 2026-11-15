@@ -4,9 +4,15 @@ import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { OptimizedImage } from "./OptimizedImage";
 import { findMatchingExercise } from "../utils/exerciseMatching";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
-import { getAccurateExerciseGif } from "../data/exerciseMediaCatalog";
+import { getExerciseGifUrl } from "../data/exercises";
 import { resolveAuthenticExercise } from "../data/authoritativeExerciseMap";
 import { isImageCached } from "../utils/imageCache";
+
+const isValidMediaUrl = (u?: string | null): u is string => {
+  if (!u || typeof u !== "string") return false;
+  const trimmed = u.trim().toLowerCase();
+  return Boolean(trimmed && trimmed !== "none" && trimmed !== "deleted" && trimmed !== "null");
+};
 
 interface UnifiedExerciseMediaProps {
   exerciseId?: string;
@@ -33,28 +39,20 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = React.m
   const exercise = findMatchingExercise(exercises, exerciseId, exerciseName);
   const canonicalName = exerciseName || exercise?.name || exerciseId || "";
 
-  // Check if media was explicitly cleared / deleted
-  const isExplicitlyCleared =
-    mediaUrl === "" ||
-    mediaUrl === "none" ||
-    mediaUrl === "deleted" ||
-    mediaUrl === "null" ||
-    mediaUrl === null ||
-    (exercise && ((exercise as any).customMediaUrl === "none" || (exercise as any).customMediaUrl === "deleted" || (exercise as any).isMediaDeleted));
-
-  // Guaranteed authentic matching GIF resolved through authoritative dataset mapping
+  // Guaranteed authentic matching GIF resolved cleanly across all sources
   const authentic = useMemo(() => {
-    if (isExplicitlyCleared) {
-      return { name: canonicalName, gifUrl: "" };
-    }
-    const candidate = mediaUrl || exercise?.customMediaUrl || exercise?.gifUrl || exercise?.imageUrl;
+    const candidate =
+      (isValidMediaUrl(mediaUrl) ? mediaUrl : "") ||
+      (isValidMediaUrl(exercise?.customMediaUrl) ? exercise?.customMediaUrl : "") ||
+      (isValidMediaUrl(exercise?.gifUrl) ? exercise?.gifUrl : "") ||
+      (isValidMediaUrl(exercise?.imageUrl) ? exercise?.imageUrl : "");
     return resolveAuthenticExercise(canonicalName, candidate, exercise?.category);
-  }, [canonicalName, mediaUrl, exercise?.customMediaUrl, exercise?.gifUrl, exercise?.imageUrl, exercise?.category, isExplicitlyCleared]);
+  }, [canonicalName, mediaUrl, exercise?.customMediaUrl, exercise?.gifUrl, exercise?.imageUrl, exercise?.category]);
 
-  const defaultFallbackUrl = isExplicitlyCleared ? "" : (authentic.gifUrl || getAccurateExerciseGif(canonicalName, exercise?.category));
-  const rawMediaUrl = isExplicitlyCleared ? "" : (authentic.gifUrl || defaultFallbackUrl);
+  const defaultFallbackUrl = getExerciseGifUrl(canonicalName, exercise?.category);
+  const rawMediaUrl = (isValidMediaUrl(authentic.gifUrl) ? authentic.gifUrl : "") || defaultFallbackUrl;
 
-  const initialResolvedUrl = isExplicitlyCleared ? "" : (resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl);
+  const initialResolvedUrl = resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl;
 
   const [activeUrl, setActiveUrl] = useState<string>(initialResolvedUrl);
   const [prevRawUrl, setPrevRawUrl] = useState<string>(rawMediaUrl);
@@ -64,16 +62,16 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = React.m
   // Synchronously update activeUrl on prop/exercise changes to prevent any stale GIF lingering
   if (rawMediaUrl !== prevRawUrl) {
     setPrevRawUrl(rawMediaUrl);
-    const nextUrl = isExplicitlyCleared ? "" : (resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl);
+    const nextUrl = resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl;
     setActiveUrl(nextUrl);
     setHasError(false);
     setIsLoaded(isImageCached(nextUrl));
   }
 
   useEffect(() => {
-    const nextUrl = isExplicitlyCleared ? "" : (resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl);
+    const nextUrl = resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl;
     setActiveUrl(prev => (prev === nextUrl ? prev : nextUrl));
-  }, [rawMediaUrl, defaultFallbackUrl, isExplicitlyCleared]);
+  }, [rawMediaUrl, defaultFallbackUrl]);
 
   const resolvedMediaUrl = activeUrl || initialResolvedUrl;
   const isVideoUrl = resolvedMediaUrl
@@ -85,7 +83,7 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = React.m
   const resolvedMediaType = exercise?.customMediaType || (isVideoUrl ? "video" : "image");
 
   const handleMediaError = () => {
-    if (!isExplicitlyCleared && defaultFallbackUrl && activeUrl !== defaultFallbackUrl) {
+    if (defaultFallbackUrl && activeUrl !== defaultFallbackUrl) {
       setActiveUrl(defaultFallbackUrl);
     } else {
       setHasError(true);

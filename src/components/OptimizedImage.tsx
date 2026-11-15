@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { getSupabaseCdnUrl, getSupabaseSrcSet, SupabaseImageOptions } from "../utils/supabaseImage";
+import { getMediaCdnUrl, getMediaSrcSet, MediaImageOptions } from "../utils/mediaCdn";
 import { isImageCached, markImageCached } from "../utils/imageCache";
 
 export interface OptimizedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -48,10 +48,10 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = React.memo(({
 
   const computeInitialSrc = () => {
     if (src && src.trim() !== "") {
-      return getSupabaseCdnUrl(src, { width, height, quality, format, resize });
+      return getMediaCdnUrl(src, { width, height, quality, format, resize });
     }
     if (fallbackSrc && fallbackSrc.trim() !== "") {
-      return getSupabaseCdnUrl(fallbackSrc, { width, height, quality, format });
+      return getMediaCdnUrl(fallbackSrc, { width, height, quality, format });
     }
     return undefined;
   };
@@ -78,7 +78,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = React.memo(({
       return;
     }
 
-    const options: SupabaseImageOptions = {
+    const options: MediaImageOptions = {
       width,
       height,
       quality,
@@ -86,7 +86,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = React.memo(({
       resize,
     };
 
-    const cdnUrl = getSupabaseCdnUrl(src, options);
+    const cdnUrl = getMediaCdnUrl(src, options);
     const resolvedUrl = cdnUrl || (fallbackSrc && fallbackSrc.trim() !== "" ? fallbackSrc : undefined);
     
     setCurrentSrc(resolvedUrl);
@@ -110,8 +110,8 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = React.memo(({
     if (!hasError) {
       setHasError(true);
       if (fallbackSrc && currentSrc !== fallbackSrc) {
-        const fallbackOptions: SupabaseImageOptions = { width, height, quality, format: "webp" };
-        setCurrentSrc(getSupabaseCdnUrl(fallbackSrc, fallbackOptions));
+        const fallbackOptions: MediaImageOptions = { width, height, quality, format: "webp" };
+        setCurrentSrc(getMediaCdnUrl(fallbackSrc, fallbackOptions));
       }
     }
     if (onError) {
@@ -128,10 +128,10 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = React.memo(({
     }
   };
 
-  const options: SupabaseImageOptions = { quality, format, resize };
+  const options: MediaImageOptions = { quality, format, resize };
   const targetWidths = srcSetWidths || (width ? [Math.round(width * 0.5), width, Math.round(width * 1.5), Math.round(width * 2)] : [380, 640, 960, 1280]);
   const computedSrcSet = !hasError && src && !src.startsWith("data:") && !src.startsWith("blob:") && !src.toLowerCase().includes(".gif")
-    ? getSupabaseSrcSet(src, targetWidths, options)
+    ? getMediaSrcSet(src, targetWidths, options)
     : undefined;
 
   const isGifMedia = Boolean(
@@ -179,7 +179,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = React.memo(({
           onError={handleImageError}
           onLoad={handleImageLoad}
           className={`w-full h-full ${isGifMedia || className?.includes('object-contain') ? 'object-contain' : 'object-cover'} transition-opacity duration-150 ${
-            isGifMedia || isLoaded ? "opacity-100" : "opacity-0"
+            isGifMedia || isLoaded || hasError ? "opacity-100" : "opacity-0"
           }`}
           {...restProps}
         />
@@ -188,8 +188,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = React.memo(({
   );
 });
 
-// Aliases for developer convenience & explicit naming requirements
+// Aliases for developer convenience
 export const CdnImage = OptimizedImage;
-export const SupabaseImage = OptimizedImage;
 
 export default OptimizedImage;
