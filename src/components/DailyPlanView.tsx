@@ -19,7 +19,6 @@ import {
 import { sendEmail } from "../services/emailNotificationService";
 import WorkoutReminderCard from "./WorkoutReminderCard";
 import WorkoutVisual from "./WorkoutVisual";
-import { getPreWorkoutStretchesForDay } from "../utils/dynamicWorkoutEngine";
 import { SectionErrorBoundary } from "./ErrorBoundary";
 import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
 import { subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
@@ -761,62 +760,6 @@ export default function DailyPlanView() {
                     </div>
                   </div>
                 )}
-
-                {/* Pre-Workout Dynamic Stretch & Mobility (2 Stretch Workouts with GIFs) */}
-                {(() => {
-                  const targetList = plan?.workoutExercises?.map(e => e.name) || ["Core", "Full Body"];
-                  const dailyStretches = getPreWorkoutStretchesForDay(targetList, exercises, 2);
-                  return (
-                    <div className="mb-6 p-4 rounded-2xl bg-cyan-50/60 border border-cyan-200/80 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Activity className="w-4 h-4 text-cyan-600" />
-                          <h4 className="font-black text-xs uppercase tracking-wider text-slate-900">
-                            Pre-Workout Dynamic Stretch & Mobility
-                          </h4>
-                        </div>
-                        <span className="text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-300">
-                          2 Stretches Before Daily Drills
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 font-medium">
-                        Complete these 2 dynamic stretch workouts before starting today's prescribed drills to prepare joints and prime target muscle groups.
-                      </p>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {dailyStretches.map((st, idx) => {
-                          const item = st as any;
-                          return (
-                          <div key={st.id || idx} className="bg-white border border-cyan-200 rounded-xl p-3 space-y-2 shadow-2xs">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[9px] font-mono font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded border border-cyan-200 uppercase">
-                                Stretch 0{idx + 1} &bull; {st.duration || "45s-60s"}
-                              </span>
-                              <span className="text-[9px] font-mono text-slate-400">
-                                {Array.isArray(st.muscleGroups) ? st.muscleGroups.slice(0, 2).join(", ") : Array.isArray(item.targetMuscles) ? item.targetMuscles.slice(0, 2).join(", ") : "Mobility"}
-                              </span>
-                            </div>
-                            <h5 className="font-bold text-xs text-slate-900 truncate">
-                              {item.exerciseName || st.name}
-                            </h5>
-                            <div className="w-full h-36 rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-100">
-                              <WorkoutVisual
-                                exerciseId={st.id}
-                                exerciseName={item.exerciseName || st.name}
-                                customMediaUrl={st.customMediaUrl || st.gifUrl || item.mediaUrl}
-                                isCard={true}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <p className="text-[10px] text-slate-500 line-clamp-2 leading-tight">
-                              {Array.isArray(st.instructions) ? st.instructions[0] : st.instructions}
-                            </p>
-                          </div>
-                        );})}
-                      </div>
-                    </div>
-                  );
-                })()}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
                   {plan?.workoutExercises ? (

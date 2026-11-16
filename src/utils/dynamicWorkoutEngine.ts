@@ -993,9 +993,9 @@ export function purgeMismatchedExercisesFromRoutine(
   // Strictly enforce user directive: do NOT add any additional exercises by yourself, only what admin adds
   const addedNames: string[] = [];
 
-  // Strictly enforce maximum 10 workouts daily
+  // Preserve all kept exercises without arbitrary truncation
   return {
-    cleanedExercises: keptExercises.slice(0, 10),
+    cleanedExercises: keptExercises,
     removedNames,
     addedNames
   };
@@ -1070,7 +1070,7 @@ export function resetAndCleanAllProgramSplits(
         isCardioOnly: !!splitDef.isCardioOnly,
         isRestDay: !!splitDef.isRestDay,
         cardioDistance: splitDef.cardioDistance || (splitDef.isCardioOnly ? "5 to 10 KM" : undefined),
-        exercises: (splitDef.isCardioOnly || splitDef.isRestDay) ? [] : result.cleanedExercises.slice(0, 10),
+        exercises: (splitDef.isCardioOnly || splitDef.isRestDay) ? [] : result.cleanedExercises,
         updatedAt: new Date().toISOString()
       };
 

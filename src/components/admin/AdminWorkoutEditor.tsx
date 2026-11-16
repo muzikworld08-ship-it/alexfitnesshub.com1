@@ -66,15 +66,27 @@ const PROGRAM_OPTIONS = [
   "5-Month Belly Fat Shred System",
   "180 Day Home Workout Challenge",
   "Posture Correction Challenge",
-  "Gym Workout Programs",
-  "Women’s Workout Programs",
-  "Home Workout Programs",
-  "Goal Based Programs",
-  "Workout Library"
+  "Gym Hypertrophy & Muscle Density",
+  "90 Day Lean Muscle Challenge",
+  "90 Day Fat Burning Challenge",
+  "90 Day Body Transformation Challenge",
+  "90 Day Athletic Performance Challenge",
+  "90 Day Strength Challenge",
+  "90 Day Home Fitness Challenge",
+  "90 Day Six Pack & Core Challenge",
+  "Cardio, Calisthenics & Military Fitness",
+  "Lifestyle Fitness Academy"
 ];
 
 export default function AdminWorkoutEditor() {
-  const { exercises, editExercise, addWorkout, deleteWorkout, restoreDeletedExercise, uploadExerciseMedia, getAdminHeaders } = useApp();
+  const { exercises, allChallenges, editExercise, addWorkout, deleteWorkout, restoreDeletedExercise, uploadExerciseMedia, getAdminHeaders } = useApp();
+
+  const availableProgramOptions = useMemo(() => {
+    const customTitles = (allChallenges || [])
+      .map((c: any) => c?.title)
+      .filter((t: any): t is string => typeof t === "string" && t.trim().length > 0);
+    return Array.from(new Set([...PROGRAM_OPTIONS, ...customTitles]));
+  }, [allChallenges]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -816,7 +828,7 @@ export default function AdminWorkoutEditor() {
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-600 cursor-pointer"
             >
               <option value="All">Program: All Programs</option>
-              {PROGRAM_OPTIONS.map(p => (
+              {availableProgramOptions.map(p => (
                 <option key={p} value={p}>Program: {p}</option>
               ))}
             </select>
@@ -1740,7 +1752,7 @@ export default function AdminWorkoutEditor() {
                   Program Category Inclusions <span className="text-[10px] text-slate-400 font-normal font-mono">(Multi-Select)</span>
                 </label>
                 <div className="flex flex-wrap gap-1.5">
-                  {PROGRAM_OPTIONS.map(prog => {
+                  {availableProgramOptions.map(prog => {
                     const selectedProgs = editForm.programAssignments || [];
                     const isSelected = selectedProgs.includes(prog);
                     return (
@@ -2262,7 +2274,7 @@ export default function AdminWorkoutEditor() {
                   Program Category Inclusions <span className="text-[10px] text-slate-400 font-normal font-mono">(Multi-Select)</span>
                 </label>
                 <div className="flex flex-wrap gap-1.5">
-                  {PROGRAM_OPTIONS.map(prog => {
+                  {availableProgramOptions.map(prog => {
                     const selectedProgs = newWorkout.programAssignments || [];
                     const isSelected = selectedProgs.includes(prog);
                     return (

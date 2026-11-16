@@ -5345,17 +5345,39 @@ async function addWorkoutToProgramScheduleServer(workout: any, userEmail: string
 
     const { overrides: allOverrides } = await loadAuthoritativeProgramOverrides(userToken);
 
+    let customChallengesList: any[] = [];
+    try {
+      if (fs.existsSync(CHALLENGES_FILE_PATH)) {
+        const rawCh = fs.readFileSync(CHALLENGES_FILE_PATH, "utf-8").trim();
+        if (rawCh) customChallengesList = JSON.parse(rawCh);
+      }
+    } catch {}
+
     const mapProg = (str: string) => {
-      const l = str.toLowerCase();
-      if (l.includes("90") || l.includes("immortal")) return "immortal_90";
-      if (l.includes("women")) return "women_confidence";
+      const raw = String(str || "").trim();
+      const l = raw.toLowerCase();
+      if (l.includes("immortal")) return "immortal_90";
+      if (l.includes("home") && (l.includes("women") || l.includes("female"))) return "home_180_women";
+      if (l.includes("home fitness") || l.includes("home_fitness")) return "home_fitness";
+      if (l.includes("180") && l.includes("home")) return "home_180";
+      if (l.includes("home_180") || l.includes("home")) return "home_180";
+      if (l.includes("women") || l.includes("confidence")) return "women_confidence";
       if (l.includes("belly") || l.includes("shred")) return "belly_fat_shred";
-      if (l.includes("home")) return "home_180";
       if (l.includes("posture")) return "posture_vitality";
-      if (l.includes("gym")) return "gym_hypertrophy";
-      if (l.includes("lean")) return "lean_muscle";
-      if (l.includes("fat")) return "fat_burning";
-      return null;
+      if (l.includes("hypertrophy") || l.includes("gym")) return "gym_hypertrophy";
+      if (l.includes("lean muscle") || l.includes("lean_muscle")) return "lean_muscle";
+      if (l.includes("fat burning") || l.includes("fat_burning")) return "fat_burning";
+      if (l.includes("transformation") || l.includes("body_transformation")) return "body_transformation";
+      if (l.includes("athletic") || l.includes("athletic_performance")) return "athletic_performance";
+      if (l.includes("strength") || l.includes("strength_challenge")) return "strength_challenge";
+      if (l.includes("six pack") || l.includes("six_pack")) return "six_pack_core";
+      if (l.includes("calisthenics") || l.includes("military") || l.includes("cardio_calisthenics")) return "cardio_calisthenics";
+      if (l.includes("lifestyle")) return "lifestyle_academy";
+      const matchedCustom = Array.isArray(customChallengesList)
+        ? customChallengesList.find((c: any) => c.id === raw || (c.title && c.title.toLowerCase().trim() === l))
+        : null;
+      if (matchedCustom?.id) return matchedCustom.id;
+      return raw || null;
     };
 
     const targetProgIds = Array.from(new Set(assignments.map(mapProg).filter(Boolean) as string[]));
@@ -5379,11 +5401,12 @@ async function addWorkoutToProgramScheduleServer(workout: any, userEmail: string
     };
 
     let modified = false;
+    const tierExKey = `${targetTier}Exercises`;
     for (const progId of targetProgIds) {
       if (!allOverrides[progId]) allOverrides[progId] = {};
       const dayKey = "1";
       const cycleKey = "cycle_1";
-      const existing = allOverrides[progId][dayKey] || allOverrides[progId][cycleKey] || {
+      const existing = allOverrides[progId][cycleKey] || allOverrides[progId][dayKey] || {
         title: `Day 1 Workout`,
         category: workout.category || "Targeted Split",
         isCardioOnly: false,
@@ -5392,10 +5415,14 @@ async function addWorkoutToProgramScheduleServer(workout: any, userEmail: string
       };
 
       const levels = { ...(existing.levels || {}) };
-      if (!Array.isArray(levels[targetTier])) levels[targetTier] = [];
+      const existingTierArr = Array.isArray(levels[targetTier]) ? levels[targetTier] : [];
+      const hasAdminAdded = existingTierArr.some((d: any) => d && d.addedByAdmin === true);
+      levels[targetTier] = hasAdminAdded ? [...existingTierArr] : [];
+
       if (!levels[targetTier].some((d: any) => d.id === workout.id || (d.name && d.name.toLowerCase().trim() === workout.name.toLowerCase().trim()))) {
         levels[targetTier].push(drillItem);
         existing.levels = levels;
+        existing[tierExKey] = levels[targetTier];
         if (targetTier === "beginner") {
           existing.exercises = levels.beginner;
         }

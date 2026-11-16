@@ -542,22 +542,25 @@ export function addExerciseToProgramSchedule(
     reps: exercise.recommendedReps || "10-12",
     restTime: exercise.restTime || "60s",
     gifUrl: exercise.customMediaUrl || exercise.gifUrl || exercise.imageUrl || "",
-    imageUrl: exercise.customMediaUrl || exercise.imageUrl || exercise.gifUrl || ""
+    imageUrl: exercise.customMediaUrl || exercise.imageUrl || exercise.gifUrl || "",
+    addedByAdmin: true
   };
 
   const updatedLevels = { ...(existingDay.levels || {}) };
-  if (!Array.isArray(updatedLevels[targetTier])) {
-    updatedLevels[targetTier] = [];
-  }
+  const rawExistingTierList = Array.isArray(updatedLevels[targetTier]) ? updatedLevels[targetTier] : [];
+  const hasAdminAdded = rawExistingTierList.some((d: any) => d && d.addedByAdmin === true);
+  updatedLevels[targetTier] = hasAdminAdded ? [...rawExistingTierList] : [];
 
   // Deduplicate before pushing
   if (!updatedLevels[targetTier].some((d: any) => d.id === exercise.id || (d.name && d.name.toLowerCase().trim() === exercise.name.toLowerCase().trim()))) {
     updatedLevels[targetTier].push(newDrillItem);
   }
 
-  const updatedDay = {
+  const tierExKey = `${targetTier}Exercises` as "beginnerExercises" | "intermediateExercises" | "advancedExercises";
+  const updatedDay: any = {
     ...existingDay,
     levels: updatedLevels,
+    [tierExKey]: updatedLevels[targetTier],
     exercises: targetTier === "beginner" ? updatedLevels.beginner : (existingDay.exercises || updatedLevels.beginner)
   };
 

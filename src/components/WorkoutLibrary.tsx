@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useApp, isEmailAdmin } from "../context/AppContext";
 import { Exercise, PROGRAMS, Program, EXERCISES, getExerciseGifUrl } from "../data/exercises";
-import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
+import { getWorkoutForProgramAndDay, normalizeProgramId, resolveProgramDayOverride } from "../data/challengeEngineDatabase";
 import { resolveAthleteTier } from "../utils/athleteContext";
-import { subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
+import { subscribeScheduleOverrides, getScheduleOverrides } from "../utils/scheduleOverridesStore";
 import { WORKOUTS_DATABASE, WORKOUT_CATEGORIES_INFO, Workout, WorkoutExercise, getWorkoutMappedCategory, calculateWorkoutDuration, calculateProgramWorkoutDuration } from "../data/workoutsData";
 import YouTubePlayer from "./video/YouTubePlayer";
 import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
@@ -4589,9 +4589,15 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                     const cycleDay = i + 1;
                     const enginePlan = getWorkoutForProgramAndDay(selectedProgram.id, cycleDay, exercises, { fitnessLevel: resolveAthleteTier(user) });
                     const dayFocus = enginePlan.meta.title || enginePlan.meta.category || sch.focus;
-                    const dayExercises = (enginePlan.exercises && enginePlan.exercises.length > 0)
-                      ? enginePlan.exercises.map(e => e.exerciseName || (e as any).name)
-                      : sch.exercises;
+                    const allOverrides = getScheduleOverrides();
+                    const normProgId = normalizeProgramId(selectedProgram.id);
+                    const progOvr = allOverrides[selectedProgram.id] || (normProgId !== selectedProgram.id ? allOverrides[normProgId] : undefined);
+                    const hasExplicitOverride = Boolean(resolveProgramDayOverride(progOvr, cycleDay));
+                    const dayExercises = hasExplicitOverride
+                      ? (enginePlan.exercises || []).map(e => e.exerciseName || (e as any).name)
+                      : ((enginePlan.exercises && enginePlan.exercises.length > 0)
+                          ? enginePlan.exercises.map(e => e.exerciseName || (e as any).name)
+                          : sch.exercises);
 
                     return (
                       <div key={`sch-${selectedProgram.id}-${sch.day}`} className="p-4 rounded-xl bg-slate-950 border border-slate-850 text-xs text-left">

@@ -2,7 +2,8 @@ import { Exercise, EXERCISES, getExerciseGifUrl } from "./exercises";
 import { ChallengeItem, ChallengeWorkout } from "../types";
 import { isHomeEligibleExercise } from "../utils/dynamicWorkoutEngine";
 import { isExplicitlyMarkedWomenWorkout } from "./womenConfidenceProgramData";
-import { getWorkoutForProgramAndDay } from "./challengeEngineDatabase";
+import { getWorkoutForProgramAndDay, normalizeProgramId, resolveProgramDayOverride } from "./challengeEngineDatabase";
+import { getScheduleOverrides } from "../utils/scheduleOverridesStore";
 
 export interface PremiumChallenge {
   id: string;
@@ -243,21 +244,39 @@ export const CHALLENGE_SPLITS: Record<string, string[]> = {
   athletic_performance: ["Plyometrics & Speed", "Lower Body Power", "Conditioning", "Upper Body Power", "Agility + Core", "Endurance Running", "Recovery"],
   strength_challenge: ["Squats & Legs", "Bench Press & Chest", "Active Recovery", "Deadlifts & Back", "Overhead Press & Shoulders", "Heavy Bracing Core", "Recovery"],
   home_fitness: ["Bodyweight Full Body", "Core & Mobility", "Home HIIT Cardio", "Bodyweight Upper Body", "Bodyweight Lower Body", "Home Conditioning", "Recovery"],
-  six_pack_core: ["Upper Abs + Obliques", "Lower Abs + Deep Core", "Cardio + Core Burn", "Planks & Isometrics", "Rotational Core Strength", "Full Core Circuit", "Recovery"]
+  six_pack_core: ["Upper Abs + Obliques", "Lower Abs + Deep Core", "Cardio + Core Burn", "Planks & Isometrics", "Rotational Core Strength", "Full Core Circuit", "Recovery"],
+  gym_hypertrophy: ["Chest & Triceps", "Back & Biceps", "Legs & Core", "Cardio & Mobility", "Upper Body", "Athletic Conditioning", "Recovery"],
+  cardio_calisthenics: ["Calisthenics Push", "Tactical Running", "Calisthenics Pull", "Tactical Ruck & Core", "Calisthenics Lower Body", "Military Benchmark", "Recovery"],
+  lifestyle_academy: ["Posture Alignment", "Hip Decompression", "Aerobic Walking", "Chest Opening Mobility", "Spinal Decompression", "Glute Activation", "Restorative Mobility"]
 };
 
 /**
  * Resolves full list of workout items for any challenge (flagship or admin custom).
- * Ensures workout media images, names, sets, and reps are always present.
+ * Ensures workout media images, names, sets, and reps are always present without injecting unadded workouts over admin schedules.
  */
-export function getChallengeWorkouts(challenge: PremiumChallenge, exercisesList?: Exercise[]): ChallengeWorkout[] {
+export function getChallengeWorkouts(
+  challenge: PremiumChallenge,
+  exercisesList?: Exercise[],
+  dayNumber: number = 1,
+  fitnessLevel?: string
+): ChallengeWorkout[] {
   const exercises = exercisesList && exercisesList.length > 0 ? exercisesList : EXERCISES;
 
   // 1. Authoritative Admin Dashboard workout engine resolution
+  const allOverrides = getScheduleOverrides();
+  const normId = normalizeProgramId(challenge.id);
+  const progOverrides = allOverrides[challenge.id] || (normId !== challenge.id ? allOverrides[normId] : undefined);
+  const hasExplicitOverride = Boolean(resolveProgramDayOverride(progOverrides, dayNumber));
+
   try {
-    const dayPlan = getWorkoutForProgramAndDay(challenge.id, 1, exercises);
+    const dayPlan = getWorkoutForProgramAndDay(
+      challenge.id,
+      dayNumber,
+      exercises,
+      fitnessLevel ? { fitnessLevel } : undefined
+    );
     if (dayPlan && Array.isArray(dayPlan.exercises) && dayPlan.exercises.length > 0) {
-      return dayPlan.exercises.slice(0, 10).map((ex, idx) => ({
+      return dayPlan.exercises.map((ex, idx) => ({
         id: ex.id || `cw_${challenge.id}_${idx + 1}`,
         name: ex.exerciseName || (ex as any).name || "Target Exercise",
         sets: typeof ex.sets === "number" ? `${ex.sets} sets` : (ex.sets || "3-4 sets"),
@@ -270,6 +289,10 @@ export function getChallengeWorkouts(challenge: PremiumChallenge, exercisesList?
         muscleGroups: Array.isArray(ex.muscleGroup) ? ex.muscleGroup : [ex.category || "Full Body"],
         restTime: ex.restTime || "60s"
       }));
+    }
+    // If Admin explicitly saved an override for this day (e.g. rest/cardio or cleared tier), do NOT synthesize unadded exercises
+    if (hasExplicitOverride) {
+      return [];
     }
   } catch (err) {
     console.warn("Notice resolving challenge workouts from challenge engine:", err);

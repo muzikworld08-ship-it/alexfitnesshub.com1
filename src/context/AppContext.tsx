@@ -5157,16 +5157,31 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     try {
       if (Array.isArray(sanitizedExercise.programAssignments) && sanitizedExercise.programAssignments.length > 0) {
         const mapProg = (str: string) => {
-          const l = str.toLowerCase();
-          if (l.includes("90") || l.includes("immortal")) return "immortal_90";
-          if (l.includes("women")) return "women_confidence";
+          const raw = str.trim();
+          const l = raw.toLowerCase();
+          if (l.includes("90") && l.includes("immortal")) return "immortal_90";
+          if (l.includes("immortal")) return "immortal_90";
+          if (l.includes("home") && (l.includes("women") || l.includes("female"))) return "home_180_women";
+          if (l.includes("home fitness") || l.includes("home_fitness")) return "home_fitness";
+          if (l.includes("180") && l.includes("home")) return "home_180";
+          if (l.includes("home_180") || l.includes("home")) return "home_180";
+          if (l.includes("women") || l.includes("confidence")) return "women_confidence";
           if (l.includes("belly") || l.includes("shred")) return "belly_fat_shred";
-          if (l.includes("home")) return "home_180";
           if (l.includes("posture")) return "posture_vitality";
-          if (l.includes("gym")) return "gym_hypertrophy";
-          if (l.includes("lean")) return "lean_muscle";
-          if (l.includes("fat")) return "fat_burning";
-          return null;
+          if (l.includes("hypertrophy") || l.includes("gym")) return "gym_hypertrophy";
+          if (l.includes("lean muscle") || l.includes("lean_muscle")) return "lean_muscle";
+          if (l.includes("fat burning") || l.includes("fat_burning")) return "fat_burning";
+          if (l.includes("transformation") || l.includes("body_transformation")) return "body_transformation";
+          if (l.includes("athletic") || l.includes("athletic_performance")) return "athletic_performance";
+          if (l.includes("strength") || l.includes("strength_challenge")) return "strength_challenge";
+          if (l.includes("six pack") || l.includes("six_pack")) return "six_pack_core";
+          if (l.includes("calisthenics") || l.includes("military") || l.includes("cardio_calisthenics")) return "cardio_calisthenics";
+          if (l.includes("lifestyle")) return "lifestyle_academy";
+          const matchedCustom = allChallenges.find(
+            (c: any) => c.id === raw || (c.title && c.title.toLowerCase().trim() === l)
+          );
+          if (matchedCustom?.id) return matchedCustom.id;
+          return raw;
         };
         const tier = (sanitizedExercise.difficulty || "Beginner").toLowerCase();
         const targetTier = (tier.includes("adv") ? "advanced" : (tier.includes("inter") ? "intermediate" : "beginner")) as "beginner" | "intermediate" | "advanced";

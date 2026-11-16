@@ -2,8 +2,6 @@ import React, { useState, useMemo } from "react";
 import { Plus, Search, X, Dumbbell, Check, Filter, Sparkles, Layers, AlertCircle, Heart } from "lucide-react";
 import { Exercise, getExerciseGifUrl } from "../../data/exercises";
 import { ChallengeExerciseItem } from "../../types/challengeEngine";
-import { isHomeEligibleExercise } from "../../utils/dynamicWorkoutEngine";
-import { isWomenWorkoutEligibleExercise, STRONG_MEN_EXERCISE_BLOCKLIST, isExplicitlyMarkedWomenWorkout } from "../../data/womenConfidenceProgramData";
 import UnifiedExerciseMedia from "../UnifiedExerciseMedia";
 
 interface AddWorkoutModalProps {
@@ -24,10 +22,17 @@ const CATEGORY_FILTERS = [
   "Biceps",
   "Triceps",
   "Legs",
+  "Glutes",
   "Shoulders",
   "Arms",
   "Core",
   "Cardio",
+  "HIIT",
+  "Fat Burning",
+  "Strength",
+  "Bodyweight",
+  "Calisthenics",
+  "Stretching & Mobility",
   "Full Body",
   "Gym Workouts",
   "Home Workouts"
@@ -42,6 +47,8 @@ const WOMEN_CATEGORY_FILTERS = [
   "Legs",
   "Back",
   "Cardio",
+  "Bodyweight",
+  "Stretching & Mobility",
   "Full Body"
 ];
 
@@ -103,32 +110,25 @@ export default function AddWorkoutModal({
   const filteredExercises = useMemo(() => {
     const seen = new Set<string>();
     return libraryExercises.filter(ex => {
+      if (!ex || !ex.name) return false;
       const cleanName = ex.name.toLowerCase().trim();
       if (seen.has(cleanName) || seen.has(ex.id)) return false;
       seen.add(cleanName);
       seen.add(ex.id);
 
-      // When adding to a home program, strictly enforce home eligibility (no barbell, dumbbell, gym equipment)
-      if (isHomeProgram && !isHomeEligibleExercise(ex)) {
-        return false;
-      }
-
-      // When adding to Women Confidence Program, strictly exclude heavy male bodybuilding exercises (cable fly, heavy bench, etc.)
-      if (isWomenProgram && !isWomenWorkoutEligibleExercise(ex)) {
-        return false;
-      }
-
-      // If NOT in Women Confidence Program, STRICTLY exclude any workout assigned as female / women
-      if (!isWomenProgram && isExplicitlyMarkedWomenWorkout(ex)) {
-        return false;
-      }
-
       if (selectedCategory !== "All") {
         const cat = (ex.category || "").toLowerCase();
         const cats = (ex.categories || []).map(c => c.toLowerCase());
+        const wCats = (ex.womenCategories || []).map(c => c.toLowerCase());
         const muscles = (ex.muscleGroups || []).map(m => m.toLowerCase());
+        const eqs = (ex.equipment || []).map(eq => eq.toLowerCase());
         const sel = selectedCategory.toLowerCase();
-        const matchCat = cat.includes(sel) || cats.some(c => c.includes(sel)) || muscles.some(m => m.includes(sel));
+        const matchCat =
+          cat.includes(sel) ||
+          cats.some(c => c.includes(sel)) ||
+          wCats.some(c => c.includes(sel)) ||
+          muscles.some(m => m.includes(sel)) ||
+          eqs.some(eq => eq.includes(sel));
         if (!matchCat) return false;
       }
 
@@ -143,13 +143,15 @@ export default function AddWorkoutModal({
         const matchMuscle = (ex.muscleGroups || []).some(m => m.toLowerCase().includes(q));
         const matchEquip = (ex.equipment || []).some(eq => eq.toLowerCase().includes(q));
         const matchCat = (ex.category || "").toLowerCase().includes(q);
+        const matchCats = (ex.categories || []).some(c => c.toLowerCase().includes(q));
+        const matchWomenCat = (ex.womenCategories || []).some(c => c.toLowerCase().includes(q));
         const matchDiff = (ex.difficulty || "").toLowerCase().includes(q);
-        if (!matchName && !matchMuscle && !matchEquip && !matchCat && !matchDiff) return false;
+        if (!matchName && !matchMuscle && !matchEquip && !matchCat && !matchCats && !matchWomenCat && !matchDiff) return false;
       }
 
       return true;
     });
-  }, [libraryExercises, selectedCategory, difficultyFilter, searchQuery, isHomeProgram, isWomenProgram]);
+  }, [libraryExercises, selectedCategory, difficultyFilter, searchQuery]);
 
   if (!isOpen) return null;
 
@@ -224,65 +226,10 @@ export default function AddWorkoutModal({
       return;
     }
 
-    // Ensure workouts assigned as female only appear in Women Confidence
-    if (!isWomenProgram && targetAudience === "Women") {
-      setFormNotice({
-        type: "error",
-        text: "A workout assigned as female can only be added to the Women Confidence Program. Select Unisex or Men for this program."
-      });
-      return;
-    }
-
     const muscles = customMuscleGroup
       .split(",")
       .map(m => m.trim())
       .filter(Boolean);
-
-    // If adding to a Home Workout program, strictly forbid barbell, dumbbell, or gym equipment
-    if (isHomeProgram) {
-      const probeEx: Exercise = {
-        id: "temp",
-        name: customName.trim(),
-        muscleGroups: muscles,
-        difficulty: customDifficulty,
-        instructions: [customInstructions],
-        equipment: [customEquipment],
-        category: customCategory,
-        categories: [customCategory],
-        commonMistakes: [],
-        safetyTips: [],
-        alternativeExercises: [],
-        progressionVariations: [],
-        isPremium: false,
-        startingPosition: "",
-        movementExecution: "",
-        finishingPosition: "",
-        regressionVariations: [],
-        musclesWorked: muscles,
-        gifUrl: customGifUrl
-      };
-      if (!isHomeEligibleExercise(probeEx)) {
-        setFormNotice({
-          type: "error",
-          text: "Cannot add to 180 Home Workout Program: Exercises with barbells, dumbbells, or gym machines are not permitted. Use Bodyweight, Mat, or Zero Equipment."
-        });
-        return;
-      }
-    }
-
-    // If adding to Women Confidence Program, strictly forbid strong men / cable fly exercises
-    if (isWomenProgram || targetAudience === "Women") {
-      const probeLower = `${customName} ${customCategory} ${customInstructions}`.toLowerCase();
-      for (const blocked of STRONG_MEN_EXERCISE_BLOCKLIST) {
-        if (probeLower.includes(blocked)) {
-          setFormNotice({
-            type: "error",
-            text: `Movement '${blocked}' is identified as a heavy bodybuilding exercise and is not permitted in Women's Confidence. Prescribe a sculpting, posture, or glute drill instead.`
-          });
-          return;
-        }
-      }
-    }
 
     const newEx: ChallengeExerciseItem = {
       id: `custom_${programId}_d${dayNumber}_${Date.now()}`,
@@ -332,7 +279,7 @@ export default function AddWorkoutModal({
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-lg font-black text-white tracking-tight">
-                    {isWomenProgram ? "Add Workout for Women" : "Add Workout Exercise"}
+                    Add Workout Exercise
                   </h3>
                   {isWomenProgram && (
                     <span className="bg-rose-500/20 text-rose-300 text-[10px] font-mono font-black uppercase tracking-wider px-2 py-0.5 rounded-full border border-rose-500/30">
@@ -350,9 +297,7 @@ export default function AddWorkoutModal({
                   </span>
                 </div>
                 <p className="text-xs text-neutral-400 mt-0.5">
-                  {isWomenProgram 
-                    ? `Assign a movement to Day ${dayNumber} (No heavy strongman/powerlifting movements).`
-                    : `Append a workout drill to Day ${dayNumber} of ${programId}. Select tier to manage exercises separately.`}
+                  All {libraryExercises.length} library workouts are available. Append any drill to Day {dayNumber} of {programId}.
                 </p>
               </div>
             </div>
@@ -491,14 +436,12 @@ export default function AddWorkoutModal({
         {/* Tab 1: Library Browser */}
         {activeTab === "library" && (
           <div className="flex-1 flex flex-col min-h-0">
-            {isWomenProgram && (
-              <div className="bg-rose-950/30 border-b border-rose-900/40 px-5 py-2.5 flex items-center gap-2 text-xs text-rose-300">
-                <Sparkles className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>
-                  <strong>Curated Filter:</strong> Heavy chest bodybuilding exercises (like cable fly, heavy bench press) are excluded. Showing toning, posture & mobility drills.
-                </span>
-              </div>
-            )}
+            <div className="bg-neutral-950/50 border-b border-neutral-800 px-5 py-2 flex items-center gap-2 text-xs text-neutral-300">
+              <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>
+                <strong>Full Library Access:</strong> Showing all {libraryExercises.length} workout library exercises across every category for unrestricted Admin assignment.
+              </span>
+            </div>
 
             {/* Filters */}
             <div className="p-4 sm:px-6 border-b border-neutral-800 bg-neutral-900/50 space-y-2.5 shrink-0">
@@ -777,23 +720,6 @@ export default function AddWorkoutModal({
                   <span>🌸 Women</span>
                 </button>
               </div>
-
-              {/* Blocklist Real-Time Warning */}
-              {(() => {
-                const probe = `${customName} ${customCategory} ${customInstructions}`.toLowerCase();
-                const matched = STRONG_MEN_EXERCISE_BLOCKLIST.find(b => probe.includes(b));
-                if (matched && (targetAudience === "Women" || isWomenProgram)) {
-                  return (
-                    <div className="p-2.5 rounded-xl bg-amber-950/60 border border-amber-800/80 text-amber-300 text-xs flex items-center gap-2 mt-2">
-                      <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span>
-                        <strong>Restricted Male Movement:</strong> '{matched}' is detected. Women Confidence strictly avoids heavy bodybuilding presses and cable flyes.
-                      </span>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

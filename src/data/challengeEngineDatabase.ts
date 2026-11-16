@@ -196,6 +196,90 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
     ],
     equipmentRequired: ["Bodyweight", "Mat"],
     coverImage: ""
+  },
+  lean_muscle: {
+    id: "lean_muscle",
+    name: "90 Day Lean Muscle Challenge",
+    tagline: "Hypertrophy, Progressive Overload & Lean Mass",
+    totalDays: 90,
+    description: "Build lean muscle definition, optimize progressive compound load, and improve body composition.",
+    accentColor: "from-red-500 to-amber-600",
+    badge: "Lean Muscle 90",
+    categories: ["Chest & Triceps", "Back & Biceps", "Cardio & Mobility", "Legs & Shoulders", "Recovery"],
+    equipmentRequired: ["Barbell", "Dumbbells", "Machines"],
+    coverImage: ""
+  },
+  fat_burning: {
+    id: "fat_burning",
+    name: "90 Day Fat Burning Challenge",
+    tagline: "Metabolic Conditioning & Caloric Expenditure",
+    totalDays: 90,
+    description: "High-efficiency metabolic conditioning designed to burn stubborn adipose tissue while preserving muscle.",
+    accentColor: "from-orange-500 to-red-600",
+    badge: "Fat Burning 90",
+    categories: ["HIIT Cardio", "Lower Body Conditioning", "Aerobic Cardio", "Upper Body Circuit", "Full Body Shred"],
+    equipmentRequired: ["Dumbbells", "Bodyweight", "Cardio"],
+    coverImage: ""
+  },
+  body_transformation: {
+    id: "body_transformation",
+    name: "90 Day Body Transformation",
+    tagline: "Full Recomposition Blueprint",
+    totalDays: 90,
+    description: "Simultaneously stimulate muscular development and systemic fat loss across 90 structured days.",
+    accentColor: "from-purple-500 to-indigo-600",
+    badge: "Transformation 90",
+    categories: ["Upper Body Strength", "Lower Body Strength", "Core & Mobility", "Full Body Hypertrophy", "HIIT Cardio"],
+    equipmentRequired: ["Dumbbells", "Barbell", "Bodyweight"],
+    coverImage: ""
+  },
+  athletic_performance: {
+    id: "athletic_performance",
+    name: "90 Day Athletic Performance",
+    tagline: "Speed, Power, Agility & Conditioning",
+    totalDays: 90,
+    description: "Enhance rate of force development, rotational power, agility vectors, and structural endurance.",
+    accentColor: "from-cyan-500 to-blue-600",
+    badge: "Athletic 90",
+    categories: ["Plyometrics & Speed", "Lower Body Power", "Conditioning", "Upper Body Power", "Agility + Core"],
+    equipmentRequired: ["Barbell", "Plyo Box", "Bodyweight"],
+    coverImage: ""
+  },
+  strength_challenge: {
+    id: "strength_challenge",
+    name: "90 Day Strength Challenge",
+    tagline: "Compound Strength & Barbell Overload",
+    totalDays: 90,
+    description: "Command major compound lifts and systematically overload neurological pathways.",
+    accentColor: "from-yellow-600 to-amber-700",
+    badge: "Strength 90",
+    categories: ["Squats & Legs", "Bench Press & Chest", "Deadlifts & Back", "Overhead Press & Shoulders", "Heavy Bracing Core"],
+    equipmentRequired: ["Barbell", "Squat Rack", "Bench"],
+    coverImage: ""
+  },
+  home_fitness: {
+    id: "home_fitness",
+    name: "90 Day Home Fitness Challenge",
+    tagline: "Bodyweight Progressions & Minimal Setup",
+    totalDays: 90,
+    description: "Train effectively at home using structured bodyweight progressions and conditioning.",
+    accentColor: "from-emerald-500 to-teal-600",
+    badge: "Home Fitness 90",
+    categories: ["Bodyweight Full Body", "Core & Mobility", "Home HIIT Cardio", "Upper Body", "Lower Body"],
+    equipmentRequired: ["Bodyweight", "Mat"],
+    coverImage: ""
+  },
+  six_pack_core: {
+    id: "six_pack_core",
+    name: "90 Day Six Pack & Core Challenge",
+    tagline: "Deep Core Stability & Abdominal Definition",
+    totalDays: 90,
+    description: "Build deep anterior and posterior core stability, define the abdominals, and strengthen bracing.",
+    accentColor: "from-pink-500 to-rose-600",
+    badge: "Six Pack Core 90",
+    categories: ["Upper Abs + Obliques", "Lower Abs + Deep Core", "Cardio + Core Burn", "Planks & Isometrics", "Full Core Circuit"],
+    equipmentRequired: ["Mat", "Bodyweight"],
+    coverImage: ""
   }
 };
 
@@ -207,15 +291,25 @@ import { getScheduleOverrides } from "../utils/scheduleOverridesStore";
  */
 export function normalizeProgramId(rawId: string = ""): ProgramId {
   const clean = rawId.toLowerCase().trim();
+  if (!clean) return "immortal_90";
+  if (clean.startsWith("custom_") || clean.startsWith("ch_")) return clean as ProgramId;
+  if (clean === "home_180_women" || (clean.includes("home") && (clean.includes("women") || clean.includes("female")))) return "home_180_women" as any;
+  if (clean === "home_fitness" || clean === "90_day_home_fitness" || clean === "90-day-home-fitness" || clean.includes("home_fitness") || clean.includes("home fitness")) return "home_fitness";
+  if (clean === "home_180" || clean === "180_day_home" || clean.includes("home_180") || clean.includes("home")) return "home_180";
   if (clean.includes("immortal") || clean === "90_day_immortal" || clean === "90-days-immortal") return "immortal_90";
-  if (clean.includes("home") && (clean.includes("women") || clean.includes("female"))) return "home_180_women" as any;
-  if (clean.includes("home") || clean === "home_180" || clean === "180_day_home") return "home_180";
   if (clean.includes("belly") || clean.includes("shred") || clean === "belly_fat_shred") return "belly_fat_shred";
   if (clean.includes("posture") || clean === "posture_vitality") return "posture_vitality";
   if (clean.includes("women") || clean === "women_confidence") return "women_confidence";
   if (clean.includes("lifestyle") || clean === "lifestyle_academy") return "lifestyle_academy";
   if (clean.includes("tactical") || clean.includes("military") || clean === "cardio_calisthenics") return "cardio_calisthenics";
-  return (clean as ProgramId) || "immortal_90";
+  if (clean === "gym_hypertrophy" || clean.includes("hypertrophy")) return "gym_hypertrophy";
+  if (clean === "lean_muscle" || clean.includes("lean_muscle") || clean.includes("lean muscle")) return "lean_muscle";
+  if (clean === "fat_burning" || clean.includes("fat_burning") || clean.includes("fat burning")) return "fat_burning";
+  if (clean === "body_transformation" || clean.includes("body_transformation") || clean.includes("transformation")) return "body_transformation";
+  if (clean === "athletic_performance" || clean.includes("athletic_performance") || clean.includes("athletic")) return "athletic_performance";
+  if (clean === "strength_challenge" || clean.includes("strength_challenge")) return "strength_challenge";
+  if (clean === "six_pack_core" || clean.includes("six_pack") || clean.includes("six pack")) return "six_pack_core";
+  return (clean as ProgramId);
 }
 
 /**
@@ -321,15 +415,24 @@ export function getWorkoutForProgramAndDay(
             chosenExercises = [];
           }
         } else if (requestedTier === "intermediate") {
-          if (dayOverride.levels && "intermediate" in dayOverride.levels && Array.isArray(dayOverride.levels.intermediate)) {
+          const hasExplicitInterLevels =
+            dayOverride.levels &&
+            "intermediate" in dayOverride.levels &&
+            Array.isArray(dayOverride.levels.intermediate) &&
+            (dayOverride.levels.intermediate.length > 0 || dayOverride.intermediateExplicitlyCleared === true);
+          const hasExplicitInterArray =
+            Array.isArray(dayOverride.intermediateExercises) &&
+            (dayOverride.intermediateExercises.length > 0 || dayOverride.intermediateExplicitlyCleared === true);
+
+          if (hasExplicitInterLevels) {
             chosenExercises = dayOverride.levels.intermediate;
-          } else if (Array.isArray(dayOverride.intermediateExercises)) {
+          } else if (hasExplicitInterArray) {
             chosenExercises = dayOverride.intermediateExercises;
-          } else if (Array.isArray(dayOverride.exercises)) {
+          } else if (Array.isArray(dayOverride.exercises) && dayOverride.exercises.length > 0) {
             chosenExercises = dayOverride.exercises;
-          } else if (Array.isArray(dayOverride.levels?.beginner)) {
+          } else if (Array.isArray(dayOverride.levels?.beginner) && dayOverride.levels.beginner.length > 0) {
             chosenExercises = dayOverride.levels.beginner;
-          } else if (Array.isArray(dayOverride.beginnerExercises)) {
+          } else if (Array.isArray(dayOverride.beginnerExercises) && dayOverride.beginnerExercises.length > 0) {
             chosenExercises = dayOverride.beginnerExercises;
           } else {
             chosenExercises = [];
@@ -347,6 +450,12 @@ export function getWorkoutForProgramAndDay(
           }
         }
       }
+
+      // If Admin explicitly added drills (addedByAdmin === true) in this list, exclude any leftover unadded legacy seed drills
+      const hasAdminAddedDrills = Array.isArray(chosenExercises) && chosenExercises.some((d: any) => d && d.addedByAdmin === true);
+      const effectiveChosenExercises = hasAdminAddedDrills
+        ? chosenExercises.filter((d: any) => d && d.addedByAdmin === true)
+        : chosenExercises;
 
       // Check for globally deleted exercises in localStorage
       let deletedNamesSet = new Set<string>();
@@ -375,7 +484,7 @@ export function getWorkoutForProgramAndDay(
       const seenGifs = new Set<string>();
       const sanitizedChosen: ChallengeExerciseItem[] = [];
 
-      for (const ex of chosenExercises) {
+      for (const ex of effectiveChosenExercises) {
         if (!ex) continue;
         const name = (ex.exerciseName || (ex as any).name || "").trim();
         if (!name) continue;

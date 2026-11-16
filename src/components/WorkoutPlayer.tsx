@@ -23,7 +23,7 @@ import {
 import { Exercise } from "../data/exercises";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import { useWorkoutTimer } from "../context/WorkoutTimerContext";
-import { detectWorkoutType, getPreWorkoutStretchesForDay } from "../utils/dynamicWorkoutEngine";
+import { detectWorkoutType } from "../utils/dynamicWorkoutEngine";
 import UniversalExerciseSwapperModal from "./UniversalExerciseSwapperModal";
 
 interface WorkoutPlayerProps {
@@ -37,45 +37,7 @@ interface WorkoutPlayerProps {
 export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComplete, preWorkoutStretches }: WorkoutPlayerProps) {
   const workoutTimer = useWorkoutTimer();
   const [workoutExercises, setWorkoutExercises] = useState<Exercise[]>(() => {
-    const list: Exercise[] = [];
-    const safeExercises = Array.isArray(exercises) ? exercises.filter(Boolean) : [];
-    const targetMuscles = safeExercises.flatMap(e => Array.isArray(e?.muscleGroups) ? e.muscleGroups : [e?.category || "Full Body"]);
-    const stretches = getPreWorkoutStretchesForDay(targetMuscles, safeExercises, 2);
-    // 2 stretch workouts at the beginning of each workout
-    for (const st of stretches) {
-      if (!safeExercises.some(e => (e?.name || "").toLowerCase() === (st?.name || "").toLowerCase())) {
-        const stretchMuscles = Array.isArray(st.muscleGroups)
-          ? st.muscleGroups
-          : (typeof (st as any).muscleGroup === "string" ? [(st as any).muscleGroup] : ["Mobility"]);
-        list.push({
-          id: st.id || "stretch_prep",
-          name: `[Warm-up Stretch] ${st.name}`,
-          category: "Stretching & Mobility",
-          categories: ["Stretching & Mobility", "Mobility & Recovery"],
-          muscleGroups: stretchMuscles,
-          difficulty: "Beginner",
-          instructions: Array.isArray(st.instructions) ? st.instructions : (typeof st.instructions === "string" ? [st.instructions] : ["Dynamic stretch warmup: execute with controlled tempo."]),
-          equipment: Array.isArray(st.equipment) ? st.equipment : (typeof st.equipment === "string" ? [st.equipment] : ["Bodyweight"]),
-          commonMistakes: [],
-          safetyTips: ["Never bounce into the stretch."],
-          alternativeExercises: [],
-          progressionVariations: [],
-          isPremium: false,
-          startingPosition: "",
-          movementExecution: "Slow, rhythmic diaphragmatic breathing.",
-          finishingPosition: "",
-          regressionVariations: [],
-          musclesWorked: stretchMuscles,
-          gifUrl: st.gifUrl || "",
-          customMediaUrl: st.customMediaUrl || st.gifUrl || "",
-          duration: st.duration || "45s Continuous",
-          recommendedSets: "1",
-          recommendedReps: (st as any).reps || "45s Hold"
-        });
-      }
-    }
-    list.push(...safeExercises.slice(0, 10));
-    return list;
+    return Array.isArray(exercises) ? exercises.filter(Boolean) : [];
   });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);

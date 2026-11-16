@@ -383,7 +383,7 @@ export default function AdminWorkoutChallengeEngine() {
       // If custom challenge has workouts attached to it
       const challengeWorkouts = (customMatch.workouts && Array.isArray(customMatch.workouts) && customMatch.workouts.length > 0)
         ? customMatch.workouts
-        : getChallengeWorkouts(customMatch, libraryExercises);
+        : getChallengeWorkouts(customMatch, libraryExercises, effectiveDayNumber);
 
       if (challengeWorkouts && challengeWorkouts.length > 0) {
         const mappedDrills: ChallengeExerciseItem[] = challengeWorkouts.map((w: any, idx: number) => {
@@ -467,16 +467,32 @@ export default function AdminWorkoutChallengeEngine() {
         }
         return 0;
       }
+      if (tier === "intermediate") {
+        const hasCustomInterLevels =
+          override?.levels &&
+          "intermediate" in override.levels &&
+          Array.isArray(override.levels.intermediate) &&
+          (override.levels.intermediate.length > 0 || override.intermediateExplicitlyCleared === true);
+        if (hasCustomInterLevels) return override.levels.intermediate.length;
+
+        const hasCustomInterArray =
+          override &&
+          "intermediateExercises" in override &&
+          Array.isArray(override.intermediateExercises) &&
+          (override.intermediateExercises.length > 0 || override.intermediateExplicitlyCleared === true);
+        if (hasCustomInterArray) return override.intermediateExercises.length;
+
+        if (override?.levels && "beginner" in override.levels && Array.isArray(override.levels.beginner)) {
+          return override.levels.beginner.length;
+        }
+        return fallbackCount;
+      }
       if (override?.levels && tier in override.levels && Array.isArray(override.levels[tier])) {
         return override.levels[tier].length;
       }
       const tierExKey = `${tier}Exercises` as "beginnerExercises" | "intermediateExercises";
       if (override && tierExKey in override && Array.isArray(override[tierExKey])) {
         return override[tierExKey].length;
-      }
-      // If tier is intermediate and not customized, count beginner if beginner has drills
-      if (tier === "intermediate" && override?.levels && "beginner" in override.levels && Array.isArray(override.levels.beginner)) {
-        return override.levels.beginner.length;
       }
       return fallbackCount;
     };
@@ -496,6 +512,12 @@ export default function AdminWorkoutChallengeEngine() {
     if (selectedDifficultyLevel === "advanced") {
       return Array.isArray(lvl) || Array.isArray(currentDayOverride[tierExKey]);
     }
+    if (selectedDifficultyLevel === "intermediate") {
+      return (
+        (Array.isArray(lvl) && (lvl.length > 0 || currentDayOverride.intermediateExplicitlyCleared === true)) ||
+        (Array.isArray(currentDayOverride[tierExKey]) && (currentDayOverride[tierExKey].length > 0 || currentDayOverride.intermediateExplicitlyCleared === true))
+      );
+    }
     return Array.isArray(lvl) || (Array.isArray(currentDayOverride[tierExKey]) && currentDayOverride[tierExKey].length > 0);
   }, [currentDayOverride, selectedDifficultyLevel]);
 
@@ -513,20 +535,34 @@ export default function AdminWorkoutChallengeEngine() {
         }
         return [];
       }
-      if (currentDayOverride?.levels && tier in currentDayOverride.levels && Array.isArray(currentDayOverride.levels[tier])) {
-        return currentDayOverride.levels[tier];
-      }
-      const tierExKey = `${tier}Exercises` as "beginnerExercises" | "intermediateExercises";
-      if (currentDayOverride && tierExKey in currentDayOverride && Array.isArray(currentDayOverride[tierExKey])) {
-        return currentDayOverride[tierExKey];
-      }
-      // If intermediate is not separately customized, fall back to beginner or general exercises
       if (tier === "intermediate") {
-        if (currentDayOverride?.levels && "beginner" in currentDayOverride.levels && Array.isArray(currentDayOverride.levels.beginner)) {
+        const hasCustomInterLevels =
+          currentDayOverride?.levels &&
+          "intermediate" in currentDayOverride.levels &&
+          Array.isArray(currentDayOverride.levels.intermediate) &&
+          (currentDayOverride.levels.intermediate.length > 0 || currentDayOverride.intermediateExplicitlyCleared === true);
+        if (hasCustomInterLevels) return currentDayOverride.levels.intermediate;
+
+        const hasCustomInterArray =
+          currentDayOverride &&
+          "intermediateExercises" in currentDayOverride &&
+          Array.isArray(currentDayOverride.intermediateExercises) &&
+          (currentDayOverride.intermediateExercises.length > 0 || currentDayOverride.intermediateExplicitlyCleared === true);
+        if (hasCustomInterArray) return currentDayOverride.intermediateExercises;
+
+        if (currentDayOverride?.levels && "beginner" in currentDayOverride.levels && Array.isArray(currentDayOverride.levels.beginner) && currentDayOverride.levels.beginner.length > 0) {
           return currentDayOverride.levels.beginner;
         }
-        if (currentDayOverride && "beginnerExercises" in currentDayOverride && Array.isArray(currentDayOverride.beginnerExercises)) {
+        if (currentDayOverride && "beginnerExercises" in currentDayOverride && Array.isArray(currentDayOverride.beginnerExercises) && currentDayOverride.beginnerExercises.length > 0) {
           return currentDayOverride.beginnerExercises;
+        }
+      } else {
+        if (currentDayOverride?.levels && tier in currentDayOverride.levels && Array.isArray(currentDayOverride.levels[tier])) {
+          return currentDayOverride.levels[tier];
+        }
+        const tierExKey = `${tier}Exercises` as "beginnerExercises" | "intermediateExercises";
+        if (currentDayOverride && tierExKey in currentDayOverride && Array.isArray(currentDayOverride[tierExKey])) {
+          return currentDayOverride[tierExKey];
         }
       }
       return (currentDayOverride && Array.isArray(currentDayOverride.exercises))
@@ -534,7 +570,9 @@ export default function AdminWorkoutChallengeEngine() {
         : (baseDayPlan.exercises || []);
     };
 
-    rawList = getTierList(selectedDifficultyLevel);
+    const selectedTierList = getTierList(selectedDifficultyLevel);
+    const hasAdminInTier = Array.isArray(selectedTierList) && selectedTierList.some((d: any) => d && d.addedByAdmin === true);
+    rawList = hasAdminInTier ? selectedTierList.filter((d: any) => d && d.addedByAdmin === true) : selectedTierList;
 
     const seenNames = new Set<string>();
     const seenGifs = new Set<string>();
@@ -635,8 +673,9 @@ export default function AdminWorkoutChallengeEngine() {
         name,
         exerciseName: name,
         gifUrl: gif,
-        imageUrl: gif
-      });
+        imageUrl: gif,
+        addedByAdmin: true
+      } as any);
     }
 
     const existingDayData = currentDayOverride || {};
@@ -660,15 +699,19 @@ export default function AdminWorkoutChallengeEngine() {
         ? sanitizedExercises
         : (nextLevels.beginner || sanitizedExercises));
 
-    // When editing Beginner and Intermediate has only unadded legacy seed drills, avoid serving stale seed drills to Intermediate users
-    if (!explicitLevels && targetTier === "beginner" && Array.isArray(nextLevels.intermediate)) {
+    // Preserve empty intermediate array only if intermediate was explicitly cleared; otherwise remove stale empty placeholder
+    const intermediateExplicitlyCleared = targetTier === "intermediate"
+      ? sanitizedExercises.length === 0
+      : (Boolean(existingDayData.intermediateExplicitlyCleared) && (!Array.isArray(nextLevels.intermediate) || nextLevels.intermediate.length === 0));
+
+    if (!intermediateExplicitlyCleared && Array.isArray(nextLevels.intermediate)) {
       const hasCustomInter = nextLevels.intermediate.some((d: any) => d && d.addedByAdmin === true);
-      if (!hasCustomInter) {
+      if (!hasCustomInter && targetTier !== "intermediate") {
         delete nextLevels.intermediate;
       }
     }
 
-    const updatedDayData = {
+    const updatedDayData: any = {
       ...existingDayData,
       title: splitTitle,
       category: splitCategory,
@@ -680,10 +723,17 @@ export default function AdminWorkoutChallengeEngine() {
       estimatedDuration: cardioState.durationMinutes,
       exercises: baselineExercises,
       levels: nextLevels,
+      intermediateExplicitlyCleared,
       beginnerExercises: Array.isArray(nextLevels.beginner) ? nextLevels.beginner : (targetTier === "beginner" ? sanitizedExercises : (existingDayData.beginnerExercises || baselineExercises)),
-      intermediateExercises: Array.isArray(nextLevels.intermediate) ? nextLevels.intermediate : (targetTier === "intermediate" ? sanitizedExercises : []),
       advancedExercises: Array.isArray(nextLevels.advanced) ? nextLevels.advanced : (targetTier === "advanced" ? sanitizedExercises : (Array.isArray(existingDayData.advancedExercises) ? existingDayData.advancedExercises : [])),
     };
+    if (Array.isArray(nextLevels.intermediate) && (nextLevels.intermediate.length > 0 || intermediateExplicitlyCleared)) {
+      updatedDayData.intermediateExercises = nextLevels.intermediate;
+    } else if (targetTier === "intermediate") {
+      updatedDayData.intermediateExercises = sanitizedExercises;
+    } else {
+      delete updatedDayData.intermediateExercises;
+    }
 
     // Strict Men vs Women track key isolation (Women home_180 never overwrites Men's home_180)
     const isHomeProgram = selectedProgramId === "home_180" || selectedProgramId.startsWith("home_180");
@@ -1390,14 +1440,31 @@ export default function AdminWorkoutChallengeEngine() {
     setIsSaving(true);
     try {
       const existingLevels = currentDayOverride?.levels || {};
-      const nextLevels = { ...existingLevels };
-      nextLevels[selectedDifficultyLevel] = activeExercises;
+      const nextLevels: any = { ...existingLevels };
+      const stampedActive = activeExercises.map(ex => ({ ...ex, addedByAdmin: true }));
+      nextLevels[selectedDifficultyLevel] = stampedActive;
 
       const baselineList = selectedDifficultyLevel === "beginner"
-        ? activeExercises
+        ? stampedActive
         : (nextLevels.beginner || currentDayOverride?.exercises || baseDayPlan.exercises || []);
 
-      const dayData = {
+      const existingInter = Array.isArray(nextLevels.intermediate)
+        ? nextLevels.intermediate
+        : (Array.isArray(currentDayOverride?.intermediateExercises) ? currentDayOverride.intermediateExercises : []);
+      const hasInterDrills = existingInter.length > 0;
+      const intermediateExplicitlyCleared = selectedDifficultyLevel === "intermediate"
+        ? stampedActive.length === 0
+        : (Boolean(currentDayOverride?.intermediateExplicitlyCleared) && !hasInterDrills);
+
+      const savedLevels: any = {
+        beginner: cardioState.isCardio ? [] : (selectedDifficultyLevel === "beginner" ? stampedActive : (nextLevels.beginner || currentDayOverride?.beginnerExercises || baselineList)),
+        advanced: cardioState.isCardio ? [] : (selectedDifficultyLevel === "advanced" ? stampedActive : (nextLevels.advanced || currentDayOverride?.advancedExercises || []))
+      };
+      if (!cardioState.isCardio && (selectedDifficultyLevel === "intermediate" || hasInterDrills || intermediateExplicitlyCleared)) {
+        savedLevels.intermediate = selectedDifficultyLevel === "intermediate" ? stampedActive : existingInter;
+      }
+
+      const dayData: any = {
         title: splitTitle,
         category: splitCategory,
         focus: splitCategory,
@@ -1410,15 +1477,12 @@ export default function AdminWorkoutChallengeEngine() {
         coachingNotes: cardioState.isCardio 
           ? `Admin Prescribed Cardio Engine: ${cardioState.distance} conversational pace.` 
           : "Execute with strict biomechanics and progressive overload.",
-        exercises: cardioState.isCardio ? [] : (selectedDifficultyLevel === "beginner" ? activeExercises : baselineList),
-        levels: {
-          beginner: cardioState.isCardio ? [] : (selectedDifficultyLevel === "beginner" ? activeExercises : (nextLevels.beginner || currentDayOverride?.beginnerExercises || baselineList)),
-          intermediate: cardioState.isCardio ? [] : (selectedDifficultyLevel === "intermediate" ? activeExercises : (nextLevels.intermediate || currentDayOverride?.intermediateExercises || [])),
-          advanced: cardioState.isCardio ? [] : (selectedDifficultyLevel === "advanced" ? activeExercises : (nextLevels.advanced || currentDayOverride?.advancedExercises || []))
-        },
-        beginnerExercises: cardioState.isCardio ? [] : (selectedDifficultyLevel === "beginner" ? activeExercises : (nextLevels.beginner || currentDayOverride?.beginnerExercises || baselineList)),
-        intermediateExercises: cardioState.isCardio ? [] : (selectedDifficultyLevel === "intermediate" ? activeExercises : (nextLevels.intermediate || currentDayOverride?.intermediateExercises || [])),
-        advancedExercises: cardioState.isCardio ? [] : (selectedDifficultyLevel === "advanced" ? activeExercises : (nextLevels.advanced || currentDayOverride?.advancedExercises || [])),
+        exercises: cardioState.isCardio ? [] : (selectedDifficultyLevel === "beginner" ? stampedActive : baselineList),
+        levels: savedLevels,
+        intermediateExplicitlyCleared,
+        beginnerExercises: savedLevels.beginner,
+        advancedExercises: savedLevels.advanced,
+        ...(savedLevels.intermediate !== undefined ? { intermediateExercises: savedLevels.intermediate } : {})
       };
 
       const isHomeProgSave = selectedProgramId === "home_180" || selectedProgramId.startsWith("home_180");
@@ -1747,6 +1811,7 @@ export default function AdminWorkoutChallengeEngine() {
       { id: "strength_challenge", label: "90 Day Strength Challenge (90 Days)" },
       { id: "home_fitness", label: "90 Day Home Fitness Challenge (90 Days)" },
       { id: "six_pack_core", label: "90 Day Six Pack & Core Challenge (90 Days)" },
+      { id: "gym_hypertrophy", label: "Gym Hypertrophy & Muscle Density (90 Days)" },
       { id: "cardio_calisthenics", label: "Cardio, Calisthenics & Military (30 Days)" },
       { id: "lifestyle_academy", label: "Alex Lifestyle Academy (60 Days)" }
     ];

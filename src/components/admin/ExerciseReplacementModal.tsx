@@ -2,8 +2,6 @@ import React, { useState, useMemo } from "react";
 import { Search, X, Dumbbell, Sparkles, Check, Filter, ArrowRightLeft, Flame, Heart } from "lucide-react";
 import { Exercise, getExerciseGifUrl } from "../../data/exercises";
 import { ChallengeExerciseItem } from "../../types/challengeEngine";
-import { isHomeEligibleExercise } from "../../utils/dynamicWorkoutEngine";
-import { isWomenWorkoutEligibleExercise, isExplicitlyMarkedWomenWorkout } from "../../data/womenConfidenceProgramData";
 import UnifiedExerciseMedia from "../UnifiedExerciseMedia";
 
 interface ExerciseReplacementModalProps {
@@ -20,10 +18,14 @@ const CATEGORY_FILTERS = [
   "Chest",
   "Back",
   "Legs",
+  "Glutes",
   "Shoulders",
   "Arms",
   "Core",
   "Cardio",
+  "HIIT",
+  "Bodyweight",
+  "Stretching & Mobility",
   "Full Body",
   "Gym Workouts",
   "Home Workouts"
@@ -38,6 +40,8 @@ const WOMEN_CATEGORY_FILTERS = [
   "Legs",
   "Back",
   "Cardio",
+  "Bodyweight",
+  "Stretching & Mobility",
   "Full Body"
 ];
 
@@ -79,18 +83,10 @@ export default function ExerciseReplacementModal({
     if (!targetExercise) return [];
     const seen = new Set<string>();
     return libraryExercises.filter(ex => {
+      if (!ex || !ex.name) return false;
       const cleanName = ex.name.toLowerCase().trim();
       if (seen.has(cleanName) || seen.has(ex.id)) return false;
       if (ex.id === targetExercise.id || ex.name === targetExercise.exerciseName) return false;
-
-      // When replacing in home programs, strictly forbid gym/barbell/dumbbell gear
-      if (isHomeProgram && !isHomeEligibleExercise(ex)) return false;
-
-      // When replacing in women programs, strictly forbid heavy male / cable fly exercises
-      if (isWomenProgram && !isWomenWorkoutEligibleExercise(ex)) return false;
-
-      // When replacing in non-women programs, workouts assigned as female ONLY appear in Women Confidence
-      if (!isWomenProgram && isExplicitlyMarkedWomenWorkout(ex)) return false;
 
       const exMuscles = (ex.muscleGroups || []).map(m => m.toLowerCase());
       const exCat = (ex.category || "").toLowerCase();
@@ -103,12 +99,13 @@ export default function ExerciseReplacementModal({
       }
       return false;
     }).slice(0, 4);
-  }, [targetExercise, libraryExercises, targetMuscles, targetCategory, isHomeProgram, isWomenProgram]);
+  }, [targetExercise, libraryExercises, targetMuscles, targetCategory]);
 
   // Filtered pool
   const filteredExercises = useMemo(() => {
     const seen = new Set<string>();
     return libraryExercises.filter(ex => {
+      if (!ex || !ex.name) return false;
       const cleanName = ex.name.toLowerCase().trim();
       if (seen.has(cleanName) || seen.has(ex.id)) return false;
       seen.add(cleanName);
@@ -118,21 +115,13 @@ export default function ExerciseReplacementModal({
         return false;
       }
 
-      // When replacing in home programs, strictly forbid gym/barbell/dumbbell gear
-      if (isHomeProgram && !isHomeEligibleExercise(ex)) return false;
-
-      // When replacing in women programs, strictly forbid heavy male / cable fly exercises
-      if (isWomenProgram && !isWomenWorkoutEligibleExercise(ex)) return false;
-
-      // When replacing in non-women programs, workouts assigned as female ONLY appear in Women Confidence
-      if (!isWomenProgram && isExplicitlyMarkedWomenWorkout(ex)) return false;
-
       if (selectedCategory !== "All") {
         const cat = (ex.category || "").toLowerCase();
         const cats = (ex.categories || []).map(c => c.toLowerCase());
+        const wCats = (ex.womenCategories || []).map(c => c.toLowerCase());
         const muscles = (ex.muscleGroups || []).map(m => m.toLowerCase());
         const sel = selectedCategory.toLowerCase();
-        const matchCat = cat.includes(sel) || cats.some(c => c.includes(sel)) || muscles.some(m => m.includes(sel));
+        const matchCat = cat.includes(sel) || cats.some(c => c.includes(sel)) || wCats.some(c => c.includes(sel)) || muscles.some(m => m.includes(sel));
         if (!matchCat) return false;
       }
 
@@ -142,12 +131,13 @@ export default function ExerciseReplacementModal({
         const matchMuscle = (ex.muscleGroups || []).some(m => m.toLowerCase().includes(q));
         const matchEquip = (ex.equipment || []).some(eq => eq.toLowerCase().includes(q));
         const matchCat = (ex.category || "").toLowerCase().includes(q);
-        if (!matchName && !matchMuscle && !matchEquip && !matchCat) return false;
+        const matchWomenCat = (ex.womenCategories || []).some(c => c.toLowerCase().includes(q));
+        if (!matchName && !matchMuscle && !matchEquip && !matchCat && !matchWomenCat) return false;
       }
 
       return true;
     });
-  }, [libraryExercises, targetExercise, selectedCategory, searchQuery, isHomeProgram, isWomenProgram]);
+  }, [libraryExercises, targetExercise, selectedCategory, searchQuery]);
 
   if (!isOpen || !targetExercise) return null;
 
