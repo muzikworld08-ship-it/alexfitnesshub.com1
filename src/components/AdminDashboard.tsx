@@ -77,6 +77,7 @@ export default function AdminDashboard() {
   const [congratsStatus, setCongratsStatus] = useState<string | null>(null);
 
   const [mediaFeedback, setMediaFeedback] = useState<string | null>(null);
+  const [confirmResetMediaId, setConfirmResetMediaId] = useState<string | null>(null);
 
   const handleSendCongratsEmail = async () => {
     if (!congratsEmailTo) {
@@ -162,7 +163,11 @@ export default function AdminDashboard() {
   };
 
   const handleResetMedia = async (exerciseId: string) => {
-    if (!confirm("Are you sure you want to reset this exercise back to its default demonstration media?")) return;
+    if (confirmResetMediaId !== exerciseId) {
+      setConfirmResetMediaId(exerciseId);
+      return;
+    }
+    setConfirmResetMediaId(null);
     setUploadingId(exerciseId);
     try {
       await uploadExerciseMedia(exerciseId, null);
@@ -171,6 +176,7 @@ export default function AdminDashboard() {
       setTimeout(() => setMediaUpdateSuccess(null), 3500);
     } catch (err) {
       console.error("Failed to reset exercise media:", err);
+      setMediaFeedback("Failed to reset exercise media.");
     } finally {
       setUploadingId(null);
     }
@@ -275,7 +281,21 @@ export default function AdminDashboard() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  // Strict Admin Safeguard
+  const filteredExercises = useMemo(() => {
+    const seen = new Set<string>();
+    return exercises.filter(e => {
+      const cleanName = e.name.toLowerCase().trim();
+      if (seen.has(cleanName) || seen.has(e.id)) return false;
+      seen.add(cleanName);
+      seen.add(e.id);
+      return (
+        e.name.toLowerCase().includes(exerciseQuery.toLowerCase()) ||
+        e.category.toLowerCase().includes(exerciseQuery.toLowerCase())
+      );
+    });
+  }, [exercises, exerciseQuery]);
+
+  // Strict Admin Safeguard (must remain below all React hooks)
   const isAdminUser = user && (
     user.role === "admin" || 
     isEmailAdmin(user.email)
@@ -324,20 +344,6 @@ export default function AdminDashboard() {
     u.displayName?.toLowerCase().includes(userQuery.toLowerCase()) ||
     u.email?.toLowerCase().includes(userQuery.toLowerCase())
   );
-
-  const filteredExercises = useMemo(() => {
-    const seen = new Set<string>();
-    return exercises.filter(e => {
-      const cleanName = e.name.toLowerCase().trim();
-      if (seen.has(cleanName) || seen.has(e.id)) return false;
-      seen.add(cleanName);
-      seen.add(e.id);
-      return (
-        e.name.toLowerCase().includes(exerciseQuery.toLowerCase()) ||
-        e.category.toLowerCase().includes(exerciseQuery.toLowerCase())
-      );
-    });
-  }, [exercises, exerciseQuery]);
 
   const navigationTabs = [
     { id: "overview" as const, label: "Overview", icon: LayoutDashboard, badge: "Control Center" },
@@ -868,14 +874,32 @@ export default function AdminDashboard() {
 
                     {/* Footer: Reset Button */}
                     {exercise.customMediaUrl && (
-                      <div className="pt-3 border-t border-slate-100 mt-3 flex justify-end">
-                        <button
-                          onClick={() => handleResetMedia(exercise.id)}
-                          className="text-[10px] font-mono font-bold text-rose-600 hover:text-rose-800 hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          Reset to Default
-                        </button>
+                      <div className="pt-3 border-t border-slate-100 mt-3 flex justify-end items-center gap-2">
+                        {confirmResetMediaId === exercise.id ? (
+                          <>
+                            <span className="text-[10px] font-bold text-slate-600">Reset media?</span>
+                            <button
+                              onClick={() => handleResetMedia(exercise.id)}
+                              className="px-2 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold cursor-pointer"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => setConfirmResetMediaId(null)}
+                              className="px-2 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-bold cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => handleResetMedia(exercise.id)}
+                            className="text-[10px] font-mono font-bold text-rose-600 hover:text-rose-800 hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            Reset to Default
+                          </button>
+                        )}
                       </div>
                     )}
 

@@ -30,6 +30,7 @@ export default function DailyNotificationController() {
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [reminderTime, setReminderTime] = useState(() => localStorage.getItem("alexfit_reminder_time") || "08:00");
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem("alexfit_notify_enabled") === "true");
+  const [notificationNotice, setNotificationNotice] = useState<string | null>(null);
 
   // Sync workout schedule updates
   useEffect(() => {
@@ -164,8 +165,9 @@ export default function DailyNotificationController() {
 
   // Request browser notification permission
   const requestPermission = async () => {
+    setNotificationNotice(null);
     if (!("Notification" in window)) {
-      alert("This browser does not support desktop notifications.");
+      setNotificationNotice("This browser does not support desktop notifications.");
       return;
     }
 
@@ -380,6 +382,12 @@ export default function DailyNotificationController() {
                     🚀 Trigger Test
                   </button>
                 </div>
+
+                {notificationNotice && (
+                  <p className="text-[11px] font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5">
+                    {notificationNotice}
+                  </p>
+                )}
 
                 {/* Reminder Schedule time */}
                 <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100">

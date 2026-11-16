@@ -129,6 +129,8 @@ export default function ProgressTrackerView({ setView }: { setView?: (view: stri
   const [cardioCalories, setCardioCalories] = useState("350");
   const [cardioNotes, setCardioNotes] = useState("");
 
+  const [trackerNotice, setTrackerNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const handleAddCardio = (e: React.FormEvent) => {
     e.preventDefault();
     const newEntry: CardioLog = {
@@ -142,7 +144,8 @@ export default function ProgressTrackerView({ setView }: { setView?: (view: stri
     };
     setCardioLogs(prev => [newEntry, ...prev]);
     setCardioNotes("");
-    alert("Cardio session logged successfully!");
+    setTrackerNotice({ type: "success", text: "Cardio session logged successfully!" });
+    setTimeout(() => setTrackerNotice(null), 4000);
   };
 
   // Add Meal Form state
@@ -156,7 +159,7 @@ export default function ProgressTrackerView({ setView }: { setView?: (view: stri
   const handleAddMeal = (e: React.FormEvent) => {
     e.preventDefault();
     if (!mealFoodItems.trim()) {
-      alert("Please describe the meal or food items.");
+      setTrackerNotice({ type: "error", text: "Please describe the meal or food items." });
       return;
     }
     const newEntry: MealLog = {
@@ -171,7 +174,8 @@ export default function ProgressTrackerView({ setView }: { setView?: (view: stri
     };
     setMealLogs(prev => [newEntry, ...prev]);
     setMealFoodItems("");
-    alert("Meal registered in your daily macro matrix!");
+    setTrackerNotice({ type: "success", text: "Meal registered in your daily macro matrix!" });
+    setTimeout(() => setTrackerNotice(null), 4000);
   };
 
   // 7-Day progress stats
@@ -256,6 +260,23 @@ export default function ProgressTrackerView({ setView }: { setView?: (view: stri
         <div className="p-4 bg-emerald-950/70 border border-emerald-500/50 rounded-2xl flex items-center gap-3 text-emerald-200 text-sm animate-in fade-in">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <span>{auditMsg}</span>
+        </div>
+      )}
+
+      {trackerNotice && (
+        <div className={`p-3.5 rounded-2xl border text-xs font-bold flex items-center justify-between gap-3 ${
+          trackerNotice.type === "error"
+            ? "bg-red-50 border-red-200 text-red-700"
+            : "bg-emerald-50 border-emerald-200 text-emerald-800"
+        }`}>
+          <span>{trackerNotice.text}</span>
+          <button
+            type="button"
+            onClick={() => setTrackerNotice(null)}
+            className="text-[11px] font-black uppercase px-2 py-0.5 rounded hover:bg-black/5 cursor-pointer"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 

@@ -66,7 +66,7 @@ export async function refreshScheduleOverridesFromServer(): Promise<Record<strin
     if (res.ok) {
       const data = await res.json();
       if (data && data.overrides && typeof data.overrides === "object") {
-        setScheduleOverridesFromRemote(data.overrides, data.updatedAt || data.serverTime);
+        setScheduleOverridesFromRemote(data.overrides, data.updatedAt || data.serverTime, data.source);
       }
 
       // Also sync deleted exercises so client-side routine renders omit permanently deleted drills across devices
@@ -93,7 +93,7 @@ export async function refreshScheduleOverridesFromServer(): Promise<Record<strin
         } catch {}
       }
 
-      if (data?.overrides) return data.overrides;
+      if (data?.overrides) return getScheduleOverrides();
     }
   } catch (err) {
     console.warn("[ScheduleOverridesStore] Notice fetching schedule overrides from server:", err);
@@ -117,10 +117,59 @@ export async function refreshScheduleOverridesFromServer(): Promise<Record<strin
   return getScheduleOverrides();
 }
 
-// Automatically sync latest overrides from server on client startup and lifecycle events
+let firestoreScheduleUnsub: (() => void) | null = null;
+
+async function startRealtimeFirestoreScheduleSync() {
+  if (typeof window === "undefined" || firestoreScheduleUnsub) return;
+  try {
+    const [{ db, isMockFirebase }, { collection, onSnapshot }] = await Promise.all([
+      import("../lib/firebase"),
+      import("firebase/firestore")
+    ]);
+    if (isMockFirebase || !db) return;
+
+    firestoreScheduleUnsub = onSnapshot(
+      collection(db, "program_schedules"),
+      (snapshot) => {
+        if (!snapshot || snapshot.empty) return;
+        const assembled: Record<string, any> = {};
+        let maxUpdatedAt = "";
+
+        snapshot.docs.forEach((docSnap) => {
+          if (docSnap.id === "overrides") return;
+          const data = docSnap.data();
+          if (!data || typeof data !== "object") return;
+          if (typeof data.updatedAt === "string" && data.updatedAt > maxUpdatedAt) {
+            maxUpdatedAt = data.updatedAt;
+          }
+          if (data.schedule && typeof data.schedule === "object") {
+            assembled[docSnap.id] = data.schedule;
+          } else {
+            const { updatedAt, updatedBy, programId, ...cleanSchedule } = data;
+            if (Object.keys(cleanSchedule).length > 0) {
+              assembled[docSnap.id] = cleanSchedule;
+            }
+          }
+        });
+
+        if (Object.keys(assembled).length > 0) {
+          setScheduleOverridesFromRemote(assembled, maxUpdatedAt || new Date().toISOString(), "firestore");
+        }
+      },
+      (err) => {
+        console.warn("[ScheduleOverridesStore] Real-time Firestore listener notice:", err?.message || err);
+      }
+    );
+  } catch (e) {
+    console.warn("[ScheduleOverridesStore] Could not attach Firestore listener:", e);
+  }
+}
+
+// Automatically sync latest overrides from server & Firestore on client startup and lifecycle events
 if (typeof window !== "undefined") {
   setTimeout(() => {
     refreshScheduleOverridesFromServer();
+    startRealtimeFirestoreScheduleSync();
   }, 50);
 
   if (typeof document !== "undefined") {
@@ -196,14 +245,31 @@ export function getScheduleOverrides(): Record<string, any> {
  */
 export function setScheduleOverridesFromRemote(
   data: Record<string, any>,
-  updatedAt?: string | number | null
-): void {
-  if (!data || typeof data !== "object") return;
+  updatedAt?: string | number | null,
+  sourceHint?: "cloud" | "disk" | "firestore" | "remote" | string
+): boolean {
+  if (!data || typeof data !== "object") return false;
 
   const incomingTime = updatedAt || data._updatedAt;
   const incomingIso = incomingTime
     ? (typeof incomingTime === "number" ? new Date(incomingTime).toISOString() : String(incomingTime))
     : new Date().toISOString();
+
+  // Monotonic timestamp guard: never let stale disk or older snapshot overwrite newer remote/admin state
+  const hasExisting = Boolean(memoryOverrides && Object.keys(memoryOverrides).length > 0);
+  if (hasExisting && currentSource === "remote") {
+    if (sourceHint === "disk") {
+      // Never allow an unverified disk snapshot to overwrite confirmed cloud/admin state
+      return false;
+    }
+    if (lastUpdatedAt && incomingTime) {
+      const prevMs = Date.parse(lastUpdatedAt);
+      const nextMs = Date.parse(incomingIso);
+      if (!isNaN(prevMs) && !isNaN(nextMs) && nextMs < prevMs) {
+        return false;
+      }
+    }
+  }
 
   // Strip internal metadata fields before caching
   const { _updatedAt, _updatedBy, ...cleanOverrides } = data;
@@ -225,6 +291,7 @@ export function setScheduleOverridesFromRemote(
   }
 
   notifySubscribers();
+  return true;
 }
 
 /**

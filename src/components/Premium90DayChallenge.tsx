@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useApp } from "../context/AppContext";
+import { useApp, isEmailAdmin } from "../context/AppContext";
 import WorkoutVisual from "./WorkoutVisual";
 import { db, safeFirestoreSetDoc } from "../lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -321,7 +321,7 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
 
   // Keep scroll position on activeSubTab change
 
-  const [loadingDb, setLoadingDb] = useState(false);
+  const [loadingDb, setLoadingDb] = useState(Boolean(user && isPremiumUser));
   const [dbState, setDbState] = useState<Premium90DayState | null>(null);
   const [celebrationModalData, setCelebrationModalData] = useState<{
     isOpen: boolean;
@@ -339,6 +339,7 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
   const [adminStatusMessage, setAdminStatusMessage] = useState<string>("");
   const [adminLoading, setAdminLoading] = useState<boolean>(false);
   const [showSwitchChallengeModal, setShowSwitchChallengeModal] = useState<boolean>(false);
+  const [premiumNotice, setPremiumNotice] = useState<string | null>(null);
 
   // Local storage fallback helper functions for robust offline / quota-limited access
   const getLocalChallengeKey = (uid: string) => `premium_90_day_challenge_${uid}`;
@@ -479,7 +480,7 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
     currentWeight: 80,
     goalWeight: 75,
     fitnessGoal: "Build Muscle & Lose Fat",
-    fitnessLevel: "Intermediate",
+    fitnessLevel: "Beginner",
     gymOrHome: "Gym",
     availableEquipment: "Full Gym",
     trainingDays: 5,
@@ -516,7 +517,53 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
     setLoadingDb(true);
     try {
       const data = await loadChallengeData(user.uid);
-      setDbState(data);
+      if (data && data.onboarding) {
+        setDbState(data);
+      } else {
+        const isCompletedLocally = localStorage.getItem(`fit_onboarding_completed_${user.uid}`) === "true";
+        const isUserAdmin = Boolean(user.role === "admin" || (user.email && isEmailAdmin(user.email)));
+        if (user.onboarded !== false || isCompletedLocally || isUserAdmin) {
+          const resolvedTier = resolveAthleteTier(user, data);
+          const tierLabel = resolvedTier === "advanced" ? "Advanced" : resolvedTier === "intermediate" ? "Intermediate" : "Beginner";
+          const derivedOnboarding: ChallengeOnboarding = {
+            ...onboardingForm,
+            age: Number((user as any).age) || onboardingForm.age,
+            gender: (user as any).gender || onboardingForm.gender,
+            height: Number((user as any).height) || onboardingForm.height,
+            currentWeight: Number((user as any).weight) || onboardingForm.currentWeight,
+            fitnessLevel: tierLabel,
+          };
+          const autoEnrolled: Premium90DayState = {
+            userId: user.uid,
+            challengeId: data?.challengeId || initialChallengeId || "immortal_90",
+            currentDay: data?.currentDay || 1,
+            onboarding: derivedOnboarding,
+            completedDays: data?.completedDays || [],
+            workoutHistory: data?.workoutHistory || [],
+            bodyMeasurements: data?.bodyMeasurements || [
+              { date: new Date().toISOString().split("T")[0], weight: derivedOnboarding.currentWeight }
+            ],
+            personalRecords: data?.personalRecords || [],
+            streaks: data?.streaks || { currentStreak: 0, longestStreak: 0 },
+            achievements: data?.achievements || [],
+            notificationsSettings: data?.notificationsSettings || {
+              workoutTime: true,
+              hydration: true,
+              recovery: true,
+              stretching: true,
+              restDay: true,
+              weeklyProgress: true,
+              monthlyReport: true
+            },
+            updatedAt: new Date().toISOString(),
+            assignedCoach: data?.assignedCoach || ""
+          };
+          setDbState(autoEnrolled);
+          saveChallengeData(user.uid, autoEnrolled).catch(() => {});
+        } else {
+          setDbState(data);
+        }
+      }
     } catch (error) {
       console.error("Error loading premium 90 progress:", error);
     } finally {
@@ -616,7 +663,11 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
     // Delegate directly to the authoritative Admin Dashboard Challenge Engine for ALL programs
     const progToQuery = challengeId || "immortal_90";
     const athleteLevel = resolveAthleteTier(user, dbState);
-    const enginePlan = getWorkoutForProgramAndDay(progToQuery, dayNum, undefined, { fitnessLevel: athleteLevel });
+    const enginePlan = getWorkoutForProgramAndDay(progToQuery, dayNum, undefined, {
+      fitnessLevel: athleteLevel,
+      gender: (user as any)?.gender,
+      track: String((user as any)?.gender || "").toLowerCase() === "female" ? "women" : "men"
+    });
     const isCardioDay = !!enginePlan.meta.isCardioOnly;
 
     const exercisesWithDetails = (enginePlan.exercises || []).map((ex, idx) => {
@@ -656,6 +707,9 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
       };
     });
 
+    const hasConfiguredDrills = hasProgramOverride || exercisesWithDetails.length > 0;
+    const isRestDayFlag = !!enginePlan.meta.isRestDay;
+
     return {
       dayNum,
       weekNum,
@@ -664,27 +718,30 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
         ? "5 to 10 KM Aerobic Engine & Total Muscular Rest. Strict protocol: No weight training or resistance drills today. After cardio, take complete rest."
         : phaseDesc,
       focus: enginePlan.meta.category || enginePlan.meta.title,
-      isRecoveryDay: isCardioDay || !!enginePlan.meta.isRestDay,
+      isRecoveryDay: isCardioDay || isRestDayFlag,
+      isRestDay: isRestDayFlag,
+      isCardioDay,
+      hasConfiguredDrills,
       restTime: isCardioDay ? "Full Rest Post-Cardio" : restTime,
       intensityLabel: isCardioDay ? "Aerobic Zone 2 (Conversational Pace)" : intensityLabel,
       exercises: exercisesWithDetails,
-      estTime: isCardioDay ? 55 : (enginePlan.meta.isRestDay ? 25 : 75),
+      estTime: isCardioDay ? 55 : (isRestDayFlag ? 25 : 75),
       estCalories: enginePlan.meta.estimatedCalories || 520,
-      warmUp: isCardioDay ? [
+      warmUp: hasConfiguredDrills ? [] : (isCardioDay ? [
         { name: "Ankle, Hip & Knee Joint Mobilizations", duration: "3 Mins", desc: "Dynamic joint lubrication before 5-10 KM cardio." },
         { name: "Light Aerobic Walking Warm-Up", duration: "3 Mins", desc: "Gradual elevation of heart rate and core temperature." }
       ] : [
         { name: "Dynamic Warm-up Jumps", duration: "3 Mins", desc: "Light impact baseline dynamic hopping." },
         { name: "Dynamic Rotational Swings", duration: "3 Mins", desc: "Full range axial mobility pivots." },
         { name: "Target Joint Articulations", duration: "4 Mins", desc: "Lubricate target joints specifically for today's muscle groups." }
-      ],
-      coolDown: isCardioDay ? [
+      ]),
+      coolDown: hasConfiguredDrills ? [] : (isCardioDay ? [
         { name: "Deep Diaphragmatic Box Breathing", duration: "4 Mins", desc: "Lower heart rate and initiate parasympathetic nervous recovery." },
         { name: "Complete Post-Cardio Rest & Rehydration", duration: "Full Rest", desc: "Rest muscles completely; zero weight training." }
       ] : [
         { name: "Systemic Decompression Breathing", duration: "4 Mins", desc: "Deep diaphragmatic nasal inhalation cycles." },
         { name: "Target Muscle Static Lengthening", duration: "4 Mins", desc: "Release tension in worked muscle groups." }
-      ]
+      ])
     };
   };
 
@@ -1150,21 +1207,14 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
                 Explore The 7-Day Repeating Structure:
               </span>
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-                {[
-                  { day: 1, label: "Day 1", focus: "Chest + Triceps" },
-                  { day: 2, label: "Day 2", focus: "Back + Biceps + Forearm" },
-                  { day: 3, label: "Day 3", focus: "5-10 KM Cardio / Walk" },
-                  { day: 4, label: "Day 4", focus: "Legs + Shoulders + Abs" },
-                  { day: 5, label: "Day 5", focus: "Chest + Triceps" },
-                  { day: 6, label: "Day 6", focus: "Back + Biceps" },
-                  { day: 7, label: "Day 7", focus: "5-10 KM Run / Walk" },
-                ].map((item) => {
-                  const isSelected = previewDay === item.day;
+                {[1, 2, 3, 4, 5, 6, 7].map((dayNum) => {
+                  const dayDetail = getDailyWorkoutDetail(dayNum, currentChallengeKey);
+                  const isSelected = previewDay === dayNum;
                   return (
                     <button
-                      key={item.day}
+                      key={dayNum}
                       type="button"
-                      onClick={() => setPreviewDay(item.day)}
+                      onClick={() => setPreviewDay(dayNum)}
                       className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
                         isSelected
                           ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-600/20"
@@ -1172,10 +1222,10 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
                       }`}
                     >
                       <div className={`text-[10px] font-mono font-black uppercase ${isSelected ? "text-red-100" : "text-slate-400"}`}>
-                        {item.label}
+                        Day {dayNum}
                       </div>
                       <div className="text-xs font-bold truncate mt-0.5">
-                        {item.focus}
+                        {dayDetail.focus}
                       </div>
                     </button>
                   );
@@ -1199,21 +1249,21 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
               </div>
             </div>
 
-            {/* Check if preview day is Rest or Cardio Day */}
-            {(previewDay % 7 === 0 || previewWorkoutDetail.focus.toLowerCase().includes("rest") || previewWorkoutDetail.focus.toLowerCase().includes("recovery")) ? (
+            {/* Check if preview day is Rest or Cardio Day (driven by engine flags, never hardcoded % 7 === 3 || 6) */}
+            {(previewWorkoutDetail.isRestDay || previewWorkoutDetail.focus.toLowerCase().includes("rest") || previewWorkoutDetail.focus.toLowerCase().includes("recovery")) ? (
               <div className="py-2">
                 <RestDayCard
-                  programId={dbState.challengeId || "immortal_90"}
+                  programId={dbState?.challengeId || currentChallengeKey || "immortal_90"}
                   programName="90-Day Immortal Challenge"
                   dayNumber={previewDay}
                   totalDays={90}
                   isCompleted={dbState?.completedDays?.includes(previewDay)}
                 />
               </div>
-            ) : (previewDay % 7 === 3 || previewDay % 7 === 6 || previewWorkoutDetail.focus.toLowerCase().includes("cardio") || previewWorkoutDetail.focus.toLowerCase().includes("running") || previewWorkoutDetail.focus.toLowerCase().includes("walking")) ? (
+            ) : (previewWorkoutDetail.isCardioDay || previewWorkoutDetail.focus.toLowerCase().includes("cardio") || previewWorkoutDetail.focus.toLowerCase().includes("running") || previewWorkoutDetail.focus.toLowerCase().includes("walking")) ? (
               <div className="py-2">
                 <CardioDayCard
-                  programId={dbState.challengeId || "immortal_90"}
+                  programId={dbState?.challengeId || currentChallengeKey || "immortal_90"}
                   programName="90-Day Immortal Challenge"
                   dayNumber={previewDay}
                   totalDays={90}
@@ -1257,8 +1307,13 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
       {isPremiumUser && (
         <div className="max-w-7xl mx-auto px-4 mt-8">
           
-          {/* A. NOT YET ENROLLED: Display Onboarding Questionnaire and Challenge Selector */}
-          {!dbState || !dbState.onboarding ? (
+          {/* A. LOADING OR NOT YET ENROLLED */}
+          {loadingDb ? (
+            <div className="bg-white border border-slate-200 rounded-3xl p-12 shadow-xl flex flex-col items-center justify-center text-center space-y-3">
+              <div className="w-12 h-12 rounded-full border-4 border-red-200 border-t-red-600 animate-spin" />
+              <p className="text-sm font-bold text-slate-700">Loading your training plan...</p>
+            </div>
+          ) : !dbState || !dbState.onboarding ? (
             <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl text-left space-y-8">
               <div>
                 <span className="text-[10px] text-red-600 font-mono font-black uppercase tracking-widest">Enrollment Protocol</span>
@@ -1624,34 +1679,28 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
 
                       {/* 7-Day Cycle Strip */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-                        {[
-                          { offset: 0, dayName: "Day 1", focus: "Chest + Triceps", badge: "Push" },
-                          { offset: 1, dayName: "Day 2", focus: "Back + Biceps + Forearm", badge: "Pull" },
-                          { offset: 2, dayName: "Day 3", focus: "5-10 KM Cardio / Walk", badge: "Cardio" },
-                          { offset: 3, dayName: "Day 4", focus: "Legs + Shoulders + Abs", badge: "Legs/Core" },
-                          { offset: 4, dayName: "Day 5", focus: "Chest + Triceps + Neck", badge: "Push" },
-                          { offset: 5, dayName: "Day 6", focus: "Back + Biceps + Forearm & Abs", badge: "Pull" },
-                          { offset: 6, dayName: "Day 7", focus: "5-10 KM Run / Walk", badge: "Cardio" },
-                        ].map((cadenceItem) => {
+                        {[0, 1, 2, 3, 4, 5, 6].map((offset) => {
                           const currentWeekStart = Math.floor((activeDisplayDay - 1) / 7) * 7 + 1;
-                          const calculatedDay = currentWeekStart + cadenceItem.offset;
+                          const calculatedDay = currentWeekStart + offset;
                           if (calculatedDay > 90) return null;
 
                           const isViewingThis = activeDisplayDay === calculatedDay;
                           const isTrackedToday = dbState.currentDay === calculatedDay;
                           const itemDetail = getDailyWorkoutDetail(calculatedDay, dbState.challengeId);
 
-                          const computedBadge = itemDetail.isRecoveryDay || itemDetail.focus?.toLowerCase().includes("cardio") || itemDetail.focus?.toLowerCase().includes("walk") || itemDetail.focus?.toLowerCase().includes("run")
+                          const computedBadge = itemDetail.isRestDay
+                            ? "Recovery"
+                            : itemDetail.isCardioDay || itemDetail.focus?.toLowerCase().includes("cardio") || itemDetail.focus?.toLowerCase().includes("walk") || itemDetail.focus?.toLowerCase().includes("run")
                             ? "Cardio"
-                            : itemDetail.focus?.toLowerCase().includes("chest")
+                            : itemDetail.focus?.toLowerCase().includes("chest") || itemDetail.focus?.toLowerCase().includes("push")
                             ? "Push"
-                            : itemDetail.focus?.toLowerCase().includes("back")
+                            : itemDetail.focus?.toLowerCase().includes("back") || itemDetail.focus?.toLowerCase().includes("pull")
                             ? "Pull"
                             : itemDetail.focus?.toLowerCase().includes("leg") || itemDetail.focus?.toLowerCase().includes("lower")
                             ? "Legs/Core"
                             : itemDetail.focus?.toLowerCase().includes("core") || itemDetail.focus?.toLowerCase().includes("abs") || itemDetail.focus?.toLowerCase().includes("mobility")
                             ? "Core"
-                            : cadenceItem.badge;
+                            : "Strength";
 
                           return (
                             <button
@@ -1679,7 +1728,7 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
                                 Day {calculatedDay}
                               </div>
                               <div className="text-xs font-bold truncate mt-0.5">
-                                {itemDetail.focus || cadenceItem.focus}
+                                {itemDetail.focus || `Day ${calculatedDay}`}
                               </div>
                               <div className={`text-[9px] font-mono mt-1 ${
                                 isViewingThis ? "text-red-200" : "text-slate-400"
@@ -1777,10 +1826,10 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
                           </div>
 
                           {/* Check if active display day is Rest Day or Cardio Day */}
-                          {((activeDisplayDay % 7 === 0) || todayWorkoutDetail.focus.toLowerCase().includes("rest") || todayWorkoutDetail.focus.toLowerCase().includes("recovery")) ? (
+                          {(todayWorkoutDetail.isRestDay || todayWorkoutDetail.focus.toLowerCase().includes("rest") || todayWorkoutDetail.focus.toLowerCase().includes("recovery")) ? (
                             <div className="py-4">
                               <RestDayCard
-                                programId={dbState.challengeId || "immortal_90"}
+                                programId={dbState?.challengeId || "immortal_90"}
                                 programName="90-Day Immortal Challenge"
                                 dayNumber={activeDisplayDay}
                                 totalDays={90}
@@ -1788,10 +1837,10 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
                                 onComplete={handleCompleteWorkout}
                               />
                             </div>
-                          ) : (((activeDisplayDay % 7 === 3) || (activeDisplayDay % 7 === 6) || todayWorkoutDetail.focus.toLowerCase().includes("cardio") || todayWorkoutDetail.focus.toLowerCase().includes("running") || todayWorkoutDetail.focus.toLowerCase().includes("walking"))) ? (
+                          ) : (todayWorkoutDetail.isCardioDay || todayWorkoutDetail.focus.toLowerCase().includes("cardio") || todayWorkoutDetail.focus.toLowerCase().includes("running") || todayWorkoutDetail.focus.toLowerCase().includes("walking")) ? (
                             <div className="py-4">
                               <CardioDayCard
-                                programId={dbState.challengeId || "immortal_90"}
+                                programId={dbState?.challengeId || "immortal_90"}
                                 programName="90-Day Immortal Challenge"
                                 dayNumber={activeDisplayDay}
                                 totalDays={90}
@@ -1813,7 +1862,8 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
                                 </div>
                               )}
 
-                              {/* Warm Up List */}
+                              {/* Warm Up List (hidden when admin configured explicit drills) */}
+                              {todayWorkoutDetail.warmUp.length > 0 && (
                               <div className="space-y-4">
                                 <h4 className="font-black text-xs uppercase tracking-wider text-slate-400 flex items-center gap-2">
                                   <Droplet className="w-4 h-4 text-cyan-400" />
@@ -1829,6 +1879,7 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
                                   ))}
                                 </div>
                               </div>
+                              )}
 
                               {/* Main exercises list */}
                               <div className="space-y-6 pt-4 border-t border-slate-100">
@@ -1922,7 +1973,8 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
                                 </div>
                               </div>
 
-                              {/* Cool down */}
+                              {/* Cool down (hidden when admin configured explicit drills) */}
+                              {todayWorkoutDetail.coolDown.length > 0 && (
                               <div className="space-y-4 pt-6 border-t border-slate-100">
                                 <h4 className="font-black text-xs uppercase tracking-wider text-slate-400 flex items-center gap-2">
                                   <Clock className="w-4 h-4 text-indigo-400" />
@@ -1938,6 +1990,7 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
                                   ))}
                                 </div>
                               </div>
+                              )}
 
                               {/* Actions block */}
                               <div className="pt-6 border-t border-slate-100 flex justify-end">
@@ -1971,7 +2024,7 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
                             </p>
                           </div>
                           <button
-                            onClick={() => alert("Launching AI Coach with active challenge telemetry pre-loaded...")}
+                            onClick={() => setView?.("coach")}
                             className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase text-xs py-3 rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             <MessageSquare className="w-4 h-4" />
@@ -2424,6 +2477,19 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
                       </div>
                     </div>
 
+                    {premiumNotice && (
+                      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between gap-2 max-w-md mx-auto">
+                        <span>{premiumNotice}</span>
+                        <button
+                          type="button"
+                          onClick={() => setPremiumNotice(null)}
+                          className="text-[10px] font-mono uppercase underline cursor-pointer"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
+
                     {/* Certificate Action Controls */}
                     <div className="flex flex-col sm:flex-row justify-center gap-4">
                       <button
@@ -2434,7 +2500,7 @@ export default function Premium90DayChallenge({ initialChallengeId }: { initialC
                         {certificateShared ? "Copied URL to Clipboard!" : "Share Certificate"}
                       </button>
                       <button
-                        onClick={() => alert("Downloading secure PDF Certificate of Completion...")}
+                        onClick={() => setPremiumNotice("Certificate & PDF summary prepared for your account metrics.")}
                         className="bg-slate-900 hover:bg-slate-850:bg-slate-700 text-white font-bold uppercase text-xs px-6 py-3.5 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-slate-250 cursor-pointer"
                       >
                         <Download className="w-4 h-4" />

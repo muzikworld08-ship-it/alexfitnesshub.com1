@@ -117,6 +117,10 @@ export default function OnboardingWizard() {
       try {
         localStorage.setItem("fit_athlete_fitness_level", workoutExperience.toLowerCase());
         localStorage.setItem("fit_user_fitness_level", workoutExperience.toLowerCase());
+        localStorage.setItem("fit_onboarding_completed_any", "true");
+        if (user?.uid) {
+          localStorage.setItem(`fit_onboarding_completed_${user.uid}`, "true");
+        }
       } catch (e) {}
       await completeOnboarding({
         gender,
@@ -149,6 +153,30 @@ export default function OnboardingWizard() {
     }
   };
 
+  const handleSkipOnboarding = async () => {
+    setSaving(true);
+    try {
+      try {
+        localStorage.setItem("fit_onboarding_completed_any", "true");
+        if (user?.uid) {
+          localStorage.setItem(`fit_onboarding_completed_${user.uid}`, "true");
+        }
+      } catch (e) {}
+      await completeOnboarding({
+        gender,
+        workoutExperience,
+        fitnessLevel: workoutExperience as any,
+        trainingLocation,
+        absWorkoutPreference
+      });
+    } catch (err) {
+      console.warn("Skip onboarding soft save:", err);
+    } finally {
+      setSaving(false);
+      setView("dashboard");
+    }
+  };
+
   const progressPercent = (step / totalSteps) * 100;
 
   return (
@@ -174,8 +202,10 @@ export default function OnboardingWizard() {
               STEP {step} OF {totalSteps}
             </span>
             <button
-              onClick={() => setView("dashboard")}
-              className="text-[11px] font-mono font-bold text-slate-400 hover:text-slate-800 transition-colors uppercase tracking-wider underline cursor-pointer"
+              type="button"
+              onClick={handleSkipOnboarding}
+              disabled={saving}
+              className="text-[11px] font-mono font-bold text-slate-400 hover:text-slate-800 transition-colors uppercase tracking-wider underline cursor-pointer disabled:opacity-50"
             >
               Skip to Dashboard
             </button>

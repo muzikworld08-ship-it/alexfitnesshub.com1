@@ -55,6 +55,8 @@ export default function DailyCalibrationDesk() {
   const [goalRestingHR, setGoalRestingHR] = useState<number>(calibrationGoals?.targetRestingHeartRate || 60);
   const [savingGoals, setSavingGoals] = useState(false);
   const [goalsSuccessMsg, setGoalsSuccessMsg] = useState<string | null>(null);
+  const [goalsErrorMsg, setGoalsErrorMsg] = useState<string | null>(null);
+  const [confirmDeleteLogId, setConfirmDeleteLogId] = useState<string | null>(null);
 
   // Sync goal inputs with context changes
   useEffect(() => {
@@ -174,12 +176,13 @@ export default function DailyCalibrationDesk() {
   // Save Calibration Goals to Firestore
   const handleSaveGoals = async (e: React.FormEvent) => {
     e.preventDefault();
+    setGoalsErrorMsg(null);
     if (goalHydration < 1 || goalHydration > 40) {
-      alert("Please enter a hydration goal between 1 and 40 glasses.");
+      setGoalsErrorMsg("Please enter a hydration goal between 1 and 40 glasses.");
       return;
     }
     if (goalSleep < 3 || goalSleep > 16) {
-      alert("Please enter a sleep goal between 3 and 16 hours.");
+      setGoalsErrorMsg("Please enter a sleep goal between 3 and 16 hours.");
       return;
     }
 
@@ -198,7 +201,7 @@ export default function DailyCalibrationDesk() {
       }, 2000);
     } catch (err) {
       console.error("Failed to save goals:", err);
-      alert("Failed to save goals to database. Please try again.");
+      setGoalsErrorMsg("Failed to save goals to database. Please try again.");
     } finally {
       setSavingGoals(false);
     }
@@ -253,13 +256,13 @@ export default function DailyCalibrationDesk() {
     }
   };
 
-  const handleDeleteLog = async (logId: string, date: string) => {
-    if (window.confirm(`Are you sure you want to delete the calibration checkpoint for ${date}?`)) {
-      try {
-        await deleteVitalsLogAction(logId);
-      } catch (err) {
-        console.error("Error deleting log:", err);
-      }
+  const handleDeleteLog = async (logId: string) => {
+    try {
+      await deleteVitalsLogAction(logId);
+      setConfirmDeleteLogId(null);
+    } catch (err) {
+      console.error("Error deleting log:", err);
+      setErrorMessage("Failed to delete calibration checkpoint.");
     }
   };
 
@@ -588,6 +591,13 @@ export default function DailyCalibrationDesk() {
                 <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-200 text-xs font-bold flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>{goalsSuccessMsg}</span>
+                </div>
+              )}
+
+              {goalsErrorMsg && (
+                <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>{goalsErrorMsg}</span>
                 </div>
               )}
 
@@ -1330,13 +1340,33 @@ export default function DailyCalibrationDesk() {
                         {log.notes || "—"}
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <button
-                          onClick={() => handleDeleteLog(log.id, log.date)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
-                          title="Delete Checkpoint"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {confirmDeleteLogId === log.id ? (
+                          <div className="inline-flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLog(log.id)}
+                              className="px-2 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase cursor-pointer"
+                            >
+                              Delete
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteLogId(null)}
+                              className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteLogId(log.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                            title="Delete Checkpoint"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

@@ -214,5 +214,168 @@ describe("ALEXFITNESSHUB Production Repair & Launch Verification Suite", () => {
     assert.ok(libSrc.includes("selCatLower"), "WorkoutLibrary must filter categories case-insensitively");
     assert.ok(libSrc.includes("canonicalCaseMap"), "WorkoutLibrary must normalize grouped category sections cleanly");
   });
+
+  it("11. Firebase helpers do not trap users in 24h localStorage quota lockouts or mask permission/argument errors", () => {
+    const firebaseSrc = fs.readFileSync(path.join(process.cwd(), "src/lib/firebase.ts"), "utf8");
+    assert.ok(!firebaseSrc.includes('localStorage.setItem("afh_firestore_quota_exhausted"'), "Legacy 24h localStorage quota lockout must be removed");
+    assert.ok(firebaseSrc.includes("firestoreQuotaCooldownUntil"), "Short in-memory quota cooldown must be used instead");
+    assert.ok(firebaseSrc.includes('removeItem("afh_firestore_quota_exhausted")'), "Stale afh_firestore_quota_exhausted keys must be purged");
+    const benignMatch = firebaseSrc.match(/(?:function|const)\s+isBenignFirestoreMessage[\s\S]*?\n\};?/);
+    assert.ok(benignMatch, "isBenignFirestoreMessage helper must exist");
+    assert.ok(!benignMatch[0].includes("missing or insufficient permissions"), "Permission errors must not be marked benign");
+    assert.ok(!benignMatch[0].includes("invalid-argument"), "Invalid-argument errors must not be marked benign");
+  });
+
+  it("12. setScheduleOverridesFromRemote enforces monotonic timestamps and blocks stale disk snapshots", async () => {
+    const { setScheduleOverridesFromRemote } = await import("../utils/scheduleOverridesStore");
+    setScheduleOverridesFromAdmin({
+      home_180: {
+        cycle_1: {
+          title: "Cloud Authoritative",
+          levels: {
+            beginner: [{ id: "adm_1", exerciseName: "Admin Push Up", addedByAdmin: true }],
+            intermediate: [],
+            advanced: []
+          }
+        }
+      }
+    });
+
+    const appliedDisk = setScheduleOverridesFromRemote(
+      {
+        home_180: {
+          cycle_1: {
+            title: "Stale Disk",
+            levels: { beginner: [{ id: "disk_1", exerciseName: "Old Seed" }] }
+          }
+        }
+      },
+      new Date(Date.now() + 60_000).toISOString(),
+      "disk"
+    );
+    assert.strictEqual(appliedDisk, false, "Disk snapshot must never overwrite newer remote/admin overrides");
+    assert.strictEqual(getScheduleOverrides().home_180.cycle_1.title, "Cloud Authoritative");
+  });
+
+  it("13. Challenge engine isolates home_180_women from Men home_180 and respects cycle_N vs isOneOff", async () => {
+    const { getWorkoutForProgramAndDay } = await import("../data/challengeEngineDatabase");
+    setScheduleOverridesFromAdmin({
+      home_180: {
+        cycle_1: {
+          title: "Men Cycle 1",
+          levels: {
+            beginner: [{ id: "men_1", exerciseName: "Diamond Push-Up", addedByAdmin: true }],
+            intermediate: [],
+            advanced: []
+          }
+        }
+      },
+      home_180_women: {
+        cycle_1: {
+          title: "Women Cycle 1",
+          levels: {
+            beginner: [{ id: "women_1", exerciseName: "Glute Bridge Pulse", addedByAdmin: true }],
+            intermediate: [],
+            advanced: []
+          }
+        }
+      }
+    });
+
+    const menPlan = getWorkoutForProgramAndDay("home_180", 1, undefined, { fitnessLevel: "beginner", track: "men" });
+    const womenPlan = getWorkoutForProgramAndDay("home_180", 1, undefined, { fitnessLevel: "beginner", track: "women" });
+    assert.strictEqual(menPlan.exercises[0]?.exerciseName, "Diamond Push-Up");
+    assert.strictEqual(womenPlan.exercises[0]?.exerciseName, "Glute Bridge Pulse");
+  });
+
+  it("14. Cloud-first server overrides & clean Challenge Engine admin drill additions", () => {
+    const serverSrc = fs.readFileSync(path.join(process.cwd(), "server.ts"), "utf8");
+    const engineSrc = fs.readFileSync(path.join(process.cwd(), "src/components/admin/AdminWorkoutChallengeEngine.tsx"), "utf8");
+    assert.ok(serverSrc.includes("loadAuthoritativeProgramOverrides"), "server.ts must read authoritative cloud state before mutating schedules");
+    assert.ok(serverSrc.includes("resolveTargetScheduleKeys"), "server.ts must isolate home_180_women vs home_180 keys");
+    assert.ok(engineSrc.includes("addedByAdmin: true"), "AdminWorkoutChallengeEngine must stamp addedByAdmin on admin-added drills");
+    assert.ok(engineSrc.includes("hasAdminAddedDrills"), "AdminWorkoutChallengeEngine must start clean rather than prepending unadded seed drills");
+  });
+
+  it("15. All existing workouts remain searchable without isRestrictedHomeWorkout memory-dropping", () => {
+    const appCtxSrc = fs.readFileSync(path.join(process.cwd(), "src/context/AppContext.tsx"), "utf8");
+    const libSrc = fs.readFileSync(path.join(process.cwd(), "src/components/WorkoutLibrary.tsx"), "utf8");
+    assert.ok(!appCtxSrc.includes("!isRestrictedHomeWorkout(ex).isViolating"), "AppContext must not drop Firestore custom exercises in memory");
+    assert.ok(!appCtxSrc.includes("if (isRestrictedHomeWorkout(val).isViolating) return;"), "AppContext sync must not drop Firestore overrides in memory");
+    assert.ok(libSrc.includes("usedFilterRelaxation"), "WorkoutLibrary must expand text searches across active filters when strict search matches 0 items");
+    assert.ok(libSrc.includes("if (!relaxFilters && !query && !isAdmin && isExplicitlyMarkedWomenWorkout(ex)) return false;"), "Women workouts must remain discoverable during search and admin browse");
+  });
+
+  it("16. Onboarding appears only for brand-new users once and never flashes on program views", () => {
+    const appCtxSrc = fs.readFileSync(path.join(process.cwd(), "src/context/AppContext.tsx"), "utf8");
+    const appSrc = fs.readFileSync(path.join(process.cwd(), "src/App.tsx"), "utf8");
+    const p90Src = fs.readFileSync(path.join(process.cwd(), "src/components/Premium90DayChallenge.tsx"), "utf8");
+    const homeSrc = fs.readFileSync(path.join(process.cwd(), "src/components/HomeWorkoutChallengeView.tsx"), "utf8");
+    const womenSrc = fs.readFileSync(path.join(process.cwd(), "src/components/WomenConfidenceProgram.tsx"), "utf8");
+
+    assert.ok(appCtxSrc.includes("fit_onboarding_completed_"), "AppContext must persist per-UID onboarding completion flag");
+    assert.ok(appSrc.includes("needsOnboarding") && appSrc.includes("if (loading) return;"), "App.tsx must guard onboarding routes behind auth loading completion");
+    assert.ok(p90Src.includes("loadingDb ?") && p90Src.includes('fitnessLevel: "Beginner"'), "Premium90DayChallenge must guard with loadingDb and align Beginner default");
+    assert.ok(homeSrc.includes("if (loading)") && homeSrc.includes("fit_onboarding_completed_"), "HomeWorkoutChallengeView must guard with loading spinner and auto-enroll returning users");
+    assert.ok(womenSrc.includes('"beginner"') && womenSrc.includes("fit_onboarding_completed_"), "WomenConfidenceProgram must align beginner default and auto-enroll returning users");
+  });
+
+  it("17. Hook order safety, null guards, all-workouts browse default, zero iframe alert/confirm dialogs, and clean data directory", () => {
+    const shredSrc = fs.readFileSync(path.join(process.cwd(), "src/components/BellyFatShredView.tsx"), "utf8");
+    const adminDashSrc = fs.readFileSync(path.join(process.cwd(), "src/components/AdminDashboard.tsx"), "utf8");
+    const editModalSrc = fs.readFileSync(path.join(process.cwd(), "src/components/admin/EditWorkoutDrillModal.tsx"), "utf8");
+    const p90Src = fs.readFileSync(path.join(process.cwd(), "src/components/Premium90DayChallenge.tsx"), "utf8");
+    const appCtxSrc = fs.readFileSync(path.join(process.cwd(), "src/context/AppContext.tsx"), "utf8");
+    const wizardSrc = fs.readFileSync(path.join(process.cwd(), "src/components/OnboardingWizard.tsx"), "utf8");
+
+    // 1. Hook order: useMemo/useEffect must appear before early null returns
+    assert.ok(
+      shredSrc.indexOf("workoutInfo = useMemo") < shredSrc.indexOf("if (!user) {"),
+      "BellyFatShredView must evaluate useMemo hooks before early returns"
+    );
+    assert.ok(
+      adminDashSrc.indexOf("filteredExercises = useMemo") < adminDashSrc.indexOf("if (!isAdminUser)"),
+      "AdminDashboard must evaluate useMemo hooks before early returns"
+    );
+    assert.ok(
+      editModalSrc.indexOf("useEffect(") < editModalSrc.indexOf("if (!isOpen || !exercise)"),
+      "EditWorkoutDrillModal must evaluate useEffect before early returns"
+    );
+    assert.ok(
+      p90Src.includes("dbState?.challengeId"),
+      "Premium90DayChallenge must guard dbState.challengeId with optional chaining"
+    );
+
+    // 2. Default browse tab shows all exercises and skip onboarding persists globally
+    assert.ok(appCtxSrc.includes('activeBrowseTab: "all"'), "AppContext must default activeBrowseTab to 'all' so all GIFs/workouts are visible");
+    assert.ok(wizardSrc.includes("fit_onboarding_completed_any"), "OnboardingWizard must persist completion on both submit and skip");
+
+    // 3. Zero native alert() or window.confirm() calls in src/components
+    const scanDir = (dir: string): string[] => {
+      const results: string[] = [];
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) results.push(...scanDir(full));
+        else if (entry.name.endsWith(".tsx") || entry.name.endsWith(".ts")) results.push(full);
+      }
+      return results;
+    };
+    const compFiles = scanDir(path.join(process.cwd(), "src/components"));
+    for (const filePath of compFiles) {
+      const content = fs.readFileSync(filePath, "utf8");
+      assert.ok(!/\b(?:window\.)?(?:alert|confirm)\(/.test(content), `Component ${path.relative(process.cwd(), filePath)} must not call alert() or confirm()`);
+    }
+
+    // 4. Empty stub data files are deleted
+    for (const stub of [
+      "src/data/bellyFatProgramData.ts",
+      "src/data/home180ProgramData.ts",
+      "src/data/postureVitalityProgramData.ts",
+      "src/data/rawExercisesDataset.json"
+    ]) {
+      assert.ok(!fs.existsSync(path.join(process.cwd(), stub)), `Empty stub file ${stub} must be deleted`);
+    }
+  });
 });
+
 

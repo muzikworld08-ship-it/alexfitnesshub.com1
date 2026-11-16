@@ -24,11 +24,15 @@ import { useWorkoutTimer } from "../context/WorkoutTimerContext";
 interface HomeWorkoutPlayerProps {
   onComplete: (caloriesBurned: number, durationMinutes: number) => void;
   onClose: () => void;
+  exercises?: HomeExercise[];
+  title?: string;
 }
 
-export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPlayerProps) {
+export default function HomeWorkoutPlayer({ onComplete, onClose, exercises: propExercises, title: propTitle }: HomeWorkoutPlayerProps) {
   const workoutTimer = useWorkoutTimer();
   const circuit = bellyFatCardioCircuit;
+  const activeExercises = propExercises && propExercises.length > 0 ? propExercises : (circuit.exercises || []);
+  const circuitTitle = propTitle || circuit.title || "Belly Fat Shred Circuit";
   const [currentIndex, setCurrentIndex] = useState(0);
   const [secondsRemaining, setSecondsRemaining] = useState(30);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -38,6 +42,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
   const [isMuted, setIsMuted] = useState(false);
   const [showHydrationReminder, setShowHydrationReminder] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [confirmFinishEarly, setConfirmFinishEarly] = useState(false);
   
   // Local active reminder state for coaching tips during session
   const [activeReminder, setActiveReminder] = useState<{
@@ -89,7 +94,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  const currentExercise = circuit.exercises && circuit.exercises.length > 0 ? circuit.exercises[currentIndex] : null;
+  const currentExercise = activeExercises.length > 0 ? (activeExercises[currentIndex] || activeExercises[0]) : null;
 
   // Helper function for Voice Countdown Speech Synthesis
   const speak = (text: string) => {
@@ -122,7 +127,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
             clearInterval(interval);
             setIsPrepPhase(false);
             setIsPlaying(true);
-            speak("Start " + (circuit.exercises[0]?.name || "workout") + "! Let's go!");
+            speak("Start " + (activeExercises[0]?.name || "workout") + "! Let's go!");
             return 0;
           }
           const nextVal = prev - 1;
@@ -167,7 +172,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
         setSecondsRemaining((prev) => {
           if (prev <= 1) {
             // Check if this was the last exercise
-            if (currentIndex >= circuit.exercises.length - 1) {
+            if (currentIndex >= activeExercises.length - 1) {
               clearInterval(interval);
               setIsPlaying(false);
               setIsCompleted(true);
@@ -184,7 +189,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
               } else {
                 // Advance to next exercise
                 setCurrentIndex(nextIndex);
-                speak("Next up: " + circuit.exercises[nextIndex].name + ". Let's go!");
+                speak("Next up: " + (activeExercises[nextIndex]?.name || "next drill") + ". Let's go!");
               }
               return 30;
             }
@@ -235,17 +240,17 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
       speak("Workout paused");
     } else {
       setIsPlaying(true);
-      speak("Resuming " + currentExercise.name);
+      speak("Resuming " + (currentExercise?.name || "workout"));
     }
   };
 
   const handleSkipForward = () => {
-    if (currentIndex < circuit.exercises.length - 1) {
+    if (currentIndex < activeExercises.length - 1) {
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
       setSecondsRemaining(30);
       setIsPlaying(true);
-      speak("Skipped. Starting " + circuit.exercises[nextIndex].name);
+      speak("Skipped. Starting " + (activeExercises[nextIndex]?.name || "next drill"));
     } else {
       setIsPlaying(false);
       setIsCompleted(true);
@@ -260,7 +265,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
       setCurrentIndex(prevIndex);
       setSecondsRemaining(30);
       setIsPlaying(true);
-      speak("Going back to " + circuit.exercises[prevIndex].name);
+      speak("Going back to " + (activeExercises[prevIndex]?.name || "previous drill"));
     }
   };
 
@@ -271,16 +276,19 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
   const handleDismissHydration = () => {
     setShowHydrationReminder(false);
     setIsPlaying(true);
-    speak("Resuming. Let's start " + currentExercise.name);
+    speak("Resuming. Let's start " + (currentExercise?.name || "workout"));
   };
 
   const handleFinishEarly = () => {
-    if (window.confirm("Do you want to log your completed work so far and finish this session?")) {
-      setIsPlaying(false);
-      setIsCompleted(true);
-      speak("Workout logged! Excellent effort.");
-      triggerConfetti();
+    if (!confirmFinishEarly) {
+      setConfirmFinishEarly(true);
+      return;
     }
+    setConfirmFinishEarly(false);
+    setIsPlaying(false);
+    setIsCompleted(true);
+    speak("Workout logged! Excellent effort.");
+    triggerConfetti();
   };
 
   // Confetti Physics Engine
@@ -365,7 +373,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
   };
 
   // Progress Percent
-  const totalCircuitExercises = Array.isArray(circuit.exercises) && circuit.exercises.length > 0 ? circuit.exercises.length : 1;
+  const totalCircuitExercises = activeExercises.length > 0 ? activeExercises.length : 1;
   const progressPercent = Math.round(((currentIndex) / totalCircuitExercises) * 100);
 
   // SVG Line Path Generator for heart rate sparkline
@@ -469,11 +477,11 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
             type="button"
             onClick={() => {
               workoutTimer.startWorkout({
-                title: "Belly Fat Shred Circuit",
-                exercises: circuit.exercises.map(ex => ({ name: ex.name, sets: 1, restDuration: 30 })),
+                title: circuitTitle,
+                exercises: activeExercises.map(ex => ({ name: ex.name, sets: 1, restDuration: 30 })),
                 restDuration: 30
               });
-              workoutTimer.startQuickRest(secondsRemaining || 30, currentExercise.name, currentIndex + 1, circuit.exercises.length);
+              workoutTimer.startQuickRest(secondsRemaining || 30, currentExercise.name, currentIndex + 1, activeExercises.length);
               onClose();
             }}
             className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer"
@@ -615,7 +623,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
                 
                 {/* Overlay Badge */}
                 <div className="absolute top-4 left-4 px-3 py-1 bg-black/60 backdrop-blur-md rounded-lg text-[9px] font-mono font-bold text-[#D32F2F] border border-slate-800 flex items-center gap-1 uppercase tracking-widest">
-                  Exercise {currentIndex + 1} of 12
+                  Exercise {currentIndex + 1} of {activeExercises.length}
                 </div>
               </div>
 
@@ -786,7 +794,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
               </div>
 
               {/* Next Up Sneak Peek */}
-              {currentIndex < circuit.exercises.length - 1 && (
+              {currentIndex < activeExercises.length - 1 && (
                 <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-xl bg-slate-950 border border-slate-850 shrink-0">
@@ -795,7 +803,7 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
                     <div>
                       <span className="text-[9px] text-slate-500 font-mono block">UP NEXT</span>
                       <span className="text-xs font-black text-white block uppercase tracking-wide">
-                        {circuit.exercises[currentIndex + 1].name}
+                        {activeExercises[currentIndex + 1]?.name}
                       </span>
                     </div>
                   </div>
@@ -804,12 +812,34 @@ export default function HomeWorkoutPlayer({ onComplete, onClose }: HomeWorkoutPl
               )}
 
               {/* End Workout Early Button */}
-              <button 
-                onClick={handleFinishEarly}
-                className="w-full py-3 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-slate-400 hover:text-white rounded-xl text-xs font-bold uppercase tracking-wider transition cursor-pointer"
-              >
-                Finish Session Early
-              </button>
+              {!confirmFinishEarly ? (
+                <button 
+                  onClick={handleFinishEarly}
+                  className="w-full py-3 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-slate-400 hover:text-white rounded-xl text-xs font-bold uppercase tracking-wider transition cursor-pointer"
+                >
+                  Finish Session Early
+                </button>
+              ) : (
+                <div className="p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 space-y-2 text-center">
+                  <p className="text-[11px] font-bold text-amber-200">
+                    Log completed work so far and finish this session?
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleFinishEarly}
+                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black uppercase cursor-pointer"
+                    >
+                      Yes, Finish & Log
+                    </button>
+                    <button
+                      onClick={() => setConfirmFinishEarly(false)}
+                      className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold uppercase cursor-pointer"
+                    >
+                      Keep Going
+                    </button>
+                  </div>
+                </div>
+              )}
 
             </div>
 

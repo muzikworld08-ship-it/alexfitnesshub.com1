@@ -234,6 +234,19 @@ function getActiveExercisesFromStorage(): Exercise[] {
 }
 
 /**
+ * Canonical day-entry resolver shared by both Admin Challenge Engine and Public Program Views.
+ * Respects repeating `cycle_N` overrides unless an explicit `isOneOff: true` per-day override exists.
+ */
+export function resolveProgramDayOverride(progOverrides: Record<string, any> | undefined, dayNumber: number): any {
+  if (!progOverrides || typeof progOverrides !== "object") return null;
+  const safeDay = Math.max(1, Number(dayNumber) || 1);
+  const cycleDay = ((safeDay - 1) % 7) + 1;
+  const cycleOverride = progOverrides[`cycle_${cycleDay}`];
+  const dayEntry = progOverrides[String(safeDay)];
+  return (dayEntry && dayEntry.isOneOff === true) ? dayEntry : (cycleOverride || dayEntry || null);
+}
+
+/**
  * Main dynamic challenge engine resolver.
  * Checks admin schedule overrides first (manifesting any additions/deletions by admin).
  * Falls back to dynamic assignment adhering to the restructured 7-day cyclical splits.
@@ -269,19 +282,28 @@ export function getWorkoutForProgramAndDay(
     requestedTier = "beginner";
   }
 
-  // 1. Check admin schedule overrides from centralized store (Memory -> localStorage cache -> Bundled defaults)
+  // 1. Check admin schedule overrides from centralized store (Memory -> localStorage cache -> Remote)
   const allOverrides = getScheduleOverrides();
-  const trackKey = track ? `${normId}_${track}` : null;
-  const progOverrides = (programId && allOverrides[programId] && (allOverrides[programId][String(safeDay)] || allOverrides[programId][`cycle_${cycleDay}`]))
-    ? allOverrides[programId]
-    : ((trackKey && allOverrides[trackKey] && (allOverrides[trackKey][String(safeDay)] || allOverrides[trackKey][`cycle_${cycleDay}`]))
+  const baseTrackNormId = String(normId).replace(/_(women|men)$/i, "");
+  const trackKey = track ? `${baseTrackNormId}_${track}` : null;
+  const hasDayEntry = (obj: any) => Boolean(obj && typeof obj === "object" && (obj[String(safeDay)] || obj[`cycle_${cycleDay}`]));
+
+  const progOverrides =
+    (track === "women" && trackKey && hasDayEntry(allOverrides[trackKey]))
       ? allOverrides[trackKey]
-      : (allOverrides[programId] || (trackKey && allOverrides[trackKey]) || (normId !== programId ? allOverrides[normId] : undefined)));
+      : (programId && hasDayEntry(allOverrides[programId]))
+        ? allOverrides[programId]
+        : (trackKey && hasDayEntry(allOverrides[trackKey]))
+          ? allOverrides[trackKey]
+          : (normId !== programId && hasDayEntry(allOverrides[normId]))
+            ? allOverrides[normId]
+            : ((track === "women" && trackKey && allOverrides[trackKey]) ||
+               allOverrides[programId] ||
+               (trackKey && allOverrides[trackKey]) ||
+               (normId !== programId ? allOverrides[normId] : undefined));
 
   if (progOverrides) {
-    const cycleOverride = progOverrides[`cycle_${cycleDay}`];
-    const dayEntry = progOverrides[String(safeDay)];
-    const dayOverride = (dayEntry && dayEntry.isOneOff === true) ? dayEntry : (cycleOverride || dayEntry);
+    const dayOverride = resolveProgramDayOverride(progOverrides, safeDay);
     if (dayOverride) {
       const isRest = !!dayOverride.isRestDay;
       const isCardio = !!dayOverride.isCardioOnly;

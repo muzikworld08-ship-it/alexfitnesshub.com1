@@ -152,7 +152,15 @@ function FitnessAppContent() {
   const isInitialMount = React.useRef<boolean>(true);
 
   React.useEffect(() => {
+    if (loading) return;
     const currentUid = user?.uid;
+    const isCompletedLocally = Boolean(
+      (currentUid && localStorage.getItem(`fit_onboarding_completed_${currentUid}`) === "true") ||
+      localStorage.getItem("fit_onboarding_completed_any") === "true" ||
+      (currentUid && localStorage.getItem(`fit_program_progress_${currentUid}`))
+    );
+    const isUserAdmin = Boolean(user?.role === "admin" || (user?.email && isEmailAdmin(user.email)));
+    const needsOnboarding = Boolean(user && user.onboarded === false && !isCompletedLocally && !isUserAdmin);
 
     if (isInitialMount.current) {
       isInitialMount.current = false;
@@ -160,7 +168,7 @@ function FitnessAppContent() {
       if (currentUid) {
         setIsAuthOpen(false);
         if (currentView === "home" || currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register" || !currentView) {
-          if (user?.onboarded === false) {
+          if (needsOnboarding) {
             setView("onboarding");
           } else {
             const attempted = localStorage.getItem("fit_attempted_view");
@@ -182,19 +190,18 @@ function FitnessAppContent() {
     // Transition: Logged out -> Logged in
     if (currentUid && !previousUid) {
       setIsAuthOpen(false);
-      if (user && user.onboarded === false) {
+      const isEntryOrAuthView = currentView === "home" || currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register" || !currentView;
+      if (needsOnboarding && isEntryOrAuthView) {
         setView("onboarding");
-      } else {
-        if (currentView === "home" || currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register" || !currentView) {
-          const attempted = localStorage.getItem("fit_attempted_view");
-          if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
-            localStorage.removeItem("fit_attempted_view");
-            console.log(`[DevOps Auth Sync] Redirecting to attempted view: ${attempted}`);
-            setView(attempted);
-          } else {
-            console.log("[DevOps Auth Sync] Successfully authenticated. Redirecting user to dashboard.");
-            setView("dashboard");
-          }
+      } else if (isEntryOrAuthView) {
+        const attempted = localStorage.getItem("fit_attempted_view");
+        if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
+          localStorage.removeItem("fit_attempted_view");
+          console.log(`[DevOps Auth Sync] Redirecting to attempted view: ${attempted}`);
+          setView(attempted);
+        } else {
+          console.log("[DevOps Auth Sync] Successfully authenticated. Redirecting user to dashboard.");
+          setView("dashboard");
         }
       }
     } else if (!currentUid && previousUid) {
@@ -203,17 +210,24 @@ function FitnessAppContent() {
       setIsAuthOpen(false);
       setView("home");
     }
-  }, [user, currentView, setView]);
+  }, [user, loading, currentView, setView]);
 
   // Handle explicit /login, /signin, /signup routing triggers and redirect guards
   React.useEffect(() => {
     if (loading) return;
+    const isCompletedLocally = Boolean(
+      (user?.uid && localStorage.getItem(`fit_onboarding_completed_${user.uid}`) === "true") ||
+      localStorage.getItem("fit_onboarding_completed_any") === "true" ||
+      (user?.uid && localStorage.getItem(`fit_program_progress_${user.uid}`))
+    );
+    const isUserAdmin = Boolean(user?.role === "admin" || (user?.email && isEmailAdmin(user.email)));
+    const needsOnboarding = Boolean(user && user.onboarded === false && !isCompletedLocally && !isUserAdmin);
 
     if (currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register" || currentView === "auth") {
       if (user) {
-        // If logged in, route to onboarding if incomplete, otherwise dashboard
+        // If logged in, route to onboarding only if brand-new/incomplete, otherwise dashboard
         setIsAuthOpen(false);
-        if (user.onboarded === false) {
+        if (needsOnboarding) {
           setView("onboarding");
         } else {
           const attempted = localStorage.getItem("fit_attempted_view");
@@ -232,6 +246,8 @@ function FitnessAppContent() {
       if (!user) {
         // Route to signup if trying to access onboarding unauthenticated
         setView("signup");
+      } else if (!needsOnboarding) {
+        setView("dashboard");
       }
     }
   }, [currentView, user, loading, setView]);

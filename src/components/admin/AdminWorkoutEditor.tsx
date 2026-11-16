@@ -219,11 +219,14 @@ export default function AdminWorkoutEditor() {
   const [isPurgingHome, setIsPurgingHome] = useState(false);
   const [purgeStatusText, setPurgeStatusText] = useState("");
   const [purgeResult, setPurgeResult] = useState<PurgeRestrictedHomeResult | null>(null);
+  const [pendingMaintenanceAction, setPendingMaintenanceAction] = useState<"purge_home" | "reset_all" | null>(null);
 
-  const handleRunHomeAuditPurge = async () => {
-    if (!window.confirm("Run Home Workout Equipment Integrity Audit?\n\nThis utility scans all workouts categorized as 'home' and permanently deletes any that contain restricted equipment tags (such as 'barbell' or 'dumbbell').\n\nProceed?")) {
+  const handleRunHomeAuditPurge = async (confirmed = false) => {
+    if (!confirmed) {
+      setPendingMaintenanceAction("purge_home");
       return;
     }
+    setPendingMaintenanceAction(null);
     setIsPurgingHome(true);
     setPurgeStatusText("Scanning exercises across database...");
     try {
@@ -242,10 +245,12 @@ export default function AdminWorkoutEditor() {
   const [isResettingPrograms, setIsResettingPrograms] = useState(false);
   const [cloudErrorMsg, setCloudErrorMsg] = useState<string | null>(null);
 
-  const handleResetAndCleanAllPrograms = async () => {
-    if (!window.confirm("One-Click Reset & Auto-Clean All Program Days?\n\nThis will scan every day of every program split (e.g. 90-Day Immortal, Belly Fat Shred, 180-Day Home, etc.):\n• On Back & Biceps days: any chest or leg exercises will disappear immediately.\n• On Chest & Triceps days: any back or leg exercises will disappear.\n• On Legs days: any chest or back exercises will disappear.\n• Every day's routine is capped strictly at 10 workouts max daily.\n\nProceed?")) {
+  const handleResetAndCleanAllPrograms = async (confirmed = false) => {
+    if (!confirmed) {
+      setPendingMaintenanceAction("reset_all");
       return;
     }
+    setPendingMaintenanceAction(null);
 
     setIsResettingPrograms(true);
     try {
@@ -601,7 +606,7 @@ export default function AdminWorkoutEditor() {
           <div className="flex items-center gap-2.5 flex-wrap w-full md:w-auto">
             <button
               type="button"
-              onClick={handleRunHomeAuditPurge}
+              onClick={() => handleRunHomeAuditPurge(false)}
               disabled={isPurgingHome || isResettingPrograms}
               className="w-full sm:w-auto bg-slate-900 hover:bg-black text-white border border-slate-700 font-sans font-black uppercase tracking-wider text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
               title="Scan and delete any workouts categorized as 'home' that contain restricted equipment tags (barbell, dumbbell, machines)"
@@ -631,7 +636,7 @@ export default function AdminWorkoutEditor() {
 
             <button
               type="button"
-              onClick={handleResetAndCleanAllPrograms}
+              onClick={() => handleResetAndCleanAllPrograms(false)}
               disabled={isResettingPrograms || isPurgingHome}
               className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-sans font-black uppercase tracking-wider text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
               title="One-Click Auto Clean: on back & biceps day removes chest or leg drills; limits daily workouts to 10 max"
@@ -654,6 +659,45 @@ export default function AdminWorkoutEditor() {
             </button>
           </div>
         </div>
+
+        {/* Inline Confirmation Prompt for Maintenance Actions */}
+        {pendingMaintenanceAction && (
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in">
+            <div className="space-y-1">
+              <p className="font-black uppercase tracking-wide flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                {pendingMaintenanceAction === "purge_home"
+                  ? "Confirm Home Workout Equipment Integrity Audit"
+                  : "Confirm One-Click Reset & Auto-Clean All Program Days"}
+              </p>
+              <p className="text-[11px] text-amber-900/90 leading-relaxed">
+                {pendingMaintenanceAction === "purge_home"
+                  ? "Scans workouts categorized as 'home' and deletes any containing restricted equipment tags (barbell, dumbbell)."
+                  : "Scans every program split day to remove mismatched body-part drills and enforce a strict 10-drill daily cap."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() =>
+                  pendingMaintenanceAction === "purge_home"
+                    ? handleRunHomeAuditPurge(true)
+                    : handleResetAndCleanAllPrograms(true)
+                }
+                className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-wider text-[11px] cursor-pointer"
+              >
+                Confirm & Run
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingMaintenanceAction(null)}
+                className="px-3 py-2 rounded-xl bg-white border border-amber-300 text-amber-900 font-bold text-[11px] hover:bg-amber-100 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Cloud Persistence Error Banner */}

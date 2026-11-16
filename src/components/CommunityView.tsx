@@ -28,12 +28,14 @@ export default function CommunityView() {
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
 
   const [successToast, setSuccessToast] = useState("");
+  const [uploadError, setUploadError] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
 
   const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setUploadError("");
     setIsUploadingImage(true);
     try {
       const cloudUrl = await uploadMediaToCloud(file, `community_${user?.uid || "user"}_${Date.now()}`, "image");
@@ -42,7 +44,7 @@ export default function CommunityView() {
       }
     } catch (err) {
       console.error("Failed to upload community post image:", err);
-      alert("Failed to upload image. Please try again.");
+      setUploadError("Failed to upload image. Please try again.");
     } finally {
       setIsUploadingImage(false);
     }
@@ -182,6 +184,11 @@ export default function CommunityView() {
               {newPostImage && (
                 <p className="text-[10px] text-emerald-600 font-medium mt-1 truncate">
                   Image attached: {newPostImage.substring(0, 50)}...
+                </p>
+              )}
+              {uploadError && (
+                <p className="text-[10px] text-rose-600 font-semibold mt-1">
+                  {uploadError}
                 </p>
               )}
             </div>

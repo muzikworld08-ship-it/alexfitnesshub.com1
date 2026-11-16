@@ -367,7 +367,9 @@ export default function DailyPlanView() {
     await addWeightLogAction(wt);
     setWeightLogsCount(prev => prev + 1);
     setNewWeight("");
-    alert(`Weight logged successfully: ${wt} kg! Your plan balances will recalibrate on your next refresh.`);
+    setNotificationType("Biometric Update");
+    setActiveNotification(`Weight logged successfully: ${wt} kg! Your plan balances have been recalibrated.`);
+    setTimeout(() => setActiveNotification(null), 5000);
     fetchDailyPlan();
   };
 
@@ -466,7 +468,9 @@ export default function DailyPlanView() {
   const executeAdherenceRegeneration = (mode: "Normal" | "Easier Alternative" | "Intensify Training") => {
     setScaleDaysState(mode);
     fetchDailyPlan(mode);
-    alert(`AI Coach has recalibrated! Recalculating targets to: "${mode}".`);
+    setNotificationType("Coach Recalibration");
+    setActiveNotification(`AI Coach has recalibrated! Recalculating targets to: "${mode}".`);
+    setTimeout(() => setActiveNotification(null), 5000);
   };
 
   // Helper macro sum

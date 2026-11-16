@@ -100,12 +100,14 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
   const showExpiryAlert = expiryDays !== null && expiryDays >= 0 && expiryDays <= 7;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [profileUploadError, setProfileUploadError] = useState<string | null>(null);
 
   const handleProfilePicUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setProfileUploadError(null);
       if (file.size > 10000000) {
-        alert("Image must be smaller than 10MB.");
+        setProfileUploadError("Image must be smaller than 10MB.");
         return;
       }
       try {
@@ -115,7 +117,7 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
         }
       } catch (err) {
         console.error("Failed to update profile picture to cloud storage:", err);
-        alert("Failed to upload image. Please try again.");
+        setProfileUploadError("Failed to upload image. Please try again.");
       }
     }
   };
@@ -214,6 +216,19 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
           </button>
         </div>
       </div>
+
+      {profileUploadError && (
+        <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center justify-between gap-2">
+          <span>{profileUploadError}</span>
+          <button
+            type="button"
+            onClick={() => setProfileUploadError(null)}
+            className="text-[10px] font-black uppercase px-2 py-0.5 rounded hover:bg-red-100 cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
           
           {/* Expiry Notification Banner */}
           {showExpiryAlert && (
@@ -1578,12 +1593,14 @@ function TrajectoryView({
 }) {
   const [newWeight, setNewWeight] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [weightError, setWeightError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setWeightError(null);
     const parsed = parseFloat(newWeight);
     if (isNaN(parsed) || parsed <= 30 || parsed >= 250) {
-      alert("Please specify a valid biometric weight value (30kg - 250kg).");
+      setWeightError("Please specify a valid biometric weight value (30kg - 250kg).");
       return;
     }
 
@@ -1593,6 +1610,7 @@ function TrajectoryView({
       setNewWeight("");
     } catch (err) {
       console.warn("Could not submit weight log:", err);
+      setWeightError("Could not save weight checkpoint. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -1696,6 +1714,12 @@ function TrajectoryView({
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase">KG</span>
                 </div>
               </div>
+
+              {weightError && (
+                <p className="text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">
+                  {weightError}
+                </p>
+              )}
 
               <button
                 type="submit"

@@ -5025,12 +5025,12 @@ app.post("/api/store/products/delete", requireAdmin, async (req: any, res) => {
 // Guarantees zero data loss on Render spin-downs, container restarts, or rebuilds.
 // ============================================================================
 
-async function fetchProgramOverridesFromCloud(): Promise<Record<string, any>> {
+async function fetchProgramOverridesFromCloud(userToken?: string): Promise<Record<string, any>> {
   try {
     let cloudOverrides: Record<string, any> = {};
 
     // Read all per-program documents from authoritative Firestore "program_schedules" collection
-    const progDocs = await getServerFirestoreCollection("program_schedules");
+    const progDocs = await getServerFirestoreCollection("program_schedules", userToken);
     for (const d of progDocs) {
       if (d.id === "overrides") continue;
       const data = d.data();
@@ -5054,6 +5054,40 @@ async function fetchProgramOverridesFromCloud(): Promise<Record<string, any>> {
     console.warn("[Cloud Persistence] Notice reading program_schedules from Firestore:", err);
   }
   return {};
+}
+
+async function loadAuthoritativeProgramOverrides(userToken?: string): Promise<{ overrides: Record<string, any>; source: "cloud" | "disk" }> {
+  const cloudLatest = await fetchProgramOverridesFromCloud(userToken);
+  if (cloudLatest && Object.keys(cloudLatest).length > 0) {
+    return { overrides: cloudLatest, source: "cloud" };
+  }
+  let diskOverrides: Record<string, any> = {};
+  if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+    try {
+      const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
+      if (raw) diskOverrides = JSON.parse(raw);
+    } catch (err) {
+      console.error("Failed reading program schedule overrides from disk:", err);
+    }
+  }
+  return { overrides: diskOverrides, source: "disk" };
+}
+
+function resolveTargetScheduleKeys(programId: string, track?: string, targetProgramKey?: string): string[] {
+  const cleanProg = String(programId || "").trim();
+  const cleanTrack = track ? String(track).toLowerCase().trim() : "";
+  const cleanTarget = targetProgramKey ? String(targetProgramKey).trim() : "";
+
+  if ((cleanProg === "home_180" || cleanProg.startsWith("home_180")) && cleanTrack === "women") {
+    return Array.from(new Set([cleanTarget && cleanTarget !== "home_180" ? cleanTarget : "home_180_women"]));
+  }
+  if ((cleanProg === "home_180" || cleanProg.startsWith("home_180")) && cleanTrack === "men") {
+    return Array.from(new Set(["home_180", cleanTarget || "home_180_men"]));
+  }
+  return Array.from(new Set([
+    cleanTarget || cleanProg,
+    cleanTrack ? `${cleanProg}_${cleanTrack}` : null
+  ].filter(Boolean) as string[]));
 }
 
 function stampDrillListAddedByAdmin(list: any): any {
@@ -5135,13 +5169,7 @@ async function persistProgramOverridesToCloud(
 
 async function purgeExerciseFromProgramSchedules(exerciseId: string, exerciseName?: string, userEmail: string = "admin", userToken?: string) {
   try {
-    let allOverrides: Record<string, any> = {};
-    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-      try {
-        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-        if (raw) allOverrides = JSON.parse(raw);
-      } catch (e) {}
-    }
+    const { overrides: allOverrides } = await loadAuthoritativeProgramOverrides(userToken);
 
     const targetId = (exerciseId || "").toLowerCase().trim();
     const targetName = (exerciseName || "").toLowerCase().trim();
@@ -5229,13 +5257,7 @@ async function purgeExerciseFromProgramSchedules(exerciseId: string, exerciseNam
 
 async function syncExerciseMediaToProgramSchedules(exerciseId: string, mediaUrl: string, exerciseName?: string, userEmail: string = "admin", userToken?: string) {
   try {
-    let allOverrides: Record<string, any> = {};
-    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-      try {
-        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-        if (raw) allOverrides = JSON.parse(raw);
-      } catch (e) {}
-    }
+    const { overrides: allOverrides } = await loadAuthoritativeProgramOverrides(userToken);
 
     const targetId = (exerciseId || "").toLowerCase().trim();
     const targetName = (exerciseName || "").toLowerCase().trim();
@@ -5321,13 +5343,7 @@ async function addWorkoutToProgramScheduleServer(workout: any, userEmail: string
     const assignments: string[] = Array.isArray(workout.programAssignments) ? workout.programAssignments : [];
     if (assignments.length === 0) return;
 
-    let allOverrides: Record<string, any> = {};
-    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-      try {
-        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-        if (raw) allOverrides = JSON.parse(raw);
-      } catch (e) {}
-    }
+    const { overrides: allOverrides } = await loadAuthoritativeProgramOverrides(userToken);
 
     const mapProg = (str: string) => {
       const l = str.toLowerCase();
@@ -5701,33 +5717,24 @@ app.get("/api/exercises/deleted", async (req, res) => {
 
 let lastProgramOverridesCloudSync = 0;
 
-// GET all program schedule overrides (with continuous Firestore cloud synchronization)
+// GET all program schedule overrides (Cloud Firestore strictly authoritative)
 app.get(["/api/admin/programs/overrides", "/api/programs/schedules"], async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   try {
     let overrides: Record<string, any> = {};
-    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
+    let source: "cloud" | "disk" = "disk";
+
+    const cloudData = await fetchProgramOverridesFromCloud();
+    if (cloudData && Object.keys(cloudData).length > 0) {
+      overrides = cloudData;
+      lastProgramOverridesCloudSync = Date.now();
+      source = "cloud";
+    } else if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
       try {
         const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
         if (raw) overrides = JSON.parse(raw);
       } catch (err) {
         console.error("Failed reading program schedule overrides:", err);
-      }
-    }
-
-    let source: "cloud" | "disk" = "disk";
-    const isFresh = req.query.fresh === "true" || (Date.now() - lastProgramOverridesCloudSync > 10000);
-    // If cache is stale or disk was empty (e.g. fresh Render container boot), sync from Cloud Firestore!
-    if (isFresh || !overrides || Object.keys(overrides).length === 0) {
-      try {
-        const cloudData = await fetchProgramOverridesFromCloud();
-        if (cloudData && Object.keys(cloudData).length > 0) {
-          overrides = cloudData;
-          lastProgramOverridesCloudSync = Date.now();
-          source = "cloud";
-        }
-      } catch (cloudErr) {
-        console.warn("[Overrides API] Notice checking cloud overrides:", cloudErr);
       }
     }
 
@@ -5821,7 +5828,24 @@ app.post("/api/admin/programs/sync-cloud", requireAdmin, async (req: any, res) =
     }
 
     const cloudData = await fetchProgramOverridesFromCloud();
-    const merged = { ...currentDisk, ...cloudData, ...(incomingOverrides || {}) };
+    const hasCloudOrIncoming = Object.keys(cloudData || {}).length > 0 || Object.keys(incomingOverrides || {}).length > 0;
+    const merged: Record<string, any> = hasCloudOrIncoming
+      ? { ...(cloudData || {}), ...(incomingOverrides || {}) }
+      : { ...currentDisk };
+
+    // Remove redundant non-one-off numeric day keys where canonical cycle_N exists
+    for (const progKey of Object.keys(merged)) {
+      const progObj = merged[progKey];
+      if (!progObj || typeof progObj !== "object") continue;
+      for (const dk of Object.keys(progObj)) {
+        if (/^\d+$/.test(dk) && progObj[dk]?.isOneOff !== true) {
+          const cycDay = ((Number(dk) - 1) % 7) + 1;
+          if (progObj[`cycle_${cycDay}`]) {
+            delete progObj[dk];
+          }
+        }
+      }
+    }
 
     if (Object.keys(merged).length > 0) {
       const persisted = await persistProgramOverridesToCloud(merged, req.user?.email || "admin", undefined, req.authToken);
@@ -5844,21 +5868,9 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
   }
 
   try {
-    let allOverrides: Record<string, any> = {};
-    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-      try {
-        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-        if (raw) allOverrides = JSON.parse(raw);
-      } catch (err) {
-        console.error("Failed parsing program schedule overrides:", err);
-      }
-    }
+    const { overrides: allOverrides } = await loadAuthoritativeProgramOverrides(req.authToken);
 
-    const targetKeys = Array.from(new Set([
-      programId,
-      targetProgramKey,
-      track ? `${programId}_${track}` : null
-    ].filter(Boolean))) as string[];
+    const targetKeys = resolveTargetScheduleKeys(programId, track, targetProgramKey);
 
     const maxDays = Number(totalDays) || 90;
     const computedCycleDay = Number(cycleDay) || (((Number(dayNumber) - 1) % 7) + 1);
@@ -5927,19 +5939,21 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
       req.authToken
     );
 
+    const primaryReturnKey = targetKeys[0] || programId;
     const savedOverride = applyToAllCycleWeeks
-      ? allOverrides[programId][`cycle_${computedCycleDay}`]
-      : (allOverrides[programId][String(dayNumber)] || allOverrides[programId][`cycle_${computedCycleDay}`]);
+      ? allOverrides[primaryReturnKey]?.[`cycle_${computedCycleDay}`]
+      : (allOverrides[primaryReturnKey]?.[String(dayNumber)] || allOverrides[primaryReturnKey]?.[`cycle_${computedCycleDay}`]);
 
     res.json({
       success: true,
       cloudSaved: true,
       firestoreOk: true,
+      targetKeys,
       message: applyToAllCycleWeeks 
-        ? `Cycle Day ${computedCycleDay} split applied to all repeating weeks across ${programId} (Days ${computedCycleDay}..${maxDays}).`
-        : `Day ${dayNumber} schedule for ${programId} updated successfully in Cloud Firestore.`,
+        ? `Cycle Day ${computedCycleDay} split applied to all repeating weeks across ${primaryReturnKey} (Days ${computedCycleDay}..${maxDays}).`
+        : `Day ${dayNumber} schedule for ${primaryReturnKey} updated successfully in Cloud Firestore.`,
       savedOverride,
-      allProgramOverrides: allOverrides[programId]
+      allProgramOverrides: allOverrides[primaryReturnKey]
     });
   } catch (error: any) {
     console.error("Failed to save day override:", error);
@@ -5955,13 +5969,7 @@ app.post("/api/admin/programs/save-cycle-template", requireAdmin, async (req: an
   }
 
   try {
-    let allOverrides: Record<string, any> = {};
-    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-      try {
-        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-        if (raw) allOverrides = JSON.parse(raw);
-      } catch (err) {}
-    }
+    const { overrides: allOverrides } = await loadAuthoritativeProgramOverrides(req.authToken);
 
     if (!allOverrides[programId]) allOverrides[programId] = {};
 
@@ -6035,15 +6043,7 @@ app.post("/api/admin/programs/purge-all-splits", requireAdmin, async (req: any, 
   }
 
   try {
-    let allOverrides: Record<string, any> = {};
-    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-      try {
-        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-        if (raw) allOverrides = JSON.parse(raw);
-      } catch (err) {
-        console.error("Failed parsing program schedule overrides:", err);
-      }
-    }
+    const { overrides: allOverrides } = await loadAuthoritativeProgramOverrides(req.authToken);
 
     const stampedProgramOverrides: Record<string, any> = {};
     for (const dk of Object.keys(overrides || {})) {
@@ -6092,15 +6092,7 @@ app.post("/api/admin/programs/reset-and-clean-all-programs", requireAdmin, async
   }
 
   try {
-    let currentOverrides: Record<string, any> = {};
-    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-      try {
-        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-        if (raw) currentOverrides = JSON.parse(raw);
-      } catch (err) {
-        console.error("Failed parsing program schedule overrides:", err);
-      }
-    }
+    const { overrides: currentOverrides } = await loadAuthoritativeProgramOverrides(req.authToken);
 
     const stampedAllOverrides: Record<string, any> = {};
     for (const pId of Object.keys(allOverrides || {})) {
@@ -6151,15 +6143,7 @@ app.post("/api/admin/programs/reset-and-clean-all-programs", requireAdmin, async
 // POST normalize cycles: remove stale non-isOneOff numeric day copies across every program
 app.post("/api/admin/programs/normalize-cycles", requireAdmin, async (req: any, res) => {
   try {
-    let allOverrides: Record<string, any> = {};
-    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-      try {
-        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-        if (raw) allOverrides = JSON.parse(raw);
-      } catch (err) {
-        console.error("Failed reading program schedule overrides for normalize-cycles:", err);
-      }
-    }
+    const { overrides: allOverrides } = await loadAuthoritativeProgramOverrides(req.authToken);
 
     let removedCount = 0;
     const touchedPrograms: string[] = [];
@@ -6377,14 +6361,8 @@ app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any
       }
     }
 
-    // Persist to PROGRAM_SCHEDULE_OVERRIDES_PATH
-    let allOverrides: Record<string, any> = {};
-    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-      try {
-        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-        if (raw) allOverrides = JSON.parse(raw);
-      } catch (err) {}
-    }
+    // Persist to authoritative Cloud Firestore state
+    const { overrides: allOverrides } = await loadAuthoritativeProgramOverrides(req.authToken);
 
     if (!allOverrides[programId]) allOverrides[programId] = {};
     const effectiveDay = dayNumber ? String(dayNumber) : `cycle_${cycleDay}`;
@@ -6495,16 +6473,7 @@ app.post("/api/admin/programs/remove-drill", requireAdmin, async (req: any, res)
     : "beginner";
 
   try {
-    let allOverrides: Record<string, any> = {};
-    const cloudLatest = await fetchProgramOverridesFromCloud();
-    if (cloudLatest && Object.keys(cloudLatest).length > 0) {
-      allOverrides = cloudLatest;
-    } else if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-      try {
-        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-        if (raw) allOverrides = JSON.parse(raw);
-      } catch {}
-    }
+    const { overrides: allOverrides } = await loadAuthoritativeProgramOverrides(req.authToken);
 
     const targetId = String(exerciseId || "").toLowerCase().trim();
     const targetName = String(exerciseName || "").toLowerCase().trim();
@@ -6517,11 +6486,7 @@ app.post("/api/admin/programs/remove-drill", requireAdmin, async (req: any, res)
       return false;
     };
 
-    const targetKeys = Array.from(new Set([
-      programId,
-      targetProgramKey,
-      track ? `${programId}_${track}` : null
-    ].filter(Boolean))) as string[];
+    const targetKeys = resolveTargetScheduleKeys(programId, track, targetProgramKey);
 
     const computedCycleDay = Number(cycleDay) || (((Number(dayNumber) - 1) % 7) + 1);
     const maxDays = Number(totalDays) || 90;

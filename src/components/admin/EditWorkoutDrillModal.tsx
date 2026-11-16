@@ -20,25 +20,23 @@ export default function EditWorkoutDrillModal({
   onSave,
   currentTier = "beginner"
 }: EditWorkoutDrillModalProps) {
-  if (!isOpen || !exercise) return null;
-
-  const [sets, setSets] = useState<number>(Number(exercise.sets) || 3);
-  const [reps, setReps] = useState<string>(String(exercise.reps || "10-12 reps"));
-  const [restTime, setRestTime] = useState<string>(exercise.restTime || "60s");
+  const [sets, setSets] = useState<number>(Number(exercise?.sets) || 3);
+  const [reps, setReps] = useState<string>(String(exercise?.reps || "10-12 reps"));
+  const [restTime, setRestTime] = useState<string>(exercise?.restTime || "60s");
   const [difficulty, setDifficulty] = useState<"Beginner" | "Intermediate" | "Advanced">(
-    (exercise.difficulty as any) || (currentTier.charAt(0).toUpperCase() + currentTier.slice(1)) as any
+    (exercise?.difficulty as any) || (currentTier.charAt(0).toUpperCase() + currentTier.slice(1)) as any
   );
   const [equipment, setEquipment] = useState<string>(
-    Array.isArray(exercise.equipment) ? exercise.equipment.join(", ") : String(exercise.equipment || "Bodyweight")
+    Array.isArray(exercise?.equipment) ? exercise.equipment.join(", ") : String(exercise?.equipment || "Bodyweight")
   );
   const [muscleGroup, setMuscleGroup] = useState<string>(
-    Array.isArray(exercise.muscleGroup) ? exercise.muscleGroup.join(", ") : String(exercise.muscleGroup || exercise.category || "Full Body")
+    Array.isArray(exercise?.muscleGroup) ? exercise.muscleGroup.join(", ") : String(exercise?.muscleGroup || exercise?.category || "Full Body")
   );
   const [coachingCues, setCoachingCues] = useState<string>(
-    exercise.coachingCues?.[0] || exercise.instructions?.[0] || "Execute with strict posture, full control, and controlled eccentric tempo."
+    exercise?.coachingCues?.[0] || exercise?.instructions?.[0] || "Execute with strict posture, full control, and controlled eccentric tempo."
   );
   const [gifUrl, setGifUrl] = useState<string>(
-    exercise.gifUrl || exercise.imageUrl || (exercise as any).customMediaUrl || ""
+    exercise?.gifUrl || exercise?.imageUrl || (exercise as any)?.customMediaUrl || ""
   );
   const [isUploading, setIsUploading] = useState(false);
   const [isGifCleared, setIsGifCleared] = useState(false);
@@ -67,6 +65,8 @@ export default function EditWorkoutDrillModal({
       setIsGifCleared(false);
     }
   }, [exercise, currentTier]);
+
+  if (!isOpen || !exercise) return null;
 
   const handleResetToDefaultGif = () => {
     if (!exercise) return;

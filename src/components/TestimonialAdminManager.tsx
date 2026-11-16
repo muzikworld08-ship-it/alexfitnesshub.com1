@@ -33,6 +33,8 @@ export const TestimonialAdminManager: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmBulkReseed, setConfirmBulkReseed] = useState(false);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -144,14 +146,13 @@ export const TestimonialAdminManager: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this customer review?")) {
-      try {
-        await deletePopupTestimonial(id);
-        setSuccessMsg("Review deleted successfully!");
-        setTimeout(() => setSuccessMsg(""), 3000);
-      } catch (err: any) {
-        setErrorMsg("Failed to delete review.");
-      }
+    try {
+      await deletePopupTestimonial(id);
+      setConfirmDeleteId(null);
+      setSuccessMsg("Review deleted successfully!");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (err: any) {
+      setErrorMsg("Failed to delete review.");
     }
   };
 
@@ -165,21 +166,20 @@ export const TestimonialAdminManager: React.FC = () => {
   };
 
   const handleBulkReseed = async () => {
-    if (window.confirm("Are you sure you want to re-seed the default 30 reviews? This will add any missing default reviews.")) {
-      try {
-        let count = 0;
-        for (const item of samplePopupTestimonials) {
-          if (!popupTestimonials.some(t => t.id === item.id)) {
-            const { id, ...rest } = item;
-            await addPopupTestimonial(rest);
-            count++;
-          }
+    try {
+      let count = 0;
+      for (const item of samplePopupTestimonials) {
+        if (!popupTestimonials.some(t => t.id === item.id)) {
+          const { id, ...rest } = item;
+          await addPopupTestimonial(rest);
+          count++;
         }
-        setSuccessMsg(`Successfully re-seeded default testimonials! Added ${count} missing records.`);
-        setTimeout(() => setSuccessMsg(""), 4000);
-      } catch (err) {
-        setErrorMsg("Reseeding failed.");
       }
+      setConfirmBulkReseed(false);
+      setSuccessMsg(`Successfully re-seeded default testimonials! Added ${count} missing records.`);
+      setTimeout(() => setSuccessMsg(""), 4000);
+    } catch (err) {
+      setErrorMsg("Reseeding failed.");
     }
   };
 
@@ -210,14 +210,34 @@ export const TestimonialAdminManager: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-          <button
-            onClick={handleBulkReseed}
-            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 text-xs font-semibold rounded-xl transition cursor-pointer"
-            title="Bulk reseed standard 30 reviews to the database"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Restore 30 Defaults
-          </button>
+          {confirmBulkReseed ? (
+            <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-xl">
+              <span className="text-[11px] font-bold text-slate-700">Re-seed 30 defaults?</span>
+              <button
+                type="button"
+                onClick={handleBulkReseed}
+                className="px-2.5 py-1 bg-slate-900 text-white text-[10px] font-bold uppercase rounded-lg cursor-pointer"
+              >
+                Confirm
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmBulkReseed(false)}
+                className="px-2 py-1 bg-white border border-slate-200 text-slate-600 text-[10px] font-bold rounded-lg cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmBulkReseed(true)}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 text-xs font-semibold rounded-xl transition cursor-pointer"
+              title="Bulk reseed standard 30 reviews to the database"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Restore 30 Defaults
+            </button>
+          )}
 
           <button
             onClick={handleOpenAdd}
@@ -358,13 +378,32 @@ export const TestimonialAdminManager: React.FC = () => {
                       </button>
 
                       {/* Delete button */}
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="p-1.5 bg-white border border-slate-200 text-slate-600 hover:text-rose-600 rounded-lg transition cursor-pointer"
-                        title="Delete testimonial"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {confirmDeleteId === item.id ? (
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(item.id)}
+                            className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold uppercase cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded-lg text-[10px] font-bold cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteId(item.id)}
+                          className="p-1.5 bg-white border border-slate-200 text-slate-600 hover:text-rose-600 rounded-lg transition cursor-pointer"
+                          title="Delete testimonial"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

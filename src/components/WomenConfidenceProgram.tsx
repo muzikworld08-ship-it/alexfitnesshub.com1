@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useApp } from "../context/AppContext";
+import { useApp, isEmailAdmin } from "../context/AppContext";
+import { resolveAthleteTier } from "../utils/athleteContext";
 import { 
   Sparkles, Heart, Trophy, Crown, Flame, Shield, Award, Calendar, 
   Check, CheckCircle2, ChevronRight, ChevronLeft, ArrowRight, Play, 
@@ -166,7 +167,7 @@ export default function WomenConfidenceProgram() {
   const [onbTargetWeight, setOnbTargetWeight] = useState<number>(59);
   const [onbGoal, setOnbGoal] = useState<WomenOnboardingProfile["mainGoal"]>("tone_shape");
   const [onbFocusAreas, setOnbFocusAreas] = useState<string[]>(["glutes", "core", "posture"]);
-  const [onbLevel, setOnbLevel] = useState<WomenOnboardingProfile["fitnessLevel"]>("intermediate");
+  const [onbLevel, setOnbLevel] = useState<WomenOnboardingProfile["fitnessLevel"]>("beginner");
   const [onbLocation, setOnbLocation] = useState<WomenOnboardingProfile["workoutLocation"]>("home");
   const [onbEquipment, setOnbEquipment] = useState<string[]>(["bodyweight", "bands", "dumbbells"]);
   const [onbDaysPerWeek, setOnbDaysPerWeek] = useState<number>(5);
@@ -221,8 +222,49 @@ export default function WomenConfidenceProgram() {
               setShowCompletionModal(true);
             }
           } else {
-            // New user, trigger onboarding
-            setProgState({ ...DEFAULT_CONFIDENCE_STATE, userId: uid });
+            const isCompletedLocally =
+              localStorage.getItem("fit_onboarding_completed_any") === "true" ||
+              (user?.uid ? localStorage.getItem(`fit_onboarding_completed_${user.uid}`) === "true" : false);
+            const isUserAdmin = Boolean(user?.role === "admin" || (user?.email && isEmailAdmin(user.email)));
+            if (user && (user.onboarded !== false || isCompletedLocally || isUserAdmin)) {
+              const tier = resolveAthleteTier(user, loadedState);
+              const autoProfile: WomenOnboardingProfile = {
+                age: Number((user as any).age) || onbAge,
+                height: Number((user as any).height) || onbHeight,
+                currentWeight: Number((user as any).weight) || onbWeight,
+                targetWeight: Number((user as any).targetWeight) || onbTargetWeight,
+                mainGoal: onbGoal,
+                focusAreas: onbFocusAreas,
+                fitnessLevel: tier === "advanced" ? "advanced" : tier === "intermediate" ? "intermediate" : "beginner",
+                workoutLocation: onbLocation,
+                availableEquipment: onbEquipment,
+                trainingDaysPerWeek: onbDaysPerWeek,
+                preferredDuration: onbDuration,
+                previousExperience: onbExperience,
+                dailyActivityLevel: onbActivity,
+                dietaryPreference: onbDiet,
+                sleepScheduleHours: onbSleep,
+                currentWaterIntakeLiters: onbWater,
+                lifestyleRoutine: onbRoutine,
+                exerciseLimitations: onbLimitations,
+                motivation: onbMotivation,
+                completedAt: new Date().toISOString()
+              };
+              const autoState: WomenConfidenceProgressState = {
+                ...DEFAULT_CONFIDENCE_STATE,
+                ...(loadedState || {}),
+                userId: uid,
+                onboarding: autoProfile,
+                startDate: loadedState?.startDate || new Date().toISOString(),
+                currentDay: loadedState?.currentDay || 1,
+              };
+              setProgState(autoState);
+              setSelectedDayNumber(autoState.currentDay || 1);
+              persistState(autoState).catch(() => {});
+            } else {
+              // Brand-new user, trigger onboarding once
+              setProgState({ ...DEFAULT_CONFIDENCE_STATE, userId: uid });
+            }
           }
           setIsLoading(false);
         }

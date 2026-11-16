@@ -37,6 +37,8 @@ export default function CoachView() {
   const [savedGallery, setSavedGallery] = useState<InspirationItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [galleryNotice, setGalleryNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [confirmDeleteGalleryId, setConfirmDeleteGalleryId] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -149,10 +151,11 @@ export default function CoachView() {
         setSavedGallery(prev => [newItem, ...prev]);
         localStorage.setItem(`fit_gallery_${user.uid}`, JSON.stringify([newItem, ...savedGallery]));
       }
-      alert("Poster saved successfully to your Inspiration Desk!");
+      setGalleryNotice({ type: "success", text: "Poster saved successfully to your Inspiration Desk!" });
+      setTimeout(() => setGalleryNotice(null), 4000);
     } catch (err) {
       console.error(err);
-      alert("Failed to save poster to cloud. Please try again.");
+      setGalleryNotice({ type: "error", text: "Failed to save poster to cloud. Please try again." });
     } finally {
       setIsSaving(false);
     }
@@ -160,7 +163,6 @@ export default function CoachView() {
 
   const handleDeleteFromGallery = async (id: string) => {
     if (!user) return;
-    if (!window.confirm("Are you sure you want to remove this piece from your gallery?")) return;
     try {
       if (isMockFirebase) {
         const nextList = savedGallery.filter(item => item.id !== id);
@@ -172,9 +174,12 @@ export default function CoachView() {
         const nextList = savedGallery.filter(item => item.id !== id);
         localStorage.setItem(`fit_gallery_${user.uid}`, JSON.stringify(nextList));
       }
+      setConfirmDeleteGalleryId(null);
+      setGalleryNotice({ type: "success", text: "Inspiration removed from board." });
+      setTimeout(() => setGalleryNotice(null), 3000);
     } catch (err) {
       console.error(err);
-      alert("Failed to delete the specified inspiration item.");
+      setGalleryNotice({ type: "error", text: "Failed to delete the specified inspiration item." });
     }
   };
 
@@ -1037,6 +1042,23 @@ export default function CoachView() {
                   </button>
                 </h3>
 
+                {galleryNotice && (
+                  <div className={`p-3 rounded-xl border text-[11px] font-bold flex items-center justify-between gap-2 ${
+                    galleryNotice.type === "error"
+                      ? "bg-red-50 border-red-200 text-red-700"
+                      : "bg-emerald-50 border-emerald-200 text-emerald-800"
+                  }`}>
+                    <span>{galleryNotice.text}</span>
+                    <button
+                      type="button"
+                      onClick={() => setGalleryNotice(null)}
+                      className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded hover:bg-black/5 cursor-pointer"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+
                 {savedGallery.length === 0 ? (
                   <div className="border border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400">
                     <p className="text-xs font-bold">No saved posters yet</p>
@@ -1071,20 +1093,41 @@ export default function CoachView() {
                             />
                           ) : null}
                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition duration-200 flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleDownloadImage(item.imageUrl, item.prompt)}
-                              className="p-1.5 bg-white text-slate-800 rounded-md hover:bg-slate-100 transition shadow-md cursor-pointer"
-                              title="Download Poster"
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteFromGallery(item.id)}
-                              className="p-1.5 bg-white text-rose-600 rounded-md hover:bg-rose-50 transition shadow-md cursor-pointer"
-                              title="Delete from Board"
-                            >
-                              <Trash className="w-3.5 h-3.5" />
-                            </button>
+                            {confirmDeleteGalleryId === item.id ? (
+                              <div className="flex items-center gap-1.5 bg-white/95 px-2 py-1.5 rounded-lg shadow-md">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteFromGallery(item.id)}
+                                  className="px-2 py-0.5 bg-rose-600 text-white rounded text-[10px] font-bold uppercase cursor-pointer"
+                                >
+                                  Delete
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteGalleryId(null)}
+                                  className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-[10px] font-bold cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleDownloadImage(item.imageUrl, item.prompt)}
+                                  className="p-1.5 bg-white text-slate-800 rounded-md hover:bg-slate-100 transition shadow-md cursor-pointer"
+                                  title="Download Poster"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setConfirmDeleteGalleryId(item.id)}
+                                  className="p-1.5 bg-white text-rose-600 rounded-md hover:bg-rose-50 transition shadow-md cursor-pointer"
+                                  title="Delete from Board"
+                                >
+                                  <Trash className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
 

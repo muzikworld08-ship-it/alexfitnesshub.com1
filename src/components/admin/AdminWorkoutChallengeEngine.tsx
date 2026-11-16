@@ -11,7 +11,8 @@ import { ProgramId, ChallengeExerciseItem, ValidationError } from "../../types/c
 import { 
   CHALLENGE_PROGRAMS_METADATA, 
   getWorkoutForProgramAndDay,
-  normalizeProgramId 
+  normalizeProgramId,
+  resolveProgramDayOverride
 } from "../../data/challengeEngineDatabase";
 import { 
   purgeMismatchedExercisesFromRoutine, 
@@ -436,13 +437,16 @@ export default function AdminWorkoutChallengeEngine() {
     return getWorkoutForProgramAndDay(selectedProgramId as ProgramId, effectiveDayNumber, undefined, adminTrack);
   }, [selectedProgramId, effectiveDayNumber, adminTrack, allChallenges, libraryExercises, serverOverrides]);
 
-  // Check if override exists for this day or cycle
+  // Check if override exists for this day or cycle using canonical public-view precedence
   const currentDayOverride = useMemo(() => {
     const normId = normalizeProgramId(selectedProgramId);
-    const trackKey = adminTrack ? `${normId}_${adminTrack}` : null;
-    const progOverrides = (trackKey && serverOverrides[trackKey]) || serverOverrides[selectedProgramId] || serverOverrides[normId] || {};
-    const cycleKey = `cycle_${((effectiveDayNumber - 1) % 7) + 1}`;
-    return progOverrides[String(effectiveDayNumber)] || progOverrides[cycleKey] || null;
+    const baseTrackNormId = String(normId).replace(/_(women|men)$/i, "");
+    const trackKey = adminTrack ? `${baseTrackNormId}_${adminTrack}` : null;
+    const progOverrides =
+      (adminTrack === "women" && trackKey && serverOverrides[trackKey])
+        ? serverOverrides[trackKey]
+        : (trackKey && serverOverrides[trackKey]) || serverOverrides[selectedProgramId] || serverOverrides[normId] || {};
+    return resolveProgramDayOverride(progOverrides, effectiveDayNumber);
   }, [serverOverrides, selectedProgramId, effectiveDayNumber, adminTrack]);
 
   // Tier counts per difficulty level (Beginner, Intermediate, Advanced only)
@@ -656,6 +660,14 @@ export default function AdminWorkoutChallengeEngine() {
         ? sanitizedExercises
         : (nextLevels.beginner || sanitizedExercises));
 
+    // When editing Beginner and Intermediate has only unadded legacy seed drills, avoid serving stale seed drills to Intermediate users
+    if (!explicitLevels && targetTier === "beginner" && Array.isArray(nextLevels.intermediate)) {
+      const hasCustomInter = nextLevels.intermediate.some((d: any) => d && d.addedByAdmin === true);
+      if (!hasCustomInter) {
+        delete nextLevels.intermediate;
+      }
+    }
+
     const updatedDayData = {
       ...existingDayData,
       title: splitTitle,
@@ -669,18 +681,22 @@ export default function AdminWorkoutChallengeEngine() {
       exercises: baselineExercises,
       levels: nextLevels,
       beginnerExercises: Array.isArray(nextLevels.beginner) ? nextLevels.beginner : (targetTier === "beginner" ? sanitizedExercises : (existingDayData.beginnerExercises || baselineExercises)),
-      intermediateExercises: Array.isArray(nextLevels.intermediate) ? nextLevels.intermediate : (targetTier === "intermediate" ? sanitizedExercises : (existingDayData.intermediateExercises || baselineExercises)),
+      intermediateExercises: Array.isArray(nextLevels.intermediate) ? nextLevels.intermediate : (targetTier === "intermediate" ? sanitizedExercises : []),
       advancedExercises: Array.isArray(nextLevels.advanced) ? nextLevels.advanced : (targetTier === "advanced" ? sanitizedExercises : (Array.isArray(existingDayData.advancedExercises) ? existingDayData.advancedExercises : [])),
     };
 
-    // Optimistic UI update across program key aliases
-    const targetProgKey = (selectedProgramId === "home_180" && adminTrack) 
-      ? `${selectedProgramId}_${adminTrack}` 
-      : selectedProgramId;
-    const trackKey = (selectedProgramId === "home_180" && adminTrack)
-      ? `${selectedProgramId}_${adminTrack}`
-      : null;
-    const keysToUpdate = Array.from(new Set([selectedProgramId, targetProgKey, trackKey].filter(Boolean) as string[]));
+    // Strict Men vs Women track key isolation (Women home_180 never overwrites Men's home_180)
+    const isHomeProgram = selectedProgramId === "home_180" || selectedProgramId.startsWith("home_180");
+    const targetProgKey = (isHomeProgram && adminTrack === "women")
+      ? "home_180_women"
+      : (isHomeProgram && adminTrack === "men")
+        ? "home_180_men"
+        : selectedProgramId;
+    const keysToUpdate = (isHomeProgram && adminTrack === "women")
+      ? ["home_180_women"]
+      : (isHomeProgram && adminTrack === "men")
+        ? ["home_180", "home_180_men"]
+        : [selectedProgramId];
 
     const dayKey = String(effectiveDayNumber);
     const cycleKey = `cycle_${((effectiveDayNumber - 1) % 7) + 1}`;
@@ -688,7 +704,9 @@ export default function AdminWorkoutChallengeEngine() {
     const computedCycleDay = ((effectiveDayNumber - 1) % 7) + 1;
     const totalProgDays = currentProgramMeta.totalDays || 90;
 
+    let previousOverridesSnapshot: Record<string, any> | null = null;
     setServerOverrides(prev => {
+      previousOverridesSnapshot = prev;
       const next = { ...prev };
 
       keysToUpdate.forEach(key => {
@@ -715,59 +733,35 @@ export default function AdminWorkoutChallengeEngine() {
     let fsWriteSuccess = false;
     try {
       const latestOverrides = getScheduleOverrides();
-      const fullProgSchedule: Record<string, any> = {
-        ...(latestOverrides[selectedProgramId] || serverOverrides[selectedProgramId] || {})
-      };
-
-      if (isCycleSplitting) {
-        fullProgSchedule[cycleKey] = { ...updatedDayData, cycleDay: computedCycleDay };
-        for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
-          if (fullProgSchedule[String(d)]?.isOneOff !== true) {
-            delete fullProgSchedule[String(d)];
-          }
-        }
-      } else {
-        fullProgSchedule[dayKey] = { ...updatedDayData, dayNumber: effectiveDayNumber, isOneOff: true };
-      }
-
-      fsWriteSuccess = await safeFirestoreSetDoc(
-        doc(db, "program_schedules", selectedProgramId),
-        {
-          programId: selectedProgramId,
-          schedule: fullProgSchedule,
-          updatedAt: new Date().toISOString(),
-          updatedBy: adminEmail
-        },
-        { merge: false },
-        true // bypassQuota for authorized Admin operations
-      );
-
-      if (targetProgKey !== selectedProgramId) {
-        const fullTargetSchedule: Record<string, any> = {
-          ...(latestOverrides[targetProgKey] || serverOverrides[targetProgKey] || {})
-        };
-        if (isCycleSplitting) {
-          fullTargetSchedule[cycleKey] = { ...updatedDayData, cycleDay: computedCycleDay };
-          for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
-            if (fullTargetSchedule[String(d)]?.isOneOff !== true) {
-              delete fullTargetSchedule[String(d)];
+      const fsResults = await Promise.all(
+        keysToUpdate.map(async (persistKey) => {
+          const fullSchedule: Record<string, any> = {
+            ...(latestOverrides[persistKey] || serverOverrides[persistKey] || {})
+          };
+          if (isCycleSplitting) {
+            fullSchedule[cycleKey] = { ...updatedDayData, cycleDay: computedCycleDay };
+            for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
+              if (fullSchedule[String(d)]?.isOneOff !== true) {
+                delete fullSchedule[String(d)];
+              }
             }
+          } else {
+            fullSchedule[dayKey] = { ...updatedDayData, dayNumber: effectiveDayNumber, isOneOff: true };
           }
-        } else {
-          fullTargetSchedule[dayKey] = { ...updatedDayData, dayNumber: effectiveDayNumber, isOneOff: true };
-        }
-        await safeFirestoreSetDoc(
-          doc(db, "program_schedules", targetProgKey),
-          {
-            programId: targetProgKey,
-            schedule: fullTargetSchedule,
-            updatedAt: new Date().toISOString(),
-            updatedBy: adminEmail
-          },
-          { merge: false },
-          true
-        );
-      }
+          return await safeFirestoreSetDoc(
+            doc(db, "program_schedules", persistKey),
+            {
+              programId: persistKey,
+              schedule: fullSchedule,
+              updatedAt: new Date().toISOString(),
+              updatedBy: adminEmail
+            },
+            { merge: false },
+            true // bypassQuota for authorized Admin operations
+          );
+        })
+      );
+      fsWriteSuccess = fsResults.some(Boolean);
     } catch (fsErr) {
       console.error(`[Firestore Admin Persist ERROR] Failed writing to Firestore:`, fsErr);
     }
@@ -777,7 +771,7 @@ export default function AdminWorkoutChallengeEngine() {
         method: "POST",
         body: JSON.stringify({
           programId: selectedProgramId,
-          track: (selectedProgramId === "home_180" || selectedProgramId.includes("home")) ? adminTrack : undefined,
+          track: isHomeProgram ? adminTrack : undefined,
           targetProgramKey: targetProgKey,
           dayNumber: effectiveDayNumber,
           cycleDay: computedCycleDay,
@@ -792,7 +786,7 @@ export default function AdminWorkoutChallengeEngine() {
         setServerOverrides(prev => {
           const next = { ...prev };
           keysToUpdate.forEach(pid => {
-            if (pid === selectedProgramId && resData?.allProgramOverrides) {
+            if (pid === (keysToUpdate[0] || selectedProgramId) && resData?.allProgramOverrides) {
               next[pid] = resData.allProgramOverrides;
               return;
             }
@@ -818,8 +812,12 @@ export default function AdminWorkoutChallengeEngine() {
         setTimeout(() => setSaveSuccessMsg(null), 3000);
         return true;
       } else {
+        if (previousOverridesSnapshot) {
+          setServerOverrides(previousOverridesSnapshot);
+          broadcastOverridesUpdated(previousOverridesSnapshot);
+        }
         setSaveSuccessMsg(null);
-        setSaveErrorMsg(resData?.error || "Could not confirm permanent Cloud Firestore save. Please try again.");
+        setSaveErrorMsg(resData?.error || "Could not confirm permanent Cloud Firestore save. Changes reverted.");
         return false;
       }
     } catch (err: any) {
@@ -829,6 +827,10 @@ export default function AdminWorkoutChallengeEngine() {
         setSaveSuccessMsg(`Routine for ${targetTier.toUpperCase()} saved to Cloud Firestore.`);
         setTimeout(() => setSaveSuccessMsg(null), 3000);
         return true;
+      }
+      if (previousOverridesSnapshot) {
+        setServerOverrides(previousOverridesSnapshot);
+        broadcastOverridesUpdated(previousOverridesSnapshot);
       }
       setSaveSuccessMsg(null);
       setSaveErrorMsg(err?.message || "Could not confirm permanent Cloud Firestore save. Please check network/permissions.");
@@ -856,11 +858,8 @@ export default function AdminWorkoutChallengeEngine() {
     handleReorderExercises(reordered, selectedDifficultyLevel);
   };
 
-  // Instant clear/empty all workouts for the active tier routine
+  // Instant clear/empty all workouts for the active tier routine (no blocking window dialogs)
   const handleClearTierRoutine = async () => {
-    if (!window.confirm(`Delete and clear all workouts from the ${selectedDifficultyLevel.toUpperCase()} routine for Day ${effectiveDayNumber}?`)) {
-      return;
-    }
     const existingLevels = currentDayOverride?.levels || {};
     const nextLevels: Record<string, ChallengeExerciseItem[]> = {
       ...existingLevels,
@@ -927,25 +926,35 @@ export default function AdminWorkoutChallengeEngine() {
     const name = (newEx.exerciseName || (newEx as any).name || "").trim();
     if (!name) return;
 
-    // Check against existing exercises in target tier
-    const currentTierExercises = (() => {
+    // Read strictly from explicit drills for the target tier — never pull unadded pre-seeded or beginner fallbacks
+    const rawTierExercises: any[] = (() => {
       if (activeTierTarget === "beginner") {
-        return (currentDayOverride?.levels?.beginner && Array.isArray(currentDayOverride.levels.beginner))
-          ? currentDayOverride.levels.beginner
-          : (Array.isArray(currentDayOverride?.beginnerExercises) ? currentDayOverride.beginnerExercises : activeExercises);
+        if (currentDayOverride?.levels?.beginner && Array.isArray(currentDayOverride.levels.beginner)) {
+          return currentDayOverride.levels.beginner;
+        }
+        if (Array.isArray(currentDayOverride?.beginnerExercises)) {
+          return currentDayOverride.beginnerExercises;
+        }
+        return Array.isArray(currentDayOverride?.exercises) ? currentDayOverride.exercises : [];
       }
       if (activeTierTarget === "intermediate") {
-        return (currentDayOverride?.levels?.intermediate && Array.isArray(currentDayOverride.levels.intermediate))
-          ? currentDayOverride.levels.intermediate
-          : (Array.isArray(currentDayOverride?.intermediateExercises) ? currentDayOverride.intermediateExercises : activeExercises);
+        if (currentDayOverride?.levels?.intermediate && Array.isArray(currentDayOverride.levels.intermediate)) {
+          return currentDayOverride.levels.intermediate;
+        }
+        return Array.isArray(currentDayOverride?.intermediateExercises) ? currentDayOverride.intermediateExercises : [];
       }
       if (activeTierTarget === "advanced") {
-        return (currentDayOverride?.levels?.advanced && Array.isArray(currentDayOverride.levels.advanced))
-          ? currentDayOverride.levels.advanced
-          : (Array.isArray(currentDayOverride?.advancedExercises) ? currentDayOverride.advancedExercises : []);
+        if (currentDayOverride?.levels?.advanced && Array.isArray(currentDayOverride.levels.advanced)) {
+          return currentDayOverride.levels.advanced;
+        }
+        return Array.isArray(currentDayOverride?.advancedExercises) ? currentDayOverride.advancedExercises : [];
       }
-      return activeExercises;
+      return [];
     })();
+
+    // If this day/tier only holds unadded legacy pre-seeded drills (none flagged addedByAdmin), start cleanly with ONLY admin's drill
+    const hasAdminAddedDrills = rawTierExercises.some((d: any) => d && d.addedByAdmin === true);
+    const currentTierExercises = hasAdminAddedDrills ? rawTierExercises : [];
 
     if (currentTierExercises.some(e => (e.exerciseName || (e as any).name || "").toLowerCase().trim() === name.toLowerCase())) {
       setSaveErrorMsg(`"${name}" is already included in this ${activeTierTarget.toUpperCase()} routine.`);
@@ -966,8 +975,9 @@ export default function AdminWorkoutChallengeEngine() {
       exerciseName: name,
       difficulty: assignedDiff,
       gifUrl: assignedGif,
-      imageUrl: assignedGif
-    };
+      imageUrl: assignedGif,
+      addedByAdmin: true
+    } as any;
 
     const updated = [...currentTierExercises, finalEx];
     const ok = await handleReorderExercises(updated, activeTierTarget);
@@ -1411,15 +1421,23 @@ export default function AdminWorkoutChallengeEngine() {
         advancedExercises: cardioState.isCardio ? [] : (selectedDifficultyLevel === "advanced" ? activeExercises : (nextLevels.advanced || currentDayOverride?.advancedExercises || [])),
       };
 
-      const targetProgKey = (selectedProgramId === "home_180" && adminTrack) 
-        ? `${selectedProgramId}_${adminTrack}` 
-        : selectedProgramId;
+      const isHomeProgSave = selectedProgramId === "home_180" || selectedProgramId.startsWith("home_180");
+      const targetProgKey = (isHomeProgSave && adminTrack === "women")
+        ? "home_180_women"
+        : (isHomeProgSave && adminTrack === "men")
+          ? "home_180_men"
+          : selectedProgramId;
+      const pidsToSave = (isHomeProgSave && adminTrack === "women")
+        ? ["home_180_women"]
+        : (isHomeProgSave && adminTrack === "men")
+          ? ["home_180", "home_180_men"]
+          : [selectedProgramId];
 
       const res = await fetchWithFirebaseAuth("/api/admin/programs/save-day-override", {
         method: "POST",
         body: JSON.stringify({
           programId: selectedProgramId,
-          track: (selectedProgramId === "home_180" || selectedProgramId.includes("home")) ? adminTrack : undefined,
+          track: isHomeProgSave ? adminTrack : undefined,
           targetProgramKey: targetProgKey,
           dayNumber: effectiveDayNumber,
           cycleDay: ((effectiveDayNumber - 1) % 7) + 1,
@@ -1434,12 +1452,10 @@ export default function AdminWorkoutChallengeEngine() {
 
       setServerOverrides(prev => {
         const next = { ...prev };
-        const pids = [selectedProgramId];
-        if (targetProgKey !== selectedProgramId) pids.push(targetProgKey);
         const computedCycle = ((effectiveDayNumber - 1) % 7) + 1;
         const isCycleMode = viewMode === "cycle" || applyToAllCycleWeeks;
-        pids.forEach(pid => {
-          if (pid === selectedProgramId && data.allProgramOverrides) {
+        pidsToSave.forEach(pid => {
+          if (pid === (pidsToSave[0] || selectedProgramId) && data.allProgramOverrides) {
             next[pid] = data.allProgramOverrides;
             return;
           }
@@ -1459,24 +1475,17 @@ export default function AdminWorkoutChallengeEngine() {
         });
         broadcastOverridesUpdated(next);
 
-        // Direct client-side dual persistence to Firebase Firestore per-program document (<100KB, never exceeds 1MB doc limit)
+        // Direct client-side dual persistence to Firebase Firestore per-program document
         try {
           const auditEmail = user?.email || localStorage.getItem("fit_saved_email") || "admin";
-          safeFirestoreSetDoc(doc(db, "program_schedules", selectedProgramId), {
-            programId: selectedProgramId,
-            schedule: next[selectedProgramId] || dayData,
-            updatedAt: new Date().toISOString(),
-            updatedBy: auditEmail
-          }, { merge: false }).catch((e) => console.warn("Notice updating program doc:", e));
-
-          if (targetProgKey !== selectedProgramId) {
-            safeFirestoreSetDoc(doc(db, "program_schedules", targetProgKey), {
-              programId: targetProgKey,
-              schedule: next[targetProgKey] || dayData,
+          pidsToSave.forEach(pid => {
+            safeFirestoreSetDoc(doc(db, "program_schedules", pid), {
+              programId: pid,
+              schedule: next[pid] || dayData,
               updatedAt: new Date().toISOString(),
               updatedBy: auditEmail
-            }, { merge: false }).catch(() => {});
-          }
+            }, { merge: false }, true).catch((e) => console.warn(`Notice updating ${pid} doc:`, e));
+          });
         } catch (fsErr) {
           console.warn("Direct Firestore persistence notice:", fsErr);
         }
@@ -1561,10 +1570,6 @@ export default function AdminWorkoutChallengeEngine() {
 
   // Purge mismatched workouts across the ENTIRE 7-day program cadence
   const handlePurgeAllProgramSplits = async () => {
-    const confirmMsg = `Purge and reset all 7 days of ${currentProgramMeta.name}?\n\nThis will scan every day of the split, immediately purge every workout that does not belong to that day's target category (e.g. flat bench press appearing on back day), and restore strictly valid category drills.`;
-    if (!window.confirm(confirmMsg)) {
-      return;
-    }
     setIsPurging(true);
     try {
       const updatedOverrides = { ...(serverOverrides[selectedProgramId] || {}) };
@@ -1684,14 +1689,16 @@ export default function AdminWorkoutChallengeEngine() {
     }
   };
 
-  // Universal Reset and Clean All Programs (One-Click)
+  // Universal Reset and Clean All Programs (One-Click, inline confirmation)
   const [isResettingAllPrograms, setIsResettingAllPrograms] = useState(false);
+  const [confirmResetAll, setConfirmResetAll] = useState(false);
 
   const handleResetAndCleanAllPrograms = async () => {
-    if (!window.confirm("One-Click Reset & Auto-Clean All Program Days?\n\nThis will scan every program (Immortal 90, Belly Fat Shred, 180-Day Home, Women Confidence, etc.) and reset every day:\n• On Back & Biceps days: any chest or leg exercises will disappear immediately.\n• On Chest & Triceps days: any back or leg exercises will disappear.\n• On Legs days: any chest or back exercises will disappear.\n• Every daily workout routine is capped strictly at maximum 10 workouts daily.\n\nProceed?")) {
+    if (!confirmResetAll) {
+      setConfirmResetAll(true);
       return;
     }
-
+    setConfirmResetAll(false);
     setIsResettingAllPrograms(true);
     try {
       const cleanRes = resetAndCleanAllProgramSplits(libraryExercises || [], serverOverrides || {});
@@ -1713,14 +1720,13 @@ export default function AdminWorkoutChallengeEngine() {
       } else {
         setSaveErrorMsg(null);
         setSaveSuccessMsg(
-          `⚡ All programs reset and cleaned! ${cleanRes.stats.totalProgramsCleaned} programs updated, ${cleanRes.stats.totalMismatchesRemoved} mismatched exercises purged, and daily workouts capped at 10 max.`
+          `All programs reset and cleaned! ${cleanRes.stats.totalProgramsCleaned} programs updated (${cleanRes.stats.totalDaysReset} days verified), ${cleanRes.stats.totalMismatchesRemoved} mismatched exercises purged, capped at 10 daily.`
         );
         setTimeout(() => setSaveSuccessMsg(null), 8000);
-        alert(`Success! All program workouts have been reset and auto-cleaned.\n\n• ${cleanRes.stats.totalProgramsCleaned} programs sanitized\n• ${cleanRes.stats.totalDaysReset} program days verified\n• ${cleanRes.stats.totalMismatchesRemoved} mismatched exercises purged\n• All daily routines capped at maximum 10 workouts daily.`);
       }
     } catch (err: any) {
       console.error("Reset all error:", err);
-      alert("Error resetting and cleaning all programs: " + (err?.message || "Unknown error"));
+      setSaveErrorMsg("Error resetting and cleaning all programs: " + (err?.message || "Unknown error"));
     } finally {
       setIsResettingAllPrograms(false);
     }
@@ -1817,16 +1823,36 @@ export default function AdminWorkoutChallengeEngine() {
               <span>{isNormalizingCycles ? "Normalizing..." : "Normalize cycles (remove stale per-day copies)"}</span>
             </button>
 
-            <button
-              type="button"
-              onClick={handleResetAndCleanAllPrograms}
-              disabled={isResettingAllPrograms || isPurging}
-              className="px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-500 border border-amber-400 text-xs font-black text-white transition flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-600/30 disabled:opacity-50"
-              title="One-Click: resets and cleans every day across all programs, removing mismatched exercises (like chest/legs on back & biceps day) and capping at 10 workouts"
-            >
-              <RotateCcw className={`w-4 h-4 text-white ${isResettingAllPrograms ? "animate-spin" : ""}`} />
-              <span>{isResettingAllPrograms ? "Resetting All Programs..." : "Reset & Clean All Programs"}</span>
-            </button>
+            {!confirmResetAll ? (
+              <button
+                type="button"
+                onClick={handleResetAndCleanAllPrograms}
+                disabled={isResettingAllPrograms || isPurging}
+                className="px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-500 border border-amber-400 text-xs font-black text-white transition flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-600/30 disabled:opacity-50"
+                title="One-Click: resets and cleans every day across all programs, removing mismatched exercises (like chest/legs on back & biceps day) and capping at 10 workouts"
+              >
+                <RotateCcw className={`w-4 h-4 text-white ${isResettingAllPrograms ? "animate-spin" : ""}`} />
+                <span>{isResettingAllPrograms ? "Resetting All Programs..." : "Reset & Clean All Programs"}</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-amber-950/90 border border-amber-500/50 text-xs">
+                <span className="font-bold text-amber-200">Reset & clean all programs?</span>
+                <button
+                  type="button"
+                  onClick={handleResetAndCleanAllPrograms}
+                  className="px-2.5 py-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-black cursor-pointer"
+                >
+                  Confirm
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmResetAll(false)}
+                  className="px-2.5 py-1 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
 
             <button
               type="button"
@@ -2018,7 +2044,10 @@ export default function AdminWorkoutChallengeEngine() {
                   : normalizeProgramId(selectedProgramId);
                 const canonical = (PROGRAM_CANONICAL_SPLITS[canonicalLookupKey] || PROGRAM_CANONICAL_SPLITS.immortal_90)[cycleDay];
                 const cycleKey = `cycle_${cycleDay}`;
-                const progOverrides = serverOverrides[selectedProgramId] || serverOverrides[normalizeProgramId(selectedProgramId)] || (adminTrack ? serverOverrides[`${normalizeProgramId(selectedProgramId)}_${adminTrack}`] : {}) || {};
+                const trackKey = (selectedProgramId === "home_180" && adminTrack)
+                  ? `home_180_${adminTrack}`
+                  : (adminTrack ? `${normalizeProgramId(selectedProgramId)}_${adminTrack}` : "");
+                const progOverrides = (trackKey && serverOverrides[trackKey]) || serverOverrides[selectedProgramId] || serverOverrides[normalizeProgramId(selectedProgramId)] || {};
                 const override = progOverrides[cycleKey] || progOverrides[String(cycleDay)];
                 
                 const isCardio = override?.isCardioOnly !== undefined ? override.isCardioOnly : canonical?.isCardio;

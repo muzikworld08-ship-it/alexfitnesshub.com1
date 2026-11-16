@@ -12,7 +12,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        (request.auth.token.email_verified == true && request.auth.token.email != null && request.auth.token.email in [
+        (request.auth.token.email != null && request.auth.token.email.lower() in [
           'alexfitnesshub@gmail.com',
           'muzikworld08@gmail.com',
           'admin@alexfitnesshub.com',

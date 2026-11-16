@@ -431,7 +431,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               if (attempted && attempted !== "home" && attempted !== "login" && attempted !== "signin" && attempted !== "signup" && attempted !== "register") {
                 return attempted;
               }
-              return parsed.onboarded === false ? "onboarding" : "dashboard";
+              const isCompletedLocally = parsed.uid ? localStorage.getItem(`fit_onboarding_completed_${parsed.uid}`) === "true" : false;
+              const isUserAdmin = Boolean(parsed.role === "admin" || (parsed.email && isEmailAdmin(parsed.email)));
+              return (parsed.onboarded === false && !isCompletedLocally && !isUserAdmin) ? "onboarding" : "dashboard";
             }
           }
         } catch (e) {}
@@ -693,7 +695,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               const exName = (ex.name || "").toLowerCase().trim();
               if (deletedSet.has(ex.id) || deletedSet.has(exName)) return;
               const isBase = baseExercisePool.some(b => b.id === ex.id || b.name?.toLowerCase().trim() === exName);
-              if ((ex.isCustom === true || !isBase) && !isRestrictedHomeWorkout(ex).isViolating) {
+              if (ex.isCustom === true || !isBase) {
                 if (!initialMap.has(ex.id)) {
                   initialMap.set(ex.id, { ...ex, isCustom: true });
                 }
@@ -706,7 +708,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // 3. Merge custom exercises from cachedOverrides
       Object.keys(cachedOverrides).forEach(key => {
         const val = cachedOverrides[key];
-        if (val && typeof val === "object" && val.name && !deletedSet.has(key) && !isRestrictedHomeWorkout(val).isViolating) {
+        if (val && typeof val === "object" && val.name && !deletedSet.has(key) && val.isDeleted !== true) {
           const valName = (val.name || "").toLowerCase().trim();
           const isBase = baseExercisePool.some(b => b.id === key || b.name?.toLowerCase().trim() === valName);
           if (val.isCustom === true || !isBase) {
@@ -790,7 +792,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       selectedEquipment: "All",
       selectedExerciseType: "All",
       selectedTrainingGoal: "All",
-      activeBrowseTab: "bodyparts" as const,
+      activeBrowseTab: "all" as const,
       selectedEnvironment: "all" as const
     };
     try {
@@ -957,7 +959,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           
           // Apply stored modifications and custom user-added exercises
           parsed.forEach(p => {
-            if (!p || !p.id || deletedIdsSet.has(p.id) || isRestrictedHomeWorkout(p).isViolating) return;
+            if (!p || !p.id || deletedIdsSet.has(p.id) || (p as any).isDeleted === true) return;
             const isBase = baseExercisePool.some(b => b.id === p.id || b.name?.toLowerCase().trim() === p.name?.toLowerCase().trim());
             if (p.isCustom === true || !isBase) {
               if (map.has(p.id)) {
@@ -1000,7 +1002,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Also include any custom added workouts in cachedOverrides
     Object.keys(cachedOverrides).forEach(key => {
       const val = cachedOverrides[key];
-      if (val && typeof val === "object" && val.name && !deletedIdsSet.has(key) && !isRestrictedHomeWorkout(val).isViolating) {
+      if (val && typeof val === "object" && val.name && !deletedIdsSet.has(key) && val.isDeleted !== true) {
         const valName = (val.name || "").toLowerCase().trim();
         const isBase = baseExercisePool.some(b => b.id === key || b.name?.toLowerCase().trim() === valName);
         if (val.isCustom === true || !isBase) {
@@ -1211,7 +1213,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             const canonicalId = (val.id && typeof val.id === "string" && val.id.length > 0) ? val.id : key;
 
             if (activeDeletedIds.has(canonicalId) || activeDeletedIds.has(normName) || activeDeletedIds.has(key)) return;
-            if (isRestrictedHomeWorkout(val).isViolating) return;
 
             // Check if this is a base exercise (base exercises are already in mapped)
             const isBase = baseList.some(b => b.id === canonicalId || b.id === key || (b.name || "").toLowerCase().trim() === normName);
@@ -1792,8 +1793,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAuthDatabaseError(null);
     setIsBlockedUser(false);
 
-    // Determine target redirect view immediately
-    if (isNewUser || baseProfile.onboarded === false) {
+    const isCompletedLocally = Boolean(
+      localStorage.getItem(`fit_onboarding_completed_${uid}`) === "true" ||
+      localStorage.getItem("fit_onboarding_completed_any") === "true" ||
+      localStorage.getItem(`fit_program_progress_${uid}`)
+    );
+
+    // Determine target redirect view immediately (never force onboarding when navigating directly to a program/challenge)
+    if ((isNewUser || baseProfile.onboarded === false) && !isCompletedLocally && !isAdmin && (currentView === "home" || currentView === "login" || currentView === "signin" || currentView === "signup" || currentView === "register" || !currentView)) {
       setView("onboarding");
     } else {
       const attempted = localStorage.getItem("fit_attempted_view");
@@ -1829,7 +1836,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             premiumAccess: isUserPremium,
             accountType: isUserPremium ? (userIsAdmin ? "Admin Athlete" : "Premium Athlete") : "Free Athlete",
             badge: isUserPremium ? (userIsAdmin ? "Admin Athlete" : "Premium Athlete") : "Free Athlete",
-            onboarded: fetchedData.onboarded !== undefined ? fetchedData.onboarded : !isNewUser
+            onboarded: fetchedData.onboarded === true || isCompletedLocally || (fetchedData.onboarded !== false && !isNewUser)
           };
         } else {
           profile = baseProfile;
@@ -1859,6 +1866,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       safeSetItem("fit_active_uid", uid);
       if (profile.email) {
         safeSetItem("fit_saved_email", profile.email);
+      }
+      if (profile.onboarded !== false || isCompletedLocally || isEmailAdmin(profile.email) || profile.role === "admin") {
+        safeSetItem(`fit_onboarding_completed_${uid}`, "true");
+        safeSetItem("fit_onboarding_completed_any", "true");
       }
       localStorage.removeItem("fit_explicitly_logged_out");
       setUser(profile);
@@ -1913,9 +1924,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setAuthError(null);
             let isNewSignUp = false;
             try {
-              const snap = await getDoc(doc(db, "users", result.user.uid));
-              if (!snap.exists() || snap.data()?.onboarded === false) {
-                isNewSignUp = true;
+              const isCompletedLocally = localStorage.getItem(`fit_onboarding_completed_${result.user.uid}`) === "true";
+              const isRedirectAdmin = isEmailAdmin(result.user.email || undefined);
+              if (!isCompletedLocally && !isRedirectAdmin) {
+                const snap = await getDoc(doc(db, "users", result.user.uid));
+                if (!snap.exists() || snap.data()?.onboarded === false) {
+                  isNewSignUp = true;
+                }
               }
             } catch (e) {}
             await processAuthSuccess(result.user, undefined, true, isNewSignUp);
@@ -2015,6 +2030,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     safeSetItem(`fit_user_${firebaseUser.uid}`, JSON.stringify(merged));
                     safeSetItem("fit_last_known_user", JSON.stringify(merged));
                     safeSetItem("fit_active_uid", firebaseUser.uid);
+                    if (merged.onboarded !== false || isAdmin) {
+                      safeSetItem(`fit_onboarding_completed_${firebaseUser.uid}`, "true");
+                    }
                     localStorage.removeItem("fit_explicitly_logged_out");
                     return merged;
                   });
@@ -2078,6 +2096,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 safeSetItem(`fit_user_${profile.uid}`, JSON.stringify(profile));
                 safeSetItem("fit_last_known_user", JSON.stringify(profile));
                 safeSetItem("fit_active_uid", profile.uid);
+                if (profile.onboarded !== false || isAdmin) {
+                  safeSetItem(`fit_onboarding_completed_${profile.uid}`, "true");
+                }
                 localStorage.removeItem("fit_explicitly_logged_out");
               } else {
                 // Brand new user: Check local storage or build clean profile with full dashboard access
@@ -2400,7 +2421,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       selectedEquipment: "All",
       selectedExerciseType: "All",
       selectedTrainingGoal: "All",
-      activeBrowseTab: "bodyparts" as const,
+      activeBrowseTab: "all" as const,
       selectedEnvironment: "all" as const
     };
 
@@ -2410,7 +2431,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const parsed = JSON.parse(pFilters);
         if (parsed && typeof parsed === "object") {
           const loaded: WorkoutLibraryFilters = {
-            searchQuery: typeof parsed.searchQuery === "string" ? parsed.searchQuery : defaults.searchQuery,
+            searchQuery: "",
             selectedCategory: typeof parsed.selectedCategory === "string" ? parsed.selectedCategory : defaults.selectedCategory,
             selectedDifficulty: typeof parsed.selectedDifficulty === "string" ? parsed.selectedDifficulty : defaults.selectedDifficulty,
             selectedMuscleGroup: typeof parsed.selectedMuscleGroup === "string" ? parsed.selectedMuscleGroup : defaults.selectedMuscleGroup,
@@ -2430,7 +2451,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (snap.exists()) {
           const data = snap.data();
           const loadedFilters: WorkoutLibraryFilters = {
-            searchQuery: typeof data.searchQuery === "string" ? data.searchQuery : defaults.searchQuery,
+            searchQuery: "",
             selectedCategory: typeof data.selectedCategory === "string" ? data.selectedCategory : defaults.selectedCategory,
             selectedDifficulty: typeof data.selectedDifficulty === "string" ? data.selectedDifficulty : defaults.selectedDifficulty,
             selectedMuscleGroup: typeof data.selectedMuscleGroup === "string" ? data.selectedMuscleGroup : defaults.selectedMuscleGroup,
@@ -2747,7 +2768,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         selectedEquipment: "All",
         selectedExerciseType: "All",
         selectedTrainingGoal: "All",
-        activeBrowseTab: "bodyparts",
+        activeBrowseTab: "all",
         selectedEnvironment: "all"
       };
       setWorkoutFiltersState(defaultFilters);
@@ -4576,6 +4597,8 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
       setUser(updated);
       localStorage.setItem(`fit_user_${updated.uid}`, JSON.stringify(updated));
+      localStorage.setItem(`fit_onboarding_completed_${updated.uid}`, "true");
+      localStorage.setItem("fit_onboarding_completed_any", "true");
       localStorage.setItem("fit_active_uid", updated.uid);
       await syncUserToStorageAndPlatform(updated).catch(e => {
         console.warn("Background user sync warning during onboarding:", e);
@@ -4591,6 +4614,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         };
         setUser(softUpdated);
         localStorage.setItem(`fit_user_${softUpdated.uid}`, JSON.stringify(softUpdated));
+        localStorage.setItem(`fit_onboarding_completed_${softUpdated.uid}`, "true");
       }
     }
   };

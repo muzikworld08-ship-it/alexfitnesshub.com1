@@ -370,18 +370,18 @@ const getWorkoutForWeekAndDay = (
         coreDrills.push(d);
       }
     });
-    if (warmupDrills.length === 0) {
+    if (enginePlan.exercises.length === 0 && warmupDrills.length === 0) {
       warmupDrills.push("Dynamic Joint & Ankle Mobilization — 3 mins");
       warmupDrills.push("Light Aerobic Incline Walk — 3 mins");
     }
   } else if (isRestDay) {
     drills.forEach(d => cooldownDrills.push(d));
-    if (cooldownDrills.length === 0) {
+    if (enginePlan.exercises.length === 0 && cooldownDrills.length === 0) {
       cooldownDrills.push("Restorative Box Breathing Reset — 5 mins");
       cooldownDrills.push("Spine & Hip Decompression Flow — 10 mins");
     }
   } else {
-    // Distribute actual admin exercises across the routine
+    // Distribute actual admin/configured exercises across the routine without inventing unadded drills
     enginePlan.exercises.forEach(ex => {
       const cleanName = (ex.exerciseName || (ex as any).name || "").trim();
       if (!cleanName) return;
@@ -402,15 +402,6 @@ const getWorkoutForWeekAndDay = (
         strengthDrills.push(drillStr);
       }
     });
-
-    if (warmupDrills.length === 0) {
-      warmupDrills.push("Dynamic Joint Mobilizations — 3 mins");
-      warmupDrills.push("Torso Rotations & Core Activation — 2 mins");
-    }
-    if (cooldownDrills.length === 0) {
-      cooldownDrills.push("Systemic Decompression Breathing — 3 mins");
-      cooldownDrills.push("Full Posterior Muscle Static Stretch — 3 mins");
-    }
   }
 
   return {
@@ -663,6 +654,9 @@ export default function BellyFatShredView() {
   const isAdmin = Boolean(user?.role === "admin" || (user?.email && isEmailAdmin(user.email)));
   const [isPurgingSplit, setIsPurgingSplit] = useState(false);
   const [purgeSuccessMsg, setPurgeSuccessMsg] = useState<string | null>(null);
+  const [shredNotice, setShredNotice] = useState<{ type: "info" | "success" | "error"; text: string } | null>(null);
+  const [confirmRestartProgram, setConfirmRestartProgram] = useState(false);
+  const [confirmQuitGuide, setConfirmQuitGuide] = useState(false);
 
   const handlePurgeMismatchedWorkouts = async () => {
     if (!progress) return;
@@ -765,7 +759,7 @@ export default function BellyFatShredView() {
       setTimeout(() => setPurgeSuccessMsg(null), 6000);
     } catch (err: any) {
       console.error("Purge error:", err);
-      alert("Error purging workouts: " + (err?.message || String(err)));
+      setShredNotice({ type: "error", text: "Error purging workouts: " + (err?.message || String(err)) });
     } finally {
       setIsPurgingSplit(false);
     }
@@ -1049,6 +1043,24 @@ export default function BellyFatShredView() {
     setIsPlayingHomeWorkout(false);
   };
 
+  // Active workout definition dynamically resolved BEFORE any conditional returns (preserves React hook order)
+  const bellyOverrides = programScheduleOverrides["belly_fat_shred"] || {};
+  const athleteLevel = resolveAthleteTier(user);
+  const resolvedWeek = progress?.currentWeek || 1;
+  const resolvedDay = progress?.currentDay || 1;
+  const workoutInfo = useMemo(() => {
+    return getWorkoutForWeekAndDay(
+      resolvedWeek,
+      resolvedDay,
+      centralizedExercises,
+      bellyOverrides,
+      athleteLevel
+    );
+  }, [resolvedWeek, resolvedDay, centralizedExercises, bellyOverrides, athleteLevel]);
+
+  const isRunScheduled = workoutInfo.isCardioDay;
+  const isLemonScheduled = resolvedDay % 2 !== 0 && resolvedDay <= 5;
+
   if (!user) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white text-center">
@@ -1073,24 +1085,6 @@ export default function BellyFatShredView() {
       </div>
     );
   }
-
-  // Active workout definition dynamically resolved from admin library & schedule overrides
-  const bellyOverrides = programScheduleOverrides["belly_fat_shred"] || {};
-  const athleteLevel = resolveAthleteTier(user);
-  const workoutInfo = useMemo(() => {
-    return getWorkoutForWeekAndDay(
-      progress.currentWeek, 
-      progress.currentDay, 
-      centralizedExercises, 
-      bellyOverrides,
-      athleteLevel
-    );
-  }, [progress.currentWeek, progress.currentDay, centralizedExercises, bellyOverrides, athleteLevel]);
-
-  // Check if today is Run Day (Wednesday Day 3 and Sunday Day 7 are the ONLY cardio days on the entire program)
-  const isRunScheduled = progress.currentDay === 3 || progress.currentDay === 7;
-  // Check if Lemon Water is scheduled (3 times/week e.g. Days 1, 3, 5)
-  const isLemonScheduled = progress.currentDay % 2 !== 0 && progress.currentDay <= 5;
 
   // Get current day's checklist state
   const dailyHabitState = progress.dailyChecklistHistory[todayStr] || {
@@ -1306,39 +1300,43 @@ export default function BellyFatShredView() {
     syncProgress(updated);
   };
 
-  // Reset progress entirely to baseline
+  // Reset progress entirely to baseline (inline confirmation, no window.confirm)
   const handleRestartProgram = () => {
-    if (window.confirm("WARNING: Are you absolutely certain you want to reset all your 5-Month Belly Fat Shred program logs, stats, and achievements? This cannot be undone.")) {
-      const restarted: BellyFatShredProgress = {
-        userId: user.uid,
-        currentWeek: 1,
-        currentDay: 1,
-        completedWorkouts: [],
-        completedRuns: [],
-        waterIntake: 0,
-        lastHydrationReset: todayStr,
-        hydrationHistory: {},
-        walkingHistory: {},
-        nutritionChecklist: {},
-        weightHistory: [{ date: todayStr, value: defaultWeight }],
-        waistHistory: [{ date: todayStr, value: defaultWaist }],
-        progressPhotos: [],
-        achievements: ["welcomed_to_shred"],
-        streaks: { workoutStreak: 0, hydrationStreak: 0, runningStreak: 0 },
-        lemonCucumberCompleted: [],
-        dailyChecklistHistory: {},
-        reminders: {
-          workout: true,
-          water: true,
-          running: true,
-          meal: true,
-          walk: true,
-          hydration: true,
-          lemonCucumber: true
-        }
-      };
-      syncProgress(restarted);
+    if (!confirmRestartProgram) {
+      setConfirmRestartProgram(true);
+      return;
     }
+    const restarted: BellyFatShredProgress = {
+      userId: user.uid,
+      currentWeek: 1,
+      currentDay: 1,
+      completedWorkouts: [],
+      completedRuns: [],
+      waterIntake: 0,
+      lastHydrationReset: todayStr,
+      hydrationHistory: {},
+      walkingHistory: {},
+      nutritionChecklist: {},
+      weightHistory: [{ date: todayStr, value: defaultWeight }],
+      waistHistory: [{ date: todayStr, value: defaultWaist }],
+      progressPhotos: [],
+      achievements: ["welcomed_to_shred"],
+      streaks: { workoutStreak: 0, hydrationStreak: 0, runningStreak: 0 },
+      lemonCucumberCompleted: [],
+      dailyChecklistHistory: {},
+      reminders: {
+        workout: true,
+        water: true,
+        running: true,
+        meal: true,
+        walk: true,
+        hydration: true,
+        lemonCucumber: true
+      }
+    };
+    syncProgress(restarted);
+    setConfirmRestartProgram(false);
+    setShredNotice({ type: "success", text: "Belly Fat Shred progress has been reset to Week 1, Day 1." });
   };
 
   // Interactive Daily Shred Guide Companion Handlers
@@ -1426,7 +1424,10 @@ export default function BellyFatShredView() {
       // Must complete 3 workouts of the week before unlocking the next week
       const currentWeekWorkouts = progress.completedWorkouts.filter(w => w.startsWith(`week_${progress.currentWeek}_`));
       if (currentWeekWorkouts.length < 3) {
-        alert(`🔒 Progression Locked: You must complete at least 3 workouts from Week ${progress.currentWeek} before advancing to the next week.`);
+        setShredNotice({
+          type: "info",
+          text: `Progression Locked: Complete at least 3 workouts from Week ${progress.currentWeek} before advancing to the next week.`
+        });
         return;
       }
       nextDay = 1;
@@ -1434,7 +1435,10 @@ export default function BellyFatShredView() {
     }
 
     if (nextWeek > 20) {
-      alert("🏆 Incredibly job! You have fully finished the 5-Month Belly Fat Shred Program. Revisit any week to maintain your definition!");
+      setShredNotice({
+        type: "success",
+        text: "Incredible job! You have completed all 20 weeks of the 5-Month Belly Fat Shred Program."
+      });
       return;
     }
 
@@ -1497,7 +1501,7 @@ export default function BellyFatShredView() {
     };
     syncProgress(updated);
     setLogWeightVal("");
-    alert("Weight successfully logged to trajectory index!");
+    setShredNotice({ type: "success", text: `Weight (${parsed} kg) logged to your trajectory index.` });
   };
 
   // Add waist
@@ -1511,7 +1515,7 @@ export default function BellyFatShredView() {
     };
     syncProgress(updated);
     setLogWaistVal("");
-    alert("Waist measurement successfully logged to metrics!");
+    setShredNotice({ type: "success", text: `Waist measurement (${parsed} cm) logged to your metrics.` });
   };
 
   // Simulate progress photo uploading
@@ -1583,8 +1587,33 @@ export default function BellyFatShredView() {
   const btnSecondary = isDark ? "bg-slate-800 hover:bg-slate-700 text-slate-300" : "bg-slate-100 hover:bg-slate-200 text-slate-700";
 
   if (isPlayingHomeWorkout) {
+    const allDrillStrings = [
+      ...workoutInfo.warmup,
+      ...workoutInfo.core,
+      ...workoutInfo.hiit,
+      ...workoutInfo.strength,
+      ...workoutInfo.fullBodyCircuit,
+      ...workoutInfo.cooldown
+    ];
+    const playerExercises = allDrillStrings.map((raw, idx) => {
+      const parsed = parseDrillDetails(raw, workoutInfo.title);
+      return {
+        id: `bfs_player_${idx}_${parsed.name.toLowerCase().replace(/[^a-z0-9]/g, "_")}`,
+        name: parsed.name,
+        mediaName: parsed.libName || parsed.name,
+        duration: 30,
+        instructions: [parsed.coachingCue || "Execute with strict control."],
+        beginnerMod: "Maintain steady controlled tempo and breathe consistently.",
+        advancedVar: "Increase tempo or resistance while maintaining strict posture.",
+        safetyTips: ["Keep core braced and breathe steadily through every rep."],
+        muscles: parsed.muscles,
+        caloriesEst: parsed.caloriesEst || "10-15"
+      };
+    });
     return (
       <HomeWorkoutPlayer 
+        exercises={playerExercises}
+        title={workoutInfo.title}
         onClose={() => setIsPlayingHomeWorkout(false)}
         onComplete={(calories, duration) => handleCompleteHomeWorkout(calories, duration)}
       />
@@ -1636,12 +1665,30 @@ export default function BellyFatShredView() {
               >
                 Main Dashboard
               </button>
-              <button 
-                onClick={handleRestartProgram} 
-                className={`px-5 py-2.5 border rounded-xl text-xs transition font-mono uppercase font-bold cursor-pointer ${isDark ? "bg-slate-800 text-slate-300 border-slate-700 hover:text-[#D32F2F]" : "bg-slate-100 text-slate-700 border-slate-200 hover:border-[#D32F2F] hover:text-[#D32F2F]"}`}
-              >
-                Restart Program
-              </button>
+              {!confirmRestartProgram ? (
+                <button 
+                  onClick={handleRestartProgram} 
+                  className={`px-5 py-2.5 border rounded-xl text-xs transition font-mono uppercase font-bold cursor-pointer ${isDark ? "bg-slate-800 text-slate-300 border-slate-700 hover:text-[#D32F2F]" : "bg-slate-100 text-slate-700 border-slate-200 hover:border-[#D32F2F] hover:text-[#D32F2F]"}`}
+                >
+                  Restart Program
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 bg-rose-950/80 border border-rose-500/40 px-3 py-1.5 rounded-xl">
+                  <span className="text-[11px] font-bold text-rose-200">Reset all progress?</span>
+                  <button
+                    onClick={handleRestartProgram}
+                    className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-[10px] font-black uppercase cursor-pointer"
+                  >
+                    Confirm Reset
+                  </button>
+                  <button
+                    onClick={() => setConfirmRestartProgram(false)}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold uppercase cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1704,6 +1751,25 @@ export default function BellyFatShredView() {
           </div>
         </div>
       </div>
+
+      {/* Inline status notice (replaces blocking alerts) */}
+      {shredNotice && (
+        <div className={`max-w-7xl mx-auto mb-6 rounded-2xl p-4 border flex items-center justify-between gap-3 ${
+          shredNotice.type === "error"
+            ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
+            : shredNotice.type === "success"
+            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+            : "bg-amber-500/10 border-amber-500/30 text-amber-400"
+        }`}>
+          <span className="text-xs font-bold">{shredNotice.text}</span>
+          <button
+            onClick={() => setShredNotice(null)}
+            className="text-[11px] font-mono font-bold uppercase opacity-80 hover:opacity-100 cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Daily Motivation Banner */}
       <div className="max-w-7xl mx-auto mb-8 bg-[#D32F2F]/5 border border-[#D32F2F]/20 rounded-2xl p-4 flex items-start gap-3">
@@ -2115,17 +2181,33 @@ export default function BellyFatShredView() {
                       </button>
 
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            if (window.confirm("Are you sure you want to stop this interactive session? Your timer and drill checklists will be reset.")) {
-                              setActiveGuideStep(null);
-                              setGuideTimerRunning(false);
-                            }
-                          }}
-                          className="px-3.5 py-2.5 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-100 text-slate-500 transition"
-                        >
-                          Quit Session
-                        </button>
+                        {!confirmQuitGuide ? (
+                          <button
+                            onClick={() => setConfirmQuitGuide(true)}
+                            className="px-3.5 py-2.5 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-100 text-slate-500 transition cursor-pointer"
+                          >
+                            Quit Session
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => {
+                                setConfirmQuitGuide(false);
+                                setActiveGuideStep(null);
+                                setGuideTimerRunning(false);
+                              }}
+                              className="px-3 py-2 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-500 text-white transition cursor-pointer"
+                            >
+                              Confirm Quit
+                            </button>
+                            <button
+                              onClick={() => setConfirmQuitGuide(false)}
+                              className="px-2.5 py-2 rounded-xl text-xs font-bold border border-slate-200 text-slate-500 hover:bg-slate-100 transition cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
 
                         <button
                           onClick={handleNextGuideStep}
@@ -2863,8 +2945,8 @@ export default function BellyFatShredView() {
               </div>
             </div>
 
-            {/* Check if today is Scheduled Rest Day (Sunday Day 7) or Scheduled Cardio Run (Wednesday Day 3) */}
-            {progress.currentDay === 7 ? (
+            {/* Check if today is Scheduled Rest Day or Cardio Day dynamically from workoutInfo */}
+            {workoutInfo.isRestDay ? (
               <div className="py-2">
                 <RestDayCard
                   programId="belly_fat_shred"
@@ -2875,7 +2957,7 @@ export default function BellyFatShredView() {
                   onComplete={() => handleToggleWorkout()}
                 />
               </div>
-            ) : progress.currentDay === 3 ? (
+            ) : workoutInfo.isCardioDay ? (
               <div className="py-4">
                 <CardioDayCard
                   programId="belly_fat_shred"
@@ -2890,6 +2972,7 @@ export default function BellyFatShredView() {
             ) : (
               <>
             {/* SECTION 01: WARM-UP MOBILITY */}
+            {workoutInfo.warmup.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -2924,8 +3007,10 @@ export default function BellyFatShredView() {
                 })}
               </div>
             </div>
+            )}
 
             {/* SECTION 02: MIDSECTION COMPRESSION */}
+            {workoutInfo.core.length > 0 && (
             <div className="space-y-4 pt-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -2960,8 +3045,10 @@ export default function BellyFatShredView() {
                 })}
               </div>
             </div>
+            )}
 
             {/* SECTION 03: METABOLIC HIIT INTERVALS */}
+            {workoutInfo.hiit.length > 0 && (
             <div className="space-y-4 pt-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -2996,8 +3083,10 @@ export default function BellyFatShredView() {
                 })}
               </div>
             </div>
+            )}
 
             {/* SECTION 04: COMPOUND OVERLOAD STRENGTH */}
+            {workoutInfo.strength.length > 0 && (
             <div className="space-y-4 pt-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -3032,8 +3121,10 @@ export default function BellyFatShredView() {
                 })}
               </div>
             </div>
+            )}
 
             {/* SECTION 05: FULL-BODY FINISHER & 12-3-30 */}
+            {workoutInfo.fullBodyCircuit.length > 0 && (
             <div className="space-y-4 pt-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -3068,8 +3159,10 @@ export default function BellyFatShredView() {
                 })}
               </div>
             </div>
+            )}
 
             {/* SECTION 06: RECOVERY COOLDOWN */}
+            {workoutInfo.cooldown.length > 0 && (
             <div className="space-y-4 pt-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -3104,6 +3197,7 @@ export default function BellyFatShredView() {
                 })}
               </div>
             </div>
+            )}
             </>
             )}
 

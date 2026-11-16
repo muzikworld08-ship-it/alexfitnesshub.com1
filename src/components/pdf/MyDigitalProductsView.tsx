@@ -52,9 +52,10 @@ export const MyDigitalProductsView: React.FC<MyDigitalProductsViewProps> = ({
 
   const handleDownload = (order: PrintablePdfOrder) => {
     if (!order.downloadToken || order.paymentStatus !== "paid") {
-      alert("This order is unpaid or pending confirmation. Downloads are only available for confirmed paid orders.");
+      setError("This order is unpaid or pending confirmation. Downloads are only available for confirmed paid orders.");
       return;
     }
+    setError(null);
     const downloadUrl = printablePdfService.getDownloadUrl(order.downloadToken);
     window.location.href = downloadUrl;
   };

@@ -170,19 +170,20 @@ export default function HomeWorkoutChallengeView() {
     let isMounted = true;
 
     async function loadData() {
+      let loadedState: HomeChallengeState | null = null;
       if (!user || !user.uid) {
         // Check localStorage for offline/guest persistence
         const cached = localStorage.getItem("fit_home_challenge_state");
         if (cached) {
           try {
-            const parsed = JSON.parse(cached);
-            if (isMounted) {
-              setState(parsed);
-              setSelectedDayNumber(parsed.currentDay || 1);
-            }
+            loadedState = JSON.parse(cached);
           } catch (e) {}
         }
-        setLoading(false);
+        if (loadedState && isMounted) {
+          setState(loadedState);
+          setSelectedDayNumber(loadedState.currentDay || 1);
+        }
+        if (isMounted) setLoading(false);
         return;
       }
 
@@ -190,12 +191,8 @@ export default function HomeWorkoutChallengeView() {
         if (!isMockFirebase && user.uid && typeof user.uid === "string" && user.uid.trim()) {
           const docRef = doc(db, "home_workout_challenge", user.uid.trim());
           const snap = await getDoc(docRef);
-          if (snap.exists() && isMounted) {
-            const d = snap.data() as HomeChallengeState;
-            setState(d);
-            setSelectedDayNumber(d.currentDay || 1);
-            setLoading(false);
-            return;
+          if (snap.exists()) {
+            loadedState = snap.data() as HomeChallengeState;
           }
         }
       } catch (e) {
@@ -203,16 +200,55 @@ export default function HomeWorkoutChallengeView() {
       }
 
       // Fallback to local storage
-      const uidKey = user.uid ? user.uid.trim() : "guest";
-      const local = localStorage.getItem(`fit_home_challenge_${uidKey}`);
-      if (local && isMounted) {
-        try {
-          const parsed = JSON.parse(local);
-          setState(parsed);
-          setSelectedDayNumber(parsed.currentDay || 1);
-        } catch (e) {}
+      if (!loadedState) {
+        const uidKey = user.uid ? user.uid.trim() : "guest";
+        const local = localStorage.getItem(`fit_home_challenge_${uidKey}`);
+        if (local) {
+          try {
+            loadedState = JSON.parse(local);
+          } catch (e) {}
+        }
       }
-      if (isMounted) setLoading(false);
+
+      if (isMounted) {
+        if (loadedState && loadedState.onboarding) {
+          setState(loadedState);
+          setSelectedDayNumber(loadedState.currentDay || 1);
+        } else {
+          const isCompletedLocally = localStorage.getItem(`fit_onboarding_completed_${user.uid}`) === "true";
+          if (user.onboarded !== false || isCompletedLocally || isAdmin) {
+            const tier = resolveAthleteTier(user, loadedState);
+            const tierLabel: HomeOnboardingProfile["fitnessLevel"] =
+              tier === "advanced" ? "Advanced" : tier === "intermediate" ? "Intermediate" : "Beginner";
+            const autoProfile: HomeOnboardingProfile = {
+              gender: String((user as any).gender || "").toLowerCase() === "female" ? "Female" : "Male",
+              age: Number((user as any).age) || 28,
+              currentWeight: Number((user as any).weight) || 75,
+              height: Number((user as any).height) || 175,
+              fitnessLevel: tierLabel,
+              mainGoal: "Lose body fat",
+              trainingDaysPerWeek: 5,
+              currentAbilityLevel: tier === "advanced" ? "Advanced" : tier === "intermediate" ? "Some Experience" : "Complete Beginner",
+              workoutTimePreference: "Morning",
+              startDate: new Date().toISOString()
+            };
+            const autoState: HomeChallengeState = {
+              ...(loadedState || DEFAULT_CHALLENGE_STATE),
+              userId: user.uid,
+              onboarding: autoProfile,
+              currentDay: loadedState?.currentDay || 1,
+              updatedAt: new Date().toISOString()
+            };
+            setState(autoState);
+            setSelectedDayNumber(autoState.currentDay || 1);
+            saveState(autoState).catch(() => {});
+          } else if (loadedState) {
+            setState(loadedState);
+            setSelectedDayNumber(loadedState.currentDay || 1);
+          }
+        }
+        setLoading(false);
+      }
     }
 
     loadData();
@@ -756,6 +792,16 @@ export default function HomeWorkoutChallengeView() {
           </div>
 
         </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-14 h-14 rounded-full border-4 border-red-200 border-t-red-600 animate-spin mb-4" />
+        <h2 className="text-lg font-black text-slate-900 uppercase">Loading 180 Day Home Challenge...</h2>
+        <p className="text-xs text-slate-500 mt-1">Synchronizing your daily bodyweight schedule...</p>
       </div>
     );
   }
