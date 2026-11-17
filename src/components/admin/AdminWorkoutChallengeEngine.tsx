@@ -1011,11 +1011,10 @@ export default function AdminWorkoutChallengeEngine() {
       return;
     }
 
-    const usedGifsInRoutine = new Set<string>(currentTierExercises.map(e => e.gifUrl).filter((u): u is string => !!u && u !== "none"));
-    let assignedGif = newEx.gifUrl && newEx.gifUrl !== "none" ? newEx.gifUrl : "";
-    if (!assignedGif || usedGifsInRoutine.has(assignedGif)) {
-      assignedGif = getExerciseGifUrl(name, newEx.category, usedGifsInRoutine);
-    }
+    const assignedGif =
+      newEx.gifUrl && !["none", "deleted", "null"].includes(newEx.gifUrl.trim().toLowerCase())
+        ? newEx.gifUrl.trim()
+        : getExerciseGifUrl(name, newEx.category);
 
     const assignedDiff = (activeTierTarget.charAt(0).toUpperCase() + activeTierTarget.slice(1)) as any;
 
@@ -1079,7 +1078,7 @@ export default function AdminWorkoutChallengeEngine() {
       }
     }
 
-    if (ok && assignedGif) {
+    if (ok && assignedGif && !existingLibMatch) {
       try {
         await uploadExerciseMedia(targetLibraryId, assignedGif, "image");
       } catch {}
@@ -1125,17 +1124,11 @@ export default function AdminWorkoutChallengeEngine() {
 
     try {
       const chosenName = chosenEx.name || chosenEx.exerciseName;
-      const usedGifsInRoutine = new Set(
-        activeExercises
-          .filter(e => e.id !== targetToReplace.id)
-          .map(e => e.gifUrl)
-          .filter((u): u is string => !!u)
-      );
-
-      let finalGif = chosenEx.gifUrl || chosenEx.customMediaUrl;
-      if (!finalGif || usedGifsInRoutine.has(finalGif)) {
-        finalGif = getExerciseGifUrl(chosenName, chosenEx.category || targetToReplace.category, usedGifsInRoutine);
-      }
+      const candidateGif = chosenEx.customMediaUrl || chosenEx.gifUrl || chosenEx.imageUrl || "";
+      const finalGif =
+        candidateGif && !["none", "deleted", "null"].includes(String(candidateGif).trim().toLowerCase())
+          ? String(candidateGif).trim()
+          : getExerciseGifUrl(chosenName, chosenEx.category || targetToReplace.category);
 
       const assignedDiff = (selectedDifficultyLevel.charAt(0).toUpperCase() + selectedDifficultyLevel.slice(1)) as any;
 

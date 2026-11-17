@@ -295,8 +295,7 @@ export default function AdminWorkoutEditor() {
   };
 
   // Add Modal State
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newWorkout, setNewWorkout] = useState<Partial<Exercise>>({
+  const INITIAL_NEW_WORKOUT: Partial<Exercise> = {
     name: "",
     recommendedSets: "3-4",
     recommendedReps: "10-12",
@@ -318,9 +317,25 @@ export default function AdminWorkoutEditor() {
       "Drive contraction to peak and pause for 1 second."
     ],
     safetyTips: ["Maintain neutral spine and controlled breathing."]
-  });
+  };
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newWorkout, setNewWorkout] = useState<Partial<Exercise>>(INITIAL_NEW_WORKOUT);
   const [newMediaInput, setNewMediaInput] = useState("");
   const [isSavingNew, setIsSavingNew] = useState(false);
+
+  const handleOpenAddModal = () => {
+    setNewWorkout({ ...INITIAL_NEW_WORKOUT });
+    setNewMediaInput("");
+    setCloudErrorMsg(null);
+    setIsAddModalOpen(true);
+  };
+
+  const handleCloseAddModal = () => {
+    setIsAddModalOpen(false);
+    setNewWorkout({ ...INITIAL_NEW_WORKOUT });
+    setNewMediaInput("");
+    setCloudErrorMsg(null);
+  };
 
   // Edit Modal State
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
@@ -522,18 +537,7 @@ export default function AdminWorkoutEditor() {
 
       setCloudErrorMsg(null);
       setIsAddModalOpen(false);
-      setNewWorkout({
-        name: "",
-        recommendedSets: "3-4",
-        recommendedReps: "10-12",
-        category: "Gym Workouts",
-        difficulty: "Intermediate",
-        muscleGroups: ["Chest"],
-        equipment: ["Dumbbells"],
-        isPremium: true,
-        customMediaUrl: "",
-        customMediaType: "image"
-      });
+      setNewWorkout({ ...INITIAL_NEW_WORKOUT });
       setNewMediaInput("");
     } catch (err: any) {
       console.error(err);
@@ -583,7 +587,7 @@ export default function AdminWorkoutEditor() {
                 Workout Management Desk
               </span>
               <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
-                {exercises.length} Exercises Loaded
+                {filteredExercises.length} of {exercises.length} Exercises Loaded
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight font-sans">
@@ -599,7 +603,7 @@ export default function AdminWorkoutEditor() {
             <button
               type="button"
               id="admin-add-exercise-btn"
-              onClick={() => setIsAddModalOpen(true)}
+              onClick={handleOpenAddModal}
               className="w-full lg:w-auto bg-red-600 hover:bg-red-700 active:scale-95 text-white font-sans font-black uppercase tracking-wider text-xs px-6 py-3.5 rounded-2xl transition-all shadow-md shadow-red-600/25 hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer shrink-0"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -1034,6 +1038,7 @@ export default function AdminWorkoutEditor() {
                               <UnifiedExerciseMedia
                                 exerciseId={exercise.id}
                                 exerciseName={exercise.name}
+                                mediaUrl={exercise.customMediaUrl || exercise.gifUrl || exercise.imageUrl}
                                 className="w-full h-full object-cover"
                               />
                             </div>
@@ -1259,6 +1264,7 @@ export default function AdminWorkoutEditor() {
                     <UnifiedExerciseMedia
                       exerciseId={exercise.id}
                       exerciseName={exercise.name}
+                      mediaUrl={exercise.customMediaUrl || exercise.gifUrl || exercise.imageUrl}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute top-2.5 left-2.5 flex gap-1.5 flex-wrap">
@@ -1957,7 +1963,7 @@ export default function AdminWorkoutEditor() {
                 <h3 className="text-xl font-black text-slate-900 uppercase">Create Workout</h3>
               </div>
               <button
-                onClick={() => setIsAddModalOpen(false)}
+                onClick={handleCloseAddModal}
                 className="text-slate-400 hover:text-slate-700 p-2 rounded-xl cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -2001,11 +2007,23 @@ export default function AdminWorkoutEditor() {
                   const match = exercises.find(ex => ex.name.toLowerCase().trim() === clean);
                   if (match) {
                     return (
-                      <div className="mt-2 p-3 bg-red-50 border border-red-300 rounded-xl text-xs text-red-800 flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                        <div>
-                          <strong className="font-bold">Workout Already Exists:</strong> A workout named &quot;{match.name}&quot; already exists in the workout library. Duplicate workouts are not permitted. Please choose a different name or edit the existing workout.
+                      <div className="mt-2 p-3 bg-red-50 border border-red-300 rounded-xl text-xs text-red-800 flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                          <div>
+                            <strong className="font-bold">Workout Already Exists:</strong> A workout named &quot;{match.name}&quot; already exists in the workout library under &quot;{match.category}&quot;. You can edit its GIF URL or details directly instead.
+                          </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleCloseAddModal();
+                            handleOpenEdit(match);
+                          }}
+                          className="shrink-0 bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg text-[11px] cursor-pointer transition"
+                        >
+                          Edit Existing
+                        </button>
                       </div>
                     );
                   }
@@ -2419,7 +2437,7 @@ export default function AdminWorkoutEditor() {
             {/* Modal Actions */}
             <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
               <button
-                onClick={() => setIsAddModalOpen(false)}
+                onClick={handleCloseAddModal}
                 className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-100 cursor-pointer"
               >
                 Cancel

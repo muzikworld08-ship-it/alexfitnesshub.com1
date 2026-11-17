@@ -59,6 +59,11 @@ import {
   startFirestoreMailWorker 
 } from "./src/server/mailUtility";
 import { EXERCISES, getExerciseGifUrl } from "./src/data/exercises";
+import {
+  buildTombstoneMatcher,
+  deriveExerciseNameFromEntry,
+  inferExerciseMetadataFromName
+} from "./src/utils/exerciseHydration";
 import { getWorkoutForProgramAndDay, normalizeProgramId } from "./src/data/challengeEngineDatabase";
 import { registerPrintablePdfRoutes } from "./src/server/printablePdfRoutes";
 import { INITIAL_STORE_PRODUCTS } from "./src/data/storeProducts";
@@ -3989,12 +3994,14 @@ app.get("/api/exercises/custom-media", async (req, res) => {
           }
         }
 
+        const isTombstonedServer = buildTombstoneMatcher(tombstoneSet);
+
         const isValidServerMedia = (u: any): u is string => {
           if (!u || typeof u !== "string") return false;
           const t = u.trim().toLowerCase();
           return Boolean(t && t !== "none" && t !== "deleted" && t !== "null");
         };
-        const sanitizeOverrideEntry = (entry: any) => {
+        const sanitizeOverrideEntry = (entry: any, keyHint = "") => {
           if (!entry || typeof entry !== "object") return entry;
           const cleaned = { ...entry };
           delete cleaned.isMediaDeleted;
@@ -4010,6 +4017,15 @@ app.get("/api/exercises/custom-media", async (req, res) => {
               }
             }
           }
+          const derivedName = deriveExerciseNameFromEntry(keyHint || String(cleaned.id || cleaned.exerciseId || ""), cleaned);
+          if (derivedName) {
+            cleaned.name = derivedName;
+            const meta = inferExerciseMetadataFromName(derivedName, cleaned);
+            if (!cleaned.category) cleaned.category = meta.category;
+            if (!Array.isArray(cleaned.categories) || cleaned.categories.length === 0) cleaned.categories = meta.categories;
+            if (!Array.isArray(cleaned.muscleGroups) || cleaned.muscleGroups.length === 0) cleaned.muscleGroups = meta.muscleGroups;
+            if (!Array.isArray(cleaned.equipment) || cleaned.equipment.length === 0) cleaned.equipment = meta.equipment;
+          }
           return cleaned;
         };
 
@@ -4017,7 +4033,8 @@ app.get("/api/exercises/custom-media", async (req, res) => {
 
         mediaDocs.forEach(d => {
           const docData = d.data();
-          if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) return;
+          const derivedMediaName = deriveExerciseNameFromEntry(d.id, docData || {});
+          if (docData?.isDeleted === true || isTombstonedServer(d.id, derivedMediaName)) return;
           const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl, docData?.originalUrlOrBase64].find(isValidServerMedia);
           if (mUrl) {
             freshOverrides[d.id] = sanitizeOverrideEntry({
@@ -4027,18 +4044,19 @@ app.get("/api/exercises/custom-media", async (req, res) => {
               gifUrl: mUrl,
               imageUrl: mUrl,
               customMediaType: docData.customMediaType || "image"
-            });
-            if (docData.exerciseName) {
-              const normName = docData.exerciseName.toLowerCase().trim();
-              if (!tombstoneSet.has(normName)) {
+            }, d.id);
+            if (derivedMediaName) {
+              const normName = derivedMediaName.toLowerCase().trim();
+              if (!isTombstonedServer(d.id, normName)) {
                 freshOverrides[normName] = sanitizeOverrideEntry({
                   ...(freshOverrides[normName] || {}),
                   ...docData,
+                  name: derivedMediaName,
                   customMediaUrl: mUrl,
                   gifUrl: mUrl,
                   imageUrl: mUrl,
                   customMediaType: docData.customMediaType || "image"
-                });
+                }, d.id);
               }
             }
           }
@@ -4046,22 +4064,25 @@ app.get("/api/exercises/custom-media", async (req, res) => {
 
         exDocs.forEach(d => {
           const docData = d.data();
-          if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) return;
+          const derivedExName = deriveExerciseNameFromEntry(d.id, docData || {});
+          if (docData?.isDeleted === true || isTombstonedServer(d.id, derivedExName)) return;
           const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl].find(isValidServerMedia);
-          if (docData && (mUrl || docData.isCustom || docData.name)) {
+          if (docData && (mUrl || docData.isCustom || derivedExName)) {
             freshOverrides[d.id] = sanitizeOverrideEntry({
               ...(freshOverrides[d.id] || {}),
               ...docData,
+              ...(derivedExName ? { name: derivedExName } : {}),
               ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-            });
-            if (docData.name) {
-              const normName = docData.name.toLowerCase().trim();
-              if (!tombstoneSet.has(normName)) {
+            }, d.id);
+            if (derivedExName) {
+              const normName = derivedExName.toLowerCase().trim();
+              if (!isTombstonedServer(d.id, normName)) {
                 freshOverrides[normName] = sanitizeOverrideEntry({
                   ...(freshOverrides[normName] || {}),
                   ...docData,
+                  name: derivedExName,
                   ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-                });
+                }, d.id);
               }
             }
           }
@@ -4069,24 +4090,27 @@ app.get("/api/exercises/custom-media", async (req, res) => {
 
         genDocs.forEach(d => {
           const docData = d.data();
-          if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) return;
+          const derivedGenName = deriveExerciseNameFromEntry(d.id, docData || {});
+          if (docData?.isDeleted === true || isTombstonedServer(d.id, derivedGenName)) return;
           const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl].find(isValidServerMedia);
-          if (docData && (mUrl || docData.isCustom || docData.name)) {
+          if (docData && (mUrl || docData.isCustom || derivedGenName)) {
             freshOverrides[d.id] = sanitizeOverrideEntry({
               ...(freshOverrides[d.id] || {}),
               ...docData,
+              ...(derivedGenName ? { name: derivedGenName } : {}),
               isCustom: true,
               ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-            });
-            if (docData.name) {
-              const normName = docData.name.toLowerCase().trim();
-              if (!tombstoneSet.has(normName)) {
+            }, d.id);
+            if (derivedGenName) {
+              const normName = derivedGenName.toLowerCase().trim();
+              if (!isTombstonedServer(d.id, normName)) {
                 freshOverrides[normName] = sanitizeOverrideEntry({
                   ...(freshOverrides[normName] || {}),
                   ...docData,
+                  name: derivedGenName,
                   isCustom: true,
                   ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-                });
+                }, d.id);
               }
             }
           }
@@ -4096,11 +4120,11 @@ app.get("/api/exercises/custom-media", async (req, res) => {
         data = { ...data, ...freshOverrides };
         for (const k of Object.keys(data)) {
           const item = data[k];
-          const itemName = String(item?.name || item?.exerciseName || "").toLowerCase().trim();
-          if (item?.isDeleted === true || tombstoneSet.has(k.toLowerCase()) || (itemName && tombstoneSet.has(itemName))) {
+          const itemName = deriveExerciseNameFromEntry(k, item || {}).toLowerCase().trim();
+          if (item?.isDeleted === true || isTombstonedServer(k, itemName)) {
             delete data[k];
           } else {
-            data[k] = sanitizeOverrideEntry(item);
+            data[k] = sanitizeOverrideEntry(item, k);
           }
         }
 
@@ -4559,12 +4583,13 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
         if (dd?.name) tombstoneSet.add(String(dd.name).trim().toLowerCase());
       });
     } catch {}
+    const isTombstonedCreate = buildTombstoneMatcher(tombstoneSet);
 
     // 1. Check if workout already exists in master library (unless deleted/tombstoned or upsertIfExists requested)
     const existingMaster = EXERCISES.find(e => e.name && e.name.trim().toLowerCase() === cleanName);
     const isMasterTombstoned = existingMaster
-      ? tombstoneSet.has(existingMaster.id.toLowerCase()) || tombstoneSet.has(cleanName)
-      : false;
+      ? isTombstonedCreate(existingMaster.id, existingMaster.name)
+      : isTombstonedCreate(undefined, cleanName);
     if (existingMaster && !isMasterTombstoned && !workout.upsertIfExists) {
       return res.status(409).json({
         success: false,
@@ -4573,11 +4598,19 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
       });
     }
 
+    const validExplicitGif = [workout.customMediaUrl, workout.gifUrl, workout.imageUrl].find(
+      (u: any) => typeof u === "string" && u.trim() && !["none", "deleted", "null"].includes(u.trim().toLowerCase())
+    ) || "";
+    const resolvedGif = validExplicitGif || getExerciseGifUrl(workout.name.trim(), workout.category || "") || "";
+
     const newId = workout.id || (isMasterTombstoned && existingMaster ? existingMaster.id : `custom_ex_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
     const fullWorkout = {
       ...workout,
       name: workout.name.trim(),
       id: newId,
+      gifUrl: resolvedGif,
+      imageUrl: resolvedGif,
+      customMediaUrl: validExplicitGif,
       createdAt: new Date().toISOString(),
       createdBy: req.user?.email || "admin",
       isCustom: true,
@@ -4586,7 +4619,7 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
       updatedAt: new Date().toISOString()
     };
 
-    // 2. Check duplicates in Cloud Firestore exercises collection (unless tombstoned or upsertIfExists requested)
+    // 2. Check duplicates in Cloud Firestore exercises collection (skip deleted, tombstoned, or bare media-only stubs)
     const [cloudExercises, cloudGenExercises] = await Promise.all([
       getServerFirestoreCollection("exercises", req.authToken),
       getServerFirestoreCollection("generated_exercises", req.authToken)
@@ -4594,15 +4627,19 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
     const duplicateInCloud = [...cloudExercises, ...cloudGenExercises].find((d) => {
       const dd = d.data();
       if (!dd || dd.isDeleted === true) return false;
+      const dName = String(dd.name || dd.exerciseName || "").trim();
+      if (!dName) return false;
       const dId = String(dd.id || d.id || "").trim().toLowerCase();
-      if (tombstoneSet.has(dId) || tombstoneSet.has(cleanName)) return false;
-      return String(dd.name || "").trim().toLowerCase() === cleanName;
+      if (isTombstonedCreate(dId, dName)) return false;
+      const hasExerciseFields = dd.isCustom === true || Boolean(dd.category) || (Array.isArray(dd.muscleGroups) && dd.muscleGroups.length > 0);
+      if (!hasExerciseFields) return false;
+      return dName.toLowerCase() === cleanName;
     });
     if (duplicateInCloud && !workout.upsertIfExists) {
       return res.status(409).json({
         success: false,
         existingExercise: duplicateInCloud.data(),
-        error: `Workout already exists: A workout named "${duplicateInCloud.data().name}" already exists in Cloud Firestore.`
+        error: `Workout already exists: A workout named "${duplicateInCloud.data().name || duplicateInCloud.data().exerciseName}" already exists in Cloud Firestore.`
       });
     }
 
@@ -4618,17 +4655,21 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
     }
 
     const existingOverride = Object.values(overrides).find((o: any) => {
-      if (!o || o.isDeleted === true || !o.name) return false;
-      const oName = o.name.trim().toLowerCase();
-      const oId = String(o.id || "").trim().toLowerCase();
-      if (tombstoneSet.has(oId) || tombstoneSet.has(oName)) return false;
-      return oName === cleanName;
+      if (!o || o.isDeleted === true) return false;
+      const oName = String(o.name || o.exerciseName || "").trim();
+      if (!oName) return false;
+      const oId = String(o.id || o.exerciseId || "").trim().toLowerCase();
+      if (isTombstonedCreate(oId, oName)) return false;
+      // Ignore bare media-only stubs lacking category, muscleGroups, and isCustom flag
+      const hasExerciseFields = o.isCustom === true || Boolean(o.category) || (Array.isArray(o.muscleGroups) && o.muscleGroups.length > 0);
+      if (!hasExerciseFields) return false;
+      return oName.toLowerCase() === cleanName;
     });
     if (existingOverride && !workout.upsertIfExists) {
       return res.status(409).json({
         success: false,
         existingExercise: existingOverride,
-        error: `Workout already exists: A workout named "${existingOverride.name}" already exists in the exercise library.`
+        error: `Workout already exists: A workout named "${existingOverride.name || existingOverride.exerciseName}" already exists in the exercise library.`
       });
     }
 
@@ -5509,7 +5550,8 @@ async function hydrateAllDataFromCloud() {
       const t = u.trim().toLowerCase();
       return Boolean(t && t !== "none" && t !== "deleted" && t !== "null");
     };
-    const sanitizeHydratedEntry = (entry: any) => {
+    const isTombstonedHydrate = buildTombstoneMatcher(tombstoneSet);
+    const sanitizeHydratedEntry = (entry: any, keyHint = "") => {
       if (!entry || typeof entry !== "object") return entry;
       const cleaned = { ...entry };
       delete cleaned.isMediaDeleted;
@@ -5525,6 +5567,15 @@ async function hydrateAllDataFromCloud() {
           }
         }
       }
+      const derivedName = deriveExerciseNameFromEntry(keyHint || String(cleaned.id || cleaned.exerciseId || ""), cleaned);
+      if (derivedName) {
+        cleaned.name = derivedName;
+        const meta = inferExerciseMetadataFromName(derivedName, cleaned);
+        if (!cleaned.category) cleaned.category = meta.category;
+        if (!Array.isArray(cleaned.categories) || cleaned.categories.length === 0) cleaned.categories = meta.categories;
+        if (!Array.isArray(cleaned.muscleGroups) || cleaned.muscleGroups.length === 0) cleaned.muscleGroups = meta.muscleGroups;
+        if (!Array.isArray(cleaned.equipment) || cleaned.equipment.length === 0) cleaned.equipment = meta.equipment;
+      }
       return cleaned;
     };
 
@@ -5533,7 +5584,8 @@ async function hydrateAllDataFromCloud() {
       const mediaDocs = await getServerFirestoreCollection("exercise_media");
       for (const d of mediaDocs) {
         const docData = d.data();
-        if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) continue;
+        const derivedMediaName = deriveExerciseNameFromEntry(d.id, docData || {});
+        if (docData?.isDeleted === true || isTombstonedHydrate(d.id, derivedMediaName)) continue;
         const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl, docData?.originalUrlOrBase64].find(isValidHydrateMedia);
         if (mUrl) {
           const mediaEntry = {
@@ -5545,16 +5597,18 @@ async function hydrateAllDataFromCloud() {
           cloudExerciseOverrides[d.id] = sanitizeHydratedEntry({
             ...(cloudExerciseOverrides[d.id] || {}),
             ...docData,
+            ...(derivedMediaName ? { name: derivedMediaName } : {}),
             ...mediaEntry
-          });
-          if (docData.exerciseName) {
-            const normName = docData.exerciseName.toLowerCase().trim();
-            if (!tombstoneSet.has(normName)) {
+          }, d.id);
+          if (derivedMediaName) {
+            const normName = derivedMediaName.toLowerCase().trim();
+            if (!isTombstonedHydrate(d.id, normName)) {
               cloudExerciseOverrides[normName] = sanitizeHydratedEntry({
                 ...(cloudExerciseOverrides[normName] || {}),
                 ...docData,
+                name: derivedMediaName,
                 ...mediaEntry
-              });
+              }, d.id);
             }
           }
         }
@@ -5568,22 +5622,25 @@ async function hydrateAllDataFromCloud() {
       const exDocs = await getServerFirestoreCollection("exercises");
       for (const d of exDocs) {
         const docData = d.data();
-        if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) continue;
+        const derivedExName = deriveExerciseNameFromEntry(d.id, docData || {});
+        if (docData?.isDeleted === true || isTombstonedHydrate(d.id, derivedExName)) continue;
         const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl].find(isValidHydrateMedia);
-        if (docData && (mUrl || docData.isCustom || docData.name)) {
+        if (docData && (mUrl || docData.isCustom || derivedExName)) {
           cloudExerciseOverrides[d.id] = sanitizeHydratedEntry({
             ...(cloudExerciseOverrides[d.id] || {}),
             ...docData,
+            ...(derivedExName ? { name: derivedExName } : {}),
             ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-          });
-          if (docData.name) {
-            const normName = docData.name.toLowerCase().trim();
-            if (!tombstoneSet.has(normName)) {
+          }, d.id);
+          if (derivedExName) {
+            const normName = derivedExName.toLowerCase().trim();
+            if (!isTombstonedHydrate(d.id, normName)) {
               cloudExerciseOverrides[normName] = sanitizeHydratedEntry({
                 ...(cloudExerciseOverrides[normName] || {}),
                 ...docData,
+                name: derivedExName,
                 ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-              });
+              }, d.id);
             }
           }
         }
@@ -5597,21 +5654,23 @@ async function hydrateAllDataFromCloud() {
       const genDocs = await getServerFirestoreCollection("generated_exercises");
       for (const d of genDocs) {
         const docData = d.data();
-        if (docData?.isDeleted === true || tombstoneSet.has(d.id.toLowerCase())) continue;
+        const derivedGenName = deriveExerciseNameFromEntry(d.id, docData || {});
+        if (docData?.isDeleted === true || isTombstonedHydrate(d.id, derivedGenName)) continue;
         const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl].find(isValidHydrateMedia);
-        if (docData && (mUrl || docData.isCustom || docData.name)) {
+        if (docData && (mUrl || docData.isCustom || derivedGenName)) {
           const entry = sanitizeHydratedEntry({
             ...docData,
+            ...(derivedGenName ? { name: derivedGenName } : {}),
             isCustom: true,
             ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-          });
+          }, d.id);
           cloudExerciseOverrides[d.id] = {
             ...(cloudExerciseOverrides[d.id] || {}),
             ...entry
           };
-          if (docData.name) {
-            const normName = docData.name.toLowerCase().trim();
-            if (!tombstoneSet.has(normName)) {
+          if (derivedGenName) {
+            const normName = derivedGenName.toLowerCase().trim();
+            if (!isTombstonedHydrate(d.id, normName)) {
               cloudExerciseOverrides[normName] = {
                 ...(cloudExerciseOverrides[normName] || {}),
                 ...entry

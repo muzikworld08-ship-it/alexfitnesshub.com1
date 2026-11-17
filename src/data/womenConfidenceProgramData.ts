@@ -287,13 +287,7 @@ export function isExplicitlyMarkedWomenWorkout(ex: any): boolean {
   if (!ex) return false;
   const gs = (ex.genderSuitability || ex.gender || ex.targetAudience || "").toString().toLowerCase().trim();
   if (gs === "women" || gs === "female") return true;
-
-  if (Array.isArray(ex.womenCategories) && ex.womenCategories.length > 0) return true;
-
-  if (Array.isArray(ex.programAssignments) && ex.programAssignments.some((p: string) => {
-    const pl = (p || "").toLowerCase();
-    return pl.includes("women") || pl.includes("female");
-  })) return true;
+  if (gs === "unisex" || gs === "men" || gs === "male" || gs === "all") return false;
 
   if (typeof ex.category === "string") {
     const cl = ex.category.toLowerCase();

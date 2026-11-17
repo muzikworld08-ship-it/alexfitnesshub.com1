@@ -47,6 +47,12 @@ import {
   getScheduleOverrides 
 } from "../utils/scheduleOverridesStore";
 import { isExerciseMatch } from "../utils/exerciseMatching";
+import {
+  hydrateHiddenOverrideExercises,
+  buildTombstoneMatcher,
+  deriveExerciseNameFromEntry,
+  inferExerciseMetadataFromName
+} from "../utils/exerciseHydration";
 import { fetchAllExerciseMediaFromDatabase } from "../utils/mediaStorageService";
 import { samplePopupTestimonials } from "../data/sampleTestimonials";
 import { queueWelcomeEmail, queueWorkoutSummaryEmail, queueBellyFatShredReminderEmail } from "../lib/mailTriggers";
@@ -999,30 +1005,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return e;
       });
 
-    // Also include any custom added workouts in cachedOverrides
-    Object.keys(cachedOverrides).forEach(key => {
-      const val = cachedOverrides[key];
-      if (val && typeof val === "object" && val.name && !deletedIdsSet.has(key) && val.isDeleted !== true) {
-        const valName = (val.name || "").toLowerCase().trim();
-        const isBase = baseExercisePool.some(b => b.id === key || b.name?.toLowerCase().trim() === valName);
-        if (val.isCustom === true || !isBase) {
-          if (!initialList.some(i => i.id === key)) {
-            initialList.push({
-              id: key,
-              category: "Gym Workouts",
-              difficulty: "Intermediate",
-              muscleGroups: ["Chest"],
-              equipment: ["Dumbbells"],
-              recommendedSets: "3-4",
-              recommendedReps: "10-12",
-              recommendedSetsReps: "3-4 Sets x 10-12 Reps",
-              isCustom: true,
-              ...val
-            } as Exercise);
-          }
-        }
+    const isCacheUsableMedia = (u: any): u is string => {
+      if (!u || typeof u !== "string") return false;
+      const t = u.trim().toLowerCase();
+      return Boolean(t && t !== "none" && t !== "deleted" && t !== "null");
+    };
+    const cachedCustom = hydrateHiddenOverrideExercises(
+      cachedOverrides,
+      baseExercisePool,
+      deletedIdsSet,
+      isCacheUsableMedia,
+      getExerciseGifUrl
+    );
+    for (const hydratedEx of cachedCustom) {
+      if (!initialList.some(i => i.id === hydratedEx.id || i.name.toLowerCase().trim() === hydratedEx.name.toLowerCase().trim())) {
+        initialList.push(hydratedEx);
       }
-    });
+    }
 
     setExercisesState(initialList);
     localStorage.setItem("fit_exercises", JSON.stringify(initialList));
@@ -1162,9 +1161,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         } catch {}
 
         const activeDeletedIds = new Set<string>([...serverDeletedIds, ...firestoreDeletedIds, ...localDeleted]);
+        const isTombstoned = buildTombstoneMatcher(activeDeletedIds);
 
         setExercisesState(prev => {
-          const baseList = [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES].filter(e => !activeDeletedIds.has(e.id) && !activeDeletedIds.has(e.name?.toLowerCase().trim()));
+          const baseList = [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES].filter(e => !isTombstoned(e.id, e.name));
           const mapped = baseList.map(ex => {
             const override = mergedOverrides[ex.id] || mergedOverrides[ex.name?.toLowerCase().trim()];
             const prevMatch = prev.find(p => p.id === ex.id);
@@ -1200,76 +1200,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             return finalEx;
           });
 
-          // Avoid duplicates and deleted items for custom/admin-saved workouts
+          // Hydrate ALL non-deleted custom/admin/media-saved workouts (including exerciseName-only & exercise-* slug entries)
           const customMap = new Map<string, Exercise>();
           const seenNames = new Set<string>(baseList.map(b => (b.name || "").toLowerCase().trim()).filter(Boolean));
-
-          // Any admin-saved custom or Firestore-persisted exercise
-          Object.keys(mergedOverrides).forEach(key => {
-            const val = mergedOverrides[key];
-            if (!val || typeof val !== "object" || !val.name || val.isDeleted === true) return;
-
-            const normName = (val.name || "").toLowerCase().trim();
-            const canonicalId = (val.id && typeof val.id === "string" && val.id.length > 0) ? val.id : key;
-
-            if (activeDeletedIds.has(canonicalId) || activeDeletedIds.has(normName) || activeDeletedIds.has(key)) return;
-
-            // Check if this is a base exercise (base exercises are already in mapped)
-            const isBase = baseList.some(b => b.id === canonicalId || b.id === key || (b.name || "").toLowerCase().trim() === normName);
-            if (isBase) return;
-
-            const isValidSavedExercise =
-              val.isCustom === true ||
-              Boolean(val.id && val.name && (val.category || (Array.isArray(val.muscleGroups) && val.muscleGroups.length > 0)));
-
-            if (isValidSavedExercise) {
-              const resolvedGif =
-                [val.customMediaUrl, val.gifUrl, val.imageUrl].find(isUsableMedia) ||
-                getExerciseGifUrl(val.name, val.category || "Gym Workouts");
-              const resolvedCategory = val.category || "Gym Workouts";
-              const resolvedCategories = Array.isArray(val.categories) && val.categories.length > 0 ? val.categories : [resolvedCategory];
-
-              if (!seenNames.has(normName) && !customMap.has(canonicalId)) {
-                seenNames.add(normName);
-                customMap.set(canonicalId, {
-                  id: canonicalId,
-                  name: val.name,
-                  category: resolvedCategory,
-                  categories: resolvedCategories,
-                  difficulty: val.difficulty || "Intermediate",
-                  muscleGroups: val.muscleGroups || ["Chest"],
-                  equipment: val.equipment || ["Dumbbells"],
-                  recommendedSets: val.recommendedSets || "3-4",
-                  recommendedReps: val.recommendedReps || "10-12",
-                  recommendedSetsReps: `${val.recommendedSets || "3-4"} Sets x ${val.recommendedReps || "10-12"} Reps`,
-                  ...val,
-                  gifUrl: resolvedGif,
-                  imageUrl: resolvedGif,
-                  customMediaUrl: [val.customMediaUrl].find(isUsableMedia) || resolvedGif,
-                  isCustom: true
-                } as Exercise);
-              } else if (customMap.has(canonicalId)) {
-                const existing = customMap.get(canonicalId)!;
-                customMap.set(canonicalId, {
-                  ...existing,
-                  ...val,
-                  id: canonicalId,
-                  category: resolvedCategory,
-                  categories: resolvedCategories,
-                  gifUrl: resolvedGif,
-                  imageUrl: resolvedGif,
-                  customMediaUrl: [val.customMediaUrl].find(isUsableMedia) || resolvedGif,
-                  isCustom: true
-                });
-              }
-            }
-          });
+          const hydratedCustoms = hydrateHiddenOverrideExercises(
+            mergedOverrides,
+            baseList,
+            activeDeletedIds,
+            isUsableMedia,
+            getExerciseGifUrl
+          );
+          for (const exItem of hydratedCustoms) {
+            const normName = (exItem.name || "").toLowerCase().trim();
+            if (!normName || seenNames.has(normName) || customMap.has(exItem.id)) continue;
+            seenNames.add(normName);
+            customMap.set(exItem.id, exItem);
+          }
 
           // Retain genuine admin-added custom exercises from in-memory state
           prev.forEach(p => {
             if (!p || !p.id || !p.name) return;
             const normName = (p.name || "").toLowerCase().trim();
-            if (activeDeletedIds.has(p.id) || activeDeletedIds.has(normName)) return;
+            if (isTombstoned(p.id, p.name)) return;
 
             const isBase = baseList.some(b => b.id === p.id || (b.name || "").toLowerCase().trim() === normName);
             if (isBase) return;
@@ -1277,7 +1229,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             if (p.isCustom === true) {
               if (!seenNames.has(normName) && !customMap.has(p.id)) {
                 seenNames.add(normName);
-                customMap.set(p.id, { ...p, isCustom: true });
+                customMap.set(p.id, { ...p, name: p.name.trim(), isCustom: true });
               } else if (customMap.has(p.id)) {
                 const existing = customMap.get(p.id)!;
                 customMap.set(p.id, { ...p, ...existing, isCustom: true });
@@ -1294,7 +1246,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 parsedRaw.forEach(p => {
                   if (!p || !p.id || !p.name) return;
                   const normName = (p.name || "").toLowerCase().trim();
-                  if (activeDeletedIds.has(p.id) || activeDeletedIds.has(normName)) return;
+                  if (isTombstoned(p.id, p.name)) return;
 
                   const isBase = baseList.some(b => b.id === p.id || (b.name || "").toLowerCase().trim() === normName);
                   if (isBase) return;
@@ -1347,33 +1299,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (isMockFirebase) return;
 
     try {
-      // 1. Exercise collection listener
-      const unsub = onSnapshot(collection(db, "exercises"), (snap) => {
+      // 1. Exercise & generated_exercises collection listeners (real-time sync for admin & public site)
+      const handleCollectionSnapshot = (snap: any, forceCustom = false) => {
         if (snap.empty) return;
         const firestoreMap: Record<string, Partial<Exercise>> = {};
         const deletedInSnap = new Set<string>();
         const newExercises: Exercise[] = [];
 
-        snap.docs.forEach(docSnap => {
+        snap.docs.forEach((docSnap: any) => {
           const d = docSnap.data() as any;
           if (d?.isDeleted === true) {
             deletedInSnap.add(docSnap.id);
             if (d.id) deletedInSnap.add(String(d.id));
             if (d.name) deletedInSnap.add(String(d.name).toLowerCase().trim());
+            if (d.exerciseName) deletedInSnap.add(String(d.exerciseName).toLowerCase().trim());
             return;
           }
           if (d) {
+            const derivedName = deriveExerciseNameFromEntry(docSnap.id, d);
             firestoreMap[docSnap.id] = d;
-            if (d.name && !EXERCISES.some(e => e.id === docSnap.id)) {
+            if (derivedName && !EXERCISES.some(e => e.id === docSnap.id)) {
+              const meta = inferExerciseMetadataFromName(derivedName, d);
+              const explicitMedia = [d.customMediaUrl, d.gifUrl, d.imageUrl].find(
+                (u: any) => typeof u === "string" && u.trim() && !["none", "deleted", "null"].includes(u.trim().toLowerCase())
+              ) || "";
+              const resolvedGif = explicitMedia || getExerciseGifUrl(meta.name, meta.category) || "";
               newExercises.push({
                 id: docSnap.id,
-                name: d.name,
-                muscleGroups: d.muscleGroups || [d.category || "Full Body"],
+                name: meta.name,
+                muscleGroups: meta.muscleGroups,
                 difficulty: d.difficulty || "Intermediate",
                 instructions: d.instructions || ["Perform with proper form."],
-                equipment: d.equipment || ["Bodyweight"],
-                category: d.category || "Gym Workouts",
-                categories: d.categories || [d.category || "Gym Workouts"],
+                equipment: meta.equipment,
+                category: meta.category,
+                categories: meta.categories,
                 commonMistakes: d.commonMistakes || [],
                 safetyTips: d.safetyTips || [],
                 alternativeExercises: d.alternativeExercises || [],
@@ -1383,10 +1342,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 movementExecution: d.movementExecution || "",
                 finishingPosition: d.finishingPosition || "",
                 regressionVariations: d.regressionVariations || [],
-                musclesWorked: d.musclesWorked || [d.category || "Full Body"],
-                gifUrl: d.customMediaUrl || d.gifUrl || d.imageUrl || getExerciseGifUrl(d.name || d.exerciseName, d.category),
-                imageUrl: d.customMediaUrl || d.imageUrl || d.gifUrl || getExerciseGifUrl(d.name || d.exerciseName, d.category),
-                customMediaUrl: d.customMediaUrl,
+                musclesWorked: d.musclesWorked || meta.muscleGroups,
+                gifUrl: resolvedGif,
+                imageUrl: resolvedGif,
+                customMediaUrl: typeof d.customMediaUrl === "string" && d.customMediaUrl.trim() && !["none", "deleted", "null"].includes(d.customMediaUrl.trim().toLowerCase()) ? d.customMediaUrl : "",
                 customMediaType: d.customMediaType || "image",
                 description: d.description || "",
                 duration: d.duration || "45s",
@@ -1397,7 +1356,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 caloriesBurned: d.caloriesBurned || 110,
                 benefits: d.benefits || [],
                 trainerTips: d.trainerTips || "",
-                safetyNotes: d.safetyNotes || ""
+                safetyNotes: d.safetyNotes || "",
+                isCustom: forceCustom || d.isCustom === true
               });
             }
           }
@@ -1422,9 +1382,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             return ex;
           });
 
-          // Add newly discovered exercises from Firestore
+          // Add newly discovered exercises from Firestore (deduplicate by ID or lowercase trimmed name)
           for (const newEx of newExercises) {
-            if (!deletedInSnap.has(newEx.id) && !updated.some(u => u.id === newEx.id)) {
+            const newNorm = newEx.name.toLowerCase().trim();
+            if (!deletedInSnap.has(newEx.id) && !deletedInSnap.has(newNorm) && !updated.some(u => u.id === newEx.id || u.name.toLowerCase().trim() === newNorm)) {
               updated.unshift(newEx);
               changed = true;
             }
@@ -1436,8 +1397,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
           return prev;
         });
-      }, (err) => {
+      };
+
+      const unsub = onSnapshot(collection(db, "exercises"), (snap) => handleCollectionSnapshot(snap, false), (err) => {
         console.warn("Real-time Firestore exercise listener notice:", err?.message || err);
+      });
+      const unsubGenerated = onSnapshot(collection(db, "generated_exercises"), (snap) => handleCollectionSnapshot(snap, true), (err) => {
+        console.warn("Real-time Firestore generated_exercises listener notice:", err?.message || err);
       });
 
       // 2. Real-time listener for 'assets_manifest' collection
@@ -1617,6 +1583,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       return () => {
         unsub();
+        unsubGenerated();
         manifestUnsub();
         challengesUnsub();
         deletedUnsub();
@@ -5085,7 +5052,8 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     const setsReps = workoutData.recommendedSetsReps || `${sets} Sets x ${reps} Reps`;
     const cleanInputMedia = [workoutData.customMediaUrl, workoutData.gifUrl, workoutData.imageUrl].find(
       u => typeof u === "string" && u.trim() && !["none", "deleted", "null"].includes(u.trim().toLowerCase())
-    ) || getExerciseGifUrl(workoutName || "Custom Workout", workoutData.category || "Gym Workouts");
+    ) || "";
+    const exactCanonicalGif = cleanInputMedia || (workoutName ? getExerciseGifUrl(workoutName, workoutData.category || "") : "");
 
     const { reuseIfExists: _ignoreReuse, ...cleanWorkoutPayload } = workoutData;
     const resolvedCategory = cleanWorkoutPayload.category || "Gym Workouts";
@@ -5128,8 +5096,8 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       safetyNotes: cleanWorkoutPayload.safetyNotes || "Warm up thoroughly before working sets.",
       category: resolvedCategory,
       categories: resolvedCategories,
-      gifUrl: cleanInputMedia,
-      imageUrl: cleanInputMedia,
+      gifUrl: exactCanonicalGif,
+      imageUrl: exactCanonicalGif,
       customMediaUrl: cleanInputMedia,
       isCustom: true
     };

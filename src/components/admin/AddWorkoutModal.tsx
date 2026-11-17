@@ -79,11 +79,17 @@ export default function AddWorkoutModal({
     return pid.includes("women") || pid.includes("female");
   }, [programId]);
 
-  // Sync activeTier if targetDifficulty changes
+  // Sync activeTier and reset stale custom creation fields when modal opens
   React.useEffect(() => {
     if (targetDifficulty) {
       setActiveTier(targetDifficulty);
       setCustomDifficulty(targetDifficulty);
+    }
+    if (isOpen) {
+      setFormNotice(null);
+      setCustomName("");
+      setCustomInstructions("");
+      setCustomGifUrl("");
     }
   }, [targetDifficulty, isOpen]);
 
@@ -248,7 +254,7 @@ export default function AddWorkoutModal({
         ? [customInstructions.trim()] 
         : ["Execute controlled movement with strict posture and tempo."],
       restTime: activeTier === "Beginner" ? "60s" : (activeTier === "Advanced" ? "90s" : "45s"),
-      gifUrl: customGifUrl.trim() || getExerciseGifUrl(customName.trim(), customCategory),
+      gifUrl: customGifUrl.trim(),
       coachingCues: ["Maintain core tension and controlled eccentric phase."],
       genderSuitability: isWomenProgram || targetAudience === "Women" ? "Women" : targetAudience,
       womenCategories: (isWomenProgram || targetAudience === "Women") ? [customCategory] : undefined

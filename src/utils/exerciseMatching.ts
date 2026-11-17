@@ -29,8 +29,6 @@ const EXERCISE_ALIASES: Record<string, string> = {
   "plank": "isometric forearm plank",
   "forearm plank": "isometric forearm plank",
   "plank hold": "isometric forearm plank",
-  "side plank": "isometric forearm plank",
-  "side plank hold": "isometric forearm plank",
   "russian twist": "seated russian twists",
   "russian twists": "seated russian twists",
   "bicycle crunch": "bicycle crunches",
@@ -42,8 +40,6 @@ const EXERCISE_ALIASES: Record<string, string> = {
   "hanging leg raises": "hanging knee / leg raises",
   "leg raises": "hanging knee / leg raises",
   "knee raises": "hanging knee / leg raises",
-  "dead bug": "bicycle crunches",
-  "dead bugs": "bicycle crunches",
 
   // Legs & Glutes
   "squat": "bodyweight deep air squats",
@@ -56,9 +52,6 @@ const EXERCISE_ALIASES: Record<string, string> = {
   "barbell squat": "barbell back squat",
   "glute bridge": "supine kinetic glute bridges",
   "glute bridges": "supine kinetic glute bridges",
-  "frog pumps": "supine kinetic glute bridges",
-  "frog pump": "supine kinetic glute bridges",
-  "frog pump glute burner": "supine kinetic glute bridges",
   "lunges": "dumbbell walking lunges",
   "lunge": "dumbbell walking lunges",
   "walking lunges": "dumbbell walking lunges",
@@ -85,12 +78,6 @@ const EXERCISE_ALIASES: Record<string, string> = {
   "cable row": "seated cable row",
   "bent over row": "barbell bent-over row",
   "barbell row": "barbell bent-over row",
-  "facepull": "triceps cable rope pushdown",
-  "facepulls": "triceps cable rope pushdown",
-  "face pull": "triceps cable rope pushdown",
-  "face pulls": "triceps cable rope pushdown",
-  "cable face pull": "triceps cable rope pushdown",
-  "deadlift": "romanian deadlift (rdl)",
   "rdl": "romanian deadlift (rdl)",
   "romanian deadlift": "romanian deadlift (rdl)",
 
@@ -230,9 +217,13 @@ export function areExercisesConflicting(nameA?: string | null, nameB?: string | 
   if (isSquatOrLegA && isShoulderB) return true;
   if (isShoulderA && isSquatOrLegB) return true;
 
-  // Dead bug is a supine core drill and must never match a deadlift
-  if ((a.includes("dead bug") || a.includes("deadbug")) && b.includes("deadlift")) return true;
-  if ((b.includes("dead bug") || b.includes("deadbug")) && a.includes("deadlift")) return true;
+  // Dead bug is a supine core drill and must never match a deadlift or bicycle crunch
+  if ((a.includes("dead bug") || a.includes("deadbug")) && (b.includes("deadlift") || b.includes("bicycle"))) return true;
+  if ((b.includes("dead bug") || b.includes("deadbug")) && (a.includes("deadlift") || a.includes("bicycle"))) return true;
+
+  // Face pull is a rear-delt/upper-back exercise and must never match triceps pushdown
+  if ((a.includes("face pull") || a.includes("facepull")) && (b.includes("tricep") || b.includes("pushdown"))) return true;
+  if ((b.includes("face pull") || b.includes("facepull")) && (a.includes("tricep") || a.includes("pushdown"))) return true;
 
   return false;
 }
@@ -253,6 +244,10 @@ export function isMediaUrlConflictingWithExercise(exerciseName: string, mediaUrl
 
   const isBench = /\b(bench|bench\s*press)\b/i.test(name);
   if (isBench && (url.includes("squat") || url.includes("lunge") || url.includes("leg-press") || url.includes("deadlift"))) {
+    return true;
+  }
+
+  if (/\b(face\s*pull|facepull)\b/i.test(name) && (url.includes("pushdown") || url.includes("tricep"))) {
     return true;
   }
 

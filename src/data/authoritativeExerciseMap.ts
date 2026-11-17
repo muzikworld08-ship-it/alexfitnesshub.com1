@@ -87,13 +87,17 @@ export function resolveAuthenticExercise(
     } catch {}
   }
 
-  // 1. Check custom exercise overrides in localStorage FIRST (admin custom GIF overrides take highest precedence)
+  // 1. Check exact match in custom exercise overrides in localStorage (admin custom GIF overrides)
+  let exactOverrideUrl = "";
   if (typeof window !== "undefined" && window.localStorage) {
     try {
       const overridesRaw = window.localStorage.getItem("fit_custom_exercise_overrides");
       if (overridesRaw) {
         const overridesObj = JSON.parse(overridesRaw);
-        const directOverride = overridesObj[cleanName] || overridesObj[cleanLower] || Object.values(overridesObj).find((o: any) => o?.name && o.name.toLowerCase().trim() === cleanLower);
+        const directOverride =
+          overridesObj[cleanName] ||
+          overridesObj[cleanLower] ||
+          Object.values(overridesObj).find((o: any) => o?.name && o.name.toLowerCase().trim() === cleanLower);
         if (directOverride) {
           if (directOverride.isDeleted) {
             return {
@@ -106,34 +110,48 @@ export function resolveAuthenticExercise(
             const s = String(u || "").trim();
             return s && !["none", "deleted", "null"].includes(s.toLowerCase()) ? s : "";
           };
-          const customUrl = pickValid(directOverride.customMediaUrl) || pickValid(directOverride.gifUrl) || pickValid(directOverride.imageUrl);
-          if (customUrl) {
-            return {
-              name: cleanName,
-              gifUrl: customUrl,
-              muscleGroup: directOverride.category || targetCat
-            };
-          }
+          exactOverrideUrl =
+            pickValid(directOverride.customMediaUrl) ||
+            pickValid(directOverride.gifUrl) ||
+            pickValid(directOverride.imageUrl);
+          if (directOverride.category) targetCat = directOverride.category;
         }
       }
     } catch {}
+  }
 
+  // 2. If fallbackGifUrl was explicitly supplied by caller (and doesn't conflict), honor it over any heuristic lookup.
+  // If no explicit fallbackGifUrl was provided, use the exact override URL if one exists.
+  if (fallbackGifUrl && !isMediaUrlConflictingWithExercise(cleanName, fallbackGifUrl)) {
+    return {
+      name: cleanName,
+      gifUrl: exactOverrideUrl || fallbackGifUrl,
+      muscleGroup: targetCat
+    };
+  }
+  if (exactOverrideUrl) {
+    return {
+      name: cleanName,
+      gifUrl: exactOverrideUrl,
+      muscleGroup: targetCat
+    };
+  }
+
+  // 3. Check exact match (never loose substring) in localStorage fit_exercises
+  if (typeof window !== "undefined" && window.localStorage) {
     try {
       const stored = window.localStorage.getItem("fit_exercises");
       if (stored) {
         const list = JSON.parse(stored);
         if (Array.isArray(list)) {
           const match = list.find((e: any) => {
-            if (!e.name) return false;
-            return cleanLower === e.name.toLowerCase().trim() ||
-                   isExerciseMatch(cleanName, e.name) || 
-                   cleanLower.includes(e.name.toLowerCase()) || 
-                   e.name.toLowerCase().includes(cleanLower);
+            if (!e?.name) return false;
+            return cleanLower === e.name.toLowerCase().trim() || isExerciseMatch(cleanName, e.name);
           });
           if (match) {
             if (match.category) targetCat = match.category;
-            const candidateMedia = match.customMediaUrl || match.gifUrl || match.imageUrl;
-            if (candidateMedia) {
+            const candidateMedia = String(match.customMediaUrl || match.gifUrl || match.imageUrl || "").trim();
+            if (candidateMedia && !["none", "deleted", "null"].includes(candidateMedia.toLowerCase())) {
               return {
                 name: cleanName,
                 gifUrl: candidateMedia,
@@ -146,42 +164,12 @@ export function resolveAuthenticExercise(
     } catch {}
   }
 
-  // 2. If fallbackGifUrl was explicitly supplied, preserve it
-  if (fallbackGifUrl) {
-    return {
-      name: cleanName,
-      gifUrl: fallbackGifUrl,
-      muscleGroup: targetCat
-    };
-  }
-
-  // 3. Check Canonical Exercises database for exact authentic GIF match or alias match
+  // 4. Check Canonical Exercises database for STRICT exact authentic GIF match or exact alias match only.
+  // Never borrow another unrelated exercise's GIF via loose token or category matching.
   if (!mediaUrl) {
-    let canonicalMatch = CANONICAL_EXERCISES.find(e => 
-      e.name.toLowerCase().trim() === cleanLower ||
-      isExerciseMatch(cleanName, e.name)
+    const canonicalMatch = CANONICAL_EXERCISES.find(
+      e => e.name.toLowerCase().trim() === cleanLower || isExerciseMatch(cleanName, e.name)
     );
-
-    // If no direct or alias match, look for smart non-conflicting substring match in CANONICAL_EXERCISES
-    if (!canonicalMatch) {
-      canonicalMatch = CANONICAL_EXERCISES.find(e => {
-        const eLower = e.name.toLowerCase().trim();
-        if (areExercisesConflicting(cleanLower, eLower)) return false;
-        return cleanLower.includes(eLower) || eLower.includes(cleanLower);
-      });
-    }
-
-    // If still no canonical match, look for non-conflicting token match in CANONICAL_EXERCISES
-    if (!canonicalMatch) {
-      const tokens = cleanLower.split(/[\s-]+/).filter(t => t.length > 3 && !["with", "hold", "deep", "high", "tempo", "dynamic", "kinetic", "calisthenic"].includes(t));
-      if (tokens.length > 0) {
-        canonicalMatch = CANONICAL_EXERCISES.find(e => {
-          const eLower = e.name.toLowerCase().trim();
-          if (areExercisesConflicting(cleanLower, eLower)) return false;
-          return tokens.some(t => eLower.includes(t));
-        });
-      }
-    }
 
     if (canonicalMatch) {
       if (canonicalMatch.gifUrl) {
@@ -192,7 +180,6 @@ export function resolveAuthenticExercise(
       }
     }
 
-    // If fallbackGifUrl was provided, check conflict
     if (fallbackGifUrl && !isMediaUrlConflictingWithExercise(cleanName, fallbackGifUrl)) {
       mediaUrl = fallbackGifUrl;
     }
