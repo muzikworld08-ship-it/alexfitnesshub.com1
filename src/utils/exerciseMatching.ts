@@ -254,8 +254,58 @@ export function isMediaUrlConflictingWithExercise(exerciseName: string, mediaUrl
   return false;
 }
 
+interface ExerciseLookupIndex<T extends { id: string; name: string }> {
+  byExactLowerName: Map<string, T>;
+  byExactLowerId: Map<string, T>;
+  byCleanName: Map<string, T>;
+  byNormName: Map<string, T>;
+  byCleanId: Map<string, T>;
+  byNormId: Map<string, T>;
+}
+
+const EXERCISE_INDEX_CACHE = new WeakMap<readonly any[], ExerciseLookupIndex<any>>();
+
+function getExerciseLookupIndex<T extends { id: string; name: string }>(exercises: T[]): ExerciseLookupIndex<T> {
+  const cached = EXERCISE_INDEX_CACHE.get(exercises);
+  if (cached) return cached;
+
+  const index: ExerciseLookupIndex<T> = {
+    byExactLowerName: new Map(),
+    byExactLowerId: new Map(),
+    byCleanName: new Map(),
+    byNormName: new Map(),
+    byCleanId: new Map(),
+    byNormId: new Map()
+  };
+
+  for (const ex of exercises) {
+    if (!ex) continue;
+    const nameLower = (ex.name || "").toLowerCase().trim();
+    const idLower = (ex.id || "").toLowerCase().trim();
+
+    if (nameLower) {
+      if (!index.byExactLowerName.has(nameLower)) index.byExactLowerName.set(nameLower, ex);
+      const cleanN = cleanExerciseString(nameLower);
+      if (cleanN && !index.byCleanName.has(cleanN)) index.byCleanName.set(cleanN, ex);
+      const normN = cleanN.replace(/\s+/g, "");
+      if (normN && !index.byNormName.has(normN)) index.byNormName.set(normN, ex);
+    }
+
+    if (idLower) {
+      if (!index.byExactLowerId.has(idLower)) index.byExactLowerId.set(idLower, ex);
+      const cleanI = cleanExerciseString(idLower);
+      if (cleanI && !index.byCleanId.has(cleanI)) index.byCleanId.set(cleanI, ex);
+      const normI = cleanI.replace(/\s+/g, "");
+      if (normI && !index.byNormId.has(normI)) index.byNormId.set(normI, ex);
+    }
+  }
+
+  EXERCISE_INDEX_CACHE.set(exercises, index);
+  return index;
+}
+
 /**
- * Finds the exact matching exercise from an array of exercises.
+ * Finds the exact matching exercise from an array of exercises in O(1) amortized time.
  * Strictly avoids cross-exercise collisions so an exercise never mutates into a different name or GIF.
  */
 export function findMatchingExercise<T extends { id: string; name: string }>(
@@ -267,12 +317,31 @@ export function findMatchingExercise<T extends { id: string; name: string }>(
 
   const cleanName = exerciseName?.trim();
   const cleanId = exerciseId?.trim();
+  const idx = getExerciseLookupIndex(exercises);
 
   // 1. Direct Name exact match (Highest Priority: human exercise name is ground truth)
   if (cleanName) {
-    const directName = exercises.find(ex => ex.name.toLowerCase().trim() === cleanName.toLowerCase());
+    const nameLower = cleanName.toLowerCase();
+    const directName = idx.byExactLowerName.get(nameLower);
     if (directName) {
       return directName;
+    }
+
+    const aliasFromTarget = EXERCISE_ALIASES[nameLower];
+    if (aliasFromTarget) {
+      const aliasExact = idx.byExactLowerName.get(aliasFromTarget);
+      if (aliasExact && !areExercisesConflicting(cleanName, aliasExact.name)) {
+        return aliasExact;
+      }
+    }
+
+    const cleanTarget = cleanExerciseString(nameLower);
+    const normTarget = cleanTarget.replace(/\s+/g, "");
+    const fastNameMatch =
+      idx.byCleanName.get(cleanTarget) ||
+      (normTarget ? (idx.byNormName.get(normTarget) || idx.byNormName.get(normTarget + "s") || (normTarget.endsWith("s") ? idx.byNormName.get(normTarget.slice(0, -1)) : undefined)) : undefined);
+    if (fastNameMatch && !areExercisesConflicting(cleanName, fastNameMatch.name) && isExerciseMatch(cleanName, fastNameMatch.name)) {
+      return fastNameMatch;
     }
 
     const matchByName = exercises.find(ex => isExerciseMatch(cleanName, ex.name));
@@ -284,31 +353,36 @@ export function findMatchingExercise<T extends { id: string; name: string }>(
   // 2. Direct ID match - BUT ONLY if it does not conflict with cleanName!
   if (cleanId) {
     const trimmedId = cleanId.toLowerCase();
-    const directId = exercises.find(ex => ex.id.toLowerCase() === trimmedId);
+    const directId = idx.byExactLowerId.get(trimmedId);
     if (directId) {
       // If exerciseName was provided, NEVER return an exercise with a conflicting name!
       if (!cleanName || (!areExercisesConflicting(cleanName, directId.name) && isExerciseMatch(cleanName, directId.name))) {
         return directId;
       }
     }
-  }
 
-  // 3. Normalized ID match with non-conflicting constraint
-  if (cleanId) {
-    for (const ex of exercises) {
-      if (isExerciseMatch(cleanId, ex.id)) {
-        if (!cleanName || (!areExercisesConflicting(cleanName, ex.name) && isExerciseMatch(cleanName, ex.name))) {
-          return ex;
-        }
+    // 3. Normalized ID match with non-conflicting constraint
+    const cleanTargetId = cleanExerciseString(trimmedId);
+    const normTargetId = cleanTargetId.replace(/\s+/g, "");
+    const fastIdMatch =
+      idx.byCleanId.get(cleanTargetId) ||
+      (normTargetId ? (idx.byNormId.get(normTargetId) || idx.byNormId.get(normTargetId + "s") || (normTargetId.endsWith("s") ? idx.byNormId.get(normTargetId.slice(0, -1)) : undefined)) : undefined);
+    if (fastIdMatch && isExerciseMatch(cleanId, fastIdMatch.id)) {
+      if (!cleanName || (!areExercisesConflicting(cleanName, fastIdMatch.name) && isExerciseMatch(cleanName, fastIdMatch.name))) {
+        return fastIdMatch;
       }
     }
   }
 
-  // 4. Check explicit alias resolution for name
+  // 4. Check explicit alias resolution for name/id
   if (cleanName) {
     const aliasResolved = EXERCISE_ALIASES[cleanName.toLowerCase()] || EXERCISE_ALIASES[cleanId?.toLowerCase() || ""];
     if (aliasResolved) {
-      const aliasMatch = exercises.find(ex => 
+      const aliasDirect = idx.byExactLowerName.get(aliasResolved);
+      if (aliasDirect && !areExercisesConflicting(cleanName, aliasDirect.name)) {
+        return aliasDirect;
+      }
+      const aliasMatch = exercises.find(ex =>
         ex.name.toLowerCase().trim() === aliasResolved ||
         isExerciseMatch(aliasResolved, ex.name)
       );

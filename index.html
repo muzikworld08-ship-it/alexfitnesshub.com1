@@ -72,6 +72,7 @@
     <link rel="preconnect" href="https://js.paystack.co" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;500;700&display=swap" />
     <title>AlexFitnessHub | Premium Fitness Training Platform</title>
     <meta name="description" content="A modern, premium, and fully functional fitness platform with custom workout libraries, AI coaching, secure payments, and progress tracking." />
     <meta name="keywords" content="fitness, workout planner, AI coaching, ALEXFITNESSHUB, muscle gain, fat loss, weight tracking, sports science" />
@@ -100,7 +101,26 @@
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <script async src="https://js.paystack.co/v2/inline.js"></script>
+    <script>
+      // Lazy-load Paystack script on idle or first interaction so initial paint stays fast on slow mobile networks
+      (function() {
+        var loaded = false;
+        function loadPaystack() {
+          if (loaded || document.querySelector('script[src*="js.paystack.co"]')) return;
+          loaded = true;
+          var s = document.createElement("script");
+          s.async = true;
+          s.src = "https://js.paystack.co/v2/inline.js";
+          document.head.appendChild(s);
+        }
+        if ("requestIdleCallback" in window) {
+          window.requestIdleCallback(loadPaystack, { timeout: 3500 });
+        } else {
+          setTimeout(loadPaystack, 2000);
+        }
+        window.addEventListener("pointerdown", loadPaystack, { once: true, passive: true });
+      })();
+    </script>
     <script>
       // Build Hash Version Identifier - Unified Single Codebase
       window.__APP_BUILD_ID__ = "__BUILD_ID__";

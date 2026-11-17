@@ -883,16 +883,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [customChallenges]);
 
   // Reliable admin request headers helper
-  const getAdminHeaders = async (forceRefresh: boolean = false): Promise<Record<string, string>> => {
+  const getAdminHeaders = useCallback(async (forceRefresh: boolean = false): Promise<Record<string, string>> => {
     const token = await getFirebaseIdToken(forceRefresh);
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
     return headers;
-  };
+  }, []);
 
-  // Synchronize registered user accounts from Firestore
+  // Synchronize registered user accounts from Firestore (admins only — regular athletes cannot list users collection)
   const refreshAllSystemUsers = async () => {
-    if (isMockFirebase) return;
+    const isAdminUser = user?.role === "admin" || (user?.email ? isEmailAdmin(user.email) : false);
+    if (isMockFirebase || !isAdminUser) return;
     try {
       const snap = await getDocs(collection(db, "users"));
       if (!snap.empty) {
@@ -1038,55 +1039,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (stored) localOverrides = JSON.parse(stored);
         } catch {}
 
-        // 1. Fetch authoritative overrides & deleted IDs from Express Firestore-backed API (no-store)
+        // 1-3. Fetch server custom-media API, persistent media DB, Firestore collections, and deleted tombstones concurrently
         let serverOverrides: Record<string, any> = {};
         let serverDeletedIds: string[] = [];
-        try {
-          const headers = await getAdminHeaders();
-          const apiRes = await fetch("/api/exercises/custom-media?fresh=true", { headers, cache: "no-store" });
-          const apiData = await apiRes.json();
-          if (apiData.success && apiData.overrides) {
-            serverOverrides = apiData.overrides;
-          }
-          if (apiData.success && Array.isArray(apiData.deletedExerciseIds)) {
-            serverDeletedIds = apiData.deletedExerciseIds;
-          }
-        } catch (sErr) {
-          console.warn("Server overrides fetch warning:", sErr);
-        }
-        
-        // 2. Fetch persistent exercise media records authoritatively from Cloud Firestore
         let persistentMediaOverrides: Record<string, any> = {};
-        try {
-          persistentMediaOverrides = await fetchAllExerciseMediaFromDatabase();
-        } catch (pErr) {
-          console.warn("Persistent media fetch warning:", pErr);
-        }
-
-        let firestoreOverrides: Record<string, any> = {};
-        if (!isMockFirebase) {
-          for (const colName of ["exercises", "generated_exercises"]) {
-            try {
-              const snap = await getDocs(collection(db, colName));
-              snap.docs.forEach(d => {
-                const data = d.data();
-                if (data && !data.isDeleted) {
-                  firestoreOverrides[d.id] = {
-                    ...(firestoreOverrides[d.id] || {}),
-                    ...data,
-                    ...(colName === "generated_exercises" ? { isCustom: true } : {})
-                  };
-                }
-              });
-            } catch (fErr) {
-              console.warn(`Firestore ${colName} overrides fetch notice (using server + local cache):`, fErr);
-            }
-          }
-        }
-
-        // 3. Fetch deleted exercises list from Cloud Firestore so mobile deletions manifest on desktop immediately
+        const firestoreOverrides: Record<string, any> = {};
         const firestoreDeletedIds: string[] = [];
-        if (!isMockFirebase) {
+
+        const fetchServerOverridesTask = async () => {
+          try {
+            const headers = await getAdminHeaders();
+            const apiRes = await fetch("/api/exercises/custom-media?fresh=true", { headers, cache: "no-store" });
+            const apiData = await apiRes.json();
+            if (apiData.success && apiData.overrides) {
+              serverOverrides = apiData.overrides;
+            }
+            if (apiData.success && Array.isArray(apiData.deletedExerciseIds)) {
+              serverDeletedIds = apiData.deletedExerciseIds;
+            }
+          } catch (sErr) {
+            console.warn("Server overrides fetch warning:", sErr);
+          }
+        };
+
+        const fetchPersistentMediaTask = async () => {
+          try {
+            persistentMediaOverrides = await fetchAllExerciseMediaFromDatabase();
+          } catch (pErr) {
+            console.warn("Persistent media fetch warning:", pErr);
+          }
+        };
+
+        const fetchFirestoreColTask = async (colName: "exercises" | "generated_exercises") => {
+          if (isMockFirebase) return;
+          try {
+            const snap = await getDocs(collection(db, colName));
+            snap.docs.forEach(d => {
+              const data = d.data();
+              if (data && !data.isDeleted) {
+                firestoreOverrides[d.id] = {
+                  ...(firestoreOverrides[d.id] || {}),
+                  ...data,
+                  ...(colName === "generated_exercises" ? { isCustom: true } : {})
+                };
+              }
+            });
+          } catch (fErr) {
+            console.warn(`Firestore ${colName} overrides fetch notice (using server + local cache):`, fErr);
+          }
+        };
+
+        const fetchFirestoreDeletedTask = async () => {
+          if (isMockFirebase) return;
           try {
             const delSnap = await getDocs(collection(db, "deleted_exercises"));
             delSnap.docs.forEach(d => {
@@ -1098,7 +1102,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } catch (delErr) {
             console.warn("Firestore deleted_exercises fetch notice:", delErr);
           }
-        }
+        };
+
+        await Promise.all([
+          fetchServerOverridesTask(),
+          fetchPersistentMediaTask(),
+          fetchFirestoreColTask("exercises"),
+          fetchFirestoreColTask("generated_exercises"),
+          fetchFirestoreDeletedTask()
+        ]);
 
         const isUsableMedia = (u: any): u is string => {
           if (!u || typeof u !== "string") return false;

@@ -1,30 +1,29 @@
 import React, { useState, useEffect } from "react";
-import { MessageSquare } from "lucide-react";
 import { auth } from "./lib/firebase";
 import ErrorBoundary, { SectionErrorBoundary } from "./components/ErrorBoundary";
 import { AppProvider, useApp, checkIsUserPremium, isEmailAdmin } from "./context/AppContext";
-import { motion, AnimatePresence, type Variants } from "motion/react";
 import Navbar from "./components/Navbar";
 import HomeView from "./components/HomeView";
-import { TestimonialPopup } from "./components/TestimonialPopup";
-import DailyNotificationController from "./components/DailyNotificationController";
 import GlobalSkeletonLoader, { DashboardSkeleton, CardGridSkeleton, ListSkeleton } from "./components/SkeletonLoader";
 import { preloadCriticalFitnessAssets } from "./utils/imageCache";
-import { WorkoutTimerProvider } from "./context/WorkoutTimerContext";
+import { WorkoutTimerProvider, useWorkoutTimer } from "./context/WorkoutTimerContext";
 import { StoreProvider, useStore } from "./context/StoreContext";
-import { ProductDetailModal } from "./components/store/ProductDetailModal";
-import { CartDrawer } from "./components/store/CartDrawer";
-import { CartAddedToast } from "./components/store/CartAddedToast";
-import { CheckoutModal } from "./components/store/CheckoutModal";
 import { PATH_TO_VIEW_MAP, VIEW_TO_PATH_MAP, resolveViewFromPath } from "./constants/routes";
-import FloatingWorkoutTimerOverlay from "./components/FloatingWorkoutTimerOverlay";
-import { OfflineIndicator } from "./components/OfflineIndicator";
 import SocialLinksBar from "./components/SocialLinksBar";
 import { BRAND_CONTACTS } from "./constants/socialLinks";
 import { lazyWithRetry } from "./utils/lazyWithRetry";
 import { resolveAthleteTier, resolveActiveProgramId } from "./utils/athleteContext";
 import { getSyncStatus, subscribeScheduleOverrides } from "./utils/scheduleOverridesStore";
-import { getWorkoutForProgramAndDay } from "./data/challengeEngineDatabase";
+
+// Lazy-load secondary overlays & store modals so they don't bloat the initial entry bundle
+const TestimonialPopup = lazyWithRetry(() => import("./components/TestimonialPopup").then(m => ({ default: m.TestimonialPopup })), "TestimonialPopup");
+const DailyNotificationController = lazyWithRetry(() => import("./components/DailyNotificationController"), "DailyNotificationController");
+const ProductDetailModal = lazyWithRetry(() => import("./components/store/ProductDetailModal").then(m => ({ default: m.ProductDetailModal })), "ProductDetailModal");
+const CartDrawer = lazyWithRetry(() => import("./components/store/CartDrawer").then(m => ({ default: m.CartDrawer })), "CartDrawer");
+const CartAddedToast = lazyWithRetry(() => import("./components/store/CartAddedToast").then(m => ({ default: m.CartAddedToast })), "CartAddedToast");
+const CheckoutModal = lazyWithRetry(() => import("./components/store/CheckoutModal").then(m => ({ default: m.CheckoutModal })), "CheckoutModal");
+const FloatingWorkoutTimerOverlay = lazyWithRetry(() => import("./components/FloatingWorkoutTimerOverlay"), "FloatingWorkoutTimerOverlay");
+const OfflineIndicator = lazyWithRetry(() => import("./components/OfflineIndicator").then(m => ({ default: m.OfflineIndicator })), "OfflineIndicator");
 
 // Lazy-load heavy views with automatic retry to drastically reduce initial bundle size and prevent chunk-load errors
 const WorkoutLibrary = lazyWithRetry(() => import("./components/WorkoutLibrary"), "WorkoutLibrary");
@@ -59,26 +58,6 @@ const PdfProductDetailView = lazyWithRetry(() => import("./components/pdf/PdfPro
 const PdfDownloadSuccessView = lazyWithRetry(() => import("./components/pdf/PdfDownloadSuccessView").then(m => ({ default: m.PdfDownloadSuccessView })), "PdfDownloadSuccessView");
 const MyDigitalProductsView = lazyWithRetry(() => import("./components/pdf/MyDigitalProductsView").then(m => ({ default: m.MyDigitalProductsView })), "MyDigitalProductsView");
 
-const pageTransitionVariants: Variants = {
-  initial: {
-    opacity: 0,
-  },
-  animate: {
-    opacity: 1,
-    transition: {
-      duration: 0.08,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-  exit: {
-    opacity: 0,
-    transition: {
-      duration: 0.04,
-      ease: "easeOut",
-    },
-  },
-};
-
 
 
 function FitnessAppContent() {
@@ -92,7 +71,22 @@ function FitnessAppContent() {
     setView
   } = useApp();
 
-  const { selectedProductForDetail, setSelectedProductForDetail } = useStore();
+  const {
+    selectedProductForDetail,
+    setSelectedProductForDetail,
+    isCartOpen,
+    isCheckoutOpen,
+    lastAddedItem
+  } = useStore();
+  const { isActive: isTimerActive } = useWorkoutTimer();
+  const [hasOpenedCart, setHasOpenedCart] = useState(false);
+  const [hasOpenedCheckout, setHasOpenedCheckout] = useState(false);
+  useEffect(() => {
+    if (isCartOpen) setHasOpenedCart(true);
+  }, [isCartOpen]);
+  useEffect(() => {
+    if (isCheckoutOpen) setHasOpenedCheckout(true);
+  }, [isCheckoutOpen]);
   const [selectedPdfProductId, setSelectedPdfProductId] = useState<string>("afh-journal-weight-loss");
   const [pdfSuccessOrderId, setPdfSuccessOrderId] = useState<string>("");
   const [pdfSuccessReference, setPdfSuccessReference] = useState<string>("");
@@ -501,11 +495,8 @@ function FitnessAppContent() {
   if (isBlockedUser) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#090d16] text-white p-6 font-sans select-none">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-6"
+        <div
+          className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-6 animate-scale-in"
         >
           <div className="mx-auto w-16 h-16 rounded-full bg-red-950/50 border border-red-500/30 flex items-center justify-center">
             <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -595,7 +586,7 @@ function FitnessAppContent() {
               Sign Out & Reload
             </button>
           </div>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -603,10 +594,8 @@ function FitnessAppContent() {
   if (authDatabaseError) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#090d16] text-[#F8FAFC] p-6 font-sans">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-6"
+        <div
+          className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-6 animate-scale-in"
         >
           <div className="mx-auto w-16 h-16 rounded-full bg-amber-950/50 border border-amber-500/30 flex items-center justify-center">
             <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -639,7 +628,7 @@ function FitnessAppContent() {
               Retry Connection
             </button>
           </div>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -656,19 +645,14 @@ function FitnessAppContent() {
         />
       )}
 
-      {/* Main Switchboard Route Mounting with Staggered Transitions */}
+      {/* Main Switchboard Route Mounting with instant non-blocking CSS fade transition */}
       <main className={currentView === "admin" ? "min-h-screen w-full max-w-full flex flex-col justify-start overflow-x-hidden" : "pt-20 lg:pt-24 pb-16 min-h-screen w-full max-w-full flex flex-col justify-start overflow-x-hidden"}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentView}
-            variants={pageTransitionVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="w-full max-w-full flex-grow flex flex-col min-w-0 overflow-x-hidden"
-          >
-            <React.Suspense fallback={renderSkeletonForView(currentView)}>
-              <SectionErrorBoundary key={currentView} resetKey={currentView} fallbackTitle="Module Temporarily Unavailable">
+        <div
+          key={currentView}
+          className="w-full max-w-full flex-grow flex flex-col min-w-0 overflow-x-hidden animate-fade-in"
+        >
+          <React.Suspense fallback={renderSkeletonForView(currentView)}>
+            <SectionErrorBoundary key={currentView} resetKey={currentView} fallbackTitle="Module Temporarily Unavailable">
               {currentView === "home" && (
                 <HomeView setView={handleSetView} onOpenAuth={() => handleSetView("login")} />
               )}
@@ -796,53 +780,84 @@ function FitnessAppContent() {
               )}
               </SectionErrorBoundary>
             </React.Suspense>
-          </motion.div>
-        </AnimatePresence>
+        </div>
       </main>
 
       <SyncStatusFooter user={user} />
 
-      {/* Auth State Modal */}
-      <React.Suspense fallback={null}>
-        <AuthModal 
-          isOpen={isAuthOpen} 
-          onClose={() => setIsAuthOpen(false)} 
-        />
-      </React.Suspense>
-
-      {/* Customer Reviews & Testimonial Popup (Omitted on Admin page to prevent overlapping admin desks and modals) */}
-      {currentView !== "admin" && <TestimonialPopup />}
-
-      {/* Official Merchandise & Store Modals (Fallback modal when not on dedicated product-detail page) */}
-      {currentView !== "product-detail" && (
-        <ProductDetailModal
-          product={selectedProductForDetail}
-          onClose={() => setSelectedProductForDetail(null)}
-        />
+      {/* Auth State Modal (only fetched/mounted when opened) */}
+      {isAuthOpen && (
+        <React.Suspense fallback={null}>
+          <AuthModal 
+            isOpen={isAuthOpen} 
+            onClose={() => setIsAuthOpen(false)} 
+          />
+        </React.Suspense>
       )}
 
-      <CartDrawer />
+      {/* Customer Reviews & Testimonial Popup (Omitted on Admin page to prevent overlapping admin desks and modals) */}
+      {currentView !== "admin" && (
+        <React.Suspense fallback={null}>
+          <TestimonialPopup />
+        </React.Suspense>
+      )}
 
-      <CartAddedToast />
+      {/* Official Merchandise & Store Modals (Only fetched/mounted on interaction) */}
+      {selectedProductForDetail && currentView !== "product-detail" && (
+        <React.Suspense fallback={null}>
+          <ProductDetailModal
+            product={selectedProductForDetail}
+            onClose={() => setSelectedProductForDetail(null)}
+          />
+        </React.Suspense>
+      )}
 
-      <CheckoutModal />
+      {(isCartOpen || hasOpenedCart) && (
+        <React.Suspense fallback={null}>
+          <CartDrawer />
+        </React.Suspense>
+      )}
+
+      {lastAddedItem && (
+        <React.Suspense fallback={null}>
+          <CartAddedToast />
+        </React.Suspense>
+      )}
+
+      {(isCheckoutOpen || hasOpenedCheckout) && (
+        <React.Suspense fallback={null}>
+          <CheckoutModal />
+        </React.Suspense>
+      )}
 
       {/* Daily Reminders & System Compliance Alerts Desk */}
-      <DailyNotificationController />
+      <React.Suspense fallback={null}>
+        <DailyNotificationController />
+      </React.Suspense>
 
       {/* Premium Upgrade Modal Screen */}
-      <PremiumUpgradeModal 
-        isOpen={isPremiumModalOpen} 
-        onClose={() => setIsPremiumModalOpen(false)} 
-        featureName={premiumModalFeatureName} 
-        onUpgrade={navigateToPricing} 
-      />
+      {isPremiumModalOpen && (
+        <React.Suspense fallback={null}>
+          <PremiumUpgradeModal 
+            isOpen={isPremiumModalOpen} 
+            onClose={() => setIsPremiumModalOpen(false)} 
+            featureName={premiumModalFeatureName} 
+            onUpgrade={navigateToPricing} 
+          />
+        </React.Suspense>
+      )}
 
-      {/* Persistent Floating Workout Rest Timer Overlay (Omitted on Admin desk to prevent covering action buttons) */}
-      {currentView !== "admin" && <FloatingWorkoutTimerOverlay />}
+      {/* Persistent Floating Workout Rest Timer Overlay (Only fetched/mounted when a timer session is active) */}
+      {isTimerActive && currentView !== "admin" && (
+        <React.Suspense fallback={null}>
+          <FloatingWorkoutTimerOverlay />
+        </React.Suspense>
+      )}
 
       {/* Network Connectivity & PWA Offline Status Indicator */}
-      <OfflineIndicator />
+      <React.Suspense fallback={null}>
+        <OfflineIndicator />
+      </React.Suspense>
 
     </div>
   );
@@ -850,6 +865,7 @@ function FitnessAppContent() {
 
 function SyncStatusFooter({ user }: { user: any }) {
   const [syncTick, setSyncTick] = useState(0);
+  const [day1DrillCount, setDay1DrillCount] = useState<number | null>(null);
 
   useEffect(() => {
     const unsub = subscribeScheduleOverrides(() => setSyncTick(t => t + 1));
@@ -866,10 +882,32 @@ function SyncStatusFooter({ user }: { user: any }) {
   const syncStatus = React.useMemo(() => getSyncStatus(), [syncTick]);
   const tier = resolveAthleteTier(user);
   const programId = resolveActiveProgramId(user);
-  const dayPlan = React.useMemo(
-    () => getWorkoutForProgramAndDay(programId, 1, undefined, { fitnessLevel: tier }),
-    [programId, tier, syncTick]
-  );
+
+  // Dynamically load challengeEngineDatabase on idle so the entry bundle never embeds the full dataset upfront
+  useEffect(() => {
+    let cancelled = false;
+    const loadCount = () => {
+      import("./data/challengeEngineDatabase")
+        .then((mod) => {
+          if (cancelled) return;
+          const plan = mod.getWorkoutForProgramAndDay(programId, 1, undefined, { fitnessLevel: tier });
+          setDay1DrillCount(plan.exercises.length);
+        })
+        .catch(() => {});
+    };
+    if (syncTick === 0 && typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const id = (window as any).requestIdleCallback(loadCount, { timeout: 1500 });
+      return () => {
+        cancelled = true;
+        if ("cancelIdleCallback" in window) (window as any).cancelIdleCallback(id);
+      };
+    }
+    loadCount();
+    return () => {
+      cancelled = true;
+    };
+  }, [programId, tier, syncTick]);
+
   const buildId = typeof window !== "undefined" ? ((window as any).__APP_BUILD_ID__ || "dev") : "dev";
 
   return (
@@ -889,7 +927,7 @@ function SyncStatusFooter({ user }: { user: any }) {
         <span>
           Tier: <strong className="text-slate-700">{tier}</strong> | Program:{" "}
           <strong className="text-slate-700">{programId}</strong> | Day 1 Drills:{" "}
-          <strong className="text-slate-700">{dayPlan.exercises.length}</strong>
+          <strong className="text-slate-700">{day1DrillCount ?? "…"}</strong>
         </span>
       </div>
     </footer>

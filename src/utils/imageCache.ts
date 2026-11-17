@@ -33,6 +33,8 @@ export function isImageCached(url?: string | null): boolean {
   return LOADED_IMAGE_URLS.has(trimmed);
 }
 
+let flushCacheTimer: ReturnType<typeof setTimeout> | null = null;
+
 /**
  * Marks an image URL as cached/loaded.
  */
@@ -43,16 +45,20 @@ export function markImageCached(url?: string | null): void {
 
   if (!LOADED_IMAGE_URLS.has(trimmed)) {
     LOADED_IMAGE_URLS.add(trimmed);
-    
-    // Periodically save top keys to sessionStorage
-    try {
-      if (typeof window !== "undefined" && window.sessionStorage && LOADED_IMAGE_URLS.size <= 300) {
-        sessionStorage.setItem(
-          "fit_image_cache_keys",
-          JSON.stringify(Array.from(LOADED_IMAGE_URLS))
-        );
-      }
-    } catch (e) {}
+
+    // Debounce sessionStorage writes so scrolling through many images batches into 1 write
+    if (typeof window !== "undefined" && window.sessionStorage && LOADED_IMAGE_URLS.size <= 300) {
+      if (flushCacheTimer) return;
+      flushCacheTimer = setTimeout(() => {
+        flushCacheTimer = null;
+        try {
+          sessionStorage.setItem(
+            "fit_image_cache_keys",
+            JSON.stringify(Array.from(LOADED_IMAGE_URLS))
+          );
+        } catch (e) {}
+      }, 400);
+    }
   }
 }
 

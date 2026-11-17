@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from "react";
 
 export type TimerPhase = "idle" | "prep" | "work" | "rest" | "completed";
 
@@ -124,7 +124,10 @@ export const WorkoutTimerProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const timerRef = useRef<any>(null);
   const stopwatchRef = useRef<any>(null);
 
-  const currentExercise = exercises[currentExerciseIndex] || (isActive ? { name: workoutTitle || "Current Exercise" } : null);
+  const currentExercise = useMemo(
+    () => exercises[currentExerciseIndex] || (isActive ? { name: workoutTitle || "Current Exercise" } : null),
+    [exercises, currentExerciseIndex, isActive, workoutTitle]
+  );
 
   // Speech Helper
   const speakText = useCallback((text: string) => {
@@ -349,42 +352,73 @@ export const WorkoutTimerProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setVoiceEnabled(prev => !prev);
   }, []);
 
+  const timerContextValue = useMemo<WorkoutTimerContextType>(() => ({
+    isActive,
+    workoutTitle,
+    exercises,
+    currentExerciseIndex,
+    currentExercise,
+    currentSet,
+    totalSets,
+    phase,
+    secondsRemaining,
+    totalPhaseDuration,
+    elapsedWorkoutSeconds,
+    isPaused,
+    isMinimized,
+    soundEnabled,
+    voiceEnabled,
+    startWorkout,
+    startQuickRest,
+    startActiveSet,
+    pauseTimer,
+    resumeTimer,
+    togglePause,
+    addSeconds,
+    setRestDuration,
+    skipRest,
+    nextExercise,
+    prevExercise,
+    stopWorkout,
+    toggleMinimize,
+    setMinimized: setIsMinimized,
+    toggleSound,
+    toggleVoice,
+  }), [
+    isActive,
+    workoutTitle,
+    exercises,
+    currentExerciseIndex,
+    currentExercise,
+    currentSet,
+    totalSets,
+    phase,
+    secondsRemaining,
+    totalPhaseDuration,
+    elapsedWorkoutSeconds,
+    isPaused,
+    isMinimized,
+    soundEnabled,
+    voiceEnabled,
+    startWorkout,
+    startQuickRest,
+    startActiveSet,
+    pauseTimer,
+    resumeTimer,
+    togglePause,
+    addSeconds,
+    setRestDuration,
+    skipRest,
+    nextExercise,
+    prevExercise,
+    stopWorkout,
+    toggleMinimize,
+    toggleSound,
+    toggleVoice,
+  ]);
+
   return (
-    <WorkoutTimerContext.Provider
-      value={{
-        isActive,
-        workoutTitle,
-        exercises,
-        currentExerciseIndex,
-        currentExercise,
-        currentSet,
-        totalSets,
-        phase,
-        secondsRemaining,
-        totalPhaseDuration,
-        elapsedWorkoutSeconds,
-        isPaused,
-        isMinimized,
-        soundEnabled,
-        voiceEnabled,
-        startWorkout,
-        startQuickRest,
-        startActiveSet,
-        pauseTimer,
-        resumeTimer,
-        togglePause,
-        addSeconds,
-        setRestDuration,
-        skipRest,
-        nextExercise,
-        prevExercise,
-        stopWorkout,
-        toggleMinimize,
-        setMinimized: setIsMinimized,
-        toggleSound,
-        toggleVoice,
-      }}
-    >
+    <WorkoutTimerContext.Provider value={timerContextValue}>
       {children}
     </WorkoutTimerContext.Provider>
   );

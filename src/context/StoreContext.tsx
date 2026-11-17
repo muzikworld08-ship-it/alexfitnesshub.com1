@@ -9,6 +9,7 @@ import {
   deleteDoc,
   query,
   orderBy,
+  where,
   arrayUnion
 } from "firebase/firestore";
 import { db, getFirebaseIdToken } from "../lib/firebase";
@@ -255,9 +256,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, []);
 
-  // Load orders from Firestore
+  // Load orders from Firestore (admins listen to all orders; regular users query only their own to avoid permission errors & overfetching)
   useEffect(() => {
-    if (!user) {
+    if (!user?.uid) {
       setOrders([]);
       setIsLoadingOrders(false);
       return;
@@ -268,7 +269,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       const ordersRef = collection(db, "orders");
-      const ordersQuery = query(ordersRef, orderBy("createdAt", "desc"));
+      const ordersQuery = isAdmin
+        ? query(ordersRef, orderBy("createdAt", "desc"))
+        : query(ordersRef, where("userId", "==", user.uid));
       
       unsubscribe = onSnapshot(ordersQuery, (snapshot) => {
         const loaded: StoreOrder[] = [];
@@ -279,6 +282,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             id: docSnap.id
           });
         });
+        if (!isAdmin) {
+          loaded.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+        }
         setOrders(loaded);
         setIsLoadingOrders(false);
       }, (error) => {
@@ -293,7 +299,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       unsubscribe();
     };
-  }, [user]);
+  }, [user?.uid, isAdmin]);
 
   // Cart calculations
   const cartSubtotal = useMemo(() => {
@@ -326,7 +332,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const orderTotal = Math.max(0, cartSubtotal - discountAmount + shippingFee);
 
-  const applyPromoCode = (code: string) => {
+  const applyPromoCode = useCallback((code: string) => {
     const clean = code.trim().toUpperCase();
     if (clean === "ALEXFIT10" || clean === "IRONPRIME" || clean === "ALEXFIT15" || clean === "FREESHIP") {
       setAppliedPromoCode(clean);
@@ -334,12 +340,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return { success: true, message: `Promo code "${clean}" applied successfully!` };
     }
     return { success: false, message: "Invalid promo code. Try 'ALEXFIT10' for 10% off your order." };
-  };
+  }, []);
 
-  const removePromoCode = () => {
+  const removePromoCode = useCallback(() => {
     setAppliedPromoCode(null);
     localStorage.removeItem(PROMO_STORAGE_KEY);
-  };
+  }, []);
 
   const clearLastAddedItem = useCallback(() => {
     if (toastTimerRef.current) {
@@ -647,55 +653,88 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const resetToDefaultProducts = async () => {
+  const resetToDefaultProducts = useCallback(async () => {
     for (const prod of INITIAL_STORE_PRODUCTS) {
       await setDoc(doc(db, "products", prod.id), prod);
     }
-  };
+  }, []);
+
+  const storeContextValue = useMemo<StoreContextType>(() => ({
+    products,
+    isLoadingProducts,
+    cart,
+    isCartOpen,
+    setIsCartOpen,
+    isCheckoutOpen,
+    setIsCheckoutOpen,
+    selectedProductForDetail,
+    setSelectedProductForDetail,
+    selectedProductForBuyNow,
+    setSelectedProductForBuyNow,
+    addToCart,
+    buyNow,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    lastAddedItem,
+    clearLastAddedItem,
+    cartSubtotal,
+    cartCount,
+    shippingFee,
+    freeShippingThreshold,
+    appliedPromoCode,
+    discountAmount,
+    applyPromoCode,
+    removePromoCode,
+    orderTotal,
+    orders,
+    isLoadingOrders,
+    lastCompletedOrder,
+    setLastCompletedOrder,
+    submitStoreOrder,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+    permanentlyDeleteProduct,
+    updateOrderStatus,
+    resetToDefaultProducts
+  }), [
+    products,
+    isLoadingProducts,
+    cart,
+    isCartOpen,
+    isCheckoutOpen,
+    selectedProductForDetail,
+    selectedProductForBuyNow,
+    addToCart,
+    buyNow,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    lastAddedItem,
+    clearLastAddedItem,
+    cartSubtotal,
+    cartCount,
+    shippingFee,
+    appliedPromoCode,
+    discountAmount,
+    applyPromoCode,
+    removePromoCode,
+    orderTotal,
+    orders,
+    isLoadingOrders,
+    lastCompletedOrder,
+    submitStoreOrder,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+    permanentlyDeleteProduct,
+    updateOrderStatus,
+    resetToDefaultProducts
+  ]);
 
   return (
-    <StoreContext.Provider
-      value={{
-        products,
-        isLoadingProducts,
-        cart,
-        isCartOpen,
-        setIsCartOpen,
-        isCheckoutOpen,
-        setIsCheckoutOpen,
-        selectedProductForDetail,
-        setSelectedProductForDetail,
-        selectedProductForBuyNow,
-        setSelectedProductForBuyNow,
-        addToCart,
-        buyNow,
-        removeFromCart,
-        updateQuantity,
-        clearCart,
-        lastAddedItem,
-        clearLastAddedItem,
-        cartSubtotal,
-        cartCount,
-        shippingFee,
-        freeShippingThreshold,
-        appliedPromoCode,
-        discountAmount,
-        applyPromoCode,
-        removePromoCode,
-        orderTotal,
-        orders,
-        isLoadingOrders,
-        lastCompletedOrder,
-        setLastCompletedOrder,
-        submitStoreOrder,
-        addProduct,
-        updateProduct,
-        deleteProduct,
-        permanentlyDeleteProduct,
-        updateOrderStatus,
-        resetToDefaultProducts
-      }}
-    >
+    <StoreContext.Provider value={storeContextValue}>
       {children}
     </StoreContext.Provider>
   );

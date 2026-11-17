@@ -48,6 +48,32 @@ export default defineConfig({
   build: {
     outDir: "dist",
     assetsDir: "static",
-    emptyOutDir: true
+    emptyOutDir: true,
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("react-dom") || id.includes("/react/") || id.includes("scheduler")) {
+            return "vendor-react";
+          }
+          if (id.includes("firebase") || id.includes("@firebase")) {
+            return "vendor-firebase";
+          }
+          if (id.includes("recharts") || id.includes("d3-") || id.includes("victory-vendor")) {
+            return "vendor-charts";
+          }
+          if (id.includes("motion") || id.includes("framer-motion")) {
+            return "vendor-motion";
+          }
+          if (id.includes("lucide-react")) {
+            return "vendor-icons";
+          }
+          if (id.includes("pdf-lib")) {
+            return "vendor-pdf";
+          }
+        }
+      }
+    }
   }
 });

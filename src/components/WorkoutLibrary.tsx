@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useDeferredValue } from "react";
 import { useApp, isEmailAdmin } from "../context/AppContext";
 import { Exercise, PROGRAMS, Program, EXERCISES, getExerciseGifUrl } from "../data/exercises";
 import { getWorkoutForProgramAndDay, normalizeProgramId, resolveProgramDayOverride } from "../data/challengeEngineDatabase";
@@ -9,7 +9,6 @@ import YouTubePlayer from "./video/YouTubePlayer";
 import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import { findMatchingExercise } from "../utils/exerciseMatching";
-import { motion, AnimatePresence } from "motion/react";
 import { 
   Search, SlidersHorizontal, Lock, CheckCircle, PlusCircle, Sparkles, X, 
   ChevronRight, HelpCircle, AlertTriangle, Play, Shield, Calendar, Apple, Dumbbell, ArrowRight, Clipboard,
@@ -27,6 +26,35 @@ import { OptimizedImage } from "./OptimizedImage";
 import { uploadMediaToCloud, saveExerciseMediaToDatabase } from "../utils/mediaStorageService";
 import { resolveAdminMediaUrl } from "../lib/mediaStorage";
 import { useWorkoutTimer } from "../context/WorkoutTimerContext";
+
+// O(min(n,m))-space Levenshtein helper with O(1) length-diff fast reject for <= 1 typo matching
+function isWithinOneEdit(s1: string, s2: string): boolean {
+  const len1 = s1.length;
+  const len2 = s2.length;
+  if (Math.abs(len1 - len2) > 1) return false;
+  if (s1 === s2) return true;
+
+  let prevRow = new Array<number>(len1 + 1);
+  let currRow = new Array<number>(len1 + 1);
+  for (let i = 0; i <= len1; i++) prevRow[i] = i;
+
+  for (let j = 1; j <= len2; j++) {
+    currRow[0] = j;
+    let rowMin = currRow[0];
+    const ch2 = s2.charCodeAt(j - 1);
+    for (let i = 1; i <= len1; i++) {
+      const cost = s1.charCodeAt(i - 1) === ch2 ? 0 : 1;
+      const val = Math.min(currRow[i - 1] + 1, prevRow[i] + 1, prevRow[i - 1] + cost);
+      currRow[i] = val;
+      if (val < rowMin) rowMin = val;
+    }
+    if (rowMin > 1) return false;
+    const tmp = prevRow;
+    prevRow = currRow;
+    currRow = tmp;
+  }
+  return prevRow[len1] <= 1;
+}
 
 const BODY_PARTS_DETAILS = [
   { name: "Chest", desc: "Build thick pectoralis major/minor fibers and front deltoid symmetry", img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7G_JEDmUiLxTLVwV35owlnJssH_3TLx1qdCmEWF9WOZ4WfE9mFQL1ZpQ&s=10" },
@@ -341,6 +369,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
     activeBrowseTab,
     selectedEnvironment = "all"
   } = workoutFilters;
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const setSelectedEnvironment = (val: "all" | "home" | "gym" | ((p: "all" | "home" | "gym") => "all" | "home" | "gym")) => {
     const nextVal = typeof val === "function" ? val(selectedEnvironment as any) : val;
@@ -816,7 +845,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
 
   // Unified Smart Search Engine and organizing matches
   const filteredExercisesResult = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const query = deferredSearchQuery.trim().toLowerCase();
 
     const runPass = (relaxFilters: boolean): Exercise[] => {
       const matched = exercises.filter(ex => {
@@ -995,25 +1024,8 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
           }
 
           if (term.length >= 4) {
-            const levenshtein = (s1: string, s2: string): number => {
-              const track = Array(s2.length + 1).fill(null).map(() => Array(s1.length + 1).fill(null));
-              for (let i = 0; i <= s1.length; i += 1) track[0][i] = i;
-              for (let j = 0; j <= s2.length; j += 1) track[j][0] = j;
-              for (let j = 1; j <= s2.length; j += 1) {
-                for (let i = 1; i <= s1.length; i += 1) {
-                  const indicator = s1[i - 1] === s2[j - 1] ? 0 : 1;
-                  track[j][i] = Math.min(
-                    track[j][i - 1] + 1,
-                    track[j - 1][i] + 1,
-                    track[j - 1][i - 1] + indicator
-                  );
-                }
-              }
-              return track[s2.length][s1.length];
-            };
-
             const nameWords = nameLower.split(/\s+/);
-            if (nameWords.some(w => w.length >= 4 && levenshtein(w, term) <= 1)) return true;
+            if (nameWords.some(w => w.length >= 4 && isWithinOneEdit(w, term))) return true;
           }
 
           return false;
@@ -1061,14 +1073,14 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
     }
 
     return { list: strictResults, relaxed: false };
-  }, [exercises, searchQuery, selectedCategory, selectedDifficulty, selectedMuscleGroup, selectedEquipment, selectedExerciseType, selectedTrainingGoal, selectedEnvironment, isUserPremium, isAdmin, activeFiltersCount]);
+  }, [exercises, deferredSearchQuery, selectedCategory, selectedDifficulty, selectedMuscleGroup, selectedEquipment, selectedExerciseType, selectedTrainingGoal, selectedEnvironment, isUserPremium, isAdmin, activeFiltersCount]);
 
   const filteredExercises = filteredExercisesResult.list;
   const usedFilterRelaxation = filteredExercisesResult.relaxed;
 
   // Real-time Curated Workouts filter
   const filteredWorkouts = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const query = deferredSearchQuery.trim().toLowerCase();
     const muscleFilter = selectedMuscleGroup === "All" ? "" : selectedMuscleGroup.toLowerCase();
 
     return WORKOUTS_DATABASE.filter(workout => {
@@ -1152,7 +1164,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
         return false;
       });
     });
-  }, [searchQuery, selectedMuscleGroup, selectedDifficulty, selectedEnvironment]);
+  }, [deferredSearchQuery, selectedMuscleGroup, selectedDifficulty, selectedEnvironment]);
 
   // Display all matching exercises
   const displayedExercises = useMemo(() => {
@@ -1334,10 +1346,9 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
   const renderWorkoutCard = (workout: Workout) => {
     const isBookmarked = savedWorkouts.includes(workout.id);
     return (
-      <motion.div
+      <div
         key={workout.id}
-        whileHover={{ y: -2, transition: { duration: 0.2, ease: "easeOut" } }}
-        className="group bg-white border border-[#ECECEC] hover:border-[#C0392B]/50 hover:shadow-md rounded-2xl p-5 sm:p-6 transition-all duration-200 flex flex-col sm:flex-row gap-5 items-stretch text-left w-full"
+        className="group cv-auto bg-white border border-[#ECECEC] hover:border-[#C0392B]/50 hover:-translate-y-0.5 hover:shadow-md rounded-2xl p-5 sm:p-6 transition-all duration-200 flex flex-col sm:flex-row gap-5 items-stretch text-left w-full"
       >
         {/* Media */}
         <div className="relative w-full sm:w-64 h-40 bg-slate-900 overflow-hidden rounded-xl shrink-0 flex items-center justify-center">
@@ -1456,7 +1467,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             </button>
           </div>
         </div>
-      </motion.div>
+      </div>
     );
   };
 
@@ -3064,7 +3075,6 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
 
           {activeBrowseTab === "bodyparts" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-              <AnimatePresence mode="popLayout">
                 {BODY_PARTS_DETAILS.map((bp) => {
                   const count = exercises.filter(
                     (e) => {
@@ -3079,14 +3089,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                     }
                   ).length;
                   return (
-                    <motion.div
-                      layout
-                      initial={{ opacity: 0, scale: 0.96, y: 12 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.96, y: -10 }}
-                      whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
-                      whileTap={{ scale: 0.98 }}
-                      transition={{ duration: 0.22, ease: "easeOut" }}
+                    <div
                       key={bp.name}
                       onClick={() => {
                         triggerLiveLoad(`Isolating ${bp.name} drills...`, 300, () => {
@@ -3094,7 +3097,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                           setActiveBrowseTab("all");
                         });
                       }}
-                      className="group overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-[#C0392B]/50 hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between"
+                      className="group cv-auto overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-[#C0392B]/50 hover:-translate-y-1 active:scale-[0.98] hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col justify-between"
                     >
                       <div className="relative h-36 w-full bg-slate-900 overflow-hidden">
                         <OptimizedImage
@@ -3119,14 +3122,12 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                           Explore {bp.name} →
                         </span>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
-              </AnimatePresence>
             </div>
           ) : activeBrowseTab === "cardio" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-              <AnimatePresence mode="popLayout">
                 {CARDIO_DETAILS.map((c) => {
                   const count = exercises.filter(
                     (e) => {
@@ -3141,14 +3142,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                     }
                   ).length;
                   return (
-                    <motion.div
-                      layout
-                      initial={{ opacity: 0, scale: 0.96, y: 12 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.96, y: -10 }}
-                      whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
-                      whileTap={{ scale: 0.98 }}
-                      transition={{ duration: 0.22, ease: "easeOut" }}
+                    <div
                       key={c.name}
                       onClick={() => {
                         triggerLiveLoad(`Loading ${c.name} programs...`, 300, () => {
@@ -3157,7 +3151,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                           setActiveBrowseTab("all");
                         });
                       }}
-                      className="group overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-[#C0392B]/50 hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between"
+                      className="group cv-auto overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-[#C0392B]/50 hover:-translate-y-1 active:scale-[0.98] hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col justify-between"
                     >
                       <div className="relative h-40 w-full bg-slate-900 overflow-hidden">
                         <OptimizedImage
@@ -3182,14 +3176,12 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                           Start {c.name} Training →
                         </span>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
-              </AnimatePresence>
             </div>
           ) : activeBrowseTab === "mobility" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-              <AnimatePresence mode="popLayout">
                 {MOBILITY_DETAILS.map((mob) => {
                   const count = exercises.filter(
                     (e) => {
@@ -3204,14 +3196,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                     }
                   ).length;
                   return (
-                    <motion.div
-                      layout
-                      initial={{ opacity: 0, scale: 0.96, y: 12 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.96, y: -10 }}
-                      whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
-                      whileTap={{ scale: 0.98 }}
-                      transition={{ duration: 0.22, ease: "easeOut" }}
+                    <div
                       key={mob.name}
                       onClick={() => {
                         triggerLiveLoad(`Opening ${mob.name} flow...`, 300, () => {
@@ -3220,7 +3205,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                           setActiveBrowseTab("all");
                         });
                       }}
-                      className="group overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-[#C0392B]/50 hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between"
+                      className="group cv-auto overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-[#C0392B]/50 hover:-translate-y-1 active:scale-[0.98] hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col justify-between"
                     >
                       <div className="relative h-40 w-full bg-slate-900 overflow-hidden">
                         <OptimizedImage
@@ -3245,10 +3230,9 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                           Explore {mob.name} Range →
                         </span>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
-              </AnimatePresence>
             </div>
           ) : activeBrowseTab === "programs" ? (
             <div className="space-y-8 mb-12 animate-fade-in text-left">
@@ -3331,12 +3315,10 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                         const progDuration = calculateProgramWorkoutDuration(cat.id, exercises);
 
                         return (
-                          <motion.div
+                          <div
                             key={cat.id}
-                            whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
-                            whileTap={{ scale: 0.98 }}
                             onClick={() => setSelectedWorkoutCategory(cat.id)}
-                            className={`group bg-white border rounded-[18px] overflow-hidden shadow-xs hover:shadow-md transition-all duration-250 cursor-pointer flex flex-col justify-between ${
+                            className={`group cv-auto bg-white border rounded-[18px] overflow-hidden shadow-xs hover:-translate-y-1 active:scale-[0.98] hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between ${
                               cat.isProgram ? "border-[#E53935]/40 hover:border-[#E53935]" : "border-[#E8E8E8] hover:border-[#E53935]/50"
                             }`}
                           >
@@ -3395,7 +3377,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                                 </span>
                               </div>
                             </div>
-                          </motion.div>
+                          </div>
                         );
                       })}
                   </div>
@@ -3691,10 +3673,9 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                                   const isBookmarked = savedWorkouts.includes(exercise.id);
 
                                   return (
-                                    <motion.div
+                                    <div
                                       key={exercise.id}
-                                      whileHover={{ y: -2, transition: { duration: 0.2, ease: "easeOut" } }}
-                                      className="group bg-white border border-[#ECECEC] hover:border-[#E53935]/50 hover:shadow-md rounded-2xl p-5 sm:p-6 transition-all duration-200 flex flex-col md:flex-row gap-6 items-center text-left w-full"
+                                      className="group cv-auto bg-white border border-[#ECECEC] hover:border-[#E53935]/50 hover:-translate-y-0.5 hover:shadow-md rounded-2xl p-5 sm:p-6 transition-all duration-200 flex flex-col md:flex-row gap-6 items-center text-left w-full"
                                     >
                                       {/* Frameless Edge-to-Edge GIF Media */}
                                       <div className="relative w-full md:w-80 aspect-[16/10] workout-media-frameless workout-gif-frameless overflow-hidden rounded-2xl bg-transparent shrink-0 flex items-center justify-center">
@@ -3794,7 +3775,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                                           </button>
                                         </div>
                                       </div>
-                                    </motion.div>
+                                    </div>
                                   );
                                 })}
                               </div>
@@ -3872,10 +3853,9 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                                   const isBookmarked = savedWorkouts.includes(workout.id);
                                   
                                   return (
-                                    <motion.div
+                                    <div
                                       key={workout.id}
-                                      whileHover={{ y: -2, transition: { duration: 0.2, ease: "easeOut" } }}
-                                      className="group bg-white border border-[#ECECEC] hover:border-[#E53935]/50 hover:shadow-md rounded-2xl p-5 sm:p-6 transition-all duration-200 flex flex-col md:flex-row gap-6 items-center text-left w-full"
+                                      className="group cv-auto bg-white border border-[#ECECEC] hover:border-[#E53935]/50 hover:-translate-y-0.5 hover:shadow-md rounded-2xl p-5 sm:p-6 transition-all duration-200 flex flex-col md:flex-row gap-6 items-center text-left w-full"
                                     >
                                       {/* Frameless Media */}
                                       <div className="relative w-full md:w-80 h-48 bg-transparent overflow-hidden rounded-2xl workout-media-frameless shrink-0 flex items-center justify-center">
@@ -3963,7 +3943,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                                           </button>
                                         </div>
                                       </div>
-                                    </motion.div>
+                                    </div>
                                   );
                                 })}
                               </div>
@@ -4065,7 +4045,7 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 const topExercises = categoryList;
                 
                 return (
-                  <div key={categoryName} className="space-y-4">
+                  <div key={categoryName} className="space-y-4 cv-auto-section">
                     {/* Category Section Header */}
                     <div className="flex items-center justify-between border-b-2 border-red-50 pb-2.5">
                       <div className="flex items-center gap-2">
@@ -4094,22 +4074,14 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
 
                     {/* Category Exercise Grid */}
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <AnimatePresence mode="popLayout">
                         {topExercises.map((ex) => {
                           const isSaved = savedWorkouts.includes(ex.id);
                           const needsUpgrade = ex.isPremium && !isUserPremium;
                           
                           return (
-                            <motion.div 
-                              layout
-                              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                              whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
-                              whileTap={{ scale: 0.98 }}
-                              transition={{ duration: 0.25, ease: "easeOut" }}
+                            <div
                               key={ex.id}
-                              className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all"
+                              className="group cv-auto relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:-translate-y-1 active:scale-[0.98] hover:shadow-lg transition-all duration-200"
                             >
                             {/* Visual Media Block */}
                             <div className="relative w-full aspect-[16/10] bg-slate-50/60 overflow-hidden flex items-center justify-center">
@@ -4246,10 +4218,9 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                                 </button>
                               </div>
                             )}
-                          </motion.div>
+                          </div>
                         );
                       })}
-                      </AnimatePresence>
                     </div>
                   </div>
                 );
@@ -4259,22 +4230,14 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             /* SINGLE CATEGORY FULL LIST VIEW WITH PAGINATION */
             <div className="space-y-8">
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <AnimatePresence mode="popLayout">
                   {displayedExercises.map((ex) => {
                     const isSaved = savedWorkouts.includes(ex.id);
                     const needsUpgrade = ex.isPremium && !isUserPremium;
                     
                     return (
-                      <motion.div 
-                        layout
-                        initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                        whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
-                        whileTap={{ scale: 0.98 }}
-                        transition={{ duration: 0.25, ease: "easeOut" }}
+                      <div
                         key={ex.id}
-                        className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all"
+                        className="group cv-auto relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:-translate-y-1 active:scale-[0.98] hover:shadow-lg transition-all duration-200"
                       >
                       {/* Visual Media Block */}
                       <div className="relative w-full aspect-[16/10] bg-slate-50/60 overflow-hidden flex items-center justify-center">
@@ -4404,10 +4367,9 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                           </button>
                         </div>
                       )}
-                    </motion.div>
+                    </div>
                   );
                 })}
-                </AnimatePresence>
               </div>
 
               {/* Show more button if filtered exercises exceeds visibleCount (Disabled as all are displayed) */}

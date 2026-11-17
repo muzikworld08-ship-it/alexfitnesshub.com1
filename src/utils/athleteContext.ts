@@ -1,5 +1,5 @@
 import { ProgramId } from "../types/challengeEngine";
-import { normalizeProgramId } from "../data/challengeEngineDatabase";
+import { normalizeProgramId } from "./programNormalization";
 
 export type Tier = "beginner" | "intermediate" | "advanced";
 

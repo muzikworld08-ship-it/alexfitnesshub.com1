@@ -51,6 +51,7 @@ function initFromCache() {
 initFromCache();
 
 let isHydratingFromServer = false;
+let lastAutoRefreshAt = 0;
 
 /**
  * Fetch authoritative schedule overrides from server endpoint /api/admin/programs/overrides.
@@ -62,37 +63,39 @@ export async function refreshScheduleOverridesFromServer(): Promise<Record<strin
   isHydratingFromServer = true;
 
   try {
-    const res = await fetch("/api/admin/programs/overrides?fresh=true", { cache: "no-store" });
+    const canSyncDeleted = typeof window !== "undefined" && Boolean(window.localStorage);
+    const [res, delRes] = await Promise.all([
+      fetch("/api/admin/programs/overrides?fresh=true", { cache: "no-store" }),
+      canSyncDeleted
+        ? fetch("/api/exercises/deleted", { cache: "no-store" }).catch(() => null)
+        : Promise.resolve(null)
+    ]);
+
+    if (delRes && delRes.ok && canSyncDeleted) {
+      try {
+        const delData = await delRes.json();
+        if (delData?.deletedExercises && Array.isArray(delData.deletedExercises)) {
+          if (delData.authoritative) {
+            const fresh = Array.from(new Set(delData.deletedExercises.filter((x: any) => typeof x === "string")));
+            window.localStorage.setItem("fit_deleted_exercises", JSON.stringify(fresh));
+          } else {
+            const existingRaw = window.localStorage.getItem("fit_deleted_exercises");
+            let existing: string[] = [];
+            if (existingRaw) {
+              try { existing = JSON.parse(existingRaw); } catch {}
+            }
+            const merged = Array.from(new Set([...existing, ...delData.deletedExercises]));
+            window.localStorage.setItem("fit_deleted_exercises", JSON.stringify(merged));
+          }
+        }
+      } catch {}
+    }
+
     if (res.ok) {
       const data = await res.json();
       if (data && data.overrides && typeof data.overrides === "object") {
         setScheduleOverridesFromRemote(data.overrides, data.updatedAt || data.serverTime, data.source);
       }
-
-      // Also sync deleted exercises so client-side routine renders omit permanently deleted drills across devices
-      if (typeof window !== "undefined" && window.localStorage) {
-        try {
-          const delRes = await fetch("/api/exercises/deleted", { cache: "no-store" });
-          if (delRes.ok) {
-            const delData = await delRes.json();
-            if (delData?.deletedExercises && Array.isArray(delData.deletedExercises)) {
-              if (delData.authoritative) {
-                const fresh = Array.from(new Set(delData.deletedExercises.filter((x: any) => typeof x === "string")));
-                window.localStorage.setItem("fit_deleted_exercises", JSON.stringify(fresh));
-              } else {
-                const existingRaw = window.localStorage.getItem("fit_deleted_exercises");
-                let existing: string[] = [];
-                if (existingRaw) {
-                  try { existing = JSON.parse(existingRaw); } catch {}
-                }
-                const merged = Array.from(new Set([...existing, ...delData.deletedExercises]));
-                window.localStorage.setItem("fit_deleted_exercises", JSON.stringify(merged));
-              }
-            }
-          }
-        } catch {}
-      }
-
       if (data?.overrides) return getScheduleOverrides();
     }
   } catch (err) {
@@ -165,9 +168,17 @@ async function startRealtimeFirestoreScheduleSync() {
   }
 }
 
+function triggerThrottledAutoRefresh() {
+  const now = Date.now();
+  if (now - lastAutoRefreshAt < 3500) return;
+  lastAutoRefreshAt = now;
+  refreshScheduleOverridesFromServer();
+}
+
 // Automatically sync latest overrides from server & Firestore on client startup and lifecycle events
 if (typeof window !== "undefined") {
   setTimeout(() => {
+    lastAutoRefreshAt = Date.now();
     refreshScheduleOverridesFromServer();
     startRealtimeFirestoreScheduleSync();
   }, 50);
@@ -175,22 +186,19 @@ if (typeof window !== "undefined") {
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
-        refreshScheduleOverridesFromServer();
+        triggerThrottledAutoRefresh();
       }
     });
   }
 
-  window.addEventListener("focus", () => {
-    refreshScheduleOverridesFromServer();
-  });
+  window.addEventListener("focus", triggerThrottledAutoRefresh);
+  window.addEventListener("online", triggerThrottledAutoRefresh);
 
-  window.addEventListener("online", () => {
-    refreshScheduleOverridesFromServer();
-  });
-
-  // Poll every 60 seconds while the app stays open so all devices reflect admin updates
+  // Poll every 60 seconds only when tab is visible so background tabs consume zero network/CPU
   setInterval(() => {
-    refreshScheduleOverridesFromServer();
+    if (typeof document === "undefined" || document.visibilityState === "visible") {
+      triggerThrottledAutoRefresh();
+    }
   }, 60_000);
 
   // Cross-tab sync for schedule overrides

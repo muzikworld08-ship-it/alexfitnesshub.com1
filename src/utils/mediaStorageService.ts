@@ -277,19 +277,25 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
 
   if (!isMockFirebase && db) {
     const deletedSet = new Set<string>();
-    try {
-      const delSnap = await getDocs(collection(db, "deleted_exercises"));
-      delSnap.forEach((d) => {
+    const [delRes, mediaRes, exRes, genRes, manifestRes] = await Promise.allSettled([
+      getDocs(collection(db, "deleted_exercises")),
+      getDocs(collection(db, "exercise_media")),
+      getDocs(collection(db, "exercises")),
+      getDocs(collection(db, "generated_exercises")),
+      getDocs(collection(db, "assets_manifest"))
+    ]);
+
+    if (delRes.status === "fulfilled") {
+      delRes.value.forEach((d) => {
         deletedSet.add(d.id);
         const data = d.data();
         if (data?.id) deletedSet.add(String(data.id));
         if (data?.name) deletedSet.add(String(data.name).toLowerCase().trim());
       });
-    } catch {}
+    }
 
-    try {
-      const mediaSnap = await getDocs(collection(db, "exercise_media"));
-      mediaSnap.forEach((docSnap) => {
+    if (mediaRes.status === "fulfilled") {
+      mediaRes.value.forEach((docSnap) => {
         const d = docSnap.data();
         if (deletedSet.has(docSnap.id) || (d?.exerciseId && deletedSet.has(d.exerciseId))) return;
         const candidates = [d.customMediaUrl, d.gifUrl, d.imageUrl, d.originalUrlOrBase64, d.url];
@@ -301,14 +307,13 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
           }
         }
       });
-    } catch (e) {
-      console.warn("[MediaStorage] Firestore exercise_media fetch notice:", e);
+    } else {
+      console.warn("[MediaStorage] Firestore exercise_media fetch notice:", mediaRes.reason);
     }
 
-    for (const colName of ["exercises", "generated_exercises"]) {
-      try {
-        const exSnap = await getDocs(collection(db, colName));
-        exSnap.forEach((docSnap) => {
+    for (const [colName, resItem] of [["exercises", exRes], ["generated_exercises", genRes]] as const) {
+      if (resItem.status === "fulfilled") {
+        resItem.value.forEach((docSnap) => {
           const d = docSnap.data();
           if (d?.isDeleted || deletedSet.has(docSnap.id)) return;
           const url = [d.customMediaUrl, d.gifUrl, d.imageUrl].find(isUsableUrl);
@@ -319,14 +324,13 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
             }
           }
         });
-      } catch (e) {
-        console.warn(`[MediaStorage] Firestore ${colName} fetch notice:`, e);
+      } else {
+        console.warn(`[MediaStorage] Firestore ${colName} fetch notice:`, resItem.reason);
       }
     }
 
-    try {
-      const manifestSnap = await getDocs(collection(db, "assets_manifest"));
-      manifestSnap.forEach((docSnap) => {
+    if (manifestRes.status === "fulfilled") {
+      manifestRes.value.forEach((docSnap) => {
         const d = docSnap.data();
         const id = d.assetId || docSnap.id;
         if (deletedSet.has(id)) return;
@@ -335,8 +339,8 @@ export async function fetchAllExerciseMediaFromDatabase(): Promise<Record<string
           setEntry(id, url, d.mediaType === "video" ? "video" : "image");
         }
       });
-    } catch (e) {
-      console.warn("[MediaStorage] Firestore assets_manifest fetch notice:", e);
+    } else {
+      console.warn("[MediaStorage] Firestore assets_manifest fetch notice:", manifestRes.reason);
     }
   }
 
