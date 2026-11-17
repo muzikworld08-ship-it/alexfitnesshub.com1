@@ -41,7 +41,7 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import zlib from "zlib";
+import compression from "compression";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
 import crypto from "crypto";
@@ -167,105 +167,15 @@ app.use(cors({
   credentials: true,
 }));
 
-// Lightweight native Node gzip compression for JSON/JS/CSS/HTML/SVG payloads >= 1KB (dramatically speeds up mobile & slow connections)
-const COMPRESSIBLE_CONTENT_TYPE_RE = /^(text\/|application\/(json|javascript|ecmascript|xml|wasm)|image\/svg\+xml)/i;
-const BINARY_ASSET_PATH_RE = /\.(png|jpe?g|gif|webp|avif|mp4|webm|mov|pdf|zip|woff2?|ttf|ico)(\?|$)/i;
-app.use((req, res, next) => {
-  if (req.method === "HEAD" || req.headers.range || BINARY_ASSET_PATH_RE.test(req.path)) {
-    return next();
+// Standard Express gzip/deflate compression for compressible payloads >= 1KB (proper backpressure/drain, 304, and SSE handling)
+app.use(compression({
+  threshold: 1024,
+  level: 1,
+  filter: (req, res) => {
+    if (req.headers["x-no-compression"]) return false;
+    return compression.filter(req, res);
   }
-  const acceptEncoding = String(req.headers["accept-encoding"] || "").toLowerCase();
-  if (!acceptEncoding.includes("gzip")) {
-    return next();
-  }
-
-  let decided = false;
-  let compressing = false;
-  let gzipStream: zlib.Gzip | null = null;
-  const origWrite = res.write.bind(res);
-  const origEnd = res.end.bind(res);
-  const origWriteHead = res.writeHead.bind(res);
-
-  const initCompressionIfEligible = (firstChunkSize: number): boolean => {
-    if (decided) return compressing;
-    decided = true;
-
-    if (res.statusCode === 204 || res.statusCode === 304) return false;
-    if (res.getHeader("Content-Encoding")) return false;
-    const cacheCtrl = String(res.getHeader("Cache-Control") || "");
-    if (cacheCtrl.includes("no-transform")) return false;
-
-    const cType = String(res.getHeader("Content-Type") || "");
-    if (!COMPRESSIBLE_CONTENT_TYPE_RE.test(cType)) return false;
-    if (cType.includes("text/event-stream")) return false;
-
-    const rawLen = res.getHeader("Content-Length");
-    const knownLen = rawLen !== undefined ? Number(rawLen) : firstChunkSize;
-    if (Number.isFinite(knownLen) && knownLen < 1024 && rawLen !== undefined) return false;
-    if (rawLen === undefined && firstChunkSize < 1024) return false;
-
-    compressing = true;
-    res.removeHeader("Content-Length");
-    res.setHeader("Content-Encoding", "gzip");
-    const existingVary = String(res.getHeader("Vary") || "");
-    if (!existingVary.toLowerCase().includes("accept-encoding")) {
-      res.setHeader("Vary", existingVary ? `${existingVary}, Accept-Encoding` : "Accept-Encoding");
-    }
-
-    gzipStream = zlib.createGzip({ level: zlib.constants.Z_BEST_SPEED });
-    gzipStream.on("data", (compressedChunk) => {
-      origWrite(compressedChunk);
-    });
-    gzipStream.on("end", () => {
-      origEnd();
-    });
-    gzipStream.on("error", () => {
-      origEnd();
-    });
-    return true;
-  };
-
-  (res as any).writeHead = function(statusCode: number, ...args: any[]) {
-    // Strip Content-Length if headers passed directly to writeHead on compressible responses
-    const headersObj = typeof args[0] === "string" ? args[1] : args[0];
-    if (headersObj && typeof headersObj === "object") {
-      for (const [k, v] of Object.entries(headersObj)) {
-        res.setHeader(k, v as any);
-      }
-      if (initCompressionIfEligible(2048)) {
-        delete (headersObj as any)["Content-Length"];
-        delete (headersObj as any)["content-length"];
-      }
-    }
-    return origWriteHead(statusCode, ...args);
-  };
-
-  (res as any).write = function(chunk: any, encoding?: any, cb?: any) {
-    const len = chunk ? (Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(String(chunk))) : 0;
-    if (initCompressionIfEligible(len) && gzipStream) {
-      return gzipStream.write(chunk, encoding, cb);
-    }
-    return origWrite(chunk, encoding, cb);
-  };
-
-  (res as any).end = function(chunk?: any, encoding?: any, cb?: any) {
-    if (typeof chunk === "function") {
-      cb = chunk;
-      chunk = undefined;
-    } else if (typeof encoding === "function") {
-      cb = encoding;
-      encoding = undefined;
-    }
-    const len = chunk ? (Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(String(chunk))) : 0;
-    if (initCompressionIfEligible(len) && gzipStream) {
-      if (cb) gzipStream.once("end", cb);
-      return chunk !== undefined ? gzipStream.end(chunk, encoding) : gzipStream.end();
-    }
-    return origEnd(chunk, encoding, cb);
-  };
-
-  next();
-});
+}));
 
 // Apply rate limiting to all /api/ endpoints to prevent brute-force attacks and abuse
 const apiLimiter = rateLimit({
