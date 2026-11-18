@@ -465,6 +465,29 @@
         "updatedAt": { "type": "string", "format": "date-time" },
         "updatedBy": { "type": "string" }
       }
+    },
+    "Challenge": {
+      "title": "Fitness Challenge",
+      "description": "Custom or flagship challenge program definition created or edited by admins.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "durationDays": { "type": "number" },
+        "workouts": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title"]
+    },
+    "GenericStateDocument": {
+      "title": "Structured State Record",
+      "description": "Flexible user or system state document persisted in Firestore.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
@@ -571,6 +594,70 @@
     "system_settings/{settingId}": {
       "schema": "SystemSetting",
       "description": "Synchronized global settings and schedule overrides snapshot."
+    },
+    "generated_exercises/{exerciseId}": {
+      "schema": "Workout",
+      "description": "Mirror collection for admin-created and custom generated workouts."
+    },
+    "challenges/{challengeId}": {
+      "schema": "Challenge",
+      "description": "Flagship and admin-created multi-day challenge definitions."
+    },
+    "program_cycle_templates/{templateId}": {
+      "schema": "GenericStateDocument",
+      "description": "Master 7-day cycle templates per training program."
+    },
+    "program_overrides/{overrideId}": {
+      "schema": "ProgramSchedule",
+      "description": "Program-level schedule override records."
+    },
+    "home_workout_challenge/{userId}": {
+      "schema": "GenericStateDocument",
+      "description": "User progress for the Home Workout Challenge."
+    },
+    "user_academy_progress/{userId}": {
+      "schema": "GenericStateDocument",
+      "description": "User progress for the Lifestyle Fitness Academy."
+    },
+    "user_program_progress/{docId}": {
+      "schema": "GenericStateDocument",
+      "description": "Per-user resume and completion state across programs."
+    },
+    "calibration_goals/{userId}": {
+      "schema": "CalibrationGoals",
+      "description": "User daily hydration and sleep calibration targets."
+    },
+    "user_streak_history/{docId}": {
+      "schema": "GenericStateDocument",
+      "description": "Athlete daily workout and habit streak logs."
+    },
+    "vitals_logs/{logId}": {
+      "schema": "GenericStateDocument",
+      "description": "Body vitals and recovery readiness logs."
+    },
+    "app_settings/{settingId}": {
+      "schema": "GenericStateDocument",
+      "description": "Application configuration documents."
+    },
+    "user_inspirations/{docId}": {
+      "schema": "GenericStateDocument",
+      "description": "User inspiration and milestone notes."
+    },
+    "saved_workouts/{docId}": {
+      "schema": "UserWorkoutAction",
+      "description": "Saved custom workout routines."
+    },
+    "community_posts/{postId}": {
+      "schema": "GenericStateDocument",
+      "description": "Athlete community forum posts and updates."
+    },
+    "todos/{todoId}": {
+      "schema": "GenericStateDocument",
+      "description": "Athlete daily task checklist items."
+    },
+    "admin_activities/{activityId}": {
+      "schema": "GenericStateDocument",
+      "description": "Administrative audit log entries."
     }
   }
 }

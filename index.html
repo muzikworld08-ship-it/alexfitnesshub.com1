@@ -125,16 +125,14 @@
       // Build Hash Version Identifier - Unified Single Codebase
       window.__APP_BUILD_ID__ = "__BUILD_ID__";
 
-      // Immediate cache purge on version update across mobile and desktop
+      // Immediate cache purge on version update across mobile and desktop (preserves saved workout/schedule data)
       (function() {
         var CURRENT_VERSION = "__BUILD_ID__";
+        if (CURRENT_VERSION === "__BUILD_ID__" || CURRENT_VERSION === "dev-local") return;
         try {
           var stored = localStorage.getItem("afh_build_version");
           if (stored !== CURRENT_VERSION) {
-            console.log("[Version Sync] New deployment detected (" + CURRENT_VERSION + "). Purging stale caches...");
             localStorage.setItem("afh_build_version", CURRENT_VERSION);
-            localStorage.removeItem("fit_program_schedule_overrides");
-            localStorage.removeItem("fit_schedule_overrides_updated_at");
             if ("caches" in window) {
               caches.keys().then(function(keys) {
                 keys.forEach(function(k) { caches.delete(k); });

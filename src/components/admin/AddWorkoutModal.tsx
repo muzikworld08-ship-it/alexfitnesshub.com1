@@ -196,7 +196,9 @@ export default function AddWorkoutModal({
         ? ex.instructions 
         : ["Execute controlled biomechanics through full active range of motion."],
       restTime: defaultRest,
-      gifUrl: ex.gifUrl || getExerciseGifUrl(ex.name, ex.category),
+      gifUrl: [ex.customMediaUrl, ex.gifUrl, ex.imageUrl].find(
+        (u) => typeof u === "string" && u.trim() && !["none", "deleted", "null"].includes(u.trim().toLowerCase())
+      ) || getExerciseGifUrl(ex.name, ex.category),
       coachingCues: ex.movementExecution ? [ex.movementExecution] : ["Maintain rigid core stability and steady breathing."],
       genderSuitability: isWomenProgram || ex.genderSuitability === "Women" ? "Women" : (ex.genderSuitability || "Unisex"),
       womenCategories: isWomenProgram ? (ex.womenCategories?.length ? ex.womenCategories : ["Full Body Tone"]) : ex.womenCategories

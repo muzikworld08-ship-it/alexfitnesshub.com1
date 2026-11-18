@@ -12,8 +12,6 @@ import { PATH_TO_VIEW_MAP, VIEW_TO_PATH_MAP, resolveViewFromPath } from "./const
 import SocialLinksBar from "./components/SocialLinksBar";
 import { BRAND_CONTACTS } from "./constants/socialLinks";
 import { lazyWithRetry } from "./utils/lazyWithRetry";
-import { resolveAthleteTier, resolveActiveProgramId } from "./utils/athleteContext";
-import { getSyncStatus, subscribeScheduleOverrides } from "./utils/scheduleOverridesStore";
 
 // Lazy-load secondary overlays & store modals so they don't bloat the initial entry bundle
 const TestimonialPopup = lazyWithRetry(() => import("./components/TestimonialPopup").then(m => ({ default: m.TestimonialPopup })), "TestimonialPopup");
@@ -783,8 +781,6 @@ function FitnessAppContent() {
         </div>
       </main>
 
-      <SyncStatusFooter user={user} />
-
       {/* Auth State Modal (only fetched/mounted when opened) */}
       {isAuthOpen && (
         <React.Suspense fallback={null}>
@@ -860,77 +856,6 @@ function FitnessAppContent() {
       </React.Suspense>
 
     </div>
-  );
-}
-
-function SyncStatusFooter({ user }: { user: any }) {
-  const [syncTick, setSyncTick] = useState(0);
-  const [day1DrillCount, setDay1DrillCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    const unsub = subscribeScheduleOverrides(() => setSyncTick(t => t + 1));
-    const handleEvent = () => setSyncTick(t => t + 1);
-    window.addEventListener("fit_schedule_overrides_updated", handleEvent);
-    window.addEventListener("fit_program_schedule_overrides_updated", handleEvent);
-    return () => {
-      unsub();
-      window.removeEventListener("fit_schedule_overrides_updated", handleEvent);
-      window.removeEventListener("fit_program_schedule_overrides_updated", handleEvent);
-    };
-  }, []);
-
-  const syncStatus = React.useMemo(() => getSyncStatus(), [syncTick]);
-  const tier = resolveAthleteTier(user);
-  const programId = resolveActiveProgramId(user);
-
-  // Dynamically load challengeEngineDatabase on idle so the entry bundle never embeds the full dataset upfront
-  useEffect(() => {
-    let cancelled = false;
-    const loadCount = () => {
-      import("./data/challengeEngineDatabase")
-        .then((mod) => {
-          if (cancelled) return;
-          const plan = mod.getWorkoutForProgramAndDay(programId, 1, undefined, { fitnessLevel: tier });
-          setDay1DrillCount(plan.exercises.length);
-        })
-        .catch(() => {});
-    };
-    if (syncTick === 0 && typeof window !== "undefined" && "requestIdleCallback" in window) {
-      const id = (window as any).requestIdleCallback(loadCount, { timeout: 1500 });
-      return () => {
-        cancelled = true;
-        if ("cancelIdleCallback" in window) (window as any).cancelIdleCallback(id);
-      };
-    }
-    loadCount();
-    return () => {
-      cancelled = true;
-    };
-  }, [programId, tier, syncTick]);
-
-  const buildId = typeof window !== "undefined" ? ((window as any).__APP_BUILD_ID__ || "dev") : "dev";
-
-  return (
-    <footer
-      data-testid="sync-status-footer"
-      className="w-full border-t border-slate-200/70 bg-slate-50/70 px-4 py-2.5 text-[11px] font-mono text-slate-500"
-    >
-      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-center sm:justify-between gap-x-4 gap-y-1">
-        <span>
-          Sync status: <strong className="text-slate-700">{syncStatus.source}</strong>
-          {syncStatus.updatedAt ? ` (${syncStatus.updatedAt})` : ""}
-          {syncStatus.degraded ? " [degraded]" : ""}
-        </span>
-        <span>
-          Build: <strong className="text-slate-700">{buildId}</strong>
-        </span>
-        <span>
-          Tier: <strong className="text-slate-700">{tier}</strong> | Program:{" "}
-          <strong className="text-slate-700">{programId}</strong> | Day 1 Drills:{" "}
-          <strong className="text-slate-700">{day1DrillCount ?? "…"}</strong>
-        </span>
-      </div>
-    </footer>
   );
 }
 

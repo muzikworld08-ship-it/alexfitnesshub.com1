@@ -411,6 +411,7 @@ export default function AdminWorkoutEditor() {
 
   // Open Edit Modal
   const handleOpenEdit = (ex: Exercise) => {
+    setCloudErrorMsg(null);
     setEditingExercise(ex);
     setEditForm({
       name: ex.name,
@@ -509,6 +510,7 @@ export default function AdminWorkoutEditor() {
 
   // Save New Workout
   const handleSaveNewWorkout = async () => {
+    setCloudErrorMsg(null);
     const rawName = (newWorkout.name || "").trim();
     if (!rawName) {
       setCloudErrorMsg("Please provide a workout name.");
@@ -789,7 +791,7 @@ export default function AdminWorkoutEditor() {
         {/* Quick Add Exercise Trigger on Desktop & Mobile */}
         <button
           type="button"
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={handleOpenAddModal}
           className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs shrink-0"
           title="Add a new custom exercise"
         >
@@ -964,7 +966,7 @@ export default function AdminWorkoutEditor() {
             {/* Quick Add Exercise Action */}
             <button
               type="button"
-              onClick={() => setIsAddModalOpen(true)}
+              onClick={handleOpenAddModal}
               className="bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-black uppercase tracking-wider px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs hover:shadow-sm shrink-0"
               title="Add New Exercise to Catalog"
             >
@@ -1007,7 +1009,7 @@ export default function AdminWorkoutEditor() {
                       <p className="text-xs text-slate-400 mt-1">Try clearing filters, search keywords, or add a new exercise directly.</p>
                       <button
                         type="button"
-                        onClick={() => setIsAddModalOpen(true)}
+                        onClick={handleOpenAddModal}
                         className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition cursor-pointer shadow-xs"
                       >
                         <Plus className="w-3.5 h-3.5 stroke-[2.5]" />

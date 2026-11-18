@@ -1018,25 +1018,10 @@ export default function AdminWorkoutChallengeEngine() {
 
     const assignedDiff = (activeTierTarget.charAt(0).toUpperCase() + activeTierTarget.slice(1)) as any;
 
-    const finalEx: ChallengeExerciseItem = {
-      ...newEx,
-      name,
-      exerciseName: name,
-      difficulty: assignedDiff,
-      gifUrl: assignedGif,
-      imageUrl: assignedGif,
-      addedByAdmin: true
-    } as any;
-
-    const updated = [...currentTierExercises, finalEx];
-    const ok = await handleReorderExercises(updated, activeTierTarget);
-
-    // Ensure every admin-added drill in Challenge Engine also persists permanently to Cloud Firestore
-    // `exercises` & `generated_exercises` collections so it is visible on the public website under its category.
     const existingLibMatch = libraryExercises.find(
       e => (e.name || "").toLowerCase().trim() === name.toLowerCase() || (newEx.exerciseId && e.id === newEx.exerciseId) || e.id === newEx.id
     );
-    let targetLibraryId = existingLibMatch?.id || finalEx.exerciseId || finalEx.id;
+    let targetLibraryId = existingLibMatch?.id || newEx.exerciseId || newEx.id;
 
     if (!existingLibMatch && addWorkout) {
       try {
@@ -1078,6 +1063,20 @@ export default function AdminWorkoutChallengeEngine() {
       }
     }
 
+    const finalEx: ChallengeExerciseItem = {
+      ...newEx,
+      exerciseId: targetLibraryId,
+      name,
+      exerciseName: name,
+      difficulty: assignedDiff,
+      gifUrl: assignedGif,
+      imageUrl: assignedGif,
+      addedByAdmin: true
+    } as any;
+
+    const updated = [...currentTierExercises, finalEx];
+    const ok = await handleReorderExercises(updated, activeTierTarget);
+
     if (ok && assignedGif && !existingLibMatch) {
       try {
         await uploadExerciseMedia(targetLibraryId, assignedGif, "image");
@@ -1096,9 +1095,11 @@ export default function AdminWorkoutChallengeEngine() {
     const updated = activeExercises.map(ex => ex.id === updatedEx.id ? updatedEx : ex);
     const ok = await handleReorderExercises(updated, selectedDifficultyLevel);
 
-    const rawName = updatedEx.exerciseName || (updatedEx as any).name || "";
-    const match = libraryExercises.find(e => (e.name || "").toLowerCase().trim() === rawName.toLowerCase().trim() || e.id === updatedEx.id);
-    const targetId = match?.id || updatedEx.id;
+    const rawName = (updatedEx.exerciseName || (updatedEx as any).name || "").toLowerCase().trim();
+    const match = libraryExercises.find(
+      e => (updatedEx.exerciseId && e.id === updatedEx.exerciseId) || e.id === updatedEx.id || (rawName && (e.name || "").toLowerCase().trim() === rawName)
+    );
+    const targetId = match?.id || updatedEx.exerciseId || updatedEx.id;
 
     if (updatedEx.gifUrl && !["none", "deleted", "null"].includes(updatedEx.gifUrl.trim().toLowerCase())) {
       try {

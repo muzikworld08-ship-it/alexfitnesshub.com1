@@ -120,67 +120,18 @@ export async function refreshScheduleOverridesFromServer(): Promise<Record<strin
   return getScheduleOverrides();
 }
 
-let firestoreScheduleUnsub: (() => void) | null = null;
-
-async function startRealtimeFirestoreScheduleSync() {
-  if (typeof window === "undefined" || firestoreScheduleUnsub) return;
-  try {
-    const [{ db, isMockFirebase }, { collection, onSnapshot }] = await Promise.all([
-      import("../lib/firebase"),
-      import("firebase/firestore")
-    ]);
-    if (isMockFirebase || !db) return;
-
-    firestoreScheduleUnsub = onSnapshot(
-      collection(db, "program_schedules"),
-      (snapshot) => {
-        if (!snapshot || snapshot.empty) return;
-        const assembled: Record<string, any> = {};
-        let maxUpdatedAt = "";
-
-        snapshot.docs.forEach((docSnap) => {
-          if (docSnap.id === "overrides") return;
-          const data = docSnap.data();
-          if (!data || typeof data !== "object") return;
-          if (typeof data.updatedAt === "string" && data.updatedAt > maxUpdatedAt) {
-            maxUpdatedAt = data.updatedAt;
-          }
-          if (data.schedule && typeof data.schedule === "object") {
-            assembled[docSnap.id] = data.schedule;
-          } else {
-            const { updatedAt, updatedBy, programId, ...cleanSchedule } = data;
-            if (Object.keys(cleanSchedule).length > 0) {
-              assembled[docSnap.id] = cleanSchedule;
-            }
-          }
-        });
-
-        if (Object.keys(assembled).length > 0) {
-          setScheduleOverridesFromRemote(assembled, maxUpdatedAt || new Date().toISOString(), "firestore");
-        }
-      },
-      (err) => {
-        console.warn("[ScheduleOverridesStore] Real-time Firestore listener notice:", err?.message || err);
-      }
-    );
-  } catch (e) {
-    console.warn("[ScheduleOverridesStore] Could not attach Firestore listener:", e);
-  }
-}
-
 function triggerThrottledAutoRefresh() {
   const now = Date.now();
-  if (now - lastAutoRefreshAt < 3500) return;
+  if (now - lastAutoRefreshAt < 30_000) return;
   lastAutoRefreshAt = now;
   refreshScheduleOverridesFromServer();
 }
 
-// Automatically sync latest overrides from server & Firestore on client startup and lifecycle events
+// Sync latest overrides from server on startup and throttled tab/network transitions (AppContext maintains the single Firestore real-time listener)
 if (typeof window !== "undefined") {
   setTimeout(() => {
     lastAutoRefreshAt = Date.now();
     refreshScheduleOverridesFromServer();
-    startRealtimeFirestoreScheduleSync();
   }, 50);
 
   if (typeof document !== "undefined") {
@@ -193,13 +144,6 @@ if (typeof window !== "undefined") {
 
   window.addEventListener("focus", triggerThrottledAutoRefresh);
   window.addEventListener("online", triggerThrottledAutoRefresh);
-
-  // Poll every 60 seconds only when tab is visible so background tabs consume zero network/CPU
-  setInterval(() => {
-    if (typeof document === "undefined" || document.visibilityState === "visible") {
-      triggerThrottledAutoRefresh();
-    }
-  }, 60_000);
 
   // Cross-tab sync for schedule overrides
   window.addEventListener("storage", (e) => {

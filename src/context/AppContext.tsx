@@ -736,6 +736,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
+      // 4. Hydrate any hidden admin-created override records lacking full metadata
+      const isInitUsableMedia = (u: any): u is string => {
+        if (!u || typeof u !== "string") return false;
+        const t = u.trim().toLowerCase();
+        return Boolean(t && t !== "none" && t !== "deleted" && t !== "null");
+      };
+      const hydratedCustom = hydrateHiddenOverrideExercises(
+        cachedOverrides,
+        baseExercisePool,
+        deletedSet,
+        isInitUsableMedia,
+        getExerciseGifUrl
+      );
+      hydratedCustom.forEach(hydratedEx => {
+        const hName = (hydratedEx.name || "").toLowerCase().trim();
+        const exists = Array.from(initialMap.values()).some(
+          existing => existing.id === hydratedEx.id || (hName && (existing.name || "").toLowerCase().trim() === hName)
+        );
+        if (!exists) {
+          initialMap.set(hydratedEx.id, hydratedEx);
+        }
+      });
+
       return Array.from(initialMap.values());
     } catch (e) {
       return [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES];
@@ -927,105 +950,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem("fit_theme", "light");
     } catch (e) {}
-  }, []);
-
-  // Handle local state tracking for offline or unauthenticated sessions with permanent custom overrides cache
-  useEffect(() => {
-    // Load local custom overrides cache
-    let cachedOverrides: Record<string, any> = {};
-    const storedOverridesStr = localStorage.getItem("fit_custom_exercise_overrides");
-    if (storedOverridesStr) {
-      try { cachedOverrides = JSON.parse(storedOverridesStr); } catch {}
-    }
-
-    let deletedIdsSet = new Set<string>();
-    try {
-      const storedDeleted = localStorage.getItem("fit_deleted_exercises");
-      if (storedDeleted) {
-        const parsedDel = JSON.parse(storedDeleted);
-        if (Array.isArray(parsedDel)) deletedIdsSet = new Set(parsedDel);
-      }
-    } catch {}
-
-    const storedExercises = localStorage.getItem("fit_exercises");
-    if (storedExercises) {
-      try {
-        const parsed = JSON.parse(storedExercises) as Exercise[];
-        const baseExercisePool = [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES];
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const map = new Map<string, Exercise>();
-          baseExercisePool.forEach(e => {
-            if (deletedIdsSet.has(e.id) || deletedIdsSet.has(e.name?.toLowerCase().trim())) return;
-            const override = cachedOverrides[e.id] || cachedOverrides[e.name?.toLowerCase().trim()];
-            map.set(e.id, {
-              ...e,
-              ...(override?.customMediaUrl ? { customMediaUrl: override.customMediaUrl, customMediaType: override.customMediaType || "image" } : {}),
-              ...(override?.id === e.id && override?.isCustom && override?.name ? { name: override.name } : {})
-            });
-          });
-          
-          // Apply stored modifications and custom user-added exercises
-          parsed.forEach(p => {
-            if (!p || !p.id || deletedIdsSet.has(p.id) || (p as any).isDeleted === true) return;
-            const isBase = baseExercisePool.some(b => b.id === p.id || b.name?.toLowerCase().trim() === p.name?.toLowerCase().trim());
-            if (p.isCustom === true || !isBase) {
-              if (map.has(p.id)) {
-                const existing = map.get(p.id)!;
-                map.set(p.id, {
-                  ...existing,
-                  ...p,
-                  isCustom: true
-                });
-              } else {
-                map.set(p.id, { ...p, isCustom: true });
-              }
-            }
-          });
-
-          const merged = Array.from(map.values());
-          setExercisesState(merged);
-          localStorage.setItem("fit_exercises", JSON.stringify(merged));
-          return;
-        }
-      } catch (e) {}
-    }
-    
-    // Default base with cached overrides (excluding deleted)
-    const baseExercisePool = [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES];
-    const initialList = baseExercisePool
-      .filter(e => !deletedIdsSet.has(e.id) && !deletedIdsSet.has(e.name?.toLowerCase().trim()))
-      .map(e => {
-        const override = cachedOverrides[e.id] || cachedOverrides[e.name?.toLowerCase().trim()];
-        if (override) {
-          return {
-            ...e,
-            ...(override.customMediaUrl ? { customMediaUrl: override.customMediaUrl, customMediaType: override.customMediaType || "image" } : {}),
-            ...(override.id === e.id && override.isCustom && override.name ? { name: override.name } : {})
-          };
-        }
-        return e;
-      });
-
-    const isCacheUsableMedia = (u: any): u is string => {
-      if (!u || typeof u !== "string") return false;
-      const t = u.trim().toLowerCase();
-      return Boolean(t && t !== "none" && t !== "deleted" && t !== "null");
-    };
-    const cachedCustom = hydrateHiddenOverrideExercises(
-      cachedOverrides,
-      baseExercisePool,
-      deletedIdsSet,
-      isCacheUsableMedia,
-      getExerciseGifUrl
-    );
-    for (const hydratedEx of cachedCustom) {
-      if (!initialList.some(i => i.id === hydratedEx.id || i.name.toLowerCase().trim() === hydratedEx.name.toLowerCase().trim())) {
-        initialList.push(hydratedEx);
-      }
-    }
-
-    setExercisesState(initialList);
-    localStorage.setItem("fit_exercises", JSON.stringify(initialList));
   }, []);
 
   // Fetch and sync custom exercise overrides from Firestore and local Express server JSON file
@@ -4943,8 +4867,14 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         ...(mediaVal ? { customMediaUrl: mediaVal, gifUrl: mediaVal, imageUrl: mediaVal } : {})
       };
 
+      const targetNameLower = (normalizedUpdates.name || "").toLowerCase().trim();
+      const targetEx =
+        exercises.find(e => e.id === exerciseId) ||
+        (targetNameLower ? exercises.find(e => (e.name || "").toLowerCase().trim() === targetNameLower) : undefined);
+      const resolvedId = targetEx?.id || exerciseId;
+
       const updatedExercises = exercises.map(ex => {
-        if (ex.id === exerciseId) {
+        if (ex.id === resolvedId) {
           const next = { ...ex, ...normalizedUpdates };
           if (normalizedUpdates.recommendedSets || normalizedUpdates.recommendedReps) {
             const nextSets = normalizedUpdates.recommendedSets || ex.recommendedSets || '3';
@@ -4964,11 +4894,10 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       try {
         const storedOverrides = localStorage.getItem("fit_custom_exercise_overrides");
         const currentOverrides = storedOverrides ? JSON.parse(storedOverrides) : {};
-        currentOverrides[exerciseId] = {
-          ...(currentOverrides[exerciseId] || {}),
+        currentOverrides[resolvedId] = {
+          ...(currentOverrides[resolvedId] || {}),
           ...normalizedUpdates
         };
-        const targetEx = exercises.find(e => e.id === exerciseId);
         const normName = (normalizedUpdates.name || targetEx?.name || "").toLowerCase().trim();
         if (normName) {
           currentOverrides[normName] = {
@@ -4981,16 +4910,24 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         console.warn("Could not cache exercise override locally:", oErr);
       }
 
-      // Persist to server API with confirmation
+      // Persist to server API with confirmation (retry once on 401 with refreshed Firebase token)
       let serverOk = false;
       let firestoreOk = false;
       try {
-        const headers = await getAdminHeaders();
-        const res = await fetch("/api/exercises/update", {
+        let headers = await getAdminHeaders(false);
+        let res = await fetch("/api/exercises/update", {
           method: "POST",
           headers,
-          body: JSON.stringify({ exerciseId, updates: normalizedUpdates })
+          body: JSON.stringify({ exerciseId: resolvedId, updates: normalizedUpdates })
         });
+        if (res.status === 401) {
+          headers = await getAdminHeaders(true);
+          res = await fetch("/api/exercises/update", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ exerciseId: resolvedId, updates: normalizedUpdates })
+          });
+        }
         const resData = await res.json().catch(() => ({}));
         if (res.ok && resData?.success && resData?.firestoreOk !== false) {
           serverOk = true;
@@ -5002,23 +4939,26 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       // Persist directly to Firestore
       if (!isMockFirebase) {
         try {
-          const safeDocId = (exerciseId || "").replace(/[^a-zA-Z0-9_-]/g, "_");
+          const safeDocId = (resolvedId || "").replace(/[^a-zA-Z0-9_-]/g, "_");
           if (safeDocId) {
             const sanitizedUpdates = cleanFirestoreData({ id: safeDocId, ...normalizedUpdates });
             const exOk = await safeFirestoreSetDoc(doc(db, "exercises", safeDocId), sanitizedUpdates, { merge: true }, true);
 
-            let mediaOk = true;
+            if (targetEx?.isCustom) {
+              safeFirestoreSetDoc(doc(db, "generated_exercises", safeDocId), sanitizedUpdates, { merge: true }, true).catch(() => {});
+            }
+
             if (mediaVal) {
-              mediaOk = await safeFirestoreSetDoc(doc(db, "exercise_media", safeDocId), {
+              await safeFirestoreSetDoc(doc(db, "exercise_media", safeDocId), {
                 exerciseId: safeDocId,
                 customMediaUrl: mediaVal,
                 gifUrl: mediaVal,
                 imageUrl: mediaVal,
                 customMediaType: normalizedUpdates.customMediaType || "image",
                 updatedAt: new Date().toISOString()
-              }, { merge: true }, true);
+              }, { merge: true }, true).catch(() => false);
             }
-            firestoreOk = Boolean(exOk && mediaOk);
+            firestoreOk = Boolean(exOk);
           }
         } catch (dbErr) {
           console.warn("Firestore exercise update notice:", dbErr);
@@ -5027,7 +4967,10 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
       // Update across all program schedules immediately so live program pages synchronize
       try {
-        updateExerciseInAllSchedules(exerciseId, normalizedUpdates);
+        updateExerciseInAllSchedules(resolvedId, normalizedUpdates);
+        if (exerciseId !== resolvedId) {
+          updateExerciseInAllSchedules(exerciseId, normalizedUpdates);
+        }
       } catch (schedErr) {
         console.warn("Notice updating exercise across program schedules:", schedErr);
       }
@@ -5037,7 +4980,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         return false;
       }
 
-      logAdminAction("EDIT_WORKOUT", `Edited workout ${exerciseId} (Name: ${updates.name || 'same'}, Sets: ${updates.recommendedSets || 'same'}, Reps: ${updates.recommendedReps || 'same'})`, { exerciseId, updates });
+      logAdminAction("EDIT_WORKOUT", `Edited workout ${resolvedId} (Name: ${updates.name || 'same'}, Sets: ${updates.recommendedSets || 'same'}, Reps: ${updates.recommendedReps || 'same'})`, { exerciseId: resolvedId, updates });
       return true;
     } catch (err) {
       console.warn("Notice: Failed to edit exercise:", err);
@@ -5115,6 +5058,14 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     };
 
     const sanitizedExercise = cleanFirestoreData(fullExercise);
+    const cleanName = (sanitizedExercise.name || "").toLowerCase().trim();
+    const cleanNameDoc = cleanName.replace(/[^a-z0-9_-]/g, "_");
+
+    // Snapshot previous overrides cache for clean rollback if cloud write fails
+    let previousOverridesRaw: string | null = null;
+    try {
+      previousOverridesRaw = localStorage.getItem("fit_custom_exercise_overrides");
+    } catch {}
 
     setExercisesState(prev => {
       const next = [sanitizedExercise, ...prev.filter(e => e.id !== safeId)];
@@ -5123,59 +5074,13 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     });
 
     try {
-      const storedOverrides = localStorage.getItem("fit_custom_exercise_overrides");
-      const currentOverrides = storedOverrides ? JSON.parse(storedOverrides) : {};
+      const currentOverrides = previousOverridesRaw ? JSON.parse(previousOverridesRaw) : {};
       currentOverrides[safeId] = sanitizedExercise;
-      const cleanName = (sanitizedExercise.name || "").toLowerCase().trim();
       if (cleanName) {
         currentOverrides[cleanName] = sanitizedExercise;
       }
       safeSetItem("fit_custom_exercise_overrides", JSON.stringify(currentOverrides));
     } catch {}
-
-    // If programs are assigned, add to target program schedules immediately so live program pages display it
-    try {
-      if (Array.isArray(sanitizedExercise.programAssignments) && sanitizedExercise.programAssignments.length > 0) {
-        const mapProg = (str: string) => {
-          const raw = str.trim();
-          const l = raw.toLowerCase();
-          if (l.includes("90") && l.includes("immortal")) return "immortal_90";
-          if (l.includes("immortal")) return "immortal_90";
-          if (l.includes("home") && (l.includes("women") || l.includes("female"))) return "home_180_women";
-          if (l.includes("home fitness") || l.includes("home_fitness")) return "home_fitness";
-          if (l.includes("180") && l.includes("home")) return "home_180";
-          if (l.includes("home_180") || l.includes("home")) return "home_180";
-          if (l.includes("women") || l.includes("confidence")) return "women_confidence";
-          if (l.includes("belly") || l.includes("shred")) return "belly_fat_shred";
-          if (l.includes("posture")) return "posture_vitality";
-          if (l.includes("hypertrophy") || l.includes("gym")) return "gym_hypertrophy";
-          if (l.includes("lean muscle") || l.includes("lean_muscle")) return "lean_muscle";
-          if (l.includes("fat burning") || l.includes("fat_burning")) return "fat_burning";
-          if (l.includes("transformation") || l.includes("body_transformation")) return "body_transformation";
-          if (l.includes("athletic") || l.includes("athletic_performance")) return "athletic_performance";
-          if (l.includes("strength") || l.includes("strength_challenge")) return "strength_challenge";
-          if (l.includes("six pack") || l.includes("six_pack")) return "six_pack_core";
-          if (l.includes("calisthenics") || l.includes("military") || l.includes("cardio_calisthenics")) return "cardio_calisthenics";
-          if (l.includes("lifestyle")) return "lifestyle_academy";
-          const matchedCustom = allChallenges.find(
-            (c: any) => c.id === raw || (c.title && c.title.toLowerCase().trim() === l)
-          );
-          if (matchedCustom?.id) return matchedCustom.id;
-          return raw;
-        };
-        const tier = (sanitizedExercise.difficulty || "Beginner").toLowerCase();
-        const targetTier = (tier.includes("adv") ? "advanced" : (tier.includes("inter") ? "intermediate" : "beginner")) as "beginner" | "intermediate" | "advanced";
-
-        sanitizedExercise.programAssignments.forEach((pName: string) => {
-          const progId = mapProg(pName);
-          if (progId) {
-            addExerciseToProgramSchedule(sanitizedExercise, progId, 1, targetTier);
-          }
-        });
-      }
-    } catch (schedErr) {
-      console.warn("Notice adding exercise to program schedules:", schedErr);
-    }
 
     // Clear matching ID / normalized name from local deleted tombstones before saving
     try {
@@ -5183,10 +5088,9 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       if (storedDel) {
         const parsedDel = JSON.parse(storedDel);
         if (Array.isArray(parsedDel)) {
-          const normCreated = (sanitizedExercise.name || "").toLowerCase().trim();
           const filteredDel = parsedDel.filter((d: string) => {
             const c = String(d || "").toLowerCase().trim();
-            return c !== safeId.toLowerCase() && (!normCreated || c !== normCreated);
+            return c !== safeId.toLowerCase() && (!cleanName || c !== cleanName);
           });
           safeSetItem("fit_deleted_exercises", JSON.stringify(filteredDel));
         }
@@ -5231,10 +5135,15 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
             safeFirestoreSetDoc(doc(db, "exercises", safeId), sanitizedExercise, { merge: false }, true),
             safeFirestoreSetDoc(doc(db, "generated_exercises", safeId), sanitizedExercise, { merge: false }, true)
           ]),
-          new Promise<[boolean, boolean]>((_, reject) => setTimeout(() => reject(new Error("Firestore write timeout")), 4000))
+          new Promise<[boolean, boolean]>((_, reject) => setTimeout(() => reject(new Error("Firestore write timeout")), 10000))
         ]);
-        await safeFirestoreDeleteDoc(doc(db, "deleted_exercises", safeId)).catch(() => {});
-        firestoreOk = Boolean(exOk && genOk);
+        await Promise.all([
+          safeFirestoreDeleteDoc(doc(db, "deleted_exercises", safeId)).catch(() => {}),
+          cleanNameDoc && cleanNameDoc !== safeId
+            ? safeFirestoreDeleteDoc(doc(db, "deleted_exercises", cleanNameDoc)).catch(() => {})
+            : Promise.resolve()
+        ]);
+        firestoreOk = Boolean(exOk || genOk);
       } catch (dbErr: any) {
         persistError = persistError || dbErr?.message || "Firestore write failed";
         console.warn("Firestore workout creation notice:", dbErr);
@@ -5242,13 +5151,64 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
     }
 
     if (!serverOk && !firestoreOk) {
-      // Roll back optimistic state so UI doesn't retain unpersisted exercise
+      // Roll back optimistic state & overrides cache cleanly so unpersisted ghost exercises never stick
       setExercisesState(prev => {
         const rolledBack = prev.filter(e => e.id !== safeId);
         safeSetItem("fit_exercises", JSON.stringify(rolledBack));
         return rolledBack;
       });
+      try {
+        if (previousOverridesRaw !== null) {
+          safeSetItem("fit_custom_exercise_overrides", previousOverridesRaw);
+        } else {
+          localStorage.removeItem("fit_custom_exercise_overrides");
+        }
+      } catch {}
       throw new Error(persistError || "Failed to confirm exercise creation in Cloud Firestore.");
+    }
+
+    // Only synchronize to target program schedules once exercise creation is confirmed
+    try {
+      if (Array.isArray(sanitizedExercise.programAssignments) && sanitizedExercise.programAssignments.length > 0) {
+        const mapProg = (str: string) => {
+          const raw = str.trim();
+          const l = raw.toLowerCase();
+          if (l.includes("90") && l.includes("immortal")) return "immortal_90";
+          if (l.includes("immortal")) return "immortal_90";
+          if (l.includes("home") && (l.includes("women") || l.includes("female"))) return "home_180_women";
+          if (l.includes("home fitness") || l.includes("home_fitness")) return "home_fitness";
+          if (l.includes("180") && l.includes("home")) return "home_180";
+          if (l.includes("home_180") || l.includes("home")) return "home_180";
+          if (l.includes("women") || l.includes("confidence")) return "women_confidence";
+          if (l.includes("belly") || l.includes("shred")) return "belly_fat_shred";
+          if (l.includes("posture")) return "posture_vitality";
+          if (l.includes("hypertrophy") || l.includes("gym")) return "gym_hypertrophy";
+          if (l.includes("lean muscle") || l.includes("lean_muscle")) return "lean_muscle";
+          if (l.includes("fat burning") || l.includes("fat_burning")) return "fat_burning";
+          if (l.includes("transformation") || l.includes("body_transformation")) return "body_transformation";
+          if (l.includes("athletic") || l.includes("athletic_performance")) return "athletic_performance";
+          if (l.includes("strength") || l.includes("strength_challenge")) return "strength_challenge";
+          if (l.includes("six pack") || l.includes("six_pack")) return "six_pack_core";
+          if (l.includes("calisthenics") || l.includes("military") || l.includes("cardio_calisthenics")) return "cardio_calisthenics";
+          if (l.includes("lifestyle")) return "lifestyle_academy";
+          const matchedCustom = allChallenges.find(
+            (c: any) => c.id === raw || (c.title && c.title.toLowerCase().trim() === l)
+          );
+          if (matchedCustom?.id) return matchedCustom.id;
+          return raw;
+        };
+        const tier = (sanitizedExercise.difficulty || "Beginner").toLowerCase();
+        const targetTier = (tier.includes("adv") ? "advanced" : (tier.includes("inter") ? "intermediate" : "beginner")) as "beginner" | "intermediate" | "advanced";
+
+        sanitizedExercise.programAssignments.forEach((pName: string) => {
+          const progId = mapProg(pName);
+          if (progId) {
+            addExerciseToProgramSchedule(sanitizedExercise, progId, 1, targetTier);
+          }
+        });
+      }
+    } catch (schedErr) {
+      console.warn("Notice adding exercise to program schedules:", schedErr);
     }
 
     logAdminAction("ADD_WORKOUT", `Created new workout "${sanitizedExercise.name}" with Sets: ${sets}, Reps: ${reps}`, { workout: sanitizedExercise });
@@ -5411,7 +5371,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         return { success: false, error: data?.error || `Failed to restore exercise (HTTP ${res.status})` };
       }
 
-      const restored: Exercise | undefined = data.restoredExercise;
+      const restored: Exercise | undefined = data.exercise || data.restoredExercise;
       const restoredId = restored?.id || exerciseIdOrDocId;
       const restoredName = (restored?.name || optionalName || "").toLowerCase().trim();
 

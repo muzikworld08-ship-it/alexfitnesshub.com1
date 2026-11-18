@@ -990,7 +990,8 @@ function formatFirestoreRestFields(obj: any): any {
   if (!obj || typeof obj !== "object") return fields;
   
   for (const [key, value] of Object.entries(obj)) {
-    if (value === null || value === undefined) {
+    if (!key || value === undefined) continue;
+    if (value === null) {
       fields[key] = { nullValue: null };
     } else if (typeof value === "string") {
       fields[key] = { stringValue: value };
@@ -1041,8 +1042,9 @@ async function setServerFirestoreDoc(collectionName: string, docId: string, data
       let url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/${collectionName}/${encodeURIComponent(safeDocId)}`;
       const queryParams: string[] = [];
       if (merge) {
-        Object.keys(data).forEach(key => {
-          queryParams.push(`updateMask.fieldPaths=${encodeURIComponent(key)}`);
+        Object.keys(fields).forEach(key => {
+          const maskedPath = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key) ? key : `\`${key.replace(/`/g, "")}\``;
+          queryParams.push(`updateMask.fieldPaths=${encodeURIComponent(maskedPath)}`);
         });
       }
       if (queryParams.length > 0) {
@@ -1077,8 +1079,9 @@ async function setServerFirestoreDoc(collectionName: string, docId: string, data
       const queryParams: string[] = [];
       
       if (merge) {
-        Object.keys(data).forEach(key => {
-          queryParams.push(`updateMask.fieldPaths=${encodeURIComponent(key)}`);
+        Object.keys(fields).forEach(key => {
+          const maskedPath = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key) ? key : `\`${key.replace(/`/g, "")}\``;
+          queryParams.push(`updateMask.fieldPaths=${encodeURIComponent(maskedPath)}`);
         });
       }
       if (queryParams.length > 0) {
@@ -4429,13 +4432,16 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
         updatedAt: new Date().toISOString()
       }, true, req.authToken);
 
-      if (!mediaWrite.success || !exWrite.success) {
+      if (!mediaWrite.success && !exWrite.success) {
         console.error("[Firestore Media Backup Error]:", mediaWrite.error || exWrite.error);
         return res.status(502).json({
           success: false,
           firestoreOk: false,
           error: "Cloud Firestore failed to confirm exercise media save."
         });
+      }
+      if (!mediaWrite.success || !exWrite.success) {
+        console.warn("[Firestore Media Mirror Warning]:", mediaWrite.error || exWrite.error);
       }
 
       console.log(`[Firestore Media OK] Saved permanent media URL for exercise ID ${exerciseId}: ${customMediaUrl}`);
@@ -4521,6 +4527,13 @@ app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
       ...nextEntry
     }, true, req.authToken);
 
+    if (nextEntry.isCustom) {
+      setServerFirestoreDoc("generated_exercises", exerciseId, {
+        id: exerciseId,
+        ...nextEntry
+      }, true, req.authToken).catch(() => {});
+    }
+
     let mediaWriteOk = true;
     if (mediaVal) {
       const mediaWrite = await setServerFirestoreDoc("exercise_media", exerciseId, {
@@ -4535,13 +4548,16 @@ app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
       mediaWriteOk = mediaWrite.success === true;
     }
 
-    if (!exWrite.success || !mediaWriteOk) {
+    if (!exWrite.success) {
       console.error(`[Firestore Update Error for exercise ${exerciseId}]:`, exWrite.error);
       return res.status(502).json({
         success: false,
         firestoreOk: false,
         error: "Cloud Firestore did not confirm exercise update."
       });
+    }
+    if (!mediaWriteOk) {
+      console.warn(`[Firestore Media Mirror Warning for exercise ${exerciseId}]: secondary exercise_media update skipped`);
     }
 
     console.log(`[Firestore OK] Updated exercise ${exerciseId} with new metadata.`);
@@ -4713,13 +4729,16 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
       setServerFirestoreDoc("generated_exercises", newId, fullWorkout, true, req.authToken)
     ]);
 
-    if (!exWrite.success || !genWrite.success) {
+    if (!exWrite.success && !genWrite.success) {
       console.error(`[Firestore Create Error for ${newId}]:`, exWrite.error || genWrite.error);
       return res.status(502).json({
         success: false,
         firestoreOk: false,
         error: "Cloud Firestore did not confirm workout creation."
       });
+    }
+    if (!exWrite.success || !genWrite.success) {
+      console.warn(`[Firestore Create Secondary Mirror Warning for ${newId}]:`, exWrite.error || genWrite.error);
     }
 
     console.log(`[Firestore OK] Created new custom workout: ${fullWorkout.name} (${newId})`);
@@ -9437,6 +9456,12 @@ async function startServer() {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa"
+    });
+    app.use((req, res, next) => {
+      if (req.path.startsWith("/api/")) {
+        return res.status(404).json({ error: "API endpoint not found", path: req.path });
+      }
+      return next();
     });
     app.use(vite.middlewares);
   } else {
