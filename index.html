@@ -72,7 +72,8 @@
     <link rel="preconnect" href="https://js.paystack.co" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;500;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;500;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;500;700&display=swap" /></noscript>
     <title>AlexFitnessHub | Premium Fitness Training Platform</title>
     <meta name="description" content="A modern, premium, and fully functional fitness platform with custom workout libraries, AI coaching, secure payments, and progress tracking." />
     <meta name="keywords" content="fitness, workout planner, AI coaching, ALEXFITNESSHUB, muscle gain, fat loss, weight tracking, sports science" />
@@ -142,7 +143,7 @@
         } catch (e) {}
       })();
 
-      // Service Worker Handling: ensure immediate update across all mobile and desktop devices
+      // Service Worker Handling: non-blocking registration with guarded updates (no mid-boot reload loops)
       if ("serviceWorker" in navigator) {
         const isDevHost = window.location.hostname === "localhost" || 
                           window.location.hostname.includes("ais-dev") ||
@@ -150,56 +151,56 @@
                           window.location.hostname.includes("webcontainer");
         
         if (isDevHost) {
-          // In development/preview container, unregister any stale workers
           navigator.serviceWorker.getRegistrations().then((registrations) => {
             for (const reg of registrations) {
               reg.unregister();
             }
           });
         } else {
+          const hadInitialController = Boolean(navigator.serviceWorker.controller);
           let refreshing = false;
-          // Auto-reload the page when a new service worker activates and claims the client (at most once per session)
           navigator.serviceWorker.addEventListener("controllerchange", () => {
-            if (!refreshing) {
-              const sessionFlag = sessionStorage.getItem("afh_sw_reloaded");
-              if (!sessionFlag) {
-                refreshing = true;
-                sessionStorage.setItem("afh_sw_reloaded", "1");
-                console.log("[Service Worker] New version activated. Reloading page for newest build...");
-                window.location.reload();
-              }
+            // Never force-reload on first SW claim or multiple times per session
+            if (!hadInitialController || refreshing) return;
+            const sessionFlag = sessionStorage.getItem("afh_sw_reloaded");
+            if (!sessionFlag) {
+              refreshing = true;
+              sessionStorage.setItem("afh_sw_reloaded", "1");
+              window.location.reload();
             }
           });
 
           window.addEventListener("load", () => {
-            navigator.serviceWorker.register("/service-worker.js").then((registration) => {
-              // Immediately check for updates
-              registration.update();
-              console.log("[Service Worker] Registered with scope:", registration.scope);
+            const registerSW = () => {
+              navigator.serviceWorker.register("/service-worker.js").then((registration) => {
+                let lastUpdateCheck = Date.now();
 
-              // Detect when an updated service worker is being installed
-              registration.onupdatefound = () => {
-                const installingWorker = registration.installing;
-                if (installingWorker) {
-                  installingWorker.onstatechange = () => {
-                    if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
-                      console.log("[Service Worker] New update found. Prompting immediate activation...");
-                      installingWorker.postMessage({ type: "SKIP_WAITING" });
-                    }
-                  };
-                }
-              };
+                registration.onupdatefound = () => {
+                  const installingWorker = registration.installing;
+                  if (installingWorker) {
+                    installingWorker.onstatechange = () => {
+                      if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+                        installingWorker.postMessage({ type: "SKIP_WAITING" });
+                      }
+                    };
+                  }
+                };
 
-              // Re-check for new deploys when user switches back to this tab/app on mobile
-              document.addEventListener("visibilitychange", () => {
-                if (document.visibilityState === "visible") {
-                  registration.update();
-                }
-              });
-              window.addEventListener("focus", () => registration.update());
-            }).catch((err) => {
-              console.warn("[Service Worker] Registration failed:", err);
-            });
+                // Throttled check (max once every 5 minutes) when returning to tab
+                document.addEventListener("visibilitychange", () => {
+                  if (document.visibilityState === "visible" && Date.now() - lastUpdateCheck > 300000) {
+                    lastUpdateCheck = Date.now();
+                    registration.update().catch(() => {});
+                  }
+                });
+              }).catch(() => {});
+            };
+
+            if ("requestIdleCallback" in window) {
+              window.requestIdleCallback(registerSW, { timeout: 4000 });
+            } else {
+              setTimeout(registerSW, 2000);
+            }
           });
         }
       }
@@ -232,7 +233,17 @@
     <script type="module" src="/src/main.tsx"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="afh-boot-shell" style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;color:#0f172a;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;text-align:center;">
+        <div style="width:48px;height:48px;border-radius:14px;background:#D32F2F;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:18px;letter-spacing:-0.5px;box-shadow:0 8px 24px rgba(211,47,47,0.22);margin-bottom:14px;">AFH</div>
+        <div style="font-weight:900;font-size:18px;letter-spacing:0.04em;text-transform:uppercase;color:#0f172a;">Alex<span style="color:#D32F2F;">Fitness</span>Hub</div>
+        <div style="font-size:12px;color:#64748b;margin-top:6px;font-weight:600;">Loading your training workspace...</div>
+        <div style="width:140px;height:3px;border-radius:999px;background:#f1f5f9;overflow:hidden;margin-top:16px;">
+          <div style="width:45%;height:100%;background:#D32F2F;border-radius:999px;animation:afhBootSlide 1.1s ease-in-out infinite;"></div>
+        </div>
+        <style>@keyframes afhBootSlide{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}</style>
+      </div>
+    </div>
     <!-- Defensive polyfill for Tawk.to i18next to prevent third-party script crashes -->
     <script type="text/javascript">
       (function() {

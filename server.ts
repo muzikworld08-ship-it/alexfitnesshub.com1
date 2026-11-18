@@ -391,18 +391,97 @@ if (!fs.existsSync(STORE_DELETED_PRODUCTS_PATH)) {
   fs.writeFileSync(STORE_DELETED_PRODUCTS_PATH, JSON.stringify([], null, 2), "utf-8");
 }
 
+// Async serialized compact JSON disk writer + warm RAM caches (prevents multi-MB fs.writeFileSync / fs.readFileSync from blocking Render event loop)
+const writeFileQueues = new Map<string, Promise<void>>();
+function scheduleAsyncJsonWrite(filePath: string, data: any): void {
+  const prev = writeFileQueues.get(filePath) || Promise.resolve();
+  const next = prev
+    .catch(() => {})
+    .then(async () => {
+      await fs.promises.mkdir(path.dirname(filePath), { recursive: true }).catch(() => {});
+      await fs.promises.writeFile(filePath, JSON.stringify(data), "utf-8");
+    })
+    .catch((err) => {
+      console.warn(`[Async Disk Cache] Write notice for ${path.basename(filePath)}:`, err?.message || err);
+    });
+  writeFileQueues.set(filePath, next);
+}
+
+let cachedOverridesMap: Record<string, any> | null = null;
+let cachedDeletedExercises: string[] | null = null;
+let cachedDeletedAuthoritativeAt = 0;
+let cachedProgramOverrides: Record<string, any> | null = null;
+let cachedProgramOverridesSource: "cloud" | "disk" = "disk";
+
+function getCachedOverridesMap(): Record<string, any> {
+  if (cachedOverridesMap !== null) return cachedOverridesMap;
+  try {
+    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
+      const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
+      if (raw) {
+        cachedOverridesMap = JSON.parse(raw);
+        return cachedOverridesMap!;
+      }
+    }
+  } catch (err) {
+    console.error("Failed reading OVERRIDES_FILE_PATH:", err);
+  }
+  cachedOverridesMap = {};
+  return cachedOverridesMap;
+}
+
+function setCachedOverridesMap(nextMap: Record<string, any>): void {
+  cachedOverridesMap = nextMap && typeof nextMap === "object" ? nextMap : {};
+  scheduleAsyncJsonWrite(OVERRIDES_FILE_PATH, cachedOverridesMap);
+}
+
+function getCachedDeletedList(): string[] {
+  if (cachedDeletedExercises !== null) return cachedDeletedExercises;
+  try {
+    if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
+      const raw = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          cachedDeletedExercises = parsed;
+          return cachedDeletedExercises;
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Failed reading DELETED_EXERCISES_FILE_PATH:", err);
+  }
+  cachedDeletedExercises = [];
+  return cachedDeletedExercises;
+}
+
+function setCachedDeletedList(nextList: string[], authoritative = false): void {
+  cachedDeletedExercises = Array.isArray(nextList) ? nextList : [];
+  if (authoritative) cachedDeletedAuthoritativeAt = Date.now();
+  scheduleAsyncJsonWrite(DELETED_EXERCISES_FILE_PATH, cachedDeletedExercises);
+}
+
 function loadProgramScheduleOverrides(): Record<string, any> {
+  if (cachedProgramOverrides !== null) return cachedProgramOverrides;
   try {
     if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
       const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
       if (raw) {
-        return JSON.parse(raw);
+        cachedProgramOverrides = JSON.parse(raw);
+        return cachedProgramOverrides!;
       }
     }
   } catch (err) {
     console.warn("Failed to load program schedule overrides:", err);
   }
-  return {};
+  cachedProgramOverrides = {};
+  return cachedProgramOverrides;
+}
+
+function setCachedProgramOverridesMap(nextMap: Record<string, any>, source?: "cloud" | "disk"): void {
+  cachedProgramOverrides = nextMap && typeof nextMap === "object" ? nextMap : {};
+  if (source) cachedProgramOverridesSource = source;
+  scheduleAsyncJsonWrite(PROGRAM_SCHEDULE_OVERRIDES_PATH, cachedProgramOverrides);
 }
 
 // Lazy initialization of Gemini API SDK
@@ -2827,15 +2906,9 @@ Ensure that the JSON is perfectly valid and matches the requested structure exac
 });
 
 
-// Helper to retrieve live exercise overrides from disk/cache
+// Helper to retrieve live exercise overrides from warm RAM cache/disk
 function getExerciseDiskOverrides(): Record<string, any> {
-  try {
-    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
-      const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
-      if (raw) return JSON.parse(raw);
-    }
-  } catch {}
-  return {};
+  return getCachedOverridesMap();
 }
 
 function applyExerciseOverride(ex: any): any {
@@ -3949,41 +4022,17 @@ app.get("/api/diagnostics/subscription-sync", async (req: any, res: any) => {
 let lastCustomMediaCloudSync = 0;
 let inflightCustomMediaSync: Promise<{ data: Record<string, any>; deletedExercises: string[] } | null> | null = null;
 
-// GET custom exercise media overrides and deleted exercise IDs (Cloud Firestore authoritative)
+// GET custom exercise media overrides and deleted exercise IDs (RAM cached + Cloud Firestore authoritative)
 app.get("/api/exercises/custom-media", async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   try {
-    let data: Record<string, any> = {};
-    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
-      const rawData = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
-      if (rawData) {
-        try {
-          data = JSON.parse(rawData);
-        } catch (parseError) {
-          console.error("Malformed overrides JSON, resetting to empty:", parseError);
-          fs.writeFileSync(OVERRIDES_FILE_PATH, "{}", "utf-8");
-        }
-      }
-    } else {
-      fs.writeFileSync(OVERRIDES_FILE_PATH, "{}", "utf-8");
-    }
-
-    let deletedExercises: string[] = [];
-    if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
-      try {
-        const rawDeleted = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
-        if (rawDeleted) {
-          deletedExercises = JSON.parse(rawDeleted);
-        }
-      } catch (dErr) {
-        console.error("Error reading DELETED_EXERCISES_FILE_PATH:", dErr);
-      }
-    }
+    let data: Record<string, any> = getCachedOverridesMap();
+    let deletedExercises: string[] = [...getCachedDeletedList()];
 
     const shouldSyncCloud =
       req.query.fresh === "true" ||
       Object.keys(data).length === 0 ||
-      Date.now() - lastCustomMediaCloudSync > 10000;
+      Date.now() - lastCustomMediaCloudSync > 120_000;
 
     if (shouldSyncCloud) {
       if (inflightCustomMediaSync) {
@@ -4143,22 +4192,22 @@ app.get("/api/exercises/custom-media", async (req, res) => {
           }
         });
 
-        // Merge cloud authority over local cache, strip tombstones & any stale placeholder GIF masks
-        data = { ...data, ...freshOverrides };
-        for (const k of Object.keys(data)) {
-          const item = data[k];
+        // Merge cloud authority over cached overrides, strip tombstones & any stale placeholder GIF masks
+        const mergedData: Record<string, any> = { ...data, ...freshOverrides };
+        for (const k of Object.keys(mergedData)) {
+          const item = mergedData[k];
           const itemName = deriveExerciseNameFromEntry(k, item || {}).toLowerCase().trim();
           if (item?.isDeleted === true || isTombstonedServer(k, itemName)) {
-            delete data[k];
+            delete mergedData[k];
           } else {
-            data[k] = sanitizeOverrideEntry(item, k);
+            mergedData[k] = sanitizeOverrideEntry(item, k);
           }
         }
 
-        fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(data, null, 2), "utf-8");
-        fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(deletedExercises, null, 2), "utf-8");
+        setCachedOverridesMap(mergedData);
+        setCachedDeletedList(deletedExercises, true);
         lastCustomMediaCloudSync = Date.now();
-          return { data, deletedExercises };
+          return { data: mergedData, deletedExercises };
         })();
         const syncedResult = await inflightCustomMediaSync.finally(() => {
           inflightCustomMediaSync = null;
@@ -4322,17 +4371,7 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
   const matchedEx = EXERCISES.find(e => e.id === exerciseId);
 
   try {
-    let overrides: Record<string, any> = {};
-    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
-      const rawData = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
-      if (rawData) {
-        try {
-          overrides = JSON.parse(rawData);
-        } catch (parseError) {
-          console.error("Malformed overrides JSON on write, resetting to empty:", parseError);
-        }
-      }
-    }
+    const overrides: Record<string, any> = { ...getCachedOverridesMap() };
 
     const isClearingMedia = customMediaUrl === null || customMediaUrl === "" || customMediaUrl === "none" || customMediaUrl === "deleted";
     if (isClearingMedia) {
@@ -4358,9 +4397,7 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
         if (cleaned.imageUrl === "none") delete cleaned.imageUrl;
         overrides[exerciseId] = cleaned;
       }
-      try {
-        fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
-      } catch (e) {}
+      setCachedOverridesMap(overrides);
       lastCustomMediaCloudSync = Date.now();
       return res.json({ success: true, firestoreOk: true, customMediaUrl: "" });
     } else {
@@ -4467,7 +4504,7 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
       }
     }
 
-    fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
+    setCachedOverridesMap(overrides);
     lastCustomMediaCloudSync = Date.now();
 
     // Synchronize media update across all program schedules in Firestore and local disk
@@ -4498,15 +4535,7 @@ app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
   }
 
   try {
-    let overrides: Record<string, any> = {};
-    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
-      try {
-        const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
-        if (raw) overrides = JSON.parse(raw);
-      } catch (err) {
-        console.error("Failed parsing overrides file, resetting:", err);
-      }
-    }
+    const overrides: Record<string, any> = { ...getCachedOverridesMap() };
 
     const mediaVal = updates.customMediaUrl || updates.gifUrl || updates.imageUrl;
     const cleanUpdates = {
@@ -4571,7 +4600,7 @@ app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
       };
     }
 
-    fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
+    setCachedOverridesMap(overrides);
     lastCustomMediaCloudSync = Date.now();
 
     // Synchronize updates across all program schedules in Firestore and local disk
@@ -4613,18 +4642,10 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
     // 0. Gather tombstones so previously deleted exercises can always be re-created cleanly without false 409 blocks
     const tombstoneSet = new Set<string>();
     try {
-      if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
-        const rawDel = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
-        if (rawDel) {
-          const parsedDel = JSON.parse(rawDel);
-          if (Array.isArray(parsedDel)) {
-            parsedDel.forEach((d: any) => {
-              const s = String(d || "").trim().toLowerCase();
-              if (s) tombstoneSet.add(s);
-            });
-          }
-        }
-      }
+      getCachedDeletedList().forEach((d: any) => {
+        const s = String(d || "").trim().toLowerCase();
+        if (s) tombstoneSet.add(s);
+      });
       const deletedDocs = await getServerFirestoreCollection("deleted_exercises", req.authToken);
       deletedDocs.forEach((d: any) => {
         const dd = d.data();
@@ -4693,16 +4714,8 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
       });
     }
 
-    // Read local overrides cache
-    let overrides: Record<string, any> = {};
-    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
-      try {
-        const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
-        if (raw) overrides = JSON.parse(raw);
-      } catch (err) {
-        console.error("Failed parsing overrides file:", err);
-      }
-    }
+    // Read RAM overrides cache
+    const overrides: Record<string, any> = { ...getCachedOverridesMap() };
 
     const existingOverride = Object.values(overrides).find((o: any) => {
       if (!o || o.isDeleted === true) return false;
@@ -4750,27 +4763,24 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
         deleteServerFirestoreDoc("deleted_exercises", newId, req.authToken),
         cleanNameDoc ? deleteServerFirestoreDoc("deleted_exercises", cleanNameDoc, req.authToken) : Promise.resolve({ success: true })
       ]);
-      if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
-        const rawDel = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
-        if (rawDel) {
-          const delArr: string[] = JSON.parse(rawDel);
-          const filteredDel = delArr.filter(d => {
-            const dl = String(d || "").toLowerCase().trim();
-            return dl !== newId.toLowerCase() && dl !== cleanName;
-          });
-          fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(filteredDel, null, 2), "utf-8");
-        }
+      const delArr = getCachedDeletedList();
+      if (delArr.length > 0) {
+        const filteredDel = delArr.filter(d => {
+          const dl = String(d || "").toLowerCase().trim();
+          return dl !== newId.toLowerCase() && dl !== cleanName;
+        });
+        setCachedDeletedList(filteredDel);
       }
     } catch (tombErr) {
       console.warn("[Workout Create] Tombstone cleanup warning:", tombErr);
     }
 
-    // 5. Update local cache cleanly
+    // 5. Update RAM & disk cache cleanly
     overrides[newId] = fullWorkout;
     if (cleanName) {
       overrides[cleanName] = fullWorkout;
     }
-    fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
+    setCachedOverridesMap(overrides);
     lastCustomMediaCloudSync = Date.now();
 
     // Synchronize to target program schedules if programs are assigned
@@ -4849,16 +4859,8 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
 
     console.log(`[Firestore OK] Archived & tombstoned workout in deleted_exercises/${targetDocId}`);
 
-    // 2. Clean local overrides cache
-    let overrides: Record<string, any> = {};
-    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
-      try {
-        const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
-        if (raw) overrides = JSON.parse(raw);
-      } catch (err) {
-        console.error("Failed parsing overrides file:", err);
-      }
-    }
+    // 2. Clean RAM & disk overrides cache
+    const overrides: Record<string, any> = { ...getCachedOverridesMap() };
 
     let overridesModified = false;
     if (exerciseId && overrides[exerciseId]) {
@@ -4870,16 +4872,12 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
       overridesModified = true;
     }
     if (overridesModified) {
-      fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
+      setCachedOverridesMap(overrides);
     }
 
-    // 3. Persist to DELETED_EXERCISES_FILE_PATH permanently
+    // 3. Persist to deleted list cleanly
     try {
-      let deletedList: string[] = [];
-      if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
-        const rawDel = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
-        if (rawDel) deletedList = JSON.parse(rawDel);
-      }
+      const deletedList = [...getCachedDeletedList()];
       let delModified = false;
       if (exerciseId && !deletedList.includes(exerciseId)) {
         deletedList.push(exerciseId);
@@ -4890,7 +4888,7 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
         delModified = true;
       }
       if (delModified) {
-        fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(deletedList, null, 2), "utf-8");
+        setCachedDeletedList(deletedList, true);
       }
     } catch (writeDelErr) {
       console.error("Failed saving to DELETED_EXERCISES_FILE_PATH:", writeDelErr);
@@ -4999,29 +4997,23 @@ app.post("/api/exercises/restore", requireAdmin, async (req: any, res) => {
       });
     }
 
-    // 2. Remove from DELETED_EXERCISES_FILE_PATH & update local overrides cache
+    // 2. Remove from deleted list & update RAM + disk overrides cache
     try {
-      if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
-        const rawDel = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
-        if (rawDel) {
-          const delArr: string[] = JSON.parse(rawDel);
-          const normName = restoredName.toLowerCase().trim();
-          const filtered = delArr.filter((entry) => {
-            const eLower = String(entry || "").toLowerCase().trim();
-            return eLower !== restoredId.toLowerCase() && eLower !== normName && !docsToDelete.map(x => x.toLowerCase()).includes(eLower);
-          });
-          fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(filtered, null, 2), "utf-8");
-        }
+      const delArr = getCachedDeletedList();
+      if (delArr.length > 0) {
+        const normName = restoredName.toLowerCase().trim();
+        const docsLower = docsToDelete.map(x => x.toLowerCase());
+        const filtered = delArr.filter((entry) => {
+          const eLower = String(entry || "").toLowerCase().trim();
+          return eLower !== restoredId.toLowerCase() && eLower !== normName && !docsLower.includes(eLower);
+        });
+        setCachedDeletedList(filtered, true);
       }
 
-      let overrides: Record<string, any> = {};
-      if (fs.existsSync(OVERRIDES_FILE_PATH)) {
-        const rawOvr = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
-        if (rawOvr) overrides = JSON.parse(rawOvr);
-      }
+      const overrides: Record<string, any> = { ...getCachedOverridesMap() };
       overrides[restoredId] = restoredExercise;
       overrides[restoredName.toLowerCase().trim()] = restoredExercise;
-      fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
+      setCachedOverridesMap(overrides);
     } catch (diskErr) {
       console.warn("[Workout Restore] Local cache update notice:", diskErr);
     }
@@ -5146,8 +5138,8 @@ async function fetchProgramOverridesFromCloud(userToken?: string): Promise<Recor
       }
 
       if (Object.keys(cloudOverrides).length > 0) {
-        // Persist cache asynchronously so large JSON serialization doesn't block HTTP responses
-        fs.promises.writeFile(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(cloudOverrides, null, 2), "utf-8").catch(() => {});
+        setCachedProgramOverridesMap(cloudOverrides, "cloud");
+        lastProgramOverridesCloudSync = Date.now();
         console.log(`[Cloud Persistence OK] Loaded ${Object.keys(cloudOverrides).length} authoritative program overrides from Firestore.`);
         return cloudOverrides;
       }
@@ -5171,16 +5163,7 @@ async function loadAuthoritativeProgramOverrides(userToken?: string): Promise<{ 
   if (cloudLatest && Object.keys(cloudLatest).length > 0) {
     return { overrides: cloudLatest, source: "cloud" };
   }
-  let diskOverrides: Record<string, any> = {};
-  if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-    try {
-      const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-      if (raw) diskOverrides = JSON.parse(raw);
-    } catch (err) {
-      console.error("Failed reading program schedule overrides from disk:", err);
-    }
-  }
-  return { overrides: diskOverrides, source: "disk" };
+  return { overrides: { ...loadProgramScheduleOverrides() }, source: "disk" };
 }
 
 function resolveTargetScheduleKeys(programId: string, track?: string, targetProgramKey?: string): string[] {
@@ -5263,13 +5246,10 @@ async function persistProgramOverridesToCloud(
     firestoreOk = false;
   }
 
-  // 2. Write local disk cache only after Firestore attempt (so cache reflects what was committed)
+  // 2. Update warm RAM cache and schedule async disk cache only after Firestore confirms
   if (firestoreOk) {
-    try {
-      fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(overrides, null, 2), "utf-8");
-    } catch (e) {
-      console.warn("[Cloud Persistence] Disk write notice:", e);
-    }
+    setCachedProgramOverridesMap(overrides, "cloud");
+    lastProgramOverridesCloudSync = Date.now();
   } else {
     console.error(`[Cloud Persistence FAILED] Program schedule writes (${keysToPersist.join(", ")}) were NOT confirmed by Cloud Firestore.`);
   }
@@ -5356,7 +5336,6 @@ async function purgeExerciseFromProgramSchedules(exerciseId: string, exerciseNam
     }
 
     if (modified && touchedKeys.length > 0) {
-      fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
       await persistProgramOverridesToCloud(allOverrides, userEmail, touchedKeys, userToken);
       console.log(`[Cloud Persistence OK] Purged workout ${exerciseId || exerciseName} from ${touchedKeys.length} programs in Firestore.`);
     }
@@ -5439,7 +5418,6 @@ async function syncExerciseMediaToProgramSchedules(exerciseId: string, mediaUrl:
     }
 
     if (modified && touchedKeys.length > 0) {
-      fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
       await persistProgramOverridesToCloud(allOverrides, userEmail, touchedKeys, userToken);
       console.log(`[Cloud Persistence OK] Updated exercise media across ${touchedKeys.length} programs in Firestore.`);
     }
@@ -5543,7 +5521,6 @@ async function addWorkoutToProgramScheduleServer(workout: any, userEmail: string
     }
 
     if (modified) {
-      fs.writeFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, JSON.stringify(allOverrides, null, 2), "utf-8");
       await persistProgramOverridesToCloud(allOverrides, userEmail, targetProgIds, userToken);
       console.log(`[Cloud Persistence OK] Added workout ${workout.name} to ${targetProgIds.join(", ")} program schedules in Firestore.`);
     }
@@ -5552,33 +5529,45 @@ async function addWorkoutToProgramScheduleServer(workout: any, userEmail: string
   }
 }
 
-// Full Cloud Hydration on Boot: restores all programs, schedules, drills and challenges strictly from Cloud Firestore
+// Full Cloud Hydration on Boot: restores all programs, schedules, drills and challenges concurrently from Cloud Firestore
 async function hydrateAllDataFromCloud() {
+  const [
+    progRes,
+    deletedRes,
+    mediaRes,
+    exRes,
+    genRes,
+    legacyExRes,
+    chRes
+  ] = await Promise.allSettled([
+    fetchProgramOverridesFromCloud(),
+    getServerFirestoreCollection("deleted_exercises"),
+    getServerFirestoreCollection("exercise_media"),
+    getServerFirestoreCollection("exercises"),
+    getServerFirestoreCollection("generated_exercises"),
+    getServerFirestoreDoc("system_settings", "exercise_overrides"),
+    getServerFirestoreCollection("challenges")
+  ]);
+
   // 1. Program Schedule Overrides
   try {
-    let cloudOverrides = await fetchProgramOverridesFromCloud();
+    let cloudOverrides = progRes.status === "fulfilled" ? progRes.value : {};
     let seededFromDisk = false;
 
-    // ONLY seed from disk if cloud is completely empty
-    if ((!cloudOverrides || Object.keys(cloudOverrides).length === 0) && fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-      try {
-        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-        if (raw) {
-          const diskData = JSON.parse(raw);
-          if (Object.keys(diskData).length > 0) {
-            console.log(`[Cloud Seeding] Cloud empty. Seeding ${Object.keys(diskData).length} programs from disk...`);
-            await persistProgramOverridesToCloud(diskData, "system_seed");
-            cloudOverrides = diskData;
-            seededFromDisk = true;
-          }
-        }
-      } catch (seedErr) {
-        console.warn("[Cloud Seeding] Seed notice:", seedErr);
+    if (!cloudOverrides || Object.keys(cloudOverrides).length === 0) {
+      const diskData = loadProgramScheduleOverrides();
+      if (Object.keys(diskData).length > 0) {
+        console.log(`[Cloud Seeding] Cloud empty. Seeding ${Object.keys(diskData).length} programs from disk...`);
+        await persistProgramOverridesToCloud(diskData, "system_seed");
+        cloudOverrides = diskData;
+        seededFromDisk = true;
       }
     }
 
     if (cloudOverrides && Object.keys(cloudOverrides).length > 0) {
       bootHydrationSource = seededFromDisk ? "disk" : "cloud";
+      setCachedProgramOverridesMap(cloudOverrides, bootHydrationSource);
+      lastProgramOverridesCloudSync = Date.now();
       console.log(`[Cloud Hydration OK] Hydrated and secured ${Object.keys(cloudOverrides).length} program schedules (${bootHydrationSource}).`);
     }
   } catch (err) {
@@ -5588,7 +5577,7 @@ async function hydrateAllDataFromCloud() {
   // 2. Deleted Exercises Tombstones FIRST (so tombstoned exercises never re-appear in overrides cache)
   const tombstoneSet = new Set<string>();
   try {
-    const deletedDocs = await getServerFirestoreCollection("deleted_exercises");
+    const deletedDocs = deletedRes.status === "fulfilled" ? deletedRes.value : [];
     if (deletedDocs && deletedDocs.length > 0) {
       const currentDeleted: string[] = [];
       for (const d of deletedDocs) {
@@ -5604,7 +5593,7 @@ async function hydrateAllDataFromCloud() {
           if (!currentDeleted.includes(delName)) currentDeleted.push(delName);
         }
       }
-      fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(currentDeleted, null, 2), "utf-8");
+      setCachedDeletedList(currentDeleted, true);
       console.log(`[Cloud Hydration OK] Hydrated ${deletedDocs.length} deleted exercise tombstones from Firestore.`);
     }
   } catch (delHydrateErr) {
@@ -5648,10 +5637,9 @@ async function hydrateAllDataFromCloud() {
       return cleaned;
     };
 
-    // 3a. Query Firestore 'exercise_media' collection
-    try {
-      const mediaDocs = await getServerFirestoreCollection("exercise_media");
-      for (const d of mediaDocs) {
+    // 3a. exercise_media
+    if (mediaRes.status === "fulfilled") {
+      for (const d of mediaRes.value) {
         const docData = d.data();
         const derivedMediaName = deriveExerciseNameFromEntry(d.id, docData || {});
         if (docData?.isDeleted === true || isTombstonedHydrate(d.id, derivedMediaName)) continue;
@@ -5682,14 +5670,11 @@ async function hydrateAllDataFromCloud() {
           }
         }
       }
-    } catch (mErr) {
-      console.warn("[Cloud Hydration] Notice reading exercise_media collection:", mErr);
     }
 
-    // 3b. Query Firestore 'exercises' collection (ignore tombstoned)
-    try {
-      const exDocs = await getServerFirestoreCollection("exercises");
-      for (const d of exDocs) {
+    // 3b. exercises
+    if (exRes.status === "fulfilled") {
+      for (const d of exRes.value) {
         const docData = d.data();
         const derivedExName = deriveExerciseNameFromEntry(d.id, docData || {});
         if (docData?.isDeleted === true || isTombstonedHydrate(d.id, derivedExName)) continue;
@@ -5714,14 +5699,11 @@ async function hydrateAllDataFromCloud() {
           }
         }
       }
-    } catch (exErr) {
-      console.warn("[Cloud Hydration] Notice reading exercises collection:", exErr);
     }
 
-    // 3b-2. Query Firestore 'generated_exercises' collection
-    try {
-      const genDocs = await getServerFirestoreCollection("generated_exercises");
-      for (const d of genDocs) {
+    // 3b-2. generated_exercises
+    if (genRes.status === "fulfilled") {
+      for (const d of genRes.value) {
         const docData = d.data();
         const derivedGenName = deriveExerciseNameFromEntry(d.id, docData || {});
         if (docData?.isDeleted === true || isTombstonedHydrate(d.id, derivedGenName)) continue;
@@ -5748,42 +5730,30 @@ async function hydrateAllDataFromCloud() {
           }
         }
       }
-    } catch (genErr) {
-      console.warn("[Cloud Hydration] Notice reading generated_exercises collection:", genErr);
     }
 
-    // 3c. Check legacy system_settings/exercise_overrides
-    try {
-      const snapEx = await getServerFirestoreDoc("system_settings", "exercise_overrides");
-      if (snapEx && snapEx.exists) {
-        const d = snapEx.data();
-        if (d && typeof d === "object") {
-          const { _updatedAt, _updatedBy, ...rest } = d;
-          cloudExerciseOverrides = { ...rest, ...cloudExerciseOverrides };
-        }
+    // 3c. legacy system_settings/exercise_overrides
+    if (legacyExRes.status === "fulfilled" && legacyExRes.value && legacyExRes.value.exists) {
+      const d = legacyExRes.value.data();
+      if (d && typeof d === "object") {
+        const { _updatedAt, _updatedBy, ...rest } = d;
+        cloudExerciseOverrides = { ...rest, ...cloudExerciseOverrides };
       }
-    } catch (e) {}
-
-    // 3d. Cloud overrides win; strip any tombstoned items & placeholder masks cleanly
-    let existingDisk: Record<string, any> = {};
-    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
-      try {
-        const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
-        if (raw) existingDisk = JSON.parse(raw);
-      } catch (e) {}
     }
 
-    const mergedEx = { ...existingDisk, ...cloudExerciseOverrides };
+    const existingDisk = getCachedOverridesMap();
+    const mergedEx: Record<string, any> = { ...existingDisk, ...cloudExerciseOverrides };
     for (const k of Object.keys(mergedEx)) {
       const item = mergedEx[k];
       const itemName = String(item?.name || item?.exerciseName || "").toLowerCase().trim();
       if (item?.isDeleted === true || tombstoneSet.has(k.toLowerCase()) || (itemName && tombstoneSet.has(itemName))) {
         delete mergedEx[k];
       } else {
-        mergedEx[k] = sanitizeHydratedEntry(item);
+        mergedEx[k] = sanitizeHydratedEntry(item, k);
       }
     }
-    fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(mergedEx, null, 2), "utf-8");
+    setCachedOverridesMap(mergedEx);
+    lastCustomMediaCloudSync = Date.now();
     console.log(`[Cloud Hydration OK] Hydrated ${Object.keys(mergedEx).length} active exercise overrides from Cloud Firestore.`);
   } catch (err) {
     console.warn("[Cloud Hydration] Exercise overrides hydration error:", err);
@@ -5791,58 +5761,60 @@ async function hydrateAllDataFromCloud() {
 
   // 3. Custom Challenges (Cloud Firestore authoritative, excluding deleted)
   try {
-    const chDocs = await getServerFirestoreCollection("challenges");
+    const chDocs = chRes.status === "fulfilled" ? chRes.value : [];
     if (chDocs && chDocs.length > 0) {
       const cloudChallenges = chDocs
         .map((d: any) => ({ id: d.id, ...d.data() }))
         .filter((c: any) => c && c.isDeleted !== true);
-      fs.writeFileSync(CHALLENGES_FILE_PATH, JSON.stringify(cloudChallenges, null, 2), "utf-8");
+      scheduleAsyncJsonWrite(CHALLENGES_FILE_PATH, cloudChallenges);
       console.log(`[Cloud Hydration OK] Hydrated ${cloudChallenges.length} custom challenges from Firestore.`);
     }
   } catch (err) {}
 
-  // 4. Printable PDF Catalog, Orders & Master Templates
-  try {
-    const { 
-      syncPdfProductsFromFirestore, 
-      recoverMasterPdfIfNeeded, 
-      seedExistingPdfAssetsToFirestore, 
-      ensurePdfDirectories, 
-      setEngineDb 
-    } = await import("./src/server/printablePdfEngine");
-    
-    if (db) setEngineDb(db);
-    ensurePdfDirectories();
-    
-    // Seed existing local files and catalog to Firestore if needed
-    await seedExistingPdfAssetsToFirestore();
-    
-    // Hydrate all products from Firestore
-    const products = await syncPdfProductsFromFirestore();
-    console.log(`[Cloud Hydration OK] Hydrated ${products.length} Printable PDF products from Cloud Firestore.`);
+  // 4. Defer Printable PDF Catalog & Master Templates recovery slightly so HTTP boot latency stays near zero
+  setTimeout(async () => {
+    try {
+      const {
+        syncPdfProductsFromFirestore,
+        recoverMasterPdfIfNeeded,
+        seedExistingPdfAssetsToFirestore,
+        ensurePdfDirectories,
+        setEngineDb
+      } = await import("./src/server/printablePdfEngine");
 
-    // Proactively recover master templates for all products
-    for (const prod of products) {
-      if (prod.masterPdfFilename) {
-        await recoverMasterPdfIfNeeded(prod.masterPdfFilename);
-      }
-      await recoverMasterPdfIfNeeded(`${prod.id}.pdf`);
+      if (db) setEngineDb(db);
+      ensurePdfDirectories();
+      await seedExistingPdfAssetsToFirestore();
+
+      const products = await syncPdfProductsFromFirestore();
+      console.log(`[Cloud Hydration OK] Hydrated ${products.length} Printable PDF products from Cloud Firestore.`);
+
+      await Promise.allSettled(
+        products.flatMap((prod) => [
+          prod.masterPdfFilename ? recoverMasterPdfIfNeeded(prod.masterPdfFilename) : Promise.resolve(),
+          recoverMasterPdfIfNeeded(`${prod.id}.pdf`)
+        ])
+      );
+    } catch (pdfHydrateErr) {
+      console.warn("[Cloud Hydration] PDF hydration notice:", pdfHydrateErr);
     }
-  } catch (pdfHydrateErr) {
-    console.warn("[Cloud Hydration] PDF hydration notice:", pdfHydrateErr);
-  }
+  }, 1500);
 
-  console.log("[Cloud Hydration Complete] Render server boot state fully secured against data loss.");
+  console.log("[Cloud Hydration Complete] Render server boot state hydrated concurrently in RAM.");
 }
 
-// GET all permanently deleted exercises
+// GET all permanently deleted exercises (RAM cached with 60s TTL)
 app.get("/api/exercises/deleted", async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   try {
-    let deletedList: string[] = [];
-    if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
-      const raw = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
-      if (raw) deletedList = JSON.parse(raw);
+    let deletedList: string[] = [...getCachedDeletedList()];
+
+    if (
+      req.query.fresh !== "true" &&
+      cachedDeletedAuthoritativeAt > 0 &&
+      Date.now() - cachedDeletedAuthoritativeAt < 60_000
+    ) {
+      return res.json({ success: true, authoritative: true, deletedExercises: deletedList });
     }
 
     const cloudDocs = await getServerFirestoreCollection("deleted_exercises").catch(() => null);
@@ -5857,10 +5829,7 @@ app.get("/api/exercises/deleted", async (req, res) => {
         if (d.name) cloudTombstones.push(String(d.name).toLowerCase().trim());
       }
       deletedList = Array.from(new Set(cloudTombstones));
-      try {
-        fs.mkdirSync(path.dirname(DELETED_EXERCISES_FILE_PATH), { recursive: true });
-        fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(deletedList, null, 2), "utf-8");
-      } catch {}
+      setCachedDeletedList(deletedList, true);
       return res.json({ success: true, authoritative: true, deletedExercises: deletedList });
     }
 
@@ -5872,24 +5841,31 @@ app.get("/api/exercises/deleted", async (req, res) => {
 
 let lastProgramOverridesCloudSync = 0;
 
-// GET all program schedule overrides (Cloud Firestore strictly authoritative)
+// GET all program schedule overrides (RAM cached with 120s TTL + Cloud Firestore authoritative)
 app.get(["/api/admin/programs/overrides", "/api/programs/schedules"], async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   try {
     let overrides: Record<string, any> = {};
-    let source: "cloud" | "disk" = "disk";
+    let source: "cloud" | "disk" = cachedProgramOverridesSource;
 
-    const cloudData = await fetchProgramOverridesFromCloud();
-    if (cloudData && Object.keys(cloudData).length > 0) {
-      overrides = cloudData;
-      lastProgramOverridesCloudSync = Date.now();
-      source = "cloud";
-    } else if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-      try {
-        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-        if (raw) overrides = JSON.parse(raw);
-      } catch (err) {
-        console.error("Failed reading program schedule overrides:", err);
+    const isFreshReq = req.query.fresh === "true";
+    const hasWarmCloudCache =
+      cachedProgramOverrides !== null &&
+      Object.keys(cachedProgramOverrides).length > 0 &&
+      Date.now() - lastProgramOverridesCloudSync < 120_000;
+
+    if (!isFreshReq && hasWarmCloudCache) {
+      overrides = cachedProgramOverrides!;
+      source = cachedProgramOverridesSource;
+    } else {
+      const cloudData = await fetchProgramOverridesFromCloud();
+      if (cloudData && Object.keys(cloudData).length > 0) {
+        overrides = cloudData;
+        lastProgramOverridesCloudSync = Date.now();
+        source = "cloud";
+      } else {
+        overrides = loadProgramScheduleOverrides();
+        source = "disk";
       }
     }
 
@@ -5922,13 +5898,7 @@ app.get(["/api/admin/programs/overrides", "/api/programs/schedules"], async (req
 app.get("/api/diagnostics/schedule-source", async (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
   try {
-    let overrides: Record<string, any> = {};
-    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-      try {
-        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-        if (raw) overrides = JSON.parse(raw);
-      } catch (e) {}
-    }
+    const overrides = loadProgramScheduleOverrides();
 
     const programs: Record<string, any> = {};
     for (const progId of Object.keys(overrides || {})) {
@@ -5974,13 +5944,7 @@ app.get("/api/diagnostics/schedule-source", async (_req, res) => {
 app.post("/api/admin/programs/sync-cloud", requireAdmin, async (req: any, res) => {
   try {
     const { overrides: incomingOverrides } = req.body || {};
-    let currentDisk: Record<string, any> = {};
-    if (fs.existsSync(PROGRAM_SCHEDULE_OVERRIDES_PATH)) {
-      try {
-        const raw = fs.readFileSync(PROGRAM_SCHEDULE_OVERRIDES_PATH, "utf-8").trim();
-        if (raw) currentDisk = JSON.parse(raw);
-      } catch (e) {}
-    }
+    const currentDisk = loadProgramScheduleOverrides();
 
     const cloudData = await fetchProgramOverridesFromCloud();
     const hasCloudOrIncoming = Object.keys(cloudData || {}).length > 0 || Object.keys(incomingOverrides || {}).length > 0;
@@ -6430,17 +6394,8 @@ app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any
           .map((e: any) => (e.exerciseName || e.name || "").toLowerCase().trim())
       );
 
-      let masterPool = [...EXERCISES];
-      if (fs.existsSync(OVERRIDES_FILE_PATH)) {
-        try {
-          const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
-          if (raw) {
-            const customMap = JSON.parse(raw);
-            const customList = Object.values(customMap);
-            masterPool = [...masterPool, ...customList as any[]];
-          }
-        } catch (e) {}
-      }
+      const customList = Object.values(getCachedOverridesMap());
+      const masterPool = [...EXERCISES, ...customList as any[]];
 
       const isHomeProg = (programId || "").toLowerCase().includes("home");
       const isGymGear = (ex: any) => {
@@ -6754,35 +6709,30 @@ app.post("/api/admin/workouts/purge-restricted-home", requireAdmin, async (req: 
       return { isViolating: false, reason: "" };
     };
 
-    // 1. Audit and clean custom_exercise_overrides.json
-    if (fs.existsSync(OVERRIDES_FILE_PATH)) {
-      try {
-        const raw = fs.readFileSync(OVERRIDES_FILE_PATH, "utf-8").trim();
-        if (raw) {
-          const overrides = JSON.parse(raw);
-          let modified = false;
-          for (const key of Object.keys(overrides)) {
-            const item = overrides[key];
-            const check = isRestricted(item);
-            if (check.isViolating) {
-              deletedWorkouts.push({
-                id: item.id || key,
-                name: item.name || item.exerciseName || key,
-                category: item.category || "Home Workouts",
-                equipment: Array.isArray(item.equipment) ? item.equipment : [String(item.equipment || "")],
-                reason: check.reason
-              });
-              delete overrides[key];
-              modified = true;
-            }
-          }
-          if (modified) {
-            fs.writeFileSync(OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
-          }
+    // 1. Audit and clean overrides cache
+    try {
+      const overrides: Record<string, any> = { ...getCachedOverridesMap() };
+      let modified = false;
+      for (const key of Object.keys(overrides)) {
+        const item = overrides[key];
+        const check = isRestricted(item);
+        if (check.isViolating) {
+          deletedWorkouts.push({
+            id: item.id || key,
+            name: item.name || item.exerciseName || key,
+            category: item.category || "Home Workouts",
+            equipment: Array.isArray(item.equipment) ? item.equipment : [String(item.equipment || "")],
+            reason: check.reason
+          });
+          delete overrides[key];
+          modified = true;
         }
-      } catch (err) {
-        console.error("Error purging from OVERRIDES_FILE_PATH:", err);
       }
+      if (modified) {
+        setCachedOverridesMap(overrides);
+      }
+    } catch (err) {
+      console.error("Error purging from OVERRIDES_FILE_PATH:", err);
     }
 
     // 2. Audit and clean Firestore collections
@@ -6868,18 +6818,14 @@ app.post("/api/admin/workouts/purge-restricted-home", requireAdmin, async (req: 
       }
     }
 
-    // 3. Update DELETED_EXERCISES_FILE_PATH
+    // 3. Update deleted exercises cache
     if (deletedWorkouts.length > 0) {
       try {
-        let deletedList: string[] = [];
-        if (fs.existsSync(DELETED_EXERCISES_FILE_PATH)) {
-          const raw = fs.readFileSync(DELETED_EXERCISES_FILE_PATH, "utf-8").trim();
-          if (raw) deletedList = JSON.parse(raw);
-        }
+        const deletedList = [...getCachedDeletedList()];
         deletedWorkouts.forEach(dw => {
           if (!deletedList.includes(dw.id)) deletedList.push(dw.id);
         });
-        fs.writeFileSync(DELETED_EXERCISES_FILE_PATH, JSON.stringify(deletedList, null, 2), "utf-8");
+        setCachedDeletedList(deletedList, true);
       } catch (dErr) {
         console.error("Error updating DELETED_EXERCISES_FILE_PATH:", dErr);
       }

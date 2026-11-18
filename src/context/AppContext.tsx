@@ -354,6 +354,24 @@ const safeSetItem = (key: string, value: string): void => {
   }
 };
 
+const BASE_EXERCISES_ID_SET = new Set<string>(EXERCISES.map((e) => e.id).filter(Boolean));
+let exercisesPersistTimer: ReturnType<typeof setTimeout> | null = null;
+const scheduleIdleExercisesPersist = (list: Exercise[]): void => {
+  if (typeof window === "undefined") return;
+  if (exercisesPersistTimer) clearTimeout(exercisesPersistTimer);
+  exercisesPersistTimer = setTimeout(() => {
+    exercisesPersistTimer = null;
+    const writeNow = () => {
+      safeSetItem("fit_exercises", JSON.stringify(list));
+    };
+    if (typeof (window as any).requestIdleCallback === "function") {
+      (window as any).requestIdleCallback(writeNow, { timeout: 1500 });
+    } else {
+      writeNow();
+    }
+  }, 350);
+};
+
 const ADMIN_EMAILS = [
   "alexfitnesshub@gmail.com",
   "muzikworld08@gmail.com",
@@ -669,7 +687,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch {}
 
       const baseExercisePool = [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES];
+      const basePoolIdSet = new Set<string>();
+      const basePoolNameSet = new Set<string>();
+      for (const b of baseExercisePool) {
+        if (b?.id) basePoolIdSet.add(b.id);
+        const bn = (b?.name || "").toLowerCase().trim();
+        if (bn) basePoolNameSet.add(bn);
+      }
       const initialMap = new Map<string, Exercise>();
+      const initialNameSet = new Set<string>();
 
       // 1. Populate base canonical exercises with cached media overrides
       baseExercisePool.forEach(e => {
@@ -688,6 +714,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           };
         }
         initialMap.set(e.id, item);
+        if (eName) initialNameSet.add(eName);
       });
 
       // 2. Merge any custom admin-created workouts from cached fit_exercises
@@ -700,10 +727,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               if (!ex || !ex.id || !ex.name) return;
               const exName = (ex.name || "").toLowerCase().trim();
               if (deletedSet.has(ex.id) || deletedSet.has(exName)) return;
-              const isBase = baseExercisePool.some(b => b.id === ex.id || b.name?.toLowerCase().trim() === exName);
+              const isBase = basePoolIdSet.has(ex.id) || (exName ? basePoolNameSet.has(exName) : false);
               if (ex.isCustom === true || !isBase) {
                 if (!initialMap.has(ex.id)) {
                   initialMap.set(ex.id, { ...ex, isCustom: true });
+                  if (exName) initialNameSet.add(exName);
                 }
               }
             });
@@ -716,7 +744,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const val = cachedOverrides[key];
         if (val && typeof val === "object" && val.name && !deletedSet.has(key) && val.isDeleted !== true) {
           const valName = (val.name || "").toLowerCase().trim();
-          const isBase = baseExercisePool.some(b => b.id === key || b.name?.toLowerCase().trim() === valName);
+          const isBase = basePoolIdSet.has(key) || (valName ? basePoolNameSet.has(valName) : false);
           if (val.isCustom === true || !isBase) {
             if (!initialMap.has(key)) {
               initialMap.set(key, {
@@ -731,6 +759,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 isCustom: true,
                 ...val
               } as Exercise);
+              if (valName) initialNameSet.add(valName);
             }
           }
         }
@@ -751,11 +780,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
       hydratedCustom.forEach(hydratedEx => {
         const hName = (hydratedEx.name || "").toLowerCase().trim();
-        const exists = Array.from(initialMap.values()).some(
-          existing => existing.id === hydratedEx.id || (hName && (existing.name || "").toLowerCase().trim() === hName)
-        );
-        if (!exists) {
+        if (!initialMap.has(hydratedEx.id) && (!hName || !initialNameSet.has(hName))) {
           initialMap.set(hydratedEx.id, hydratedEx);
+          if (hName) initialNameSet.add(hName);
         }
       });
 
@@ -963,78 +990,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (stored) localOverrides = JSON.parse(stored);
         } catch {}
 
-        // 1-3. Fetch server custom-media API, persistent media DB, Firestore collections, and deleted tombstones concurrently
+        // 1. Query cached Express custom-media endpoint first (already cloud-hydrated in RAM);
+        // fall back to direct Firestore reads only if server endpoint returns empty or fails
         let serverOverrides: Record<string, any> = {};
         let serverDeletedIds: string[] = [];
         let persistentMediaOverrides: Record<string, any> = {};
         const firestoreOverrides: Record<string, any> = {};
         const firestoreDeletedIds: string[] = [];
+        let serverSuccess = false;
 
-        const fetchServerOverridesTask = async () => {
-          try {
-            const headers = await getAdminHeaders();
-            const apiRes = await fetch("/api/exercises/custom-media?fresh=true", { headers, cache: "no-store" });
-            const apiData = await apiRes.json();
-            if (apiData.success && apiData.overrides) {
-              serverOverrides = apiData.overrides;
-            }
-            if (apiData.success && Array.isArray(apiData.deletedExerciseIds)) {
-              serverDeletedIds = apiData.deletedExerciseIds;
-            }
-          } catch (sErr) {
-            console.warn("Server overrides fetch warning:", sErr);
+        try {
+          const apiRes = await fetch("/api/exercises/custom-media");
+          const apiData = await apiRes.json();
+          if (apiData.success && apiData.overrides) {
+            serverOverrides = apiData.overrides;
+            serverSuccess = Object.keys(serverOverrides).length > 0;
           }
-        };
+          if (apiData.success && Array.isArray(apiData.deletedExerciseIds)) {
+            serverDeletedIds = apiData.deletedExerciseIds;
+          }
+        } catch (sErr) {
+          console.warn("Server overrides fetch warning:", sErr);
+        }
 
-        const fetchPersistentMediaTask = async () => {
+        if (!serverSuccess && !isMockFirebase) {
           try {
             persistentMediaOverrides = await fetchAllExerciseMediaFromDatabase();
           } catch (pErr) {
             console.warn("Persistent media fetch warning:", pErr);
           }
-        };
-
-        const fetchFirestoreColTask = async (colName: "exercises" | "generated_exercises") => {
-          if (isMockFirebase) return;
-          try {
-            const snap = await getDocs(collection(db, colName));
-            snap.docs.forEach(d => {
-              const data = d.data();
-              if (data && !data.isDeleted) {
-                firestoreOverrides[d.id] = {
-                  ...(firestoreOverrides[d.id] || {}),
-                  ...data,
-                  ...(colName === "generated_exercises" ? { isCustom: true } : {})
-                };
-              }
-            });
-          } catch (fErr) {
-            console.warn(`Firestore ${colName} overrides fetch notice (using server + local cache):`, fErr);
-          }
-        };
-
-        const fetchFirestoreDeletedTask = async () => {
-          if (isMockFirebase) return;
-          try {
-            const delSnap = await getDocs(collection(db, "deleted_exercises"));
-            delSnap.docs.forEach(d => {
-              const dData = d.data();
-              if (dData?.id) firestoreDeletedIds.push(dData.id);
-              if (dData?.name) firestoreDeletedIds.push(dData.name);
-              firestoreDeletedIds.push(d.id);
-            });
-          } catch (delErr) {
-            console.warn("Firestore deleted_exercises fetch notice:", delErr);
-          }
-        };
-
-        await Promise.all([
-          fetchServerOverridesTask(),
-          fetchPersistentMediaTask(),
-          fetchFirestoreColTask("exercises"),
-          fetchFirestoreColTask("generated_exercises"),
-          fetchFirestoreDeletedTask()
-        ]);
+        }
 
         const isUsableMedia = (u: any): u is string => {
           if (!u || typeof u !== "string") return false;
@@ -1073,7 +1058,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const serverEntry = stripPlaceholderMedia(serverOverrides[k] || {});
           const firestoreEntry = stripPlaceholderMedia(firestoreOverrides[k] || {});
 
-          // Authoritative order: local cache first, then persistent media, server, and finally Firestore overrides on top
           mergedOverrides[k] = stripPlaceholderMedia({
             ...localEntry,
             ...persistentEntry,
@@ -1082,10 +1066,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           });
         });
 
-        // Persist combined overrides to localStorage so they never disappear
-        try {
-          localStorage.setItem("fit_custom_exercise_overrides", JSON.stringify(mergedOverrides));
-        } catch {}
+        // Persist combined overrides off the critical frame
+        if (allOverrideKeys.size > 0) {
+          setTimeout(() => {
+            try {
+              localStorage.setItem("fit_custom_exercise_overrides", JSON.stringify(mergedOverrides));
+            } catch {}
+          }, 150);
+        }
 
         let localDeleted: string[] = [];
         try {
@@ -1101,9 +1089,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         setExercisesState(prev => {
           const baseList = [...EXERCISES, ...AUTHENTIC_STRETCH_EXERCISES].filter(e => !isTombstoned(e.id, e.name));
+          const baseIdSet = new Set<string>(baseList.map(b => b.id).filter(Boolean));
+          const baseNameSet = new Set<string>(baseList.map(b => (b.name || "").toLowerCase().trim()).filter(Boolean));
+          const prevById = new Map<string, Exercise>();
+          for (const p of prev) {
+            if (p?.id) prevById.set(p.id, p);
+          }
+
           const mapped = baseList.map(ex => {
             const override = mergedOverrides[ex.id] || mergedOverrides[ex.name?.toLowerCase().trim()];
-            const prevMatch = prev.find(p => p.id === ex.id);
+            const prevMatch = prevById.get(ex.id);
 
             let finalEx: Exercise = { ...ex };
             if (prevMatch && prevMatch.id === ex.id) {
@@ -1128,7 +1123,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               if (fallbackGif) finalEx.gifUrl = fallbackGif;
             }
 
-            // Sync sets/reps string
             if (finalEx.recommendedSets && finalEx.recommendedReps) {
               finalEx.recommendedSetsReps = `${finalEx.recommendedSets} Sets x ${finalEx.recommendedReps} Reps`;
             }
@@ -1136,9 +1130,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             return finalEx;
           });
 
-          // Hydrate ALL non-deleted custom/admin/media-saved workouts (including exerciseName-only & exercise-* slug entries)
+          // Hydrate ALL non-deleted custom/admin/media-saved workouts
           const customMap = new Map<string, Exercise>();
-          const seenNames = new Set<string>(baseList.map(b => (b.name || "").toLowerCase().trim()).filter(Boolean));
+          const seenNames = new Set<string>(baseNameSet);
           const hydratedCustoms = hydrateHiddenOverrideExercises(
             mergedOverrides,
             baseList,
@@ -1158,9 +1152,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             if (!p || !p.id || !p.name) return;
             const normName = (p.name || "").toLowerCase().trim();
             if (isTombstoned(p.id, p.name)) return;
-
-            const isBase = baseList.some(b => b.id === p.id || (b.name || "").toLowerCase().trim() === normName);
-            if (isBase) return;
+            if (baseIdSet.has(p.id) || baseNameSet.has(normName)) return;
 
             if (p.isCustom === true) {
               if (!seenNames.has(normName) && !customMap.has(p.id)) {
@@ -1183,9 +1175,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   if (!p || !p.id || !p.name) return;
                   const normName = (p.name || "").toLowerCase().trim();
                   if (isTombstoned(p.id, p.name)) return;
-
-                  const isBase = baseList.some(b => b.id === p.id || (b.name || "").toLowerCase().trim() === normName);
-                  if (isBase) return;
+                  if (baseIdSet.has(p.id) || baseNameSet.has(normName)) return;
 
                   if (p.isCustom === true) {
                     if (!seenNames.has(normName) && !customMap.has(p.id)) {
@@ -1199,9 +1189,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } catch {}
 
           const finalExercises = [...mapped, ...Array.from(customMap.values())];
-          try {
-            localStorage.setItem("fit_exercises", JSON.stringify(finalExercises));
-          } catch {}
+          scheduleIdleExercisesPersist(finalExercises);
           return finalExercises;
         });
 
@@ -1254,7 +1242,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (d) {
             const derivedName = deriveExerciseNameFromEntry(docSnap.id, d);
             firestoreMap[docSnap.id] = d;
-            if (derivedName && !EXERCISES.some(e => e.id === docSnap.id)) {
+            if (derivedName && !BASE_EXERCISES_ID_SET.has(docSnap.id)) {
               const meta = inferExerciseMetadataFromName(derivedName, d);
               const explicitMedia = [d.customMediaUrl, d.gifUrl, d.imageUrl].find(
                 (u: any) => typeof u === "string" && u.trim() && !["none", "deleted", "null"].includes(u.trim().toLowerCase())
@@ -1304,15 +1292,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const filteredPrev = deletedInSnap.size > 0
             ? prev.filter(ex => !deletedInSnap.has(ex.id) && !deletedInSnap.has((ex.name || "").toLowerCase().trim()))
             : prev;
+          if (filteredPrev.length === prev.length) changed = false;
+
+          const updatedIdSet = new Set<string>();
+          const updatedNameSet = new Set<string>();
+
           const updated = filteredPrev.map(ex => {
+            if (ex.id) updatedIdSet.add(ex.id);
+            const exNorm = (ex.name || "").toLowerCase().trim();
+            if (exNorm) updatedNameSet.add(exNorm);
+
             const override = firestoreMap[ex.id];
             if (override) {
+              const nextSetsReps = override.recommendedSetsReps ||
+                (override.recommendedSets || override.recommendedReps ? `${override.recommendedSets || ex.recommendedSets || '3'} Sets x ${override.recommendedReps || ex.recommendedReps || '10-12'} Reps` : ex.recommendedSetsReps);
+              const exAny = ex as Record<string, any>;
+              let differs = nextSetsReps !== ex.recommendedSetsReps;
+              if (!differs) {
+                for (const k of Object.keys(override)) {
+                  if (k === "updatedAt" || k === "createdAt") continue;
+                  const ov = (override as any)[k];
+                  if (typeof ov !== "object" && exAny[k] !== ov) {
+                    differs = true;
+                    break;
+                  }
+                }
+              }
+              if (!differs) return ex;
               changed = true;
               return {
                 ...ex,
                 ...override,
-                recommendedSetsReps: override.recommendedSetsReps || 
-                  (override.recommendedSets || override.recommendedReps ? `${override.recommendedSets || ex.recommendedSets || '3'} Sets x ${override.recommendedReps || ex.recommendedReps || '10-12'} Reps` : ex.recommendedSetsReps)
+                recommendedSetsReps: nextSetsReps
               };
             }
             return ex;
@@ -1321,14 +1332,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // Add newly discovered exercises from Firestore (deduplicate by ID or lowercase trimmed name)
           for (const newEx of newExercises) {
             const newNorm = newEx.name.toLowerCase().trim();
-            if (!deletedInSnap.has(newEx.id) && !deletedInSnap.has(newNorm) && !updated.some(u => u.id === newEx.id || u.name.toLowerCase().trim() === newNorm)) {
+            if (!deletedInSnap.has(newEx.id) && !deletedInSnap.has(newNorm) && !updatedIdSet.has(newEx.id) && !updatedNameSet.has(newNorm)) {
               updated.unshift(newEx);
+              updatedIdSet.add(newEx.id);
+              updatedNameSet.add(newNorm);
               changed = true;
             }
           }
 
           if (changed) {
-            safeSetItem("fit_exercises", JSON.stringify(updated));
+            scheduleIdleExercisesPersist(updated);
             return updated;
           }
           return prev;
@@ -1342,11 +1355,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.warn("Real-time Firestore generated_exercises listener notice:", err?.message || err);
       });
 
-      // 2. Real-time listener for 'assets_manifest' collection
+      // 2. Real-time listener for 'assets_manifest' collection (no extra full-DB scan inside listener)
       const manifestUnsub = onSnapshot(collection(db, "assets_manifest"), (snap) => {
         if (snap.empty) return;
-        AssetManifestService.syncAllManifestsWithFirestore();
-        
         const manifestMap: Record<string, { mediaUrl: string; mediaType: "image" | "video" }> = {};
         snap.docs.forEach(docSnap => {
           const d = docSnap.data();
@@ -1376,7 +1387,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               return ex;
             });
             if (changed) {
-              safeSetItem("fit_exercises", JSON.stringify(updated));
+              scheduleIdleExercisesPersist(updated);
               return updated;
             }
             return prev;
@@ -1442,7 +1453,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setExercisesState(prev => {
             const next = prev.filter(e => !delSet.has(e.id) && !delSet.has(e.name?.toLowerCase().trim()));
             if (next.length !== prev.length) {
-              safeSetItem("fit_exercises", JSON.stringify(next));
+              scheduleIdleExercisesPersist(next);
               return next;
             }
             return prev;

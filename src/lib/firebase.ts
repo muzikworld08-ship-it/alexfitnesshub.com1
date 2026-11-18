@@ -147,8 +147,8 @@ try {
   const dbId = activeFirebaseConfig.firestoreDatabaseId;
   try {
     db = initializeFirestore(app, {
-      experimentalForceLongPolling: true,
-      experimentalAutoDetectLongPolling: false
+      experimentalAutoDetectLongPolling: true,
+      experimentalForceLongPolling: false
     }, dbId);
   } catch (e) {
     db = getFirestore(app, dbId);
@@ -164,7 +164,7 @@ try {
   storage = getStorage(app);
 
   if (typeof window !== "undefined" && db) {
-    (async () => {
+    setTimeout(async () => {
       try {
         const { getDocFromServer, doc } = await import("firebase/firestore");
         await getDocFromServer(doc(db, "system_settings", "connection_check"));
@@ -173,7 +173,7 @@ try {
           console.warn("[Firebase Firestore Notice] Client is offline; using cached Firestore state.");
         }
       }
-    })();
+    }, 2000);
   }
 } catch (error: any) {
   console.warn("Notice during Firebase initialization:", error?.message || error);

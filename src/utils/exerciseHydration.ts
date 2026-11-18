@@ -166,8 +166,10 @@ export function hydrateHiddenOverrideExercises(
 ): Exercise[] {
   const isTombstoned = buildTombstoneMatcher(deletedIds);
   const baseList = baseExercises.filter((e) => !isTombstoned(e.id, e.name));
+  const baseIdSet = new Set<string>(baseList.map((b) => b.id).filter(Boolean));
+  const baseNameSet = new Set<string>(baseList.map((b) => (b.name || "").toLowerCase().trim()).filter(Boolean));
   const customMap = new Map<string, Exercise>();
-  const seenNames = new Set<string>(baseList.map((b) => (b.name || "").toLowerCase().trim()).filter(Boolean));
+  const seenNames = new Set<string>(baseNameSet);
 
   // Two passes: Pass 1 processes rich/explicit named records first, Pass 2 processes slug-only exercise-* records
   const keys = Object.keys(mergedOverrides);
@@ -193,11 +195,8 @@ export function hydrateHiddenOverrideExercises(
 
     if (isTombstoned(canonicalId, derivedName) || isTombstoned(key, normName)) continue;
 
-    // Skip if already covered by an active base exercise
-    const isBase = baseList.some(
-      (b) => b.id === canonicalId || b.id === key || (b.name || "").toLowerCase().trim() === normName
-    );
-    if (isBase) continue;
+    // Skip if already covered by an active base exercise (O(1) Set lookup)
+    if (baseIdSet.has(canonicalId) || baseIdSet.has(key) || (normName && baseNameSet.has(normName))) continue;
 
     const usableCustomMedia = [val.customMediaUrl].find(isUsableMedia) || "";
     const explicitMedia = [val.customMediaUrl, val.gifUrl, val.imageUrl, val.originalUrlOrBase64].find(isUsableMedia) || "";

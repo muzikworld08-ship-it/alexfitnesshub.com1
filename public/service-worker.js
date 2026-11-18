@@ -1,8 +1,8 @@
 // ALEX FITNESS HUB Service Worker
-// Version: alexfitnesshub-sw-v5.0.0-nocache-unified
+// Version: alexfitnesshub-sw-v5.1.0-nocache-unified
 
 self.addEventListener("install", () => {
-  self.skipWaiting();
+  // Wait cleanly unless client requests SKIP_WAITING for an already-controlled tab
 });
 
 self.addEventListener("message", (event) => {

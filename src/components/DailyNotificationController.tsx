@@ -88,11 +88,12 @@ export default function DailyNotificationController() {
       checkAndTriggerScheduledReminder(schedule, user?.displayName);
     };
 
-    // Run initial check
-    checkReminder();
-
-    const interval = setInterval(checkReminder, 30000); // Check every 30 seconds
-    return () => clearInterval(interval);
+    const initialTimer = setTimeout(checkReminder, 2000);
+    const interval = setInterval(checkReminder, 30000);
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
   }, [user?.displayName]);
 
   // Periodic 7-day progress reminder check (reminds every 7 days about progress and effort)

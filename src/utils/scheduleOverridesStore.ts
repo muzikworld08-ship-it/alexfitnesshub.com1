@@ -52,26 +52,53 @@ initFromCache();
 
 let isHydratingFromServer = false;
 let lastAutoRefreshAt = 0;
+let lastDeletedSyncAt = 0;
+let schedulePersistTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleIdleOverridesWrite(finalData: Record<string, any>, incomingIso: string) {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  if (schedulePersistTimer) clearTimeout(schedulePersistTimer);
+  schedulePersistTimer = setTimeout(() => {
+    schedulePersistTimer = null;
+    const writeNow = () => {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(finalData));
+        window.localStorage.setItem(UPDATED_AT_KEY, incomingIso);
+      } catch (e) {
+        console.warn("[ScheduleOverridesStore] Failed to write localStorage cache:", e);
+      }
+    };
+    if (typeof (window as any).requestIdleCallback === "function") {
+      (window as any).requestIdleCallback(writeNow, { timeout: 1500 });
+    } else {
+      writeNow();
+    }
+  }, 300);
+}
 
 /**
  * Fetch authoritative schedule overrides from server endpoint /api/admin/programs/overrides.
  * Hydrates store, writes to local cache, and notifies all UI subscribers.
  */
-export async function refreshScheduleOverridesFromServer(): Promise<Record<string, any>> {
+export async function refreshScheduleOverridesFromServer(forceFresh = false): Promise<Record<string, any>> {
   if (typeof window === "undefined") return getScheduleOverrides();
   if (isHydratingFromServer) return getScheduleOverrides();
   isHydratingFromServer = true;
 
   try {
     const canSyncDeleted = typeof window !== "undefined" && Boolean(window.localStorage);
+    const shouldFetchDeleted = canSyncDeleted && (forceFresh || Date.now() - lastDeletedSyncAt > 60_000);
+    const url = forceFresh ? "/api/admin/programs/overrides?fresh=true" : "/api/admin/programs/overrides";
+
     const [res, delRes] = await Promise.all([
-      fetch("/api/admin/programs/overrides?fresh=true", { cache: "no-store" }),
-      canSyncDeleted
-        ? fetch("/api/exercises/deleted", { cache: "no-store" }).catch(() => null)
+      fetch(url, forceFresh ? { cache: "no-store" } : undefined),
+      shouldFetchDeleted
+        ? fetch("/api/exercises/deleted").catch(() => null)
         : Promise.resolve(null)
     ]);
 
     if (delRes && delRes.ok && canSyncDeleted) {
+      lastDeletedSyncAt = Date.now();
       try {
         const delData = await delRes.json();
         if (delData?.deletedExercises && Array.isArray(delData.deletedExercises)) {
@@ -122,17 +149,18 @@ export async function refreshScheduleOverridesFromServer(): Promise<Record<strin
 
 function triggerThrottledAutoRefresh() {
   const now = Date.now();
-  if (now - lastAutoRefreshAt < 30_000) return;
+  if (now - lastAutoRefreshAt < 60_000) return;
   lastAutoRefreshAt = now;
-  refreshScheduleOverridesFromServer();
+  refreshScheduleOverridesFromServer(false);
 }
 
 // Sync latest overrides from server on startup and throttled tab/network transitions (AppContext maintains the single Firestore real-time listener)
 if (typeof window !== "undefined") {
+  const hasWarmCache = Boolean(memoryOverrides && Object.keys(memoryOverrides).length > 0);
   setTimeout(() => {
     lastAutoRefreshAt = Date.now();
-    refreshScheduleOverridesFromServer();
-  }, 50);
+    refreshScheduleOverridesFromServer(false);
+  }, hasWarmCache ? 600 : 10);
 
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => {
@@ -229,18 +257,21 @@ export function setScheduleOverridesFromRemote(
     ? cleanOverrides.overrides
     : cleanOverrides;
 
+  // Equality short-circuit: skip 1.2 MB serialization + full-app re-render if remote snapshot hasn't changed
+  if (
+    hasExisting &&
+    incomingTime &&
+    lastUpdatedAt === incomingIso &&
+    Object.keys(finalData).length === Object.keys(memoryOverrides || {}).length
+  ) {
+    return false;
+  }
+
   memoryOverrides = finalData;
   currentSource = "remote";
   lastUpdatedAt = incomingIso;
 
-  if (typeof window !== "undefined" && window.localStorage) {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(finalData));
-      window.localStorage.setItem(UPDATED_AT_KEY, incomingIso);
-    } catch (e) {
-      console.warn("[ScheduleOverridesStore] Failed to write localStorage cache:", e);
-    }
-  }
+  scheduleIdleOverridesWrite(finalData, incomingIso);
 
   notifySubscribers();
   return true;

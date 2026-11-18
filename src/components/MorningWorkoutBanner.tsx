@@ -85,19 +85,25 @@ export default function MorningWorkoutBanner({ onNavigateToProgram }: MorningWor
   };
 
   useEffect(() => {
-    checkStatus();
+    let lastCheckedAt = 0;
+    const runThrottledCheck = () => {
+      const now = Date.now();
+      if (now - lastCheckedAt < 30_000) return;
+      lastCheckedAt = now;
+      checkStatus();
+    };
 
-    // Listen for custom notification update event
+    const bootTimer = setTimeout(runThrottledCheck, 2500);
     const handleUpdate = () => checkStatus();
     window.addEventListener("alexfit:morning_notification_update", handleUpdate);
-    window.addEventListener("focus", handleUpdate);
+    window.addEventListener("focus", runThrottledCheck);
 
-    // Also check periodically (every 30 seconds)
     const timer = setInterval(checkStatus, 30000);
 
     return () => {
+      clearTimeout(bootTimer);
       window.removeEventListener("alexfit:morning_notification_update", handleUpdate);
-      window.removeEventListener("focus", handleUpdate);
+      window.removeEventListener("focus", runThrottledCheck);
       clearInterval(timer);
     };
   }, []);

@@ -12,40 +12,42 @@ import {
   Timer, RotateCcw, Pause, Heart, Info as InfoIcon, FileText
 } from "lucide-react";
 import { MyDigitalProductsView } from "./pdf/MyDigitalProductsView";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend
-} from "recharts";
-
 import { uploadMediaToCloud } from "../utils/mediaStorageService";
+import { lazyWithRetry } from "../utils/lazyWithRetry";
 
-// Import other workspace views
-import WorkoutLibrary from "./WorkoutLibrary";
-import WorkoutVideos from "./WorkoutVideos";
-import SavedExercisesView from "./SavedExercisesView";
-import NutritionView from "./NutritionView";
-import DailyPlanView from "./DailyPlanView";
-import CoachView from "./CoachView";
-import CommunityView from "./CommunityView";
+// Lazy-load heavy workspace views so opening the dashboard never downloads all 9 tabs at once
+const WorkoutLibrary = lazyWithRetry(() => import("./WorkoutLibrary"), "DashWorkoutLibrary");
+const WorkoutVideos = lazyWithRetry(() => import("./WorkoutVideos"), "DashWorkoutVideos");
+const SavedExercisesView = lazyWithRetry(() => import("./SavedExercisesView"), "DashSavedExercises");
+const NutritionView = lazyWithRetry(() => import("./NutritionView"), "DashNutrition");
+const DailyPlanView = lazyWithRetry(() => import("./DailyPlanView"), "DashDailyPlan");
+const CoachView = lazyWithRetry(() => import("./CoachView"), "DashCoach");
+const CommunityView = lazyWithRetry(() => import("./CommunityView"), "DashCommunity");
+const DailyCalibrationDesk = lazyWithRetry(() => import("./DailyCalibrationDesk"), "DashCalibration");
+const ProgressTrackerView = lazyWithRetry(() => import("./ProgressTrackerView"), "DashProgressTracker");
+const TodoRealtimeWidget = lazyWithRetry(() => import("./TodoRealtimeWidget"), "DashTodoWidget");
+
 import PageHero from "./PageHero";
 import { useCentralizedExercises } from "../hooks/useCentralizedExercises";
 import { UnifiedExerciseMedia } from "./UnifiedExerciseMedia";
 import PersistentDashboardTabs from "./PersistentDashboardTabs";
-import TodoRealtimeWidget from "./TodoRealtimeWidget";
 import ContinueProgramTracker from "./ContinueProgramTracker";
 import ConsistencyStreakCounter from "./ConsistencyStreakCounter";
-import DailyCalibrationDesk from "./DailyCalibrationDesk";
-import ProgressTrackerView from "./ProgressTrackerView";
 import AppleHealthSyncCard from "./AppleHealthSyncCard";
 import { getWorkoutForProgramAndDay } from "../data/challengeEngineDatabase";
 import { subscribeScheduleOverrides } from "../utils/scheduleOverridesStore";
 import { resolveAthleteTier, resolveActiveProgramId } from "../utils/athleteContext";
+
+const DashTabFallback = () => (
+  <div className="py-12 space-y-4 animate-pulse">
+    <div className="h-6 w-52 bg-slate-200 rounded-lg" />
+    <div className="h-36 w-full bg-slate-100 rounded-2xl" />
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="h-28 bg-slate-100 rounded-2xl" />
+      <div className="h-28 bg-slate-100 rounded-2xl" />
+    </div>
+  </div>
+);
 
 interface DashboardProps {
   activeView?: string;
@@ -345,6 +347,7 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.1, ease: "easeOut" }}
                 >
+                  <React.Suspense fallback={<DashTabFallback />}>
                   {/* 1. Workouts Section */}
                   {activeTab === "workouts" && (
                     <div className="space-y-6">
@@ -494,6 +497,7 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
                       <MyDigitalProductsView onNavigateStore={() => setView("printable-pdfs")} />
                     </div>
                   )}
+                  </React.Suspense>
                 </motion.div>
               )}
             </AnimatePresence>
