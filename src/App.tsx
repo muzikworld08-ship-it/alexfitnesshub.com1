@@ -3,7 +3,6 @@ import { auth } from "./lib/firebase";
 import ErrorBoundary, { SectionErrorBoundary } from "./components/ErrorBoundary";
 import { AppProvider, useApp, checkIsUserPremium, isEmailAdmin } from "./context/AppContext";
 import Navbar from "./components/Navbar";
-import HomeView from "./components/HomeView";
 import GlobalSkeletonLoader, { DashboardSkeleton, CardGridSkeleton, ListSkeleton } from "./components/SkeletonLoader";
 import { preloadCriticalFitnessAssets } from "./utils/imageCache";
 import { WorkoutTimerProvider, useWorkoutTimer } from "./context/WorkoutTimerContext";
@@ -24,6 +23,7 @@ const FloatingWorkoutTimerOverlay = lazyWithRetry(() => import("./components/Flo
 const OfflineIndicator = lazyWithRetry(() => import("./components/OfflineIndicator").then(m => ({ default: m.OfflineIndicator })), "OfflineIndicator");
 
 // Lazy-load heavy views with automatic retry to drastically reduce initial bundle size and prevent chunk-load errors
+const HomeView = lazyWithRetry(() => import("./components/HomeView"), "HomeView");
 const WorkoutLibrary = lazyWithRetry(() => import("./components/WorkoutLibrary"), "WorkoutLibrary");
 const AdminWorkoutEditor = lazyWithRetry(() => import("./components/admin/AdminWorkoutEditor"), "AdminWorkoutEditor");
 const CoachView = lazyWithRetry(() => import("./components/CoachView"), "CoachView");

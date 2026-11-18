@@ -186,7 +186,7 @@ export async function persistPdfFileToFirestore(
  * Loads products from Firestore to ensure that even after Render goes inactive,
  * newly posted PDF products and files survive 100% permanently.
  */
-export async function syncPdfProductsFromFirestore(): Promise<PrintablePdfProduct[]> {
+export async function syncPdfProductsFromFirestore(allowCloudWrites: boolean = false): Promise<PrintablePdfProduct[]> {
   const local = getPdfProducts();
   if (!engineDb) return local;
 
@@ -206,12 +206,14 @@ export async function syncPdfProductsFromFirestore(): Promise<PrintablePdfProduc
       }
     } catch {}
 
-    // Purge default deleted products from Firestore
-    DEFAULT_DELETED_PDF_IDS.forEach(delId => {
-      try {
-        deleteDoc(doc(engineDb, "printable_pdf_products", delId)).catch(() => {});
-      } catch {}
-    });
+    // Purge default deleted products from Firestore only when authorized write context is enabled
+    if (allowCloudWrites) {
+      DEFAULT_DELETED_PDF_IDS.forEach(delId => {
+        try {
+          deleteDoc(doc(engineDb, "printable_pdf_products", delId)).catch(() => {});
+        } catch {}
+      });
+    }
 
     const snap = await getDocs(collection(engineDb, "printable_pdf_products"));
     if (!snap.empty) {
@@ -223,13 +225,13 @@ export async function syncPdfProductsFromFirestore(): Promise<PrintablePdfProduc
         const p = d.data() as PrintablePdfProduct;
         if (p && p.id && !deletedIds.has(p.id) && !(p as any).isDeleted) {
           firestoreMap.set(p.id, { ...p, id: p.id });
-        } else if (p && p.id && deletedIds.has(p.id)) {
+        } else if (allowCloudWrites && p && p.id && deletedIds.has(p.id)) {
           deleteDoc(doc(engineDb, "printable_pdf_products", p.id)).catch(() => {});
         }
       });
 
       const merged = Array.from(firestoreMap.values()).filter(p => !deletedIds.has(p.id));
-      savePdfProducts(merged);
+      savePdfProducts(merged, allowCloudWrites);
 
       // Proactively ensure master templates exist for all active products
       for (const prod of merged) {
@@ -239,8 +241,8 @@ export async function syncPdfProductsFromFirestore(): Promise<PrintablePdfProduc
       }
 
       return merged;
-    } else {
-      // If Firestore is empty, seed our current catalog into Firestore right now!
+    } else if (allowCloudWrites) {
+      // Seed catalog into Firestore only when explicitly allowed
       for (const prod of local) {
         if (prod && prod.id && !deletedIds.has(prod.id)) {
           setDoc(doc(engineDb, "printable_pdf_products", prod.id), prod, { merge: true }).catch(() => {});
@@ -253,12 +255,12 @@ export async function syncPdfProductsFromFirestore(): Promise<PrintablePdfProduc
   return local;
 }
 
-export function savePdfProducts(products: PrintablePdfProduct[]) {
+export function savePdfProducts(products: PrintablePdfProduct[], persistToCloud: boolean = true) {
   ensurePdfDirectories();
   fs.writeFileSync(CATALOG_FILE, JSON.stringify(products, null, 2), "utf-8");
 
-  // Asynchronously persist all products to Cloud Firestore
-  if (engineDb && Array.isArray(products)) {
+  // Asynchronously persist all products to Cloud Firestore when enabled
+  if (persistToCloud && engineDb && Array.isArray(products)) {
     try {
       products.forEach(p => {
         if (p && p.id) {

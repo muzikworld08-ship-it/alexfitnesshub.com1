@@ -157,18 +157,8 @@
             }
           });
         } else {
-          const hadInitialController = Boolean(navigator.serviceWorker.controller);
-          let refreshing = false;
-          navigator.serviceWorker.addEventListener("controllerchange", () => {
-            // Never force-reload on first SW claim or multiple times per session
-            if (!hadInitialController || refreshing) return;
-            const sessionFlag = sessionStorage.getItem("afh_sw_reloaded");
-            if (!sessionFlag) {
-              refreshing = true;
-              sessionStorage.setItem("afh_sw_reloaded", "1");
-              window.location.reload();
-            }
-          });
+          // Let newly activated service workers take over cleanly on the next navigation without forcing a mid-boot reload
+          navigator.serviceWorker.addEventListener("controllerchange", () => {});
 
           window.addEventListener("load", () => {
             const registerSW = () => {

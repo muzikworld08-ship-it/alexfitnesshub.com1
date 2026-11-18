@@ -60,8 +60,20 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
+          if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) {
+            return "vendor-react";
+          }
           if (/[\\/]node_modules[\\/](firebase|@firebase)[\\/]/.test(id)) {
             return "vendor-firebase";
+          }
+          if (/[\\/]node_modules[\\/](motion|framer-motion)[\\/]/.test(id)) {
+            return "vendor-motion";
+          }
+          if (/[\\/]node_modules[\\/]lucide-react[\\/]/.test(id)) {
+            return "vendor-icons";
+          }
+          if (/[\\/]node_modules[\\/](recharts|d3-|victory-vendor)[\\/]/.test(id)) {
+            return "vendor-charts";
           }
           if (/[\\/]node_modules[\\/]pdf-lib[\\/]/.test(id)) {
             return "vendor-pdf";

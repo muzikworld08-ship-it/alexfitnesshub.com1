@@ -518,7 +518,25 @@ export default function AdminWorkoutEditor() {
     }
 
     const cleanLower = rawName.toLowerCase();
-    const existing = exercises.find(ex => ex.name.toLowerCase().trim() === cleanLower);
+    let deletedLookup = new Set<string>();
+    try {
+      const rawDel = localStorage.getItem("fit_deleted_exercises");
+      if (rawDel) {
+        const parsedDel = JSON.parse(rawDel);
+        if (Array.isArray(parsedDel)) {
+          parsedDel.forEach((d: string) => {
+            if (d) deletedLookup.add(String(d).toLowerCase().trim());
+          });
+        }
+      }
+    } catch {}
+    const existing = exercises.find(ex => {
+      if (!ex || (ex as any).isDeleted === true) return false;
+      const eName = (ex.name || "").toLowerCase().trim();
+      if (eName !== cleanLower) return false;
+      if (deletedLookup.has(eName) || (ex.id && deletedLookup.has(ex.id.toLowerCase().trim()))) return false;
+      return true;
+    });
     if (existing) {
       setCloudErrorMsg(`Workout "${existing.name}" already exists in the library. Please choose a different name or edit it.`);
       return;

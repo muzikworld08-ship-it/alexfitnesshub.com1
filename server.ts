@@ -170,7 +170,7 @@ app.use(cors({
 // Standard Express gzip/deflate compression for compressible payloads >= 1KB (proper backpressure/drain, 304, and SSE handling)
 app.use(compression({
   threshold: 1024,
-  level: 1,
+  level: 4,
   filter: (req, res) => {
     if (req.headers["x-no-compression"]) return false;
     return compression.filter(req, res);
@@ -1107,6 +1107,24 @@ let serverFirestoreQuotaExhaustedAt = 0;
 const QUOTA_RETRY_MS = 15 * 60 * 1000;
 const isFirestoreQuotaBlocked = () =>
   serverFirestoreQuotaExhaustedAt > 0 && Date.now() - serverFirestoreQuotaExhaustedAt < QUOTA_RETRY_MS;
+const isQuotaErrorText = (msg?: any) => {
+  const s = String(msg || "").toLowerCase();
+  return (
+    s.includes("quota") ||
+    s.includes("resource-exhausted") ||
+    s.includes("resource_exhausted") ||
+    s.includes("free daily write units")
+  );
+};
+function sendJsonWithWeakEtag(req: any, res: any, payload: any, versionTag: string, maxAgeSec: number = 15) {
+  const etag = `W/"${versionTag}"`;
+  res.setHeader("ETag", etag);
+  res.setHeader("Cache-Control", `private, max-age=${maxAgeSec}, stale-while-revalidate=60`);
+  if (req.headers["if-none-match"] === etag) {
+    return res.status(304).end();
+  }
+  return res.json(payload);
+}
 
 // Ultra-reliable server-side document write handler supporting metadata REST fallback in Cloud Run
 async function setServerFirestoreDoc(collectionName: string, docId: string, data: any, merge: boolean = false, userToken?: string) {
@@ -4020,209 +4038,222 @@ app.get("/api/diagnostics/subscription-sync", async (req: any, res: any) => {
 
 
 let lastCustomMediaCloudSync = 0;
+let customMediaRevision = 1;
 let inflightCustomMediaSync: Promise<{ data: Record<string, any>; deletedExercises: string[] } | null> | null = null;
 
-// GET custom exercise media overrides and deleted exercise IDs (RAM cached + Cloud Firestore authoritative)
+async function syncCustomMediaFromCloud(): Promise<{ data: Record<string, any>; deletedExercises: string[] } | null> {
+  if (inflightCustomMediaSync) {
+    return inflightCustomMediaSync;
+  }
+  const baseData: Record<string, any> = getCachedOverridesMap();
+  const deletedExercises: string[] = [...getCachedDeletedList()];
+
+  inflightCustomMediaSync = (async () => {
+    try {
+      const [mediaDocs, exDocs, genDocs, deletedDocs] = await Promise.all([
+        getServerFirestoreCollection("exercise_media"),
+        getServerFirestoreCollection("exercises"),
+        getServerFirestoreCollection("generated_exercises"),
+        getServerFirestoreCollection("deleted_exercises")
+      ]);
+
+      const tombstoneSet = new Set<string>(deletedExercises.map(v => String(v).toLowerCase().trim()));
+      for (const d of deletedDocs) {
+        const dData = d.data();
+        const delId = String(dData?.id || d.id || "").trim();
+        const delName = String(dData?.name || "").trim().toLowerCase();
+        if (delId) {
+          tombstoneSet.add(delId.toLowerCase());
+          if (!deletedExercises.includes(delId)) deletedExercises.push(delId);
+        }
+        if (delName) {
+          tombstoneSet.add(delName);
+          if (!deletedExercises.includes(delName)) deletedExercises.push(delName);
+        }
+      }
+
+      const isTombstonedServer = buildTombstoneMatcher(tombstoneSet);
+
+      const isValidServerMedia = (u: any): u is string => {
+        if (!u || typeof u !== "string") return false;
+        const t = u.trim().toLowerCase();
+        return Boolean(t && t !== "none" && t !== "deleted" && t !== "null");
+      };
+      const sanitizeOverrideEntry = (entry: any, keyHint = "") => {
+        if (!entry || typeof entry !== "object") return entry;
+        const cleaned = { ...entry };
+        delete cleaned.isMediaDeleted;
+        const validMedia = [cleaned.customMediaUrl, cleaned.gifUrl, cleaned.imageUrl, cleaned.originalUrlOrBase64].find(isValidServerMedia) || "";
+        if (validMedia) {
+          cleaned.customMediaUrl = validMedia;
+          cleaned.gifUrl = validMedia;
+          cleaned.imageUrl = validMedia;
+        } else {
+          for (const f of ["customMediaUrl", "gifUrl", "imageUrl"]) {
+            if (f in cleaned && !isValidServerMedia(cleaned[f])) {
+              delete cleaned[f];
+            }
+          }
+        }
+        const derivedName = deriveExerciseNameFromEntry(keyHint || String(cleaned.id || cleaned.exerciseId || ""), cleaned);
+        if (derivedName) {
+          cleaned.name = derivedName;
+          const meta = inferExerciseMetadataFromName(derivedName, cleaned);
+          if (!cleaned.category) cleaned.category = meta.category;
+          if (!Array.isArray(cleaned.categories) || cleaned.categories.length === 0) cleaned.categories = meta.categories;
+          if (!Array.isArray(cleaned.muscleGroups) || cleaned.muscleGroups.length === 0) cleaned.muscleGroups = meta.muscleGroups;
+          if (!Array.isArray(cleaned.equipment) || cleaned.equipment.length === 0) cleaned.equipment = meta.equipment;
+        }
+        return cleaned;
+      };
+
+      const freshOverrides: Record<string, any> = {};
+
+      mediaDocs.forEach(d => {
+        const docData = d.data();
+        const derivedMediaName = deriveExerciseNameFromEntry(d.id, docData || {});
+        if (docData?.isDeleted === true || isTombstonedServer(d.id, derivedMediaName)) return;
+        const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl, docData?.originalUrlOrBase64].find(isValidServerMedia);
+        if (mUrl) {
+          freshOverrides[d.id] = sanitizeOverrideEntry({
+            ...(freshOverrides[d.id] || {}),
+            ...docData,
+            customMediaUrl: mUrl,
+            gifUrl: mUrl,
+            imageUrl: mUrl,
+            customMediaType: docData.customMediaType || "image"
+          }, d.id);
+          if (derivedMediaName) {
+            const normName = derivedMediaName.toLowerCase().trim();
+            if (!isTombstonedServer(d.id, normName)) {
+              freshOverrides[normName] = sanitizeOverrideEntry({
+                ...(freshOverrides[normName] || {}),
+                ...docData,
+                name: derivedMediaName,
+                customMediaUrl: mUrl,
+                gifUrl: mUrl,
+                imageUrl: mUrl,
+                customMediaType: docData.customMediaType || "image"
+              }, d.id);
+            }
+          }
+        }
+      });
+
+      exDocs.forEach(d => {
+        const docData = d.data();
+        const derivedExName = deriveExerciseNameFromEntry(d.id, docData || {});
+        if (docData?.isDeleted === true || isTombstonedServer(d.id, derivedExName)) return;
+        const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl].find(isValidServerMedia);
+        if (docData && (mUrl || docData.isCustom || derivedExName)) {
+          freshOverrides[d.id] = sanitizeOverrideEntry({
+            ...(freshOverrides[d.id] || {}),
+            ...docData,
+            ...(derivedExName ? { name: derivedExName } : {}),
+            ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+          }, d.id);
+          if (derivedExName) {
+            const normName = derivedExName.toLowerCase().trim();
+            if (!isTombstonedServer(d.id, normName)) {
+              freshOverrides[normName] = sanitizeOverrideEntry({
+                ...(freshOverrides[normName] || {}),
+                ...docData,
+                name: derivedExName,
+                ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+              }, d.id);
+            }
+          }
+        }
+      });
+
+      genDocs.forEach(d => {
+        const docData = d.data();
+        const derivedGenName = deriveExerciseNameFromEntry(d.id, docData || {});
+        if (docData?.isDeleted === true || isTombstonedServer(d.id, derivedGenName)) return;
+        const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl].find(isValidServerMedia);
+        if (docData && (mUrl || docData.isCustom || derivedGenName)) {
+          freshOverrides[d.id] = sanitizeOverrideEntry({
+            ...(freshOverrides[d.id] || {}),
+            ...docData,
+            ...(derivedGenName ? { name: derivedGenName } : {}),
+            isCustom: true,
+            ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+          }, d.id);
+          if (derivedGenName) {
+            const normName = derivedGenName.toLowerCase().trim();
+            if (!isTombstonedServer(d.id, normName)) {
+              freshOverrides[normName] = sanitizeOverrideEntry({
+                ...(freshOverrides[normName] || {}),
+                ...docData,
+                name: derivedGenName,
+                isCustom: true,
+                ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
+              }, d.id);
+            }
+          }
+        }
+      });
+
+      // Merge cloud authority over cached overrides, strip tombstones & any stale placeholder GIF masks
+      const mergedData: Record<string, any> = { ...baseData, ...freshOverrides };
+      for (const k of Object.keys(mergedData)) {
+        const item = mergedData[k];
+        const itemName = deriveExerciseNameFromEntry(k, item || {}).toLowerCase().trim();
+        if (item?.isDeleted === true || isTombstonedServer(k, itemName)) {
+          delete mergedData[k];
+        } else {
+          mergedData[k] = sanitizeOverrideEntry(item, k);
+        }
+      }
+
+      setCachedOverridesMap(mergedData);
+      setCachedDeletedList(deletedExercises, true);
+      lastCustomMediaCloudSync = Date.now();
+      customMediaRevision++;
+      return { data: mergedData, deletedExercises };
+    } catch (cloudErr) {
+      console.warn("[Custom Media API] Notice during Firestore refresh:", cloudErr);
+      return null;
+    } finally {
+      inflightCustomMediaSync = null;
+    }
+  })();
+
+  return inflightCustomMediaSync;
+}
+
+// GET custom exercise media overrides and deleted exercise IDs (instant RAM/disk response + ETag/304 + background cloud refresh)
 app.get("/api/exercises/custom-media", async (req, res) => {
-  res.setHeader("Cache-Control", "no-store");
   try {
     let data: Record<string, any> = getCachedOverridesMap();
     let deletedExercises: string[] = [...getCachedDeletedList()];
+    const hasWarmData = Object.keys(data).length > 0;
+    const isFreshReq = req.query.fresh === "true";
+    const isStale = Date.now() - lastCustomMediaCloudSync > 120_000;
 
-    const shouldSyncCloud =
-      req.query.fresh === "true" ||
-      Object.keys(data).length === 0 ||
-      Date.now() - lastCustomMediaCloudSync > 120_000;
-
-    if (shouldSyncCloud) {
-      if (inflightCustomMediaSync) {
-        const synced = await inflightCustomMediaSync;
-        if (synced) {
-          return res.json({ success: true, overrides: synced.data, deletedExerciseIds: synced.deletedExercises });
-        }
+    if (isFreshReq || !hasWarmData) {
+      const syncedResult = await syncCustomMediaFromCloud();
+      if (syncedResult) {
+        data = syncedResult.data;
+        deletedExercises = syncedResult.deletedExercises;
       }
-      try {
-        const runSync = async () => {
-          const [mediaDocs, exDocs, genDocs, deletedDocs] = await Promise.all([
-            getServerFirestoreCollection("exercise_media"),
-            getServerFirestoreCollection("exercises"),
-            getServerFirestoreCollection("generated_exercises"),
-            getServerFirestoreCollection("deleted_exercises")
-          ]);
-          return { mediaDocs, exDocs, genDocs, deletedDocs };
-        };
-        const docsPromise = runSync();
-        inflightCustomMediaSync = (async () => {
-          const { mediaDocs, exDocs, genDocs, deletedDocs } = await docsPromise;
-
-        const tombstoneSet = new Set<string>(deletedExercises.map(v => String(v).toLowerCase().trim()));
-        for (const d of deletedDocs) {
-          const dData = d.data();
-          const delId = String(dData?.id || d.id || "").trim();
-          const delName = String(dData?.name || "").trim().toLowerCase();
-          if (delId) {
-            tombstoneSet.add(delId.toLowerCase());
-            if (!deletedExercises.includes(delId)) deletedExercises.push(delId);
-          }
-          if (delName) {
-            tombstoneSet.add(delName);
-            if (!deletedExercises.includes(delName)) deletedExercises.push(delName);
-          }
-        }
-
-        const isTombstonedServer = buildTombstoneMatcher(tombstoneSet);
-
-        const isValidServerMedia = (u: any): u is string => {
-          if (!u || typeof u !== "string") return false;
-          const t = u.trim().toLowerCase();
-          return Boolean(t && t !== "none" && t !== "deleted" && t !== "null");
-        };
-        const sanitizeOverrideEntry = (entry: any, keyHint = "") => {
-          if (!entry || typeof entry !== "object") return entry;
-          const cleaned = { ...entry };
-          delete cleaned.isMediaDeleted;
-          const validMedia = [cleaned.customMediaUrl, cleaned.gifUrl, cleaned.imageUrl, cleaned.originalUrlOrBase64].find(isValidServerMedia) || "";
-          if (validMedia) {
-            cleaned.customMediaUrl = validMedia;
-            cleaned.gifUrl = validMedia;
-            cleaned.imageUrl = validMedia;
-          } else {
-            for (const f of ["customMediaUrl", "gifUrl", "imageUrl"]) {
-              if (f in cleaned && !isValidServerMedia(cleaned[f])) {
-                delete cleaned[f];
-              }
-            }
-          }
-          const derivedName = deriveExerciseNameFromEntry(keyHint || String(cleaned.id || cleaned.exerciseId || ""), cleaned);
-          if (derivedName) {
-            cleaned.name = derivedName;
-            const meta = inferExerciseMetadataFromName(derivedName, cleaned);
-            if (!cleaned.category) cleaned.category = meta.category;
-            if (!Array.isArray(cleaned.categories) || cleaned.categories.length === 0) cleaned.categories = meta.categories;
-            if (!Array.isArray(cleaned.muscleGroups) || cleaned.muscleGroups.length === 0) cleaned.muscleGroups = meta.muscleGroups;
-            if (!Array.isArray(cleaned.equipment) || cleaned.equipment.length === 0) cleaned.equipment = meta.equipment;
-          }
-          return cleaned;
-        };
-
-        const freshOverrides: Record<string, any> = {};
-
-        mediaDocs.forEach(d => {
-          const docData = d.data();
-          const derivedMediaName = deriveExerciseNameFromEntry(d.id, docData || {});
-          if (docData?.isDeleted === true || isTombstonedServer(d.id, derivedMediaName)) return;
-          const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl, docData?.originalUrlOrBase64].find(isValidServerMedia);
-          if (mUrl) {
-            freshOverrides[d.id] = sanitizeOverrideEntry({
-              ...(freshOverrides[d.id] || {}),
-              ...docData,
-              customMediaUrl: mUrl,
-              gifUrl: mUrl,
-              imageUrl: mUrl,
-              customMediaType: docData.customMediaType || "image"
-            }, d.id);
-            if (derivedMediaName) {
-              const normName = derivedMediaName.toLowerCase().trim();
-              if (!isTombstonedServer(d.id, normName)) {
-                freshOverrides[normName] = sanitizeOverrideEntry({
-                  ...(freshOverrides[normName] || {}),
-                  ...docData,
-                  name: derivedMediaName,
-                  customMediaUrl: mUrl,
-                  gifUrl: mUrl,
-                  imageUrl: mUrl,
-                  customMediaType: docData.customMediaType || "image"
-                }, d.id);
-              }
-            }
-          }
-        });
-
-        exDocs.forEach(d => {
-          const docData = d.data();
-          const derivedExName = deriveExerciseNameFromEntry(d.id, docData || {});
-          if (docData?.isDeleted === true || isTombstonedServer(d.id, derivedExName)) return;
-          const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl].find(isValidServerMedia);
-          if (docData && (mUrl || docData.isCustom || derivedExName)) {
-            freshOverrides[d.id] = sanitizeOverrideEntry({
-              ...(freshOverrides[d.id] || {}),
-              ...docData,
-              ...(derivedExName ? { name: derivedExName } : {}),
-              ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-            }, d.id);
-            if (derivedExName) {
-              const normName = derivedExName.toLowerCase().trim();
-              if (!isTombstonedServer(d.id, normName)) {
-                freshOverrides[normName] = sanitizeOverrideEntry({
-                  ...(freshOverrides[normName] || {}),
-                  ...docData,
-                  name: derivedExName,
-                  ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-                }, d.id);
-              }
-            }
-          }
-        });
-
-        genDocs.forEach(d => {
-          const docData = d.data();
-          const derivedGenName = deriveExerciseNameFromEntry(d.id, docData || {});
-          if (docData?.isDeleted === true || isTombstonedServer(d.id, derivedGenName)) return;
-          const mUrl = [docData?.customMediaUrl, docData?.gifUrl, docData?.imageUrl].find(isValidServerMedia);
-          if (docData && (mUrl || docData.isCustom || derivedGenName)) {
-            freshOverrides[d.id] = sanitizeOverrideEntry({
-              ...(freshOverrides[d.id] || {}),
-              ...docData,
-              ...(derivedGenName ? { name: derivedGenName } : {}),
-              isCustom: true,
-              ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-            }, d.id);
-            if (derivedGenName) {
-              const normName = derivedGenName.toLowerCase().trim();
-              if (!isTombstonedServer(d.id, normName)) {
-                freshOverrides[normName] = sanitizeOverrideEntry({
-                  ...(freshOverrides[normName] || {}),
-                  ...docData,
-                  name: derivedGenName,
-                  isCustom: true,
-                  ...(mUrl ? { customMediaUrl: mUrl, gifUrl: mUrl, imageUrl: mUrl } : {})
-                }, d.id);
-              }
-            }
-          }
-        });
-
-        // Merge cloud authority over cached overrides, strip tombstones & any stale placeholder GIF masks
-        const mergedData: Record<string, any> = { ...data, ...freshOverrides };
-        for (const k of Object.keys(mergedData)) {
-          const item = mergedData[k];
-          const itemName = deriveExerciseNameFromEntry(k, item || {}).toLowerCase().trim();
-          if (item?.isDeleted === true || isTombstonedServer(k, itemName)) {
-            delete mergedData[k];
-          } else {
-            mergedData[k] = sanitizeOverrideEntry(item, k);
-          }
-        }
-
-        setCachedOverridesMap(mergedData);
-        setCachedDeletedList(deletedExercises, true);
-        lastCustomMediaCloudSync = Date.now();
-          return { data: mergedData, deletedExercises };
-        })();
-        const syncedResult = await inflightCustomMediaSync.finally(() => {
-          inflightCustomMediaSync = null;
-        });
-        if (syncedResult) {
-          data = syncedResult.data;
-          deletedExercises = syncedResult.deletedExercises;
-        }
-      } catch (cloudErr) {
-        inflightCustomMediaSync = null;
-        console.warn("[Custom Media API] Notice during Firestore refresh:", cloudErr);
-      }
+    } else if (isStale && !isFirestoreQuotaBlocked()) {
+      // Stale-while-revalidate: respond immediately from RAM/disk and refresh Firestore in background
+      syncCustomMediaFromCloud().catch(() => {});
     }
 
-    res.json({ success: true, overrides: data, deletedExerciseIds: deletedExercises });
+    const versionTag = `cm-${customMediaRevision}-${Object.keys(data).length}-${deletedExercises.length}`;
+    if (isFreshReq) {
+      res.setHeader("Cache-Control", "no-store");
+      return res.json({ success: true, overrides: data, deletedExerciseIds: deletedExercises });
+    }
+    return sendJsonWithWeakEtag(
+      req,
+      res,
+      { success: true, overrides: data, deletedExerciseIds: deletedExercises },
+      versionTag,
+      15
+    );
   } catch (error: any) {
     console.error("Failed to read custom exercise overrides:", error);
     res.status(500).json({ success: false, error: "Failed to read overrides." });
@@ -4374,6 +4405,8 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
     const overrides: Record<string, any> = { ...getCachedOverridesMap() };
 
     const isClearingMedia = customMediaUrl === null || customMediaUrl === "" || customMediaUrl === "none" || customMediaUrl === "deleted";
+    let firestoreOk = true;
+    let quotaDegraded = false;
     if (isClearingMedia) {
       const clearWrite = await setServerFirestoreDoc("exercise_media", exerciseId, {
         exerciseId,
@@ -4385,8 +4418,13 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
       }, true, req.authToken);
 
       if (!clearWrite.success) {
-        console.error("[Firestore Media Backup Clear Error]:", clearWrite.error);
-        return res.status(502).json({ success: false, firestoreOk: false, error: "Cloud Firestore did not confirm custom media clear." });
+        if (isQuotaErrorText(clearWrite.error) || isFirestoreQuotaBlocked()) {
+          firestoreOk = false;
+          quotaDegraded = true;
+        } else {
+          console.error("[Firestore Media Backup Clear Error]:", clearWrite.error);
+          return res.status(502).json({ success: false, firestoreOk: false, error: "Cloud Firestore did not confirm custom media clear." });
+        }
       }
 
       if (overrides[exerciseId]) {
@@ -4399,7 +4437,8 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
       }
       setCachedOverridesMap(overrides);
       lastCustomMediaCloudSync = Date.now();
-      return res.json({ success: true, firestoreOk: true, customMediaUrl: "" });
+      customMediaRevision++;
+      return res.json({ success: true, firestoreOk, quotaDegraded, savedOnServer: true, customMediaUrl: "" });
     } else {
       const rawInputUrl = customMediaUrl;
       const isCloudStorageUrl = typeof rawInputUrl === "string" && (
@@ -4470,18 +4509,24 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
       }, true, req.authToken);
 
       if (!mediaWrite.success && !exWrite.success) {
-        console.error("[Firestore Media Backup Error]:", mediaWrite.error || exWrite.error);
-        return res.status(502).json({
-          success: false,
-          firestoreOk: false,
-          error: "Cloud Firestore failed to confirm exercise media save."
-        });
-      }
-      if (!mediaWrite.success || !exWrite.success) {
+        const errJoined = `${mediaWrite.error || ""} ${exWrite.error || ""}`;
+        if (isQuotaErrorText(errJoined) || isFirestoreQuotaBlocked()) {
+          firestoreOk = false;
+          quotaDegraded = true;
+          console.warn(`[Firestore Media Quota Degraded] Saved ${exerciseId} on server RAM/disk while Firestore daily quota is exhausted.`);
+        } else {
+          console.error("[Firestore Media Backup Error]:", mediaWrite.error || exWrite.error);
+          return res.status(502).json({
+            success: false,
+            firestoreOk: false,
+            error: "Cloud Firestore failed to confirm exercise media save."
+          });
+        }
+      } else if (!mediaWrite.success || !exWrite.success) {
         console.warn("[Firestore Media Mirror Warning]:", mediaWrite.error || exWrite.error);
       }
 
-      console.log(`[Firestore Media OK] Saved permanent media URL for exercise ID ${exerciseId}: ${customMediaUrl}`);
+      console.log(`[Media Save OK] Saved media URL for exercise ID ${exerciseId}: ${customMediaUrl}`);
 
       const mediaPayload = {
         customMediaUrl,
@@ -4506,21 +4551,22 @@ app.post("/api/exercises/save-custom-media", requireAdmin, async (req: any, res:
 
     setCachedOverridesMap(overrides);
     lastCustomMediaCloudSync = Date.now();
+    customMediaRevision++;
 
     // Synchronize media update across all program schedules in Firestore and local disk
-    await syncExerciseMediaToProgramSchedules(exerciseId, customMediaUrl, matchedEx?.name, req.user?.email || "admin", req.authToken);
+    await syncExerciseMediaToProgramSchedules(exerciseId, customMediaUrl, matchedEx?.name, req.user?.email || "admin", req.authToken).catch(() => {});
     
-    // Log admin activity on Firebase
-    await logAdminActivityOnFirebase(
+    // Log admin activity on Firebase (non-blocking)
+    logAdminActivityOnFirebase(
       req.user?.email || "",
       req.user?.uid || "",
       "CUSTOM_MEDIA_UPLOAD",
       `Uploaded custom demo GIF/media for exercise ${exerciseId}`,
       { exerciseId, customMediaUrl, customMediaType },
       req.authToken
-    );
+    ).catch(() => {});
 
-    res.json({ success: true, firestoreOk: true, message: "Successfully saved to Cloud Firestore.", customMediaUrl });
+    res.json({ success: true, firestoreOk, quotaDegraded, savedOnServer: true, message: firestoreOk ? "Successfully saved to Cloud Firestore." : "Saved on server (Firestore quota fallback active).", customMediaUrl });
   } catch (error: any) {
     console.error("Failed to save custom exercise media:", error);
     res.status(500).json({ success: false, error: "Failed to save custom exercise media: " + error.message });
@@ -4577,19 +4623,27 @@ app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
       mediaWriteOk = mediaWrite.success === true;
     }
 
+    let firestoreOk = true;
+    let quotaDegraded = false;
     if (!exWrite.success) {
-      console.error(`[Firestore Update Error for exercise ${exerciseId}]:`, exWrite.error);
-      return res.status(502).json({
-        success: false,
-        firestoreOk: false,
-        error: "Cloud Firestore did not confirm exercise update."
-      });
+      if (isQuotaErrorText(exWrite.error) || isFirestoreQuotaBlocked()) {
+        firestoreOk = false;
+        quotaDegraded = true;
+        console.warn(`[Firestore Update Quota Degraded] Saved update for ${exerciseId} on server RAM/disk.`);
+      } else {
+        console.error(`[Firestore Update Error for exercise ${exerciseId}]:`, exWrite.error);
+        return res.status(502).json({
+          success: false,
+          firestoreOk: false,
+          error: "Cloud Firestore did not confirm exercise update."
+        });
+      }
     }
     if (!mediaWriteOk) {
       console.warn(`[Firestore Media Mirror Warning for exercise ${exerciseId}]: secondary exercise_media update skipped`);
     }
 
-    console.log(`[Firestore OK] Updated exercise ${exerciseId} with new metadata.`);
+    console.log(`[Update OK] Updated exercise ${exerciseId} with new metadata.`);
 
     overrides[exerciseId] = nextEntry;
     if (cleanUpdates.name) {
@@ -4602,6 +4656,7 @@ app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
 
     setCachedOverridesMap(overrides);
     lastCustomMediaCloudSync = Date.now();
+    customMediaRevision++;
 
     // Synchronize updates across all program schedules in Firestore and local disk
     await syncExerciseMediaToProgramSchedules(
@@ -4610,19 +4665,19 @@ app.post("/api/exercises/update", requireAdmin, async (req: any, res) => {
       cleanUpdates.name, 
       req.user?.email || "admin",
       req.authToken
-    );
+    ).catch(() => {});
 
-    // Log admin activity
-    await logAdminActivityOnFirebase(
+    // Log admin activity (non-blocking)
+    logAdminActivityOnFirebase(
       req.user?.email || "",
       req.user?.uid || "",
       "EXERCISE_UPDATE",
       `Admin updated workout metadata for ${cleanUpdates.name || exerciseId} (Sets: ${cleanUpdates.recommendedSets || 'N/A'}, Reps: ${cleanUpdates.recommendedReps || 'N/A'})`,
       { exerciseId, updates: cleanUpdates },
       req.authToken
-    );
+    ).catch(() => {});
 
-    res.json({ success: true, firestoreOk: true, message: "Exercise updated successfully in Cloud Firestore.", exercise: overrides[exerciseId] });
+    res.json({ success: true, firestoreOk, quotaDegraded, savedOnServer: true, message: firestoreOk ? "Exercise updated successfully in Cloud Firestore." : "Exercise saved on server (Firestore quota fallback active).", exercise: overrides[exerciseId] });
   } catch (error: any) {
     console.error("Failed to update exercise:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });
@@ -4742,34 +4797,42 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
       setServerFirestoreDoc("generated_exercises", newId, fullWorkout, true, req.authToken)
     ]);
 
+    let firestoreOk = true;
+    let quotaDegraded = false;
     if (!exWrite.success && !genWrite.success) {
-      console.error(`[Firestore Create Error for ${newId}]:`, exWrite.error || genWrite.error);
-      return res.status(502).json({
-        success: false,
-        firestoreOk: false,
-        error: "Cloud Firestore did not confirm workout creation."
-      });
-    }
-    if (!exWrite.success || !genWrite.success) {
+      const errJoined = `${exWrite.error || ""} ${genWrite.error || ""}`;
+      if (isQuotaErrorText(errJoined) || isFirestoreQuotaBlocked()) {
+        firestoreOk = false;
+        quotaDegraded = true;
+        console.warn(`[Firestore Create Quota Degraded] Saved new workout "${fullWorkout.name}" (${newId}) on server RAM/disk.`);
+      } else {
+        console.error(`[Firestore Create Error for ${newId}]:`, exWrite.error || genWrite.error);
+        return res.status(502).json({
+          success: false,
+          firestoreOk: false,
+          error: "Cloud Firestore did not confirm workout creation."
+        });
+      }
+    } else if (!exWrite.success || !genWrite.success) {
       console.warn(`[Firestore Create Secondary Mirror Warning for ${newId}]:`, exWrite.error || genWrite.error);
     }
 
-    console.log(`[Firestore OK] Created new custom workout: ${fullWorkout.name} (${newId})`);
+    console.log(`[Create OK] Created new custom workout: ${fullWorkout.name} (${newId})`);
 
     // 4. Clear any prior deletion tombstones for this ID / normalized name so created workout renders cleanly
     try {
       const cleanNameDoc = cleanName.replace(/[^a-z0-9_-]/g, "_");
-      await Promise.all([
+      Promise.all([
         deleteServerFirestoreDoc("deleted_exercises", newId, req.authToken),
         cleanNameDoc ? deleteServerFirestoreDoc("deleted_exercises", cleanNameDoc, req.authToken) : Promise.resolve({ success: true })
-      ]);
+      ]).catch(() => {});
       const delArr = getCachedDeletedList();
       if (delArr.length > 0) {
         const filteredDel = delArr.filter(d => {
           const dl = String(d || "").toLowerCase().trim();
           return dl !== newId.toLowerCase() && dl !== cleanName;
         });
-        setCachedDeletedList(filteredDel);
+        setCachedDeletedList(filteredDel, true);
       }
     } catch (tombErr) {
       console.warn("[Workout Create] Tombstone cleanup warning:", tombErr);
@@ -4782,21 +4845,22 @@ app.post("/api/exercises/create", requireAdmin, async (req: any, res) => {
     }
     setCachedOverridesMap(overrides);
     lastCustomMediaCloudSync = Date.now();
+    customMediaRevision++;
 
     // Synchronize to target program schedules if programs are assigned
-    await addWorkoutToProgramScheduleServer(fullWorkout, req.user?.email || "admin", req.authToken);
+    await addWorkoutToProgramScheduleServer(fullWorkout, req.user?.email || "admin", req.authToken).catch(() => {});
 
-    // Log admin activity
-    await logAdminActivityOnFirebase(
+    // Log admin activity (non-blocking)
+    logAdminActivityOnFirebase(
       req.user?.email || "",
       req.user?.uid || "",
       "WORKOUT_CREATE",
       `Admin created new workout "${fullWorkout.name}" with Sets: ${fullWorkout.recommendedSets || '3'} and Reps: ${fullWorkout.recommendedReps || '10-12'}`,
       { workoutId: newId, workout: fullWorkout },
       req.authToken
-    );
+    ).catch(() => {});
 
-    res.json({ success: true, firestoreOk: true, message: "Workout created successfully in Cloud Firestore.", workout: fullWorkout });
+    res.json({ success: true, firestoreOk, quotaDegraded, savedOnServer: true, message: firestoreOk ? "Workout created successfully in Cloud Firestore." : "Workout saved on server (Firestore quota fallback active).", workout: fullWorkout });
   } catch (error: any) {
     console.error("Failed to create workout:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });
@@ -4848,16 +4912,25 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
       }, true, req.authToken)
     ]);
 
+    let firestoreOk = true;
+    let quotaDegraded = false;
     if (!tombstoneRes.success || !delExRes.success || !delGenRes.success || !delMediaRes.success) {
-      console.error(`[Firestore Delete Error for ${targetDocId}]:`, tombstoneRes.error || delExRes.error || delGenRes.error || delMediaRes.error);
-      return res.status(502).json({
-        success: false,
-        firestoreOk: false,
-        error: "Cloud Firestore did not confirm workout deletion."
-      });
+      const errJoined = `${tombstoneRes.error || ""} ${delExRes.error || ""} ${delGenRes.error || ""} ${delMediaRes.error || ""}`;
+      if (isQuotaErrorText(errJoined) || isFirestoreQuotaBlocked()) {
+        firestoreOk = false;
+        quotaDegraded = true;
+        console.warn(`[Firestore Delete Quota Degraded] Recorded delete tombstone for ${targetDocId} on server RAM/disk.`);
+      } else {
+        console.error(`[Firestore Delete Error for ${targetDocId}]:`, tombstoneRes.error || delExRes.error || delGenRes.error || delMediaRes.error);
+        return res.status(502).json({
+          success: false,
+          firestoreOk: false,
+          error: "Cloud Firestore did not confirm workout deletion."
+        });
+      }
     }
 
-    console.log(`[Firestore OK] Archived & tombstoned workout in deleted_exercises/${targetDocId}`);
+    console.log(`[Delete OK] Archived & tombstoned workout ${targetDocId}`);
 
     // 2. Clean RAM & disk overrides cache
     const overrides: Record<string, any> = { ...getCachedOverridesMap() };
@@ -4895,20 +4968,21 @@ app.post("/api/exercises/delete", requireAdmin, async (req: any, res) => {
     }
 
     lastCustomMediaCloudSync = Date.now();
+    customMediaRevision++;
 
     // Purge exercise from all program schedules across local disk and Cloud Firestore
-    await purgeExerciseFromProgramSchedules(exerciseId, cleanName, req.user?.email || "admin", req.authToken);
+    await purgeExerciseFromProgramSchedules(exerciseId, cleanName, req.user?.email || "admin", req.authToken).catch(() => {});
 
-    await logAdminActivityOnFirebase(
+    logAdminActivityOnFirebase(
       req.user?.email || "",
       req.user?.uid || "",
       "WORKOUT_DELETE",
       `Admin archived & deleted workout ${exerciseId || cleanName}`,
       { exerciseId, exerciseName },
       req.authToken
-    );
+    ).catch(() => {});
 
-    res.json({ success: true, firestoreOk: true, message: "Workout archived & deleted from Cloud Firestore.", deletedExerciseId: exerciseId });
+    res.json({ success: true, firestoreOk, quotaDegraded, savedOnServer: true, message: firestoreOk ? "Workout archived & deleted from Cloud Firestore." : "Workout deleted on server (Firestore quota fallback active).", deletedExerciseId: exerciseId });
   } catch (error: any) {
     console.error("Failed to delete workout:", error);
     res.status(500).json({ success: false, error: "Internal server error: " + error.message });
@@ -4989,12 +5063,21 @@ app.post("/api/exercises/restore", requireAdmin, async (req: any, res) => {
       ...docsToDelete.map((tid) => deleteServerFirestoreDoc("deleted_exercises", tid, req.authToken))
     ]);
 
+    let firestoreOk = true;
+    let quotaDegraded = false;
     if (!exWrite.success || !genWrite.success || delTombRes.some((r) => !r.success)) {
-      return res.status(502).json({
-        success: false,
-        firestoreOk: false,
-        error: "Cloud Firestore did not confirm exercise restoration."
-      });
+      const errJoined = [exWrite.error, genWrite.error, ...delTombRes.map((r: any) => r.error)].filter(Boolean).join(" ");
+      if (isQuotaErrorText(errJoined) || isFirestoreQuotaBlocked()) {
+        firestoreOk = false;
+        quotaDegraded = true;
+        console.warn(`[Firestore Restore Quota Degraded] Restored "${restoredName}" (${restoredId}) on server RAM/disk.`);
+      } else {
+        return res.status(502).json({
+          success: false,
+          firestoreOk: false,
+          error: "Cloud Firestore did not confirm exercise restoration."
+        });
+      }
     }
 
     // 2. Remove from deleted list & update RAM + disk overrides cache
@@ -5019,17 +5102,18 @@ app.post("/api/exercises/restore", requireAdmin, async (req: any, res) => {
     }
 
     lastCustomMediaCloudSync = Date.now();
+    customMediaRevision++;
 
-    await logAdminActivityOnFirebase(
+    logAdminActivityOnFirebase(
       req.user?.email || "",
       req.user?.uid || "",
       "WORKOUT_RESTORE",
       `Admin restored archived workout "${restoredName}" (${restoredId})`,
       { restoredId, restoredName },
       req.authToken
-    );
+    ).catch(() => {});
 
-    res.json({ success: true, firestoreOk: true, message: `Restored "${restoredName}" to exercise catalog.`, exercise: restoredExercise });
+    res.json({ success: true, firestoreOk, quotaDegraded, savedOnServer: true, message: firestoreOk ? `Restored "${restoredName}" to exercise catalog.` : `Restored "${restoredName}" on server (Firestore quota fallback active).`, exercise: restoredExercise });
   } catch (err: any) {
     console.error("Failed to restore exercise:", err);
     res.status(500).json({ success: false, error: err?.message || "Failed to restore exercise." });
@@ -5549,26 +5633,23 @@ async function hydrateAllDataFromCloud() {
     getServerFirestoreCollection("challenges")
   ]);
 
-  // 1. Program Schedule Overrides
+  // 1. Program Schedule Overrides (never fire unauthenticated seed writes at boot)
   try {
     let cloudOverrides = progRes.status === "fulfilled" ? progRes.value : {};
-    let seededFromDisk = false;
 
     if (!cloudOverrides || Object.keys(cloudOverrides).length === 0) {
       const diskData = loadProgramScheduleOverrides();
       if (Object.keys(diskData).length > 0) {
-        console.log(`[Cloud Seeding] Cloud empty. Seeding ${Object.keys(diskData).length} programs from disk...`);
-        await persistProgramOverridesToCloud(diskData, "system_seed");
-        cloudOverrides = diskData;
-        seededFromDisk = true;
+        bootHydrationSource = "disk";
+        setCachedProgramOverridesMap(diskData, "disk");
+        lastProgramOverridesCloudSync = Date.now();
+        console.log(`[Cloud Hydration] Loaded ${Object.keys(diskData).length} program schedules from disk cache.`);
       }
-    }
-
-    if (cloudOverrides && Object.keys(cloudOverrides).length > 0) {
-      bootHydrationSource = seededFromDisk ? "disk" : "cloud";
-      setCachedProgramOverridesMap(cloudOverrides, bootHydrationSource);
+    } else {
+      bootHydrationSource = "cloud";
+      setCachedProgramOverridesMap(cloudOverrides, "cloud");
       lastProgramOverridesCloudSync = Date.now();
-      console.log(`[Cloud Hydration OK] Hydrated and secured ${Object.keys(cloudOverrides).length} program schedules (${bootHydrationSource}).`);
+      console.log(`[Cloud Hydration OK] Hydrated ${Object.keys(cloudOverrides).length} program schedules from Firestore.`);
     }
   } catch (err) {
     console.warn("[Cloud Hydration] Program overrides hydration notice:", err);
@@ -5754,7 +5835,8 @@ async function hydrateAllDataFromCloud() {
     }
     setCachedOverridesMap(mergedEx);
     lastCustomMediaCloudSync = Date.now();
-    console.log(`[Cloud Hydration OK] Hydrated ${Object.keys(mergedEx).length} active exercise overrides from Cloud Firestore.`);
+    customMediaRevision++;
+    console.log(`[Cloud Hydration OK] Hydrated ${Object.keys(mergedEx).length} active exercise overrides.`);
   } catch (err) {
     console.warn("[Cloud Hydration] Exercise overrides hydration error:", err);
   }
@@ -5771,23 +5853,21 @@ async function hydrateAllDataFromCloud() {
     }
   } catch (err) {}
 
-  // 4. Defer Printable PDF Catalog & Master Templates recovery slightly so HTTP boot latency stays near zero
+  // 4. Defer read-only Printable PDF Catalog & Master Templates sync so HTTP boot latency stays near zero
   setTimeout(async () => {
     try {
       const {
         syncPdfProductsFromFirestore,
         recoverMasterPdfIfNeeded,
-        seedExistingPdfAssetsToFirestore,
         ensurePdfDirectories,
         setEngineDb
       } = await import("./src/server/printablePdfEngine");
 
       if (db) setEngineDb(db);
       ensurePdfDirectories();
-      await seedExistingPdfAssetsToFirestore();
 
-      const products = await syncPdfProductsFromFirestore();
-      console.log(`[Cloud Hydration OK] Hydrated ${products.length} Printable PDF products from Cloud Firestore.`);
+      const products = await syncPdfProductsFromFirestore(false);
+      console.log(`[Cloud Hydration OK] Hydrated ${products.length} Printable PDF products.`);
 
       await Promise.allSettled(
         products.flatMap((prod) => [
@@ -5803,70 +5883,105 @@ async function hydrateAllDataFromCloud() {
   console.log("[Cloud Hydration Complete] Render server boot state hydrated concurrently in RAM.");
 }
 
-// GET all permanently deleted exercises (RAM cached with 60s TTL)
+// GET all permanently deleted exercises (RAM cached with stale-while-revalidate + ETag/304)
+let inflightDeletedSync: Promise<string[] | null> | null = null;
+async function syncDeletedExercisesFromCloud(): Promise<string[] | null> {
+  if (inflightDeletedSync) return inflightDeletedSync;
+  inflightDeletedSync = (async () => {
+    try {
+      const cloudDocs = await getServerFirestoreCollection("deleted_exercises").catch(() => null);
+      if (Array.isArray(cloudDocs)) {
+        const cloudTombstones: string[] = [];
+        for (const docSnap of cloudDocs) {
+          const d = typeof docSnap?.data === "function" ? docSnap.data() : docSnap;
+          if (!d || d.isDeleted === false) continue;
+          const docId = docSnap?.id || d.id;
+          if (docId) cloudTombstones.push(String(docId));
+          if (d.exerciseId) cloudTombstones.push(String(d.exerciseId));
+          if (d.name) cloudTombstones.push(String(d.name).toLowerCase().trim());
+        }
+        const merged = Array.from(new Set(cloudTombstones));
+        setCachedDeletedList(merged, true);
+        return merged;
+      }
+    } catch {} finally {
+      inflightDeletedSync = null;
+    }
+    return null;
+  })();
+  return inflightDeletedSync;
+}
+
 app.get("/api/exercises/deleted", async (req, res) => {
-  res.setHeader("Cache-Control", "no-store");
   try {
     let deletedList: string[] = [...getCachedDeletedList()];
+    const isFreshReq = req.query.fresh === "true";
+    const isStale = Date.now() - cachedDeletedAuthoritativeAt > 120_000;
 
-    if (
-      req.query.fresh !== "true" &&
-      cachedDeletedAuthoritativeAt > 0 &&
-      Date.now() - cachedDeletedAuthoritativeAt < 60_000
-    ) {
-      return res.json({ success: true, authoritative: true, deletedExercises: deletedList });
+    if (isFreshReq || cachedDeletedAuthoritativeAt === 0) {
+      const synced = await syncDeletedExercisesFromCloud();
+      if (synced) deletedList = synced;
+    } else if (isStale && !isFirestoreQuotaBlocked()) {
+      syncDeletedExercisesFromCloud().catch(() => {});
     }
 
-    const cloudDocs = await getServerFirestoreCollection("deleted_exercises").catch(() => null);
-    if (Array.isArray(cloudDocs)) {
-      const cloudTombstones: string[] = [];
-      for (const docSnap of cloudDocs) {
-        const d = typeof docSnap?.data === "function" ? docSnap.data() : docSnap;
-        if (!d || d.isDeleted === false) continue;
-        const docId = docSnap?.id || d.id;
-        if (docId) cloudTombstones.push(String(docId));
-        if (d.exerciseId) cloudTombstones.push(String(d.exerciseId));
-        if (d.name) cloudTombstones.push(String(d.name).toLowerCase().trim());
-      }
-      deletedList = Array.from(new Set(cloudTombstones));
-      setCachedDeletedList(deletedList, true);
-      return res.json({ success: true, authoritative: true, deletedExercises: deletedList });
+    const payload = { success: true, authoritative: cachedDeletedAuthoritativeAt > 0, deletedExercises: deletedList };
+    if (isFreshReq) {
+      res.setHeader("Cache-Control", "no-store");
+      return res.json(payload);
     }
-
-    res.json({ success: true, authoritative: false, deletedExercises: deletedList });
+    return sendJsonWithWeakEtag(req, res, payload, `del-${cachedDeletedAuthoritativeAt}-${deletedList.length}`, 15);
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message, deletedExercises: [] });
   }
 });
 
 let lastProgramOverridesCloudSync = 0;
+let programOverridesRevision = 1;
+let inflightProgramOverridesSync: Promise<Record<string, any> | null> | null = null;
 
-// GET all program schedule overrides (RAM cached with 120s TTL + Cloud Firestore authoritative)
+async function syncProgramOverridesBackground(): Promise<Record<string, any> | null> {
+  if (inflightProgramOverridesSync) return inflightProgramOverridesSync;
+  inflightProgramOverridesSync = (async () => {
+    try {
+      const cloudData = await fetchProgramOverridesFromCloud();
+      lastProgramOverridesCloudSync = Date.now();
+      if (cloudData && Object.keys(cloudData).length > 0) {
+        setCachedProgramOverridesMap(cloudData, "cloud");
+        programOverridesRevision++;
+        return cloudData;
+      }
+    } catch {} finally {
+      inflightProgramOverridesSync = null;
+    }
+    return null;
+  })();
+  return inflightProgramOverridesSync;
+}
+
+// GET all program schedule overrides (instant RAM/disk response + ETag/304 + background cloud refresh)
 app.get(["/api/admin/programs/overrides", "/api/programs/schedules"], async (req, res) => {
-  res.setHeader("Cache-Control", "no-store");
   try {
-    let overrides: Record<string, any> = {};
+    let overrides: Record<string, any> = cachedProgramOverrides && Object.keys(cachedProgramOverrides).length > 0
+      ? cachedProgramOverrides
+      : loadProgramScheduleOverrides();
     let source: "cloud" | "disk" = cachedProgramOverridesSource;
 
     const isFreshReq = req.query.fresh === "true";
-    const hasWarmCloudCache =
-      cachedProgramOverrides !== null &&
-      Object.keys(cachedProgramOverrides).length > 0 &&
-      Date.now() - lastProgramOverridesCloudSync < 120_000;
+    const hasWarmData = Boolean(overrides && Object.keys(overrides).length > 0);
+    const isStale = Date.now() - lastProgramOverridesCloudSync > 120_000;
 
-    if (!isFreshReq && hasWarmCloudCache) {
-      overrides = cachedProgramOverrides!;
-      source = cachedProgramOverridesSource;
-    } else {
-      const cloudData = await fetchProgramOverridesFromCloud();
+    if (isFreshReq || !hasWarmData) {
+      const cloudData = await syncProgramOverridesBackground();
       if (cloudData && Object.keys(cloudData).length > 0) {
         overrides = cloudData;
-        lastProgramOverridesCloudSync = Date.now();
         source = "cloud";
       } else {
         overrides = loadProgramScheduleOverrides();
         source = "disk";
       }
+    } else if (isStale && !isFirestoreQuotaBlocked()) {
+      syncProgramOverridesBackground().catch(() => {});
     }
 
     let maxUpdatedAt = "";
@@ -5881,14 +5996,26 @@ app.get(["/api/admin/programs/overrides", "/api/programs/schedules"], async (req
       }
     }
 
-    res.json({
+    const payload = {
       success: true,
       overrides,
       source,
       count: Object.keys(overrides).length,
       serverTime: new Date().toISOString(),
       updatedAt: maxUpdatedAt || null
-    });
+    };
+
+    if (isFreshReq) {
+      res.setHeader("Cache-Control", "no-store");
+      return res.json(payload);
+    }
+    return sendJsonWithWeakEtag(
+      req,
+      res,
+      payload,
+      `prog-${programOverridesRevision}-${Object.keys(overrides).length}-${maxUpdatedAt || "0"}`,
+      15
+    );
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -9426,23 +9553,8 @@ async function startServer() {
       }
     }
 
-    // Self-healing: If dist/index.html is missing on startup in production (e.g. Render build only ran server build),
-    // trigger an automated client build so the app functions immediately instead of being stuck.
     if (!fs.existsSync(path.join(distPath, "index.html"))) {
-      console.warn("[Production Server] dist/index.html not found! Triggering self-healing client build...");
-      try {
-        const { execSync } = require("child_process");
-        execSync("npx vite build", { stdio: "inherit" });
-        for (const p of possiblePaths) {
-          if (fs.existsSync(path.join(p, "index.html"))) {
-            distPath = p;
-            break;
-          }
-        }
-        console.log(`[Production Server] Self-healing client build complete. Serving from: ${distPath}`);
-      } catch (buildErr: any) {
-        console.error("[Production Server] Automated client build attempt encountered error:", buildErr?.message || buildErr);
-      }
+      console.warn("[Production Server] dist/index.html not found; skipping blocking boot build so HTTP port binds immediately.");
     }
     
     // Serve static files with custom headers to prevent browser/CDN caching issues

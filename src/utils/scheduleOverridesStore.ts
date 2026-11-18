@@ -149,7 +149,7 @@ export async function refreshScheduleOverridesFromServer(forceFresh = false): Pr
 
 function triggerThrottledAutoRefresh() {
   const now = Date.now();
-  if (now - lastAutoRefreshAt < 60_000) return;
+  if (now - lastAutoRefreshAt < 120_000) return;
   lastAutoRefreshAt = now;
   refreshScheduleOverridesFromServer(false);
 }
@@ -160,7 +160,7 @@ if (typeof window !== "undefined") {
   setTimeout(() => {
     lastAutoRefreshAt = Date.now();
     refreshScheduleOverridesFromServer(false);
-  }, hasWarmCache ? 600 : 10);
+  }, hasWarmCache ? 1200 : 80);
 
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => {
@@ -168,9 +168,10 @@ if (typeof window !== "undefined") {
         triggerThrottledAutoRefresh();
       }
     });
+  } else {
+    window.addEventListener("focus", triggerThrottledAutoRefresh);
   }
 
-  window.addEventListener("focus", triggerThrottledAutoRefresh);
   window.addEventListener("online", triggerThrottledAutoRefresh);
 
   // Cross-tab sync for schedule overrides

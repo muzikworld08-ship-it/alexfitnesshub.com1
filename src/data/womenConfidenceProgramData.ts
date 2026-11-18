@@ -332,7 +332,17 @@ function getActiveExercisesFromStorage(): Exercise[] {
     const raw = window.localStorage.getItem("fit_exercises");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const merged = new Map<string, Exercise>();
+        CANONICAL_EXERCISES.forEach(e => { if (e?.id) merged.set(e.id, e); });
+        parsed.forEach((e: any) => {
+          if (e?.id) {
+            const existing = merged.get(e.id);
+            merged.set(e.id, existing ? { ...existing, ...e } : e);
+          }
+        });
+        return Array.from(merged.values());
+      }
     }
   } catch (e) {}
   return CANONICAL_EXERCISES;

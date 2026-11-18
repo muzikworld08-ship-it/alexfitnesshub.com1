@@ -355,6 +355,14 @@ const safeSetItem = (key: string, value: string): void => {
 };
 
 const BASE_EXERCISES_ID_SET = new Set<string>(EXERCISES.map((e) => e.id).filter(Boolean));
+const extractLeanStoredExercises = (list: Exercise[]): Exercise[] =>
+  (Array.isArray(list) ? list : []).filter(
+    (ex) => Boolean(ex && ex.id && (ex.isCustom === true || !BASE_EXERCISES_ID_SET.has(ex.id) || Boolean(ex.customMediaUrl)))
+  );
+const persistLeanExercises = (list: Exercise[]): void => {
+  safeSetItem("fit_exercises", JSON.stringify(extractLeanStoredExercises(list)));
+};
+
 let exercisesPersistTimer: ReturnType<typeof setTimeout> | null = null;
 const scheduleIdleExercisesPersist = (list: Exercise[]): void => {
   if (typeof window === "undefined") return;
@@ -362,7 +370,7 @@ const scheduleIdleExercisesPersist = (list: Exercise[]): void => {
   exercisesPersistTimer = setTimeout(() => {
     exercisesPersistTimer = null;
     const writeNow = () => {
-      safeSetItem("fit_exercises", JSON.stringify(list));
+      persistLeanExercises(list);
     };
     if (typeof (window as any).requestIdleCallback === "function") {
       (window as any).requestIdleCallback(writeNow, { timeout: 1500 });
@@ -1198,16 +1206,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    fetchCustomDatabaseOverrides();
+    const timer = setTimeout(() => {
+      fetchCustomDatabaseOverrides();
+    }, 40);
+    return () => clearTimeout(timer);
   }, [isMockFirebase]);
 
   // Real-time listener for Firestore custom exercise overrides & challenges
   useEffect(() => {
+    let cancelled = false;
     // Initial fetch for challenges from server API
     const fetchServerChallenges = async () => {
       try {
         const res = await fetch("/api/challenges");
-        if (res.ok) {
+        if (res.ok && !cancelled) {
           const data = await res.json();
           if (data.success && Array.isArray(data.challenges) && data.challenges.length > 0) {
             setCustomChallenges(data.challenges);
@@ -1218,11 +1230,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.warn("Could not fetch server challenges:", e);
       }
     };
-    fetchServerChallenges();
+    const challengesTimer = setTimeout(fetchServerChallenges, 60);
 
-    if (isMockFirebase) return;
+    if (isMockFirebase || isFirestoreQuotaExhausted()) {
+      return () => {
+        cancelled = true;
+        clearTimeout(challengesTimer);
+      };
+    }
 
-    try {
+    let cleanupListeners: (() => void) | null = null;
+    const attachTimer = setTimeout(() => {
+      if (cancelled || isFirestoreQuotaExhausted()) return;
+      try {
       // 1. Exercise & generated_exercises collection listeners (real-time sync for admin & public site)
       const handleCollectionSnapshot = (snap: any, forceCustom = false) => {
         if (snap.empty) return;
@@ -1528,7 +1548,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.warn("Real-time program_schedule_overrides listener notice:", err?.message || err);
       });
 
-      return () => {
+      cleanupListeners = () => {
         unsub();
         unsubGenerated();
         manifestUnsub();
@@ -1540,6 +1560,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.warn("Could not set up real-time exercise/asset/challenge listeners:", e);
     }
+    }, 1200);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(challengesTimer);
+      clearTimeout(attachTimer);
+      if (cleanupListeners) cleanupListeners();
+    };
   }, [isMockFirebase]);
 
   // --- UNIFIED AUTHENTICATION SERVICES AND UTILITIES ---
@@ -1970,7 +1998,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (!isMockFirebase) {
             try {
               const userDocRef = doc(db, "users", firebaseUser.uid);
-              const userSnap = await getDoc(userDocRef);
+              const userSnap: any = await Promise.race([
+                getDoc(userDocRef),
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore profile read timeout")), 4000))
+              ]);
               
               if (userSnap.exists()) {
                 const fetched = userSnap.data() as UserProfile;
@@ -3904,7 +3935,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       return ex;
     });
     setExercisesState(updatedExercises);
-    safeSetItem("fit_exercises", JSON.stringify(updatedExercises));
+    persistLeanExercises(updatedExercises);
 
     try {
       const stored = localStorage.getItem("fit_custom_exercise_overrides");
@@ -3966,7 +3997,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         const textErr = await res.text();
         data = { success: false, error: textErr || `Server returned status ${res.status}` };
       }
-      if (!res.ok || !data.success || data.firestoreOk === false) {
+      if (!res.ok || !data.success) {
         console.warn("Server custom media save notice:", data.error);
       } else {
         serverMediaOk = true;
@@ -4003,7 +4034,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       return ex;
     });
     setExercisesState(updatedExercises);
-    safeSetItem("fit_exercises", JSON.stringify(updatedExercises));
+    persistLeanExercises(updatedExercises);
 
     // Save to fit_custom_exercise_overrides in localStorage cleanly
     try {
@@ -4857,7 +4888,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         return prev;
       }
       const updated = [newEx, ...prev];
-      safeSetItem("fit_exercises", JSON.stringify(updated));
+      persistLeanExercises(updated);
       return updated;
     });
 
@@ -4884,8 +4915,10 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         (targetNameLower ? exercises.find(e => (e.name || "").toLowerCase().trim() === targetNameLower) : undefined);
       const resolvedId = targetEx?.id || exerciseId;
 
+      let foundTargetInState = false;
       const updatedExercises = exercises.map(ex => {
         if (ex.id === resolvedId) {
+          foundTargetInState = true;
           const next = { ...ex, ...normalizedUpdates };
           if (normalizedUpdates.recommendedSets || normalizedUpdates.recommendedReps) {
             const nextSets = normalizedUpdates.recommendedSets || ex.recommendedSets || '3';
@@ -4898,8 +4931,34 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         }
         return ex;
       });
+      if (!foundTargetInState && resolvedId) {
+        const nextSets = normalizedUpdates.recommendedSets || "3";
+        const nextReps = normalizedUpdates.recommendedReps || "10-12";
+        updatedExercises.unshift({
+          id: resolvedId,
+          name: normalizedUpdates.name || resolvedId,
+          muscleGroups: normalizedUpdates.muscleGroups || [normalizedUpdates.category || "Gym Workouts"],
+          difficulty: normalizedUpdates.difficulty || "Intermediate",
+          instructions: normalizedUpdates.instructions || ["Perform with strict technique."],
+          equipment: normalizedUpdates.equipment || ["Dumbbells"],
+          category: normalizedUpdates.category || "Gym Workouts",
+          commonMistakes: normalizedUpdates.commonMistakes || [],
+          safetyTips: normalizedUpdates.safetyTips || [],
+          alternativeExercises: normalizedUpdates.alternativeExercises || [],
+          progressionVariations: normalizedUpdates.progressionVariations || [],
+          isPremium: normalizedUpdates.isPremium !== undefined ? normalizedUpdates.isPremium : true,
+          gifUrl: mediaVal || getExerciseGifUrl(normalizedUpdates.name || resolvedId, normalizedUpdates.category || "") || "",
+          imageUrl: mediaVal || getExerciseGifUrl(normalizedUpdates.name || resolvedId, normalizedUpdates.category || "") || "",
+          customMediaUrl: mediaVal || "",
+          recommendedSets: nextSets,
+          recommendedReps: nextReps,
+          recommendedSetsReps: `${nextSets} Sets x ${nextReps} Reps`,
+          isCustom: true,
+          ...normalizedUpdates
+        } as Exercise);
+      }
       setExercisesState(updatedExercises);
-      safeSetItem("fit_exercises", JSON.stringify(updatedExercises));
+      persistLeanExercises(updatedExercises);
 
       // Cache override permanently in localStorage under ID and normalized name
       try {
@@ -4940,7 +4999,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
           });
         }
         const resData = await res.json().catch(() => ({}));
-        if (res.ok && resData?.success && resData?.firestoreOk !== false) {
+        if (res.ok && resData?.success) {
           serverOk = true;
         }
       } catch (e) {
@@ -5002,7 +5061,26 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
   const addWorkout = async (workoutData: Partial<Exercise> & { reuseIfExists?: boolean }): Promise<Exercise> => {
     const workoutName = (workoutData.name || "").trim();
     if (workoutName) {
-      const existing = exercises.find(e => (e.name || "").toLowerCase().trim() === workoutName.toLowerCase());
+      let deletedLookup = new Set<string>();
+      try {
+        const rawDel = localStorage.getItem("fit_deleted_exercises");
+        if (rawDel) {
+          const parsedDel = JSON.parse(rawDel);
+          if (Array.isArray(parsedDel)) {
+            parsedDel.forEach((d: string) => {
+              if (d) deletedLookup.add(String(d).toLowerCase().trim());
+            });
+          }
+        }
+      } catch {}
+      const cleanWorkoutName = workoutName.toLowerCase();
+      const existing = exercises.find(e => {
+        if (!e || (e as any).isDeleted === true) return false;
+        const eName = (e.name || "").toLowerCase().trim();
+        if (eName !== cleanWorkoutName) return false;
+        if (deletedLookup.has(eName) || (e.id && deletedLookup.has(e.id.toLowerCase().trim()))) return false;
+        return true;
+      });
       if (existing) {
         if (workoutData.reuseIfExists) {
           return existing;
@@ -5080,7 +5158,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
 
     setExercisesState(prev => {
       const next = [sanitizedExercise, ...prev.filter(e => e.id !== safeId)];
-      safeSetItem("fit_exercises", JSON.stringify(next));
+      persistLeanExercises(next);
       return next;
     });
 
@@ -5128,7 +5206,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         });
       }
       const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success && data.firestoreOk !== false) {
+      if (res.ok && data.success) {
         serverOk = true;
       } else {
         persistError = data.error || `Server create failed (HTTP ${res.status})`;
@@ -5165,7 +5243,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       // Roll back optimistic state & overrides cache cleanly so unpersisted ghost exercises never stick
       setExercisesState(prev => {
         const rolledBack = prev.filter(e => e.id !== safeId);
-        safeSetItem("fit_exercises", JSON.stringify(rolledBack));
+        persistLeanExercises(rolledBack);
         return rolledBack;
       });
       try {
@@ -5271,7 +5349,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         if (optionalName && eName === optionalName.toLowerCase().trim()) return false;
         return true;
       });
-      safeSetItem("fit_exercises", JSON.stringify(next));
+      persistLeanExercises(next);
       return next;
     });
 
@@ -5329,7 +5407,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
         });
       }
       const delJson = await delRes.json().catch(() => ({}));
-      if (delRes.ok && delJson.success && delJson.firestoreOk !== false) {
+      if (delRes.ok && delJson.success) {
         serverDeleted = true;
       }
     } catch (e) {}
@@ -5407,7 +5485,7 @@ ${milestones.map(m => `*   **${m}**`).join("\n")}
       if (restored) {
         setExercisesState(prev => {
           const next = [restored, ...prev.filter(e => e.id !== restored.id)];
-          safeSetItem("fit_exercises", JSON.stringify(next));
+          persistLeanExercises(next);
           return next;
         });
       }

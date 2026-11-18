@@ -458,11 +458,19 @@ export function startFirestoreMailWorker(db: any, intervalMs: number = 300000) {
     return;
   }
 
+  const mailApiKey = (process.env.MAILERSEND_API_KEY || process.env.API_KEY || "").trim();
+  if (!mailApiKey) {
+    console.log("[Firestore Mail Worker] Skipped startup polling (no MAILERSEND_API_KEY/API_KEY configured). Direct endpoints remain active.");
+    return;
+  }
+
   isWorkerRunning = true;
   console.log(`[Firestore Mail Worker Started] Polling Firestore 'mail' collection every ${intervalMs / 1000} seconds for MailerSend triggers...`);
 
-  // Run immediately on boot
-  processPendingFirestoreMailQueue(db).catch(err => console.warn("[Mail Worker Initial Run Notice]:", err?.message || err));
+  // Defer initial poll past server boot so startup bandwidth & Firestore reads stay clean
+  setTimeout(() => {
+    processPendingFirestoreMailQueue(db).catch(err => console.warn("[Mail Worker Initial Run Notice]:", err?.message || err));
+  }, 45_000);
 
   // Set recurring interval
   workerIntervalId = setInterval(() => {

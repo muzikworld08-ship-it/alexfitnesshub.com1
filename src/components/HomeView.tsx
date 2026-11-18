@@ -284,6 +284,268 @@ const getGenderForName = (name: string, content?: string): "female" | "male" | "
   return "neutral";
 };
 
+const HERO_SLIDES = [
+  {
+    eyebrow: "PHYSIQUE SPECIALIZATION",
+    wordOne: "FORGE",
+    wordTwo: "ATHLETICISM",
+    desc: "Experience world-class body sculpting. Unified by certified clinical kinesiologists, interactive progress logs, and advanced multi-modal Gemini AI coaching. Track actual metric goals with absolute precision.",
+    imageUrl: "/images/hero-athlete-shred.png"
+  },
+  {
+    eyebrow: "NUTRITIONAL METRICS",
+    wordOne: "SHRED",
+    wordTwo: "PLATEAUS",
+    desc: "Calibrate localized macronutrient diet plans tailored precisely for high protein staples, tracking absolute body weight goals daily with the assistance of interactive progress reports.",
+    imageUrl: "/images/nutrition-meal-calibrator.png"
+  },
+  {
+    eyebrow: "AI POWERED SOLUTIONS",
+    wordOne: "COMMAND",
+    wordTwo: "INTELLIGENCE",
+    desc: "Unlock server-side Gemini intelligence models to consult your lifting technique, optimize water ratios, and design recovery splits tailored for performance athletes.",
+    imageUrl: "/images/alex-fitness-coach.png"
+  }
+];
+
+const HomeHeroAndSpotlight = React.memo(function HomeHeroAndSpotlight({ setView }: { setView: (view: string) => void }) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleNextSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+  }, []);
+
+  const handlePrevSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
+  }, []);
+
+  return (
+    <>
+      {/* 1.2 INTERACTIVE ENGINE & PREMIUM SLIDESHOW - PLACED DIRECTLY BELOW THE HERO */}
+      <section id="hero-carousel-segment" className="py-12 sm:py-16 lg:py-20 bg-background border-b border-border relative overflow-hidden">
+        {/* Decorative background visual accents */}
+        <div className="absolute top-1/4 -left-32 w-80 h-80 bg-red-500/5 rounded-full filter blur-3xl pointer-events-none select-none" />
+        <div className="absolute bottom-1/4 -right-32 w-80 h-80 bg-amber-500/5 rounded-full filter blur-3xl pointer-events-none select-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="flex flex-col items-center">
+            <div className="w-full max-w-4xl bg-slate-50 rounded-[2.5rem] border border-slate-200 p-6 sm:p-10 lg:p-12 shadow-xl flex flex-col justify-center items-center text-center text-slate-900 relative">
+              <div className="relative min-h-[340px] sm:min-h-[260px] md:min-h-[220px] lg:min-h-[180px] w-full">
+                {HERO_SLIDES.map((slide, idx) => {
+                  const isActive = idx === currentSlide;
+                  return (
+                    <div
+                      key={idx}
+                      className={`transition-all duration-[350ms] ease-out space-y-5 flex flex-col items-center ${
+                        isActive
+                          ? "opacity-100 translate-y-0 scale-100"
+                          : "opacity-0 translate-y-4 scale-98 absolute inset-0 pointer-events-none"
+                      }`}
+                    >
+                      <span className="text-[10px] font-mono font-black tracking-[0.25em] text-white uppercase bg-[#D32F2F] px-4 py-1.5 rounded-full inline-block shadow-md">
+                        {slide.eyebrow}
+                      </span>
+
+                      <h1 className="text-3xl sm:text-4xl md:text-5xl font-sans font-black tracking-tight leading-tight uppercase select-none">
+                        <span className="bg-gradient-to-r from-red-600 to-amber-500 bg-clip-text text-transparent">
+                          {slide.wordOne}
+                        </span>{" "}
+                        <span className="text-slate-950">
+                          {slide.wordTwo}
+                        </span>
+                      </h1>
+
+                      <p className="text-xs sm:text-sm text-slate-700 max-w-2xl leading-relaxed font-sans font-semibold">
+                        {slide.desc}
+                      </p>
+
+                      <div className="flex flex-wrap justify-center gap-4 pt-1">
+                        <motion.button
+                          whileHover={{ scale: 1.05, y: -2, boxShadow: "0 10px 20px rgba(211,47,47,0.4)" }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setView("library")}
+                          className="px-6 py-3 bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-sans font-extrabold text-xs uppercase rounded-full shadow-lg transition-all duration-200 cursor-pointer"
+                        >
+                          Start Training
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05, y: -2, boxShadow: "0 10px 20px rgba(0,0,0,0.05)" }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setView("pricing")}
+                          className="px-6 py-3 bg-white hover:bg-slate-50 text-slate-900 font-sans font-black text-xs uppercase rounded-full border border-slate-200 shadow-md transition-all duration-200 cursor-pointer"
+                        >
+                          View Pricing
+                        </motion.button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Carousel Navigation Mechanics */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t border-slate-200 w-full">
+                <div className="flex items-center gap-3">
+                  {HERO_SLIDES.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentSlide(idx)}
+                      className={`transition-all duration-300 cursor-pointer ${
+                        idx === currentSlide
+                          ? "bg-[#D32F2F] w-8 h-2 rounded-full shadow-[0_0_10px_rgba(211,47,47,0.4)]"
+                          : "bg-slate-300 w-3 h-2 rounded-full hover:bg-slate-400"
+                      }`}
+                      aria-label={`Go to slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handlePrevSlide}
+                    className="p-3 rounded-full bg-white text-slate-800 hover:bg-[#D32F2F] hover:text-white transition-colors duration-200 shadow-sm cursor-pointer border border-slate-200"
+                    aria-label="Previous slide"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={handleNextSlide}
+                    className="p-3 rounded-full bg-white text-slate-800 hover:bg-[#D32F2F] hover:text-white transition-colors duration-200 shadow-sm cursor-pointer border border-slate-200"
+                    aria-label="Next slide"
+                  >
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 1.1 ELITE PERFORMANCE GALLERY & DEMONSTRATION */}
+      <section id="elite-gallery-segment" className="py-16 bg-background border-b border-border">
+        <motion.div
+          initial={{ opacity: 0.85, y: 0 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
+          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-6 relative w-full flex flex-col justify-center">
+              <div className="mb-4 text-left">
+                <span className="text-[9px] font-mono font-black tracking-widest text-[#D32F2F] uppercase bg-red-50 px-2.5 py-1 rounded-full">
+                  Elite Live Demonstration
+                </span>
+                <h3 className="text-xl font-sans font-black text-slate-900 uppercase mt-2">
+                  Alex Fitness Hub Live Session
+                </h3>
+                <p className="text-xs text-slate-600 mt-1">
+                  Witness real-time training biomechanics and dynamic feedback in action.
+                </p>
+              </div>
+              <div className="relative w-full aspect-[16/10] rounded-3xl p-2 bg-gradient-to-tr from-[#D4AF37] to-amber-500 shadow-xl group overflow-hidden border border-slate-200">
+                <div className="w-full h-full rounded-[1.4rem] overflow-hidden bg-black relative">
+                  <OptimizedImage
+                    src="https://builtwithscience.com/wp-content/uploads/2026/01/F3-8.webp"
+                    alt="Alex Fitness Hub Live Session"
+                    aspectRatio="16/9"
+                    className="w-full h-full object-cover opacity-100 scale-100 transition-transform duration-150 ease-out group-hover:scale-105 will-change-transform"
+                  />
+
+                  <div className="absolute top-4 left-4 bg-[#D32F2F] text-white text-[9px] font-sans font-black tracking-wider uppercase px-3 py-1 rounded-full shadow-lg flex items-center gap-1.5 z-10 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>
+                    LIVE SESSIONS
+                  </div>
+
+                  <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-md text-white text-[9px] font-mono tracking-widest px-3 py-1.5 rounded-lg border border-white/10 z-10">
+                    HD 1080P | ACTIVE FORM RECON
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-6 flex flex-col justify-center">
+              <div className="mb-4 text-left">
+                <span className="text-[9px] font-mono font-black tracking-widest text-[#D4AF37] uppercase bg-amber-50 px-2.5 py-1 rounded-full">
+                  Specialization Spotlights
+                </span>
+                <h3 className="text-xl font-sans font-black text-slate-900 uppercase mt-2">
+                  Training & Nutrition Curriculums
+                </h3>
+                <p className="text-xs text-slate-600 mt-1">
+                  Explore our core visual pillars from the active training guide programs.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {HERO_SLIDES.map((slide, idx) => (
+                  <motion.div
+                    whileHover={{ y: -2, scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    key={idx}
+                    className={`rounded-2xl overflow-hidden border transition-all duration-150 relative group bg-slate-100 h-40 cursor-pointer shadow-sm ${
+                      idx === currentSlide
+                        ? "border-[#D4AF37] ring-2 ring-[#D4AF37]/50 shadow-md"
+                        : "border-slate-200 opacity-85"
+                    }`}
+                    onClick={() => setCurrentSlide(idx)}
+                  >
+                    <OptimizedImage
+                      src={slide.imageUrl}
+                      alt={slide.eyebrow}
+                      aspectRatio="16/9"
+                      className="w-full h-full object-cover transition-transform duration-150 filter brightness-110 will-change-transform"
+                    />
+
+                    <div className="absolute inset-x-0 bottom-0 p-2 bg-white/95 backdrop-blur-xs border-t border-slate-100 text-left">
+                      <p className="text-[8px] font-mono font-black tracking-widest text-[#D32F2F] uppercase">
+                        {slide.wordOne}
+                      </p>
+                      <h4 className="text-[11px] font-sans font-black text-slate-900 uppercase mt-0.5 leading-tight">
+                        {slide.wordTwo} Suite
+                      </h4>
+                    </div>
+
+                    {idx === currentSlide && (
+                      <span className="absolute top-2 right-2 text-[8px] font-mono font-black tracking-wider text-white bg-[#D4AF37] px-2 py-0.5 rounded-full uppercase">
+                        Active
+                      </span>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left">
+                <div className="flex items-center justify-between">
+                  <span className="text-[8px] font-mono font-black text-[#D32F2F] bg-red-50 px-2 py-0.5 rounded uppercase">
+                    {HERO_SLIDES[currentSlide]?.eyebrow || "PHYSIQUE SPECIALIZATION"}
+                  </span>
+                  <span className="text-[8px] font-mono font-black tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full uppercase">
+                    PRO CLINICAL TRACKER
+                  </span>
+                </div>
+                <h4 className="text-sm font-sans font-black text-slate-900 uppercase mt-2">
+                  {HERO_SLIDES[currentSlide]?.wordOne || "FORGE"} {HERO_SLIDES[currentSlide]?.wordTwo || "ATHLETICISM"}
+                </h4>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  {HERO_SLIDES[currentSlide]?.desc || "Experience world-class body sculpting."}
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+    </>
+  );
+});
+
 interface HomeViewProps {
   setView: (view: string) => void;
   onOpenAuth: () => void;
@@ -372,48 +634,13 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
     });
   }, []);
 
-  // Carousel slider state for Hero
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  const heroSlides = [
-    {
-      eyebrow: "PHYSIQUE SPECIALIZATION",
-      wordOne: "FORGE",
-      wordTwo: "ATHLETICISM",
-      desc: "Experience world-class body sculpting. Unified by certified clinical kinesiologists, interactive progress logs, and advanced multi-modal Gemini AI coaching. Track actual metric goals with absolute precision.",
-      imageUrl: "/images/hero-athlete-shred.png"
-    },
-    {
-      eyebrow: "NUTRITIONAL METRICS",
-      wordOne: "SHRED",
-      wordTwo: "PLATEAUS",
-      desc: "Calibrate localized macronutrient diet plans tailored precisely for high protein staples, tracking absolute body weight goals daily with the assistance of interactive progress reports.",
-      imageUrl: "/images/nutrition-meal-calibrator.png"
-    },
-    {
-      eyebrow: "AI POWERED SOLUTIONS",
-      wordOne: "COMMAND",
-      wordTwo: "INTELLIGENCE",
-      desc: "Unlock server-side Gemini intelligence models to consult your lifting technique, optimize water ratios, and design recovery splits tailored for performance athletes.",
-      imageUrl: "/images/alex-fitness-coach.png"
+  const programDurations = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof calculateProgramWorkoutDuration>>();
+    for (const p of PROGRAMS) {
+      map.set(p.id, calculateProgramWorkoutDuration(p.id, exercises));
     }
-  ];
-
-  // Auto-play interval for hero carousel (5 seconds)
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [heroSlides.length]);
-
-  const handleNextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-  };
-
-  const handlePrevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
-  };
+    return map;
+  }, [exercises]);
 
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
 
@@ -1076,233 +1303,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
       </section>
       )}
 
-      {/* 1.2 INTERACTIVE ENGINE & PREMIUM SLIDESHOW - PLACED DIRECTLY BELOW THE HERO */}
-      <section id="hero-carousel-segment" className="py-12 sm:py-16 lg:py-20 bg-background border-b border-border relative overflow-hidden">
-        {/* Decorative background visual accents */}
-        <div className="absolute top-1/4 -left-32 w-80 h-80 bg-red-500/5 rounded-full filter blur-3xl pointer-events-none select-none" />
-        <div className="absolute bottom-1/4 -right-32 w-80 h-80 bg-amber-500/5 rounded-full filter blur-3xl pointer-events-none select-none" />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="flex flex-col items-center">
-            
-            {/* Premium bright high-contrast card ensuring absolutely no word is hidden */}
-            <div className="w-full max-w-4xl bg-slate-50 rounded-[2.5rem] border border-slate-200 p-6 sm:p-10 lg:p-12 shadow-xl flex flex-col justify-center items-center text-center text-slate-900 relative">
-              <div className="relative min-h-[340px] sm:min-h-[260px] md:min-h-[220px] lg:min-h-[180px] w-full">
-                {heroSlides.map((slide, idx) => {
-                  const isActive = idx === currentSlide;
-                  return (
-                    <div 
-                      key={idx}
-                      className={`transition-all duration-[350ms] ease-out space-y-5 flex flex-col items-center ${
-                        isActive 
-                          ? "opacity-100 translate-y-0 scale-100" 
-                          : "opacity-0 translate-y-4 scale-98 absolute inset-0 pointer-events-none"
-                      }`}
-                    >
-                      <span className="text-[10px] font-mono font-black tracking-[0.25em] text-white uppercase bg-[#D32F2F] px-4 py-1.5 rounded-full inline-block shadow-md">
-                        {slide.eyebrow}
-                      </span>
-                      
-                      <h1 className="text-3xl sm:text-4xl md:text-5xl font-sans font-black tracking-tight leading-tight uppercase select-none">
-                        <span className="bg-gradient-to-r from-red-600 to-amber-500 bg-clip-text text-transparent">
-                          {slide.wordOne}
-                        </span>{" "}
-                        <span className="text-slate-950">
-                          {slide.wordTwo}
-                        </span>
-                      </h1>
-
-                      <p className="text-xs sm:text-sm text-slate-700 max-w-2xl leading-relaxed font-sans font-semibold">
-                        {slide.desc}
-                      </p>
-
-                      <div className="flex flex-wrap justify-center gap-4 pt-1">
-                        <motion.button
-                          whileHover={{ scale: 1.05, y: -2, boxShadow: "0 10px 20px rgba(211,47,47,0.4)" }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setView("library")}
-                          className="px-6 py-3 bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-sans font-extrabold text-xs uppercase rounded-full shadow-lg transition-all duration-200 cursor-pointer"
-                        >
-                          Start Training
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.05, y: -2, boxShadow: "0 10px 20px rgba(0,0,0,0.05)" }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setView("pricing")}
-                          className="px-6 py-3 bg-white hover:bg-slate-50 text-slate-900 font-sans font-black text-xs uppercase rounded-full border border-slate-200 shadow-md transition-all duration-200 cursor-pointer"
-                        >
-                          View Pricing
-                        </motion.button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Carousel Navigation Mechanics */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t border-slate-200 w-full">
-                
-                {/* Pagination dots: active = red dot, inactive = slate-200 */}
-                <div className="flex items-center gap-3">
-                  {heroSlides.map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentSlide(idx)}
-                      className={`transition-all duration-300 cursor-pointer ${
-                        idx === currentSlide 
-                          ? "bg-[#D32F2F] w-8 h-2 rounded-full shadow-[0_0_10px_rgba(211,47,47,0.4)]" 
-                          : "bg-slate-300 w-3 h-2 rounded-full hover:bg-slate-400"
-                      }`}
-                      aria-label={`Go to slide ${idx + 1}`}
-                    />
-                  ))}
-                </div>
-
-                {/* Round arrow nav buttons: light circle, dark chevron */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handlePrevSlide}
-                    className="p-3 rounded-full bg-white text-slate-800 hover:bg-[#D32F2F] hover:text-white transition-colors duration-200 shadow-sm cursor-pointer border border-slate-200"
-                    aria-label="Previous slide"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={handleNextSlide}
-                    className="p-3 rounded-full bg-white text-slate-800 hover:bg-[#D32F2F] hover:text-white transition-colors duration-200 shadow-sm cursor-pointer border border-slate-200"
-                    aria-label="Next slide"
-                  >
-                    <ArrowRight className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* 1.1 ELITE PERFORMANCE GALLERY & DEMONSTRATION */}
-      <section id="elite-gallery-segment" className="py-16 bg-background border-b border-border">
-        <motion.div
-          initial={{ opacity: 0.85, y: 0 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.15, ease: "easeOut" }}
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
-        >
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            
-            {/* Left side: Premium High-Definition Video Player Container (Moved from Hero) */}
-            <div className="lg:col-span-6 relative w-full flex flex-col justify-center">
-              <div className="mb-4 text-left">
-                <span className="text-[9px] font-mono font-black tracking-widest text-[#D32F2F] uppercase bg-red-50 px-2.5 py-1 rounded-full">
-                  Elite Live Demonstration
-                </span>
-                <h3 className="text-xl font-sans font-black text-slate-900 uppercase mt-2">
-                  Alex Fitness Hub Live Session
-                </h3>
-                <p className="text-xs text-slate-600 mt-1">
-                  Witness real-time training biomechanics and dynamic feedback in action.
-                </p>
-              </div>
-              <div className="relative w-full aspect-[16/10] rounded-3xl p-2 bg-gradient-to-tr from-[#D4AF37] to-amber-500 shadow-xl group overflow-hidden border border-slate-200">
-                <div className="w-full h-full rounded-[1.4rem] overflow-hidden bg-black relative">
-                  <OptimizedImage
-                    src="https://builtwithscience.com/wp-content/uploads/2026/01/F3-8.webp"
-                    alt="Alex Fitness Hub Live Session"
-                    aspectRatio="16/9"
-                    className="w-full h-full object-cover opacity-100 scale-100 transition-transform duration-150 ease-out group-hover:scale-105 will-change-transform"
-                  />
-                  
-                  {/* Glowing Premium Highlight Badges */}
-                  <div className="absolute top-4 left-4 bg-[#D32F2F] text-white text-[9px] font-sans font-black tracking-wider uppercase px-3 py-1 rounded-full shadow-lg flex items-center gap-1.5 z-10 animate-pulse">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>
-                    LIVE SESSIONS
-                  </div>
-
-                  <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-md text-white text-[9px] font-mono tracking-widest px-3 py-1.5 rounded-lg border border-white/10 z-10">
-                    HD 1080P | ACTIVE FORM RECON
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right side: Dynamic Slide Imagery Showcase (Moved from Hero) */}
-            <div className="lg:col-span-6 flex flex-col justify-center">
-              <div className="mb-4 text-left">
-                <span className="text-[9px] font-mono font-black tracking-widest text-[#D4AF37] uppercase bg-amber-50 px-2.5 py-1 rounded-full">
-                  Specialization Spotlights
-                </span>
-                <h3 className="text-xl font-sans font-black text-slate-900 uppercase mt-2">
-                  Training & Nutrition Curriculums
-                </h3>
-                <p className="text-xs text-slate-600 mt-1">
-                  Explore our core visual pillars from the active training guide programs.
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {heroSlides.map((slide, idx) => (
-                  <motion.div 
-                    whileHover={{ y: -2, scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    key={idx} 
-                    className={`rounded-2xl overflow-hidden border transition-all duration-150 relative group bg-slate-100 h-40 cursor-pointer shadow-sm ${
-                      idx === currentSlide 
-                        ? "border-[#D4AF37] ring-2 ring-[#D4AF37]/50 shadow-md" 
-                        : "border-slate-200 opacity-85"
-                    }`}
-                    onClick={() => setCurrentSlide(idx)}
-                  >
-                    <OptimizedImage 
-                      src={slide.imageUrl} 
-                      alt={slide.eyebrow}
-                      aspectRatio="16/9"
-                      className="w-full h-full object-cover transition-transform duration-150 filter brightness-110 will-change-transform"
-                    />
-                    
-                    <div className="absolute inset-x-0 bottom-0 p-2 bg-white/95 backdrop-blur-xs border-t border-slate-100 text-left">
-                      <p className="text-[8px] font-mono font-black tracking-widest text-[#D32F2F] uppercase">
-                        {slide.wordOne}
-                      </p>
-                      <h4 className="text-[11px] font-sans font-black text-slate-900 uppercase mt-0.5 leading-tight">
-                        {slide.wordTwo} Suite
-                      </h4>
-                    </div>
-
-                    {idx === currentSlide && (
-                      <span className="absolute top-2 right-2 text-[8px] font-mono font-black tracking-wider text-white bg-[#D4AF37] px-2 py-0.5 rounded-full uppercase">
-                        Active
-                      </span>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-              
-              {/* Highlight card for currently active details */}
-              <div className="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left">
-                <div className="flex items-center justify-between">
-                  <span className="text-[8px] font-mono font-black text-[#D32F2F] bg-red-50 px-2 py-0.5 rounded uppercase">
-                    {heroSlides[currentSlide]?.eyebrow || "PHYSIQUE SPECIALIZATION"}
-                  </span>
-                  <span className="text-[8px] font-mono font-black tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full uppercase">
-                    PRO CLINICAL TRACKER
-                  </span>
-                </div>
-                <h4 className="text-sm font-sans font-black text-slate-900 uppercase mt-2">
-                  {heroSlides[currentSlide]?.wordOne || "FORGE"} {heroSlides[currentSlide]?.wordTwo || "ATHLETICISM"}
-                </h4>
-                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                  {heroSlides[currentSlide]?.desc || "Experience world-class body sculpting."}
-                </p>
-              </div>
-
-            </div>
-
-          </div>
-        </motion.div>
-      </section>
+      <HomeHeroAndSpotlight setView={setView} />
 
 
 
@@ -2003,7 +2004,7 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
                       </div>
 
                       {(() => {
-                        const dur = calculateProgramWorkoutDuration(program.id, exercises);
+                        const dur = programDurations.get(program.id) || calculateProgramWorkoutDuration(program.id, exercises);
                         return (
                           <div className="flex items-center gap-2 text-slate-500 font-mono text-[10px]" title={dur.calculationSummary}>
                             <span className="font-bold flex items-center gap-1 text-slate-800">
