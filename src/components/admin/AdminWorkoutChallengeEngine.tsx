@@ -763,9 +763,12 @@ export default function AdminWorkoutChallengeEngine() {
         const progCopy = { ...(next[key] || {}) };
         if (isCycleSplitting) {
           progCopy[cycleKey] = { ...updatedDayData, cycleDay: computedCycleDay };
-          for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
-            if (progCopy[String(d)]?.isOneOff !== true) {
-              delete progCopy[String(d)];
+          for (const existingKey of Object.keys(progCopy)) {
+            if (/^\d+$/.test(existingKey) && progCopy[existingKey]?.isOneOff !== true) {
+              const cycForNum = ((Number(existingKey) - 1) % 7) + 1;
+              if (progCopy[`cycle_${cycForNum}`]) {
+                delete progCopy[existingKey];
+              }
             }
           }
         } else {
@@ -779,42 +782,46 @@ export default function AdminWorkoutChallengeEngine() {
 
     const adminEmail = user?.email || localStorage.getItem("fit_saved_email") || "muzikworld08@gmail.com";
 
-    // Direct dual-persistence to Firestore per-program document (<100KB, guaranteed safe under 1MB limit)
-    let fsWriteSuccess = false;
-    try {
-      const latestOverrides = getScheduleOverrides();
-      const fsResults = await Promise.all(
-        keysToUpdate.map(async (persistKey) => {
-          const fullSchedule: Record<string, any> = {
-            ...(latestOverrides[persistKey] || serverOverrides[persistKey] || {})
-          };
-          if (isCycleSplitting) {
-            fullSchedule[cycleKey] = { ...updatedDayData, cycleDay: computedCycleDay };
-            for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
-              if (fullSchedule[String(d)]?.isOneOff !== true) {
-                delete fullSchedule[String(d)];
+    const tryClientFirestoreFallback = async (): Promise<boolean> => {
+      try {
+        const latestOverrides = getScheduleOverrides();
+        const fsResults = await Promise.all(
+          keysToUpdate.map(async (persistKey) => {
+            const fullSchedule: Record<string, any> = {
+              ...(latestOverrides[persistKey] || serverOverrides[persistKey] || {})
+            };
+            if (isCycleSplitting) {
+              fullSchedule[cycleKey] = { ...updatedDayData, cycleDay: computedCycleDay };
+              for (const existingKey of Object.keys(fullSchedule)) {
+                if (/^\d+$/.test(existingKey) && fullSchedule[existingKey]?.isOneOff !== true) {
+                  const cycForNum = ((Number(existingKey) - 1) % 7) + 1;
+                  if (fullSchedule[`cycle_${cycForNum}`]) {
+                    delete fullSchedule[existingKey];
+                  }
+                }
               }
+            } else {
+              fullSchedule[dayKey] = { ...updatedDayData, dayNumber: effectiveDayNumber, isOneOff: true };
             }
-          } else {
-            fullSchedule[dayKey] = { ...updatedDayData, dayNumber: effectiveDayNumber, isOneOff: true };
-          }
-          return await safeFirestoreSetDoc(
-            doc(db, "program_schedules", persistKey),
-            {
-              programId: persistKey,
-              schedule: fullSchedule,
-              updatedAt: new Date().toISOString(),
-              updatedBy: adminEmail
-            },
-            { merge: false },
-            true // bypassQuota for authorized Admin operations
-          );
-        })
-      );
-      fsWriteSuccess = fsResults.some(Boolean);
-    } catch (fsErr) {
-      console.error(`[Firestore Admin Persist ERROR] Failed writing to Firestore:`, fsErr);
-    }
+            return await safeFirestoreSetDoc(
+              doc(db, "program_schedules", persistKey),
+              {
+                programId: persistKey,
+                schedule: fullSchedule,
+                updatedAt: new Date().toISOString(),
+                updatedBy: adminEmail
+              },
+              { merge: false },
+              true
+            );
+          })
+        );
+        return fsResults.length > 0 && fsResults.every(Boolean);
+      } catch (fsErr) {
+        console.error(`[Firestore Admin Persist ERROR] Fallback write failed:`, fsErr);
+        return false;
+      }
+    };
 
     try {
       const res = await fetchWithFirebaseAuth("/api/admin/programs/save-day-override", {
@@ -832,7 +839,12 @@ export default function AdminWorkoutChallengeEngine() {
       });
 
       const resData = await res.json().catch(() => ({}));
-      if (res.ok && resData?.success !== false && (resData?.cloudSaved !== false || fsWriteSuccess)) {
+      let confirmedInCloud = Boolean(res.ok && resData?.success !== false && resData?.cloudSaved !== false);
+      if (!confirmedInCloud && !resData?.quotaExceeded) {
+        confirmedInCloud = await tryClientFirestoreFallback();
+      }
+
+      if (confirmedInCloud) {
         setServerOverrides(prev => {
           const next = { ...prev };
           keysToUpdate.forEach(pid => {
@@ -843,9 +855,12 @@ export default function AdminWorkoutChallengeEngine() {
             const progCopy = { ...(next[pid] || {}) };
             if (isCycleSplitting) {
               progCopy[`cycle_${computedCycleDay}`] = updatedDayData;
-              for (let d = computedCycleDay; d <= totalProgDays; d += 7) {
-                if (progCopy[String(d)]?.isOneOff !== true) {
-                  delete progCopy[String(d)];
+              for (const existingKey of Object.keys(progCopy)) {
+                if (/^\d+$/.test(existingKey) && progCopy[existingKey]?.isOneOff !== true) {
+                  const cycForNum = ((Number(existingKey) - 1) % 7) + 1;
+                  if (progCopy[`cycle_${cycForNum}`]) {
+                    delete progCopy[existingKey];
+                  }
                 }
               }
             } else {
@@ -872,7 +887,8 @@ export default function AdminWorkoutChallengeEngine() {
       }
     } catch (err: any) {
       console.error("[Server Admin API Error] Failed saving reordered exercises:", err);
-      if (fsWriteSuccess) {
+      const fsFallbackOk = await tryClientFirestoreFallback();
+      if (fsFallbackOk) {
         setSaveErrorMsg(null);
         setSaveSuccessMsg(`Routine for ${targetTier.toUpperCase()} saved to Cloud Firestore.`);
         setTimeout(() => setSaveSuccessMsg(null), 3000);
@@ -1505,63 +1521,103 @@ export default function AdminWorkoutChallengeEngine() {
         })
       });
 
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || "Failed saving schedule override");
+      const data = await res.json().catch(() => ({}));
+      const computedCycle = ((effectiveDayNumber - 1) % 7) + 1;
+      const isCycleMode = viewMode === "cycle" || applyToAllCycleWeeks;
+
+      let serverConfirmed = Boolean(res.ok && data?.success && data?.cloudSaved !== false && data?.firestoreOk !== false);
+      let clientFallbackConfirmed = false;
+
+      // Only attempt direct authenticated client SDK write if server could not confirm (and not already blocked by quota)
+      if (!serverConfirmed && !data?.quotaExceeded) {
+        try {
+          const auditEmail = user?.email || localStorage.getItem("fit_saved_email") || "admin";
+          const latestSnapshot = getScheduleOverrides();
+          const fallbackResults = await Promise.all(
+            pidsToSave.map(async (pid) => {
+              const progCopy: Record<string, any> = {
+                ...(latestSnapshot[pid] || serverOverrides[pid] || {})
+              };
+              if (isCycleMode) {
+                progCopy[`cycle_${computedCycle}`] = {
+                  ...dayData,
+                  cycleDay: computedCycle,
+                  updatedAt: new Date().toISOString(),
+                  updatedBy: auditEmail
+                };
+                for (const existingKey of Object.keys(progCopy)) {
+                  if (/^\d+$/.test(existingKey) && progCopy[existingKey]?.isOneOff !== true) {
+                    const cycForNum = ((Number(existingKey) - 1) % 7) + 1;
+                    if (progCopy[`cycle_${cycForNum}`]) {
+                      delete progCopy[existingKey];
+                    }
+                  }
+                }
+              } else {
+                progCopy[String(effectiveDayNumber)] = {
+                  ...dayData,
+                  dayNumber: effectiveDayNumber,
+                  isOneOff: true,
+                  updatedAt: new Date().toISOString(),
+                  updatedBy: auditEmail
+                };
+              }
+              return await safeFirestoreSetDoc(
+                doc(db, "program_schedules", pid),
+                {
+                  programId: pid,
+                  schedule: progCopy,
+                  updatedAt: new Date().toISOString(),
+                  updatedBy: auditEmail
+                },
+                { merge: false },
+                true
+              );
+            })
+          );
+          clientFallbackConfirmed = fallbackResults.length > 0 && fallbackResults.every(Boolean);
+        } catch (fsErr) {
+          console.warn("Direct Firestore fallback notice:", fsErr);
+        }
+      }
+
+      if (!serverConfirmed && !clientFallbackConfirmed) {
+        throw new Error(data?.error || "Cloud Firestore did not confirm schedule override save. Changes were not confirmed.");
+      }
 
       setServerOverrides(prev => {
         const next = { ...prev };
-        const computedCycle = ((effectiveDayNumber - 1) % 7) + 1;
-        const isCycleMode = viewMode === "cycle" || applyToAllCycleWeeks;
         pidsToSave.forEach(pid => {
-          if (pid === (pidsToSave[0] || selectedProgramId) && data.allProgramOverrides) {
+          if (pid === (pidsToSave[0] || selectedProgramId) && data?.allProgramOverrides) {
             next[pid] = data.allProgramOverrides;
             return;
           }
           const progCopy = { ...(next[pid] || {}) };
           if (isCycleMode) {
-            progCopy[`cycle_${computedCycle}`] = data.savedOverride;
-            const maxDays = currentProgramMeta.totalDays || 90;
-            for (let d = computedCycle; d <= maxDays; d += 7) {
-              if (progCopy[String(d)]?.isOneOff !== true) {
-                delete progCopy[String(d)];
+            progCopy[`cycle_${computedCycle}`] = data?.savedOverride || { ...dayData, cycleDay: computedCycle };
+            for (const existingKey of Object.keys(progCopy)) {
+              if (/^\d+$/.test(existingKey) && progCopy[existingKey]?.isOneOff !== true) {
+                const cycForNum = ((Number(existingKey) - 1) % 7) + 1;
+                if (progCopy[`cycle_${cycForNum}`]) {
+                  delete progCopy[existingKey];
+                }
               }
             }
           } else {
-            progCopy[String(effectiveDayNumber)] = data.savedOverride;
+            progCopy[String(effectiveDayNumber)] = data?.savedOverride || { ...dayData, dayNumber: effectiveDayNumber, isOneOff: true };
           }
           next[pid] = progCopy;
         });
         broadcastOverridesUpdated(next);
-
-        // Direct client-side dual persistence to Firebase Firestore per-program document
-        try {
-          const auditEmail = user?.email || localStorage.getItem("fit_saved_email") || "admin";
-          pidsToSave.forEach(pid => {
-            safeFirestoreSetDoc(doc(db, "program_schedules", pid), {
-              programId: pid,
-              schedule: next[pid] || dayData,
-              updatedAt: new Date().toISOString(),
-              updatedBy: auditEmail
-            }, { merge: false }, true).catch((e) => console.warn(`Notice updating ${pid} doc:`, e));
-          });
-        } catch (fsErr) {
-          console.warn("Direct Firestore persistence notice:", fsErr);
-        }
-
         return next;
       });
 
-      if (data.cloudSaved === false || data.firestoreOk === false) {
-        setSaveSuccessMsg(null);
-        setSaveErrorMsg("Saved on this server only. NOT confirmed in Firestore. Check Firestore rules/quota/logs.");
-      } else {
-        setSaveErrorMsg(null);
-        setSaveSuccessMsg(`Day ${effectiveDayNumber} (${splitTitle}) configuration successfully saved and manifested!`);
-        setTimeout(() => setSaveSuccessMsg(null), 3500);
-      }
+      setSaveErrorMsg(null);
+      setSaveSuccessMsg(`Day ${effectiveDayNumber} (${splitTitle}) configuration successfully saved and manifested!`);
+      setTimeout(() => setSaveSuccessMsg(null), 3500);
     } catch (err: any) {
       console.error("Save day configuration error:", err);
-      setSaveErrorMsg("Error saving: " + (err?.message || "Unknown error"));
+      setSaveErrorMsg(err?.message || "Could not confirm Cloud Firestore save.");
     } finally {
       setIsSaving(false);
     }

@@ -1067,9 +1067,27 @@ async function getServerFirestoreCollection(collectionName: string, userToken?: 
 function formatFirestoreRestFields(obj: any): any {
   const fields: any = {};
   if (!obj || typeof obj !== "object") return fields;
-  
+
+  const formatArrayItem = (item: any): any => {
+    if (item === null || item === undefined) return { nullValue: null };
+    if (typeof item === "string") return { stringValue: item };
+    if (typeof item === "boolean") return { booleanValue: item };
+    if (typeof item === "number") {
+      if (!Number.isFinite(item)) return { integerValue: "0" };
+      if (Number.isInteger(item)) return { integerValue: String(item) };
+      return { doubleValue: item };
+    }
+    if (item instanceof Date) return { stringValue: item.toISOString() };
+    if (Array.isArray(item)) {
+      // Firestore forbids nested arrays; encode nested arrays safely as map objects
+      return { mapValue: { fields: formatFirestoreRestFields({ ...item }) } };
+    }
+    if (typeof item === "object") return { mapValue: { fields: formatFirestoreRestFields(item) } };
+    return null;
+  };
+
   for (const [key, value] of Object.entries(obj)) {
-    if (!key || value === undefined) continue;
+    if (!key || value === undefined || typeof value === "function" || typeof value === "symbol") continue;
     if (value === null) {
       fields[key] = { nullValue: null };
     } else if (typeof value === "string") {
@@ -1077,23 +1095,17 @@ function formatFirestoreRestFields(obj: any): any {
     } else if (typeof value === "boolean") {
       fields[key] = { booleanValue: value };
     } else if (typeof value === "number") {
-      if (Number.isInteger(value)) {
+      if (!Number.isFinite(value)) {
+        fields[key] = { integerValue: "0" };
+      } else if (Number.isInteger(value)) {
         fields[key] = { integerValue: String(value) };
       } else {
         fields[key] = { doubleValue: value };
       }
+    } else if (value instanceof Date) {
+      fields[key] = { stringValue: value.toISOString() };
     } else if (Array.isArray(value)) {
-      const values = value.map(item => {
-        if (item === null || item === undefined) return { nullValue: null };
-        if (typeof item === "string") return { stringValue: item };
-        if (typeof item === "boolean") return { booleanValue: item };
-        if (typeof item === "number") {
-          if (Number.isInteger(item)) return { integerValue: String(item) };
-          return { doubleValue: item };
-        }
-        if (typeof item === "object") return { mapValue: { fields: formatFirestoreRestFields(item) } };
-        return null;
-      }).filter(Boolean);
+      const values = value.map(formatArrayItem).filter(Boolean);
       fields[key] = { arrayValue: { values } };
     } else if (typeof value === "object") {
       fields[key] = { mapValue: { fields: formatFirestoreRestFields(value) } };
@@ -1127,10 +1139,12 @@ function sendJsonWithWeakEtag(req: any, res: any, payload: any, versionTag: stri
 }
 
 // Ultra-reliable server-side document write handler supporting metadata REST fallback in Cloud Run
-async function setServerFirestoreDoc(collectionName: string, docId: string, data: any, merge: boolean = false, userToken?: string) {
+async function setServerFirestoreDoc(collectionName: string, docId: string, data: any, merge: boolean = false, userToken?: string): Promise<{ success: boolean; error?: string; status?: number; quotaExceeded?: boolean }> {
   const projectId = firebaseConfig.projectId;
   const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
   const safeDocId = String(docId || "").replace(/\//g, "_");
+  let primaryRestError = "";
+  let primaryRestStatus = 0;
 
   // 1. Try writing via REST API using userToken if available
   if (userToken) {
@@ -1156,14 +1170,27 @@ async function setServerFirestoreDoc(collectionName: string, docId: string, data
         body: JSON.stringify({ fields })
       });
       if (writeRes.ok) {
+        serverFirestoreQuotaExhaustedAt = 0;
         console.log(`[Server Firestore REST UserToken Write OK] Successfully wrote ${collectionName}/${safeDocId}`);
         return { success: true };
       } else {
         const errText = await writeRes.text().catch(() => "");
-        console.warn(`[Server Firestore REST UserToken Notice] Write returned status ${writeRes.status} for ${collectionName}/${safeDocId}: ${extractConciseApiError(errText, writeRes.status)}`);
+        const concise = extractConciseApiError(errText, writeRes.status);
+        primaryRestStatus = writeRes.status;
+        primaryRestError = concise;
+        console.warn(`[Server Firestore REST UserToken Notice] Write returned status ${writeRes.status} for ${collectionName}/${safeDocId}: ${concise}`);
+
+        if (writeRes.status === 429 || isQuotaErrorText(errText)) {
+          serverFirestoreQuotaExhaustedAt = Date.now();
+          return { success: false, status: 429, quotaExceeded: true, error: concise };
+        }
+        if (writeRes.status === 400) {
+          return { success: false, status: 400, error: concise };
+        }
       }
     } catch (err: any) {
-      console.warn(`[Server Firestore REST UserToken Notice] Could not write ${collectionName}/${safeDocId}:`, err?.message || err);
+      primaryRestError = err?.message || String(err);
+      console.warn(`[Server Firestore REST UserToken Notice] Could not write ${collectionName}/${safeDocId}:`, primaryRestError);
     }
   }
 
@@ -1195,13 +1222,23 @@ async function setServerFirestoreDoc(collectionName: string, docId: string, data
       });
       
       if (writeRes.ok) {
+        serverFirestoreQuotaExhaustedAt = 0;
         console.log(`[Server Firestore REST Write OK] Successfully wrote ${collectionName}/${safeDocId} via REST`);
         return { success: true };
       } else if (writeRes.status === 401 || writeRes.status === 403) {
         markMetadataRestPermissionDenied(writeRes.status);
       } else {
         const errText = await writeRes.text().catch(() => "");
-        console.warn(`[Server Firestore REST Notice] Write returned status ${writeRes.status} for ${collectionName}/${safeDocId}: ${extractConciseApiError(errText, writeRes.status)}`);
+        const concise = extractConciseApiError(errText, writeRes.status);
+        if (!primaryRestError) {
+          primaryRestStatus = writeRes.status;
+          primaryRestError = concise;
+        }
+        console.warn(`[Server Firestore REST Notice] Write returned status ${writeRes.status} for ${collectionName}/${safeDocId}: ${concise}`);
+        if (writeRes.status === 429 || isQuotaErrorText(errText)) {
+          serverFirestoreQuotaExhaustedAt = Date.now();
+          return { success: false, status: 429, quotaExceeded: true, error: concise };
+        }
       }
     } catch (err: any) {
       console.warn("[Server Firestore REST Write Notice] REST write notice:", err?.message || err);
@@ -1210,7 +1247,7 @@ async function setServerFirestoreDoc(collectionName: string, docId: string, data
 
   // 3. Fallback to standard Firestore SDK
   if (isFirestoreQuotaBlocked()) {
-    return { success: false, error: "Firestore write quota exhausted (15-min cooldown active)" };
+    return { success: false, status: 429, quotaExceeded: true, error: primaryRestError || "Firestore write quota exhausted (15-min cooldown active)" };
   }
   try {
     const docRef = doc(db, collectionName, docId);
@@ -1232,10 +1269,10 @@ async function setServerFirestoreDoc(collectionName: string, docId: string, data
     ) {
       serverFirestoreQuotaExhaustedAt = Date.now();
       console.warn(`[Server Firestore Write Quota Exceeded] Daily quota reached (retrying in 15 min); using server disk fallback for ${collectionName}/${docId}`);
-      return { success: false, error: "Firestore write quota exceeded" };
+      return { success: false, status: 429, quotaExceeded: true, error: primaryRestError || "Firestore write quota exceeded" };
     }
-    console.warn(`[Server Firestore Web SDK Notice] Could not write ${collectionName}/${docId}:`, err?.message || err);
-    return { success: false, error: err?.message || err };
+    console.warn(`[Server Firestore Web SDK Notice] Could not write ${collectionName}/${docId}:`, msg);
+    return { success: false, status: primaryRestStatus || undefined, error: primaryRestError || msg };
   }
 }
 
@@ -5242,7 +5279,40 @@ async function fetchProgramOverridesFromCloud(userToken?: string): Promise<Recor
   return runFetch();
 }
 
-async function loadAuthoritativeProgramOverrides(userToken?: string): Promise<{ overrides: Record<string, any>; source: "cloud" | "disk" }> {
+async function loadAuthoritativeProgramOverrides(userToken?: string, targetKeys?: string[]): Promise<{ overrides: Record<string, any>; source: "cloud" | "disk" }> {
+  if (Array.isArray(targetKeys) && targetKeys.length > 0) {
+    const baseOverrides: Record<string, any> = {
+      ...(cachedProgramOverrides && Object.keys(cachedProgramOverrides).length > 0
+        ? cachedProgramOverrides
+        : loadProgramScheduleOverrides())
+    };
+    let readCloudDoc = false;
+    try {
+      const snaps = await Promise.all(
+        targetKeys.map(async (k) => ({ k, snap: await getServerFirestoreDoc("program_schedules", k, userToken) }))
+      );
+      for (const { k, snap } of snaps) {
+        if (snap && snap.exists) {
+          const data = snap.data();
+          if (data && data.schedule && typeof data.schedule === "object") {
+            baseOverrides[k] = data.schedule;
+            readCloudDoc = true;
+          } else if (data && typeof data === "object") {
+            const { updatedAt, updatedBy, programId, ...cleanSchedule } = data;
+            if (Object.keys(cleanSchedule).length > 0) {
+              baseOverrides[k] = cleanSchedule;
+              readCloudDoc = true;
+            }
+          }
+        }
+      }
+    } catch {}
+    if (readCloudDoc || cachedProgramOverridesSource === "cloud") {
+      return { overrides: baseOverrides, source: "cloud" };
+    }
+    return { overrides: baseOverrides, source: "disk" };
+  }
+
   const cloudLatest = await fetchProgramOverridesFromCloud(userToken);
   if (cloudLatest && Object.keys(cloudLatest).length > 0) {
     return { overrides: cloudLatest, source: "cloud" };
@@ -5296,12 +5366,15 @@ async function persistProgramOverridesToCloud(
   userEmail: string = "admin",
   specificKeys?: string[],
   userToken?: string
-): Promise<{ firestoreOk: boolean; durable: boolean }> {
+): Promise<{ firestoreOk: boolean; durable: boolean; error?: string; quotaExceeded?: boolean; status?: number }> {
   const keysToPersist = specificKeys && specificKeys.length > 0
     ? specificKeys
     : Object.keys(overrides);
 
   let firestoreOk = false;
+  let failureError: string | undefined;
+  let failureStatus: number | undefined;
+  let anyQuota = false;
 
   // 1. Persist individual program documents in Cloud Firestore program_schedules collection FIRST
   try {
@@ -5323,9 +5396,14 @@ async function persistProgramOverridesToCloud(
     if (firestoreOk) {
       console.log(`[Cloud Persistence OK] Persisted ${keysToPersist.length} programs to Firestore program_schedules.`);
     } else {
-      console.error(`[Cloud Persistence FAILED] Firestore write failed for one or more programs:`, keysToPersist);
+      const firstFailed = fsResults.find((r: any) => !r || !r.success) as any;
+      failureError = firstFailed?.error || "Unknown Firestore write error";
+      failureStatus = firstFailed?.status;
+      anyQuota = fsResults.some((r: any) => Boolean(r?.quotaExceeded));
+      console.error(`[Cloud Persistence FAILED] Firestore write failed for programs [${keysToPersist.join(", ")}]: ${failureError}`);
     }
-  } catch (err) {
+  } catch (err: any) {
+    failureError = err?.message || String(err);
     console.error("[Cloud Persistence FAILED] Failed writing per-program documents to Firestore:", err);
     firestoreOk = false;
   }
@@ -5335,10 +5413,16 @@ async function persistProgramOverridesToCloud(
     setCachedProgramOverridesMap(overrides, "cloud");
     lastProgramOverridesCloudSync = Date.now();
   } else {
-    console.error(`[Cloud Persistence FAILED] Program schedule writes (${keysToPersist.join(", ")}) were NOT confirmed by Cloud Firestore.`);
+    console.error(`[Cloud Persistence FAILED] Program schedule writes (${keysToPersist.join(", ")}) were NOT confirmed by Cloud Firestore: ${failureError}`);
   }
 
-  return { firestoreOk, durable: firestoreOk };
+  return {
+    firestoreOk,
+    durable: firestoreOk,
+    ...(failureError ? { error: failureError } : {}),
+    ...(anyQuota ? { quotaExceeded: true } : {}),
+    ...(failureStatus ? { status: failureStatus } : {})
+  };
 }
 
 async function purgeExerciseFromProgramSchedules(exerciseId: string, exerciseName?: string, userEmail: string = "admin", userToken?: string) {
@@ -6099,7 +6183,15 @@ app.post("/api/admin/programs/sync-cloud", requireAdmin, async (req: any, res) =
     if (Object.keys(merged).length > 0) {
       const persisted = await persistProgramOverridesToCloud(merged, req.user?.email || "admin", undefined, req.authToken);
       if (!persisted.firestoreOk) {
-        return res.status(502).json({ success: false, firestoreOk: false, cloudSaved: false, error: "Cloud Firestore did not confirm sync-cloud persistence." });
+        return res.status(502).json({
+          success: false,
+          firestoreOk: false,
+          cloudSaved: false,
+          quotaExceeded: Boolean(persisted.quotaExceeded),
+          error: persisted.error
+            ? `Cloud Firestore did not confirm sync-cloud persistence: ${persisted.error}`
+            : "Cloud Firestore did not confirm sync-cloud persistence."
+        });
       }
     }
 
@@ -6117,9 +6209,8 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
   }
 
   try {
-    const { overrides: allOverrides } = await loadAuthoritativeProgramOverrides(req.authToken);
-
     const targetKeys = resolveTargetScheduleKeys(programId, track, targetProgramKey);
+    const { overrides: allOverrides } = await loadAuthoritativeProgramOverrides(req.authToken, targetKeys);
 
     const maxDays = Number(totalDays) || 90;
     const computedCycleDay = Number(cycleDay) || (((Number(dayNumber) - 1) % 7) + 1);
@@ -6137,17 +6228,17 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
       }
 
       if (applyToAllCycleWeeks && computedCycleDay) {
-        // Canonical repeating split: write ONLY cycle_N and delete numeric day keys for this cycle day
+        // Canonical repeating split: write ONLY cycle_N and prune stale non-one-off numeric keys
         allOverrides[key][`cycle_${computedCycleDay}`] = {
           ...baseRecord,
           cycleDay: computedCycleDay
         };
-        const existingNumericMax = Object.keys(allOverrides[key])
-          .filter(k => /^\d+$/.test(k))
-          .reduce((max, k) => Math.max(max, Number(k)), maxDays);
-        for (let d = computedCycleDay; d <= existingNumericMax; d += 7) {
-          if (allOverrides[key][String(d)]?.isOneOff !== true) {
-            delete allOverrides[key][String(d)];
+        for (const existingKey of Object.keys(allOverrides[key])) {
+          if (/^\d+$/.test(existingKey) && allOverrides[key][existingKey]?.isOneOff !== true) {
+            const cycForNum = ((Number(existingKey) - 1) % 7) + 1;
+            if (allOverrides[key][`cycle_${cycForNum}`]) {
+              delete allOverrides[key][existingKey];
+            }
           }
         }
       } else {
@@ -6173,7 +6264,10 @@ app.post("/api/admin/programs/save-day-override", requireAdmin, async (req: any,
         success: false,
         cloudSaved: false,
         firestoreOk: false,
-        error: "Cloud Firestore did not confirm schedule override save. Changes were not confirmed."
+        quotaExceeded: Boolean(persisted.quotaExceeded),
+        error: persisted.error
+          ? `Cloud Firestore did not confirm schedule override save: ${persisted.error}`
+          : "Cloud Firestore did not confirm schedule override save. Changes were not confirmed."
       });
     }
 
@@ -6254,7 +6348,10 @@ app.post("/api/admin/programs/save-cycle-template", requireAdmin, async (req: an
         success: false,
         cloudSaved: false,
         firestoreOk: false,
-        error: "Cloud Firestore did not confirm 7-day cycle template save."
+        quotaExceeded: Boolean(persisted.quotaExceeded),
+        error: persisted.error
+          ? `Cloud Firestore did not confirm 7-day cycle template save: ${persisted.error}`
+          : "Cloud Firestore did not confirm 7-day cycle template save."
       });
     }
 
@@ -6305,7 +6402,10 @@ app.post("/api/admin/programs/purge-all-splits", requireAdmin, async (req: any, 
         success: false,
         cloudSaved: false,
         firestoreOk: false,
-        error: "Cloud Firestore did not confirm purge-all-splits write."
+        quotaExceeded: Boolean(persisted.quotaExceeded),
+        error: persisted.error
+          ? `Cloud Firestore did not confirm purge-all-splits write: ${persisted.error}`
+          : "Cloud Firestore did not confirm purge-all-splits write."
       });
     }
 
@@ -6360,7 +6460,10 @@ app.post("/api/admin/programs/reset-and-clean-all-programs", requireAdmin, async
         success: false,
         cloudSaved: false,
         firestoreOk: false,
-        error: "Cloud Firestore did not confirm reset-and-clean-all-programs write."
+        quotaExceeded: Boolean(persisted.quotaExceeded),
+        error: persisted.error
+          ? `Cloud Firestore did not confirm reset-and-clean-all-programs write: ${persisted.error}`
+          : "Cloud Firestore did not confirm reset-and-clean-all-programs write."
       });
     }
 
@@ -6426,7 +6529,10 @@ app.post("/api/admin/programs/normalize-cycles", requireAdmin, async (req: any, 
         success: false,
         cloudSaved: false,
         firestoreOk: false,
-        error: "Cloud Firestore did not confirm normalize-cycles update."
+        quotaExceeded: Boolean(persisted.quotaExceeded),
+        error: persisted.error
+          ? `Cloud Firestore did not confirm normalize-cycles update: ${persisted.error}`
+          : "Cloud Firestore did not confirm normalize-cycles update."
       });
     }
 
@@ -6653,7 +6759,10 @@ app.post("/api/admin/programs/delete-and-replace", requireAdmin, async (req: any
         success: false,
         cloudSaved: false,
         firestoreOk: false,
-        error: "Cloud Firestore did not confirm workout replacement/deletion in schedule."
+        quotaExceeded: Boolean(persisted.quotaExceeded),
+        error: persisted.error
+          ? `Cloud Firestore did not confirm workout replacement/deletion in schedule: ${persisted.error}`
+          : "Cloud Firestore did not confirm workout replacement/deletion in schedule."
       });
     }
 
@@ -6775,7 +6884,10 @@ app.post("/api/admin/programs/remove-drill", requireAdmin, async (req: any, res)
         success: false,
         cloudSaved: false,
         firestoreOk: false,
-        error: "Cloud Firestore did not confirm single-routine drill removal."
+        quotaExceeded: Boolean(persisted.quotaExceeded),
+        error: persisted.error
+          ? `Cloud Firestore did not confirm single-routine drill removal: ${persisted.error}`
+          : "Cloud Firestore did not confirm single-routine drill removal."
       });
     }
 
