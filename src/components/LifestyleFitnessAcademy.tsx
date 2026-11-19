@@ -434,13 +434,8 @@ export default function LifestyleFitnessAcademy() {
 
   useEffect(() => {
     const unsub = subscribeScheduleOverrides(() => setScheduleOverridesTick(t => t + 1));
-    const handleOverrides = () => setScheduleOverridesTick(t => t + 1);
-    window.addEventListener("fit_schedule_overrides_updated", handleOverrides);
-    window.addEventListener("fit_program_schedule_overrides_updated", handleOverrides);
     return () => {
       unsub();
-      window.removeEventListener("fit_schedule_overrides_updated", handleOverrides);
-      window.removeEventListener("fit_program_schedule_overrides_updated", handleOverrides);
     };
   }, []);
 

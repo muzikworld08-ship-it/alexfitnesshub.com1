@@ -673,11 +673,11 @@ export default function HomeView({ setView, onOpenAuth }: HomeViewProps) {
   };
 
   useEffect(() => {
-    if (user) {
+    if (user?.email || user?.displayName) {
       setContactEmail(user.email || "");
       setContactName(user.displayName || user.email?.split("@")[0] || "");
     }
-  }, [user]);
+  }, [user?.uid, user?.email, user?.displayName]);
 
   const faqsList = [
     {

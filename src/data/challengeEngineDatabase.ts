@@ -285,6 +285,7 @@ export const CHALLENGE_PROGRAMS_METADATA: Record<ProgramId, ProgramMetadata> = {
 
 import { CANONICAL_EXERCISES } from "./canonicalExercises";
 import { getScheduleOverrides } from "../utils/scheduleOverridesStore";
+import { getCachedExerciseStorageTables } from "./authoritativeExerciseMap";
 import { normalizeProgramId } from "../utils/programNormalization";
 
 export { normalizeProgramId };
@@ -444,25 +445,16 @@ export function getWorkoutForProgramAndDay(
         ? chosenExercises.filter((d: any) => d && d.addedByAdmin === true)
         : chosenExercises;
 
-      // Check for globally deleted exercises in localStorage
-      let deletedNamesSet = new Set<string>();
-      if (typeof window !== "undefined" && window.localStorage) {
-        try {
-          const rawDel = window.localStorage.getItem("fit_deleted_exercises");
-          if (rawDel) {
-            const arr = JSON.parse(rawDel);
-            if (Array.isArray(arr)) {
-              arr.forEach((d: string) => {
-                if (typeof d === "string") {
-                  const c = d.toLowerCase().trim();
-                  deletedNamesSet.add(c);
-                  deletedNamesSet.add(c.replace(/_/g, " "));
-                  deletedNamesSet.add(c.replace(/\s+/g, "_"));
-                }
-              });
-            }
-          }
-        } catch {}
+      // Check cached global overrides, exercises, and deleted tables ONCE outside the drill loop
+      const {
+        deletedSet: deletedNamesSet,
+        overridesObj: ovrObj,
+        exercisesList: exsList,
+        exercisesByLowerName
+      } = getCachedExerciseStorageTables();
+      const exsById = new Map<string, any>();
+      for (const item of exsList) {
+        if (item?.id) exsById.set(item.id, item);
       }
 
       // Deduplicate and sanitize drills to guarantee stable GIFs and correct tier difficulty
@@ -492,29 +484,17 @@ export function getWorkoutForProgramAndDay(
         seenNames.add(lower);
 
         let customGifOverride: string | undefined = undefined;
-        if (typeof window !== "undefined" && window.localStorage) {
-          try {
-            const rawOvr = window.localStorage.getItem("fit_custom_exercise_overrides");
-            if (rawOvr) {
-              const ovrObj = JSON.parse(rawOvr);
-              const o = ovrObj[ex.id] || ovrObj[name] || ovrObj[lower] || ovrObj[lower.replace(/_/g, " ")] || ovrObj[lower.replace(/\s+/g, "_")];
-              if (o) {
-                if (o.customMediaUrl !== undefined) customGifOverride = o.customMediaUrl;
-                else if (o.gifUrl !== undefined) customGifOverride = o.gifUrl;
-                else if (o.imageUrl !== undefined) customGifOverride = o.imageUrl;
-              }
-            }
-            if (customGifOverride === undefined) {
-              const rawExs = window.localStorage.getItem("fit_exercises");
-              if (rawExs) {
-                const exsList: any[] = JSON.parse(rawExs);
-                const matched = exsList.find(e => e.id === ex.id || (e.name && e.name.toLowerCase().trim() === lower));
-                if (matched?.customMediaUrl) {
-                  customGifOverride = matched.customMediaUrl;
-                }
-              }
-            }
-          } catch {}
+        const o = ovrObj[ex.id] || ovrObj[name] || ovrObj[lower] || ovrObj[lower.replace(/_/g, " ")] || ovrObj[lower.replace(/\s+/g, "_")];
+        if (o) {
+          if (o.customMediaUrl !== undefined) customGifOverride = o.customMediaUrl;
+          else if (o.gifUrl !== undefined) customGifOverride = o.gifUrl;
+          else if (o.imageUrl !== undefined) customGifOverride = o.imageUrl;
+        }
+        if (customGifOverride === undefined) {
+          const matched = (ex.id && exsById.get(ex.id)) || exercisesByLowerName.get(lower);
+          if (matched?.customMediaUrl) {
+            customGifOverride = matched.customMediaUrl;
+          }
         }
 
         let rawCandidate = customGifOverride !== undefined ? customGifOverride : (ex.gifUrl !== undefined ? ex.gifUrl : (ex as any).customMediaUrl);

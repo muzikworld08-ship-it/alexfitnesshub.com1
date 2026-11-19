@@ -152,10 +152,10 @@ export default function DashboardView({ activeView = "dashboard", setView }: Das
 
   // Load weekly reports on mount
   useEffect(() => {
-    if (user && isPremium) {
+    if (user?.uid && isPremium) {
       loadWeeklyReports().catch(err => console.warn("Failed to load reports:", err));
     }
-  }, [user, isPremium]);
+  }, [user?.uid, isPremium]);
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-screen text-slate-900 w-full max-w-full overflow-x-hidden space-y-6">
@@ -640,13 +640,8 @@ function RoutinesAndSetsView() {
   // Subscribe to schedule overrides updates from the Admin Challenge Engine
   useEffect(() => {
     const unsub = subscribeScheduleOverrides(() => setScheduleTick(t => t + 1));
-    const handleOverrides = () => setScheduleTick(t => t + 1);
-    window.addEventListener("fit_program_schedule_overrides_updated", handleOverrides);
-    window.addEventListener("fit_schedule_overrides_updated", handleOverrides);
     return () => {
       unsub();
-      window.removeEventListener("fit_program_schedule_overrides_updated", handleOverrides);
-      window.removeEventListener("fit_schedule_overrides_updated", handleOverrides);
     };
   }, []);
 

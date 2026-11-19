@@ -123,6 +123,8 @@ export const WorkoutTimerProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const timerRef = useRef<any>(null);
   const stopwatchRef = useRef<any>(null);
+  const secondsRemainingRef = useRef<number>(60);
+  secondsRemainingRef.current = secondsRemaining;
 
   const currentExercise = useMemo(
     () => exercises[currentExerciseIndex] || (isActive ? { name: workoutTitle || "Current Exercise" } : null),
@@ -159,32 +161,30 @@ export const WorkoutTimerProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     if (isActive && !isPaused && (phase === "rest" || phase === "prep")) {
       timerRef.current = setInterval(() => {
-        setSecondsRemaining(prev => {
-          if (prev <= 1) {
-            // Phase completed
-            if (phase === "rest") {
-              if (soundEnabled) playChimeTone();
-              speakText("Rest finished! Ready for the next set.");
-              setPhase("work");
-              return 0;
-            } else if (phase === "prep") {
-              if (soundEnabled) playChimeTone();
-              speakText("Start exercise!");
-              setPhase("work");
-              return 0;
-            }
-            return 0;
+        const prev = secondsRemainingRef.current;
+        if (prev <= 1) {
+          secondsRemainingRef.current = 0;
+          setSecondsRemaining(0);
+          if (phase === "rest") {
+            if (soundEnabled) playChimeTone();
+            speakText("Rest finished! Ready for the next set.");
+            setPhase("work");
+          } else if (phase === "prep") {
+            if (soundEnabled) playChimeTone();
+            speakText("Start exercise!");
+            setPhase("work");
           }
+          return;
+        }
 
-          const next = prev - 1;
-          // Tick sound & voice on 3, 2, 1
-          if (next <= 3 && next > 0) {
-            if (soundEnabled) playTickTone();
-            if (voiceEnabled) speakText(next.toString());
-          }
-
-          return next;
-        });
+        const next = prev - 1;
+        secondsRemainingRef.current = next;
+        setSecondsRemaining(next);
+        // Tick sound & voice on 3, 2, 1
+        if (next <= 3 && next > 0) {
+          if (soundEnabled) playTickTone();
+          if (voiceEnabled) speakText(next.toString());
+        }
       }, 1000);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -280,11 +280,10 @@ export const WorkoutTimerProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, []);
 
   const addSeconds = useCallback((secondsToAdd: number) => {
-    setSecondsRemaining(prev => {
-      const next = Math.max(0, prev + secondsToAdd);
-      setTotalPhaseDuration(oldTot => Math.max(oldTot, next));
-      return next;
-    });
+    const next = Math.max(0, secondsRemainingRef.current + secondsToAdd);
+    secondsRemainingRef.current = next;
+    setSecondsRemaining(next);
+    setTotalPhaseDuration(oldTot => Math.max(oldTot, next));
   }, []);
 
   const setRestDuration = useCallback((seconds: number) => {

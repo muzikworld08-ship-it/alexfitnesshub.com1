@@ -89,6 +89,10 @@ export default function HomeWorkoutPlayer({ onComplete, onClose, exercises: prop
   // Prep-phase: 5-second intro countdown before first exercise
   const [prepTimeRemaining, setPrepTimeRemaining] = useState(5);
   const [isPrepPhase, setIsPrepPhase] = useState(true);
+  const prepTimeRef = useRef<number>(prepTimeRemaining);
+  prepTimeRef.current = prepTimeRemaining;
+  const secondsRemainingRef = useRef<number>(secondsRemaining);
+  secondsRemainingRef.current = secondsRemaining;
 
   // Canvas ref for premium physics-based confetti bursts!
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -122,20 +126,22 @@ export default function HomeWorkoutPlayer({ onComplete, onClose, exercises: prop
     let interval: any = null;
     if (isPrepPhase) {
       interval = setInterval(() => {
-        setPrepTimeRemaining((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            setIsPrepPhase(false);
-            setIsPlaying(true);
-            speak("Start " + (activeExercises[0]?.name || "workout") + "! Let's go!");
-            return 0;
-          }
-          const nextVal = prev - 1;
-          if (nextVal <= 3) {
-            speak(nextVal.toString());
-          }
-          return nextVal;
-        });
+        const prev = prepTimeRef.current;
+        if (prev <= 1) {
+          clearInterval(interval);
+          prepTimeRef.current = 0;
+          setPrepTimeRemaining(0);
+          setIsPrepPhase(false);
+          setIsPlaying(true);
+          speak("Start " + (activeExercises[0]?.name || "workout") + "! Let's go!");
+          return;
+        }
+        const nextVal = prev - 1;
+        prepTimeRef.current = nextVal;
+        setPrepTimeRemaining(nextVal);
+        if (nextVal <= 3) {
+          speak(nextVal.toString());
+        }
       }, 1000);
     }
     return () => clearInterval(interval);
@@ -164,62 +170,61 @@ export default function HomeWorkoutPlayer({ onComplete, onClose, exercises: prop
           } else {
             nextHr += Math.floor(Math.random() * 5) - 2;
           }
-          // Clamp
           return Math.max(80, Math.min(185, nextHr));
         });
 
-        // Decrement timer
-        setSecondsRemaining((prev) => {
-          if (prev <= 1) {
-            // Check if this was the last exercise
-            if (currentIndex >= activeExercises.length - 1) {
-              clearInterval(interval);
+        // Decrement timer without side effects inside updater
+        const prev = secondsRemainingRef.current;
+        if (prev <= 1) {
+          if (currentIndex >= activeExercises.length - 1) {
+            clearInterval(interval);
+            secondsRemainingRef.current = 0;
+            setSecondsRemaining(0);
+            setIsPlaying(false);
+            setIsCompleted(true);
+            speak("Congratulations! You have completed the Belly Fat Cardio Circuit! Exceptional effort!");
+            triggerConfetti();
+          } else {
+            const nextIndex = currentIndex + 1;
+            if (nextIndex % 3 === 0) {
+              setShowHydrationReminder(true);
               setIsPlaying(false);
-              setIsCompleted(true);
-              speak("Congratulations! You have completed the Belly Fat Cardio Circuit! Exceptional effort!");
-              triggerConfetti();
-              return 0;
+              speak("Hydration Check! Pause and take a sip of refreshing lemon cucumber water.");
             } else {
-              // Check for Hydration Reminder every 3 exercises
-              const nextIndex = currentIndex + 1;
-              if (nextIndex % 3 === 0) {
-                setShowHydrationReminder(true);
-                setIsPlaying(false);
-                speak("Hydration Check! Pause and take a sip of refreshing lemon cucumber water.");
-              } else {
-                // Advance to next exercise
-                setCurrentIndex(nextIndex);
-                speak("Next up: " + (activeExercises[nextIndex]?.name || "next drill") + ". Let's go!");
-              }
-              return 30;
+              setCurrentIndex(nextIndex);
+              speak("Next up: " + (activeExercises[nextIndex]?.name || "next drill") + ". Let's go!");
             }
+            secondsRemainingRef.current = 30;
+            setSecondsRemaining(30);
           }
+          return;
+        }
 
-          const nextVal = prev - 1;
-          
-          // Trigger local posture/hydration coaching reminders at the 15-second mark of each exercise
-          if (nextVal === 15) {
-            if (currentIndex % 2 === 0) {
-              triggerLocalWorkoutNotification(
-                "Focus on your posture!",
-                "Keep your core fully engaged, shoulders relaxed, and maintain optimal spinal alignment.",
-                "posture"
-              );
-            } else {
-              triggerLocalWorkoutNotification(
-                "Time to hydrate!",
-                "Take a small, quick sip of clean water to maintain muscle density and keep your energy high.",
-                "hydration"
-              );
-            }
-          }
+        const nextVal = prev - 1;
+        secondsRemainingRef.current = nextVal;
+        setSecondsRemaining(nextVal);
 
-          // Voice countdown for last 3 seconds of exercise
-          if (nextVal <= 3 && nextVal > 0) {
-            speak(nextVal.toString());
+        // Trigger local posture/hydration coaching reminders at the 15-second mark of each exercise
+        if (nextVal === 15) {
+          if (currentIndex % 2 === 0) {
+            triggerLocalWorkoutNotification(
+              "Focus on your posture!",
+              "Keep your core fully engaged, shoulders relaxed, and maintain optimal spinal alignment.",
+              "posture"
+            );
+          } else {
+            triggerLocalWorkoutNotification(
+              "Time to hydrate!",
+              "Take a small, quick sip of clean water to maintain muscle density and keep your energy high.",
+              "hydration"
+            );
           }
-          return nextVal;
-        });
+        }
+
+        // Voice countdown for last 3 seconds of exercise
+        if (nextVal <= 3 && nextVal > 0) {
+          speak(nextVal.toString());
+        }
       }, 1000);
     }
     return () => clearInterval(interval);

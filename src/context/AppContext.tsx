@@ -617,25 +617,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     if (typeof profileOrFn === "function") {
-      setUserState(prev => {
-        const next = applyAdminOverride(profileOrFn(prev));
-        if (next) {
-          localStorage.setItem("fit_active_uid", next.uid);
-        } else {
-          localStorage.removeItem("fit_active_uid");
-        }
-        return next;
-      });
+      setUserState(prev => applyAdminOverride(profileOrFn(prev)));
     } else {
       const next = applyAdminOverride(profileOrFn);
-      if (next) {
-        localStorage.setItem("fit_active_uid", next.uid);
-      } else {
-        localStorage.removeItem("fit_active_uid");
-      }
       setUserState(next);
     }
   };
+
+  // Sync active UID to localStorage outside React state updaters
+  useEffect(() => {
+    try {
+      if (userState?.uid) {
+        localStorage.setItem("fit_active_uid", userState.uid);
+      } else {
+        localStorage.removeItem("fit_active_uid");
+      }
+    } catch {}
+  }, [userState?.uid]);
 
   const user = userState;
   const [loading, setLoading] = useState(false);
@@ -1008,14 +1006,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         let serverSuccess = false;
 
         try {
-          const apiRes = await fetch("/api/exercises/custom-media");
-          const apiData = await apiRes.json();
-          if (apiData.success && apiData.overrides) {
-            serverOverrides = apiData.overrides;
-            serverSuccess = Object.keys(serverOverrides).length > 0;
-          }
-          if (apiData.success && Array.isArray(apiData.deletedExerciseIds)) {
-            serverDeletedIds = apiData.deletedExerciseIds;
+          const mediaCtrl = new AbortController();
+          const mediaTimer = setTimeout(() => mediaCtrl.abort(), 1600);
+          try {
+            const apiRes = await fetch("/api/exercises/custom-media", { signal: mediaCtrl.signal });
+            const apiData = await apiRes.json();
+            if (apiData.success && apiData.overrides) {
+              serverOverrides = apiData.overrides;
+              serverSuccess = Object.keys(serverOverrides).length > 0;
+            }
+            if (apiData.success && Array.isArray(apiData.deletedExerciseIds)) {
+              serverDeletedIds = apiData.deletedExerciseIds;
+            }
+          } finally {
+            clearTimeout(mediaTimer);
           }
         } catch (sErr) {
           console.warn("Server overrides fetch warning:", sErr);
@@ -1023,9 +1027,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (!serverSuccess && !isMockFirebase) {
           try {
-            persistentMediaOverrides = await fetchAllExerciseMediaFromDatabase();
+            persistentMediaOverrides = await Promise.race([
+              fetchAllExerciseMediaFromDatabase(),
+              new Promise<Record<string, any>>(resolve => setTimeout(() => resolve({}), 1500))
+            ]);
           } catch (pErr) {
             console.warn("Persistent media fetch warning:", pErr);
+          }
+          try {
+            for (const colName of ["exercises", "generated_exercises"]) {
+              const colSnap = await Promise.race([
+                getDocs(collection(db, colName)),
+                new Promise<null>(resolve => setTimeout(() => resolve(null), 1500))
+              ]);
+              if (colSnap) {
+                colSnap.forEach((docSnap: any) => {
+                  const docData = docSnap.data();
+                  if (docData?.isDeleted) {
+                    firestoreDeletedIds.push(docSnap.id);
+                  } else if (docData && (docData.name || docData.customMediaUrl || docData.gifUrl)) {
+                    firestoreOverrides[docSnap.id] = { id: docSnap.id, ...docData };
+                  }
+                });
+              }
+            }
+          } catch (fsErr) {
+            console.warn("Firestore exercises fallback notice:", fsErr);
           }
         }
 
@@ -1757,9 +1784,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!isMockFirebase) {
       try {
         const userDocRef = doc(db, "users", uid);
-        // Fast Firestore read with 2.5s timeout safeguard to prevent hanging login
+        // Fast Firestore read with 1.5s timeout safeguard to prevent hanging login
         const userSnapPromise = getDoc(userDocRef);
-        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
+        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500));
         const userSnap = await Promise.race([userSnapPromise, timeoutPromise]) as any;
 
         if (userSnap && userSnap.exists && userSnap.exists()) {
@@ -1890,6 +1917,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     
     // Primary Firebase Session Management
     let userDocUnsubscribe: (() => void) | null = null;
+    let lastLoadedUid: string | null = null;
+    const loadUserDataOnce = (uid: string) => {
+      if (lastLoadedUid === uid) return;
+      lastLoadedUid = uid;
+      loadUserData(uid);
+    };
 
     if (!auth) {
       setLoading(false);
@@ -1931,7 +1964,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
             setUser(cachedProfile);
             setLoading(false); // Disable spinner since we have the cached user
-            loadUserData(firebaseUser.uid);
+            loadUserDataOnce(firebaseUser.uid);
           } catch (e) {}
         }
 
@@ -2000,7 +2033,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               const userDocRef = doc(db, "users", firebaseUser.uid);
               const userSnap: any = await Promise.race([
                 getDoc(userDocRef),
-                new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore profile read timeout")), 4000))
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore profile read timeout")), 1500))
               ]);
               
               if (userSnap.exists()) {
@@ -2194,8 +2227,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             .catch(e => console.warn("Background profile status check failed:", e));
           }).catch(() => {});
 
-          // Load User metadata records (saved Workouts, logs)
-          loadUserData(firebaseUser.uid);
+          // Load User metadata records (saved Workouts, logs) if not already hydrated from cache
+          loadUserDataOnce(firebaseUser.uid);
           
         } catch (err: any) {
           console.warn("Firestore profile read failed, resolving to local backup cache:", err);
@@ -2232,9 +2265,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
           
           setUser(backupProfile);
-          loadUserData(firebaseUser.uid);
+          loadUserDataOnce(firebaseUser.uid);
         }
       } else {
+        lastLoadedUid = null;
         // User is not signed into Firebase SDK
         const isExplicitLogout = localStorage.getItem("fit_explicitly_logged_out") === "true";
         let activeUid = localStorage.getItem("fit_active_uid");
@@ -2263,7 +2297,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               localStorage.setItem("fit_active_uid", effectiveUid);
               if (parsed.email) localStorage.setItem("fit_saved_email", parsed.email);
               setUser(parsed);
-              loadUserData(effectiveUid);
+              loadUserDataOnce(effectiveUid);
             } else {
               setUser(null);
             }
@@ -2288,9 +2322,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    loadPopupTestimonials();
+    const popupTestimonialsTimer = setTimeout(() => {
+      loadPopupTestimonials();
+    }, 1500);
 
     return () => {
+      clearTimeout(popupTestimonialsTimer);
       unsubscribe();
       unsubscribeToken();
       if (userDocUnsubscribe) userDocUnsubscribe();
@@ -2344,17 +2381,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.uid, user?.fitnessLevel, (user as any)?.workoutExperience]);
 
-  const saveWorkoutFiltersToFirebase = async (uid: string, filters: WorkoutLibraryFilters) => {
+  const filterSaveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveWorkoutFiltersToFirebase = (uid: string, filters: WorkoutLibraryFilters) => {
     if (isMockFirebase) return;
-    try {
-      await safeFirestoreSetDoc(doc(db, "workout_library_filters", uid), {
-        userId: uid,
-        ...filters,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-    } catch (error) {
-      console.warn("Error saving workout filters to Firestore:", error);
-    }
+    if (filterSaveTimerRef.current) clearTimeout(filterSaveTimerRef.current);
+    filterSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await safeFirestoreSetDoc(doc(db, "workout_library_filters", uid), {
+          userId: uid,
+          ...filters,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (error) {
+        console.warn("Error saving workout filters to Firestore:", error);
+      }
+    }, 600);
   };
 
   const loadWorkoutFilters = async (uid: string) => {

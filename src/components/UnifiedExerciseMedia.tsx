@@ -36,7 +36,10 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = React.m
   const { exercises, loading: hookLoading } = useCentralizedExercises();
 
   // Search for the centralized exercise matching ID or Name cleanly
-  const exercise = findMatchingExercise(exercises, exerciseId, exerciseName);
+  const exercise = useMemo(
+    () => findMatchingExercise(exercises, exerciseId, exerciseName),
+    [exercises, exerciseId, exerciseName]
+  );
   const canonicalName = exerciseName || exercise?.name || exerciseId || "";
 
   // Guaranteed authentic matching GIF resolved cleanly across all sources
@@ -49,31 +52,28 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = React.m
     return resolveAuthenticExercise(canonicalName, candidate, exercise?.category);
   }, [canonicalName, mediaUrl, exercise?.customMediaUrl, exercise?.gifUrl, exercise?.imageUrl, exercise?.category]);
 
-  const defaultFallbackUrl = getExerciseGifUrl(canonicalName, exercise?.category);
+  const defaultFallbackUrl = useMemo(
+    () => getExerciseGifUrl(canonicalName, exercise?.category),
+    [canonicalName, exercise?.category]
+  );
   const rawMediaUrl = (isValidMediaUrl(authentic.gifUrl) ? authentic.gifUrl : "") || defaultFallbackUrl;
+  const computedResolvedUrl = useMemo(
+    () => resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl,
+    [rawMediaUrl, defaultFallbackUrl]
+  );
 
-  const initialResolvedUrl = resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl;
+  const [fallbackOverrideUrl, setFallbackOverrideUrl] = useState<string | null>(null);
+  const resolvedMediaUrl = fallbackOverrideUrl !== null ? fallbackOverrideUrl : computedResolvedUrl;
 
-  const [activeUrl, setActiveUrl] = useState<string>(initialResolvedUrl);
-  const [prevRawUrl, setPrevRawUrl] = useState<string>(rawMediaUrl);
-  const [isLoaded, setIsLoaded] = useState<boolean>(() => isImageCached(initialResolvedUrl));
+  const [isLoaded, setIsLoaded] = useState<boolean>(() => isImageCached(computedResolvedUrl));
   const [hasError, setHasError] = useState(false);
 
-  // Synchronously update activeUrl on prop/exercise changes to prevent any stale GIF lingering
-  if (rawMediaUrl !== prevRawUrl) {
-    setPrevRawUrl(rawMediaUrl);
-    const nextUrl = resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl;
-    setActiveUrl(nextUrl);
-    setHasError(false);
-    setIsLoaded(isImageCached(nextUrl));
-  }
-
   useEffect(() => {
-    const nextUrl = resolveAdminMediaUrl(rawMediaUrl) || defaultFallbackUrl;
-    setActiveUrl(prev => (prev === nextUrl ? prev : nextUrl));
-  }, [rawMediaUrl, defaultFallbackUrl]);
+    setFallbackOverrideUrl(null);
+    setHasError(false);
+    setIsLoaded(isImageCached(computedResolvedUrl));
+  }, [computedResolvedUrl]);
 
-  const resolvedMediaUrl = activeUrl || initialResolvedUrl;
   const isVideoUrl = resolvedMediaUrl
     ? (resolvedMediaUrl.toLowerCase().endsWith(".mp4") ||
        resolvedMediaUrl.toLowerCase().endsWith(".webm") ||
@@ -83,8 +83,8 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = React.m
   const resolvedMediaType = exercise?.customMediaType || (isVideoUrl ? "video" : "image");
 
   const handleMediaError = () => {
-    if (defaultFallbackUrl && activeUrl !== defaultFallbackUrl) {
-      setActiveUrl(defaultFallbackUrl);
+    if (defaultFallbackUrl && resolvedMediaUrl !== defaultFallbackUrl) {
+      setFallbackOverrideUrl(defaultFallbackUrl);
     } else {
       setHasError(true);
     }
@@ -139,7 +139,6 @@ export const UnifiedExerciseMedia: React.FC<UnifiedExerciseMediaProps> = React.m
   return (
     <div className={`${className} workout-media-frameless workout-gif-frameless flex items-center justify-center`}>
       <OptimizedImage
-        key={resolvedMediaUrl}
         src={resolvedMediaUrl}
         alt={exercise?.name || exerciseName || "Exercise Media"}
         className="w-full h-full object-contain workout-gif-display workout-gif-frameless"

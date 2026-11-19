@@ -45,7 +45,10 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
   const { exercises } = useCentralizedExercises();
 
   // Try to find the detailed exercise object from our centralized database cleanly
-  const exercise = findMatchingExercise(exercises, exerciseId, exerciseName);
+  const exercise = React.useMemo(
+    () => findMatchingExercise(exercises, exerciseId, exerciseName),
+    [exercises, exerciseId, exerciseName]
+  );
 
   const displayCategory = exercise?.category || category || "General Fitness";
   const displayMuscles = exercise?.muscleGroups || muscleGroups || [];
@@ -69,7 +72,10 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
     return resolveAuthenticExercise(targetName, candidate, displayCategory);
   }, [targetName, customMediaUrl, exercise?.customMediaUrl, exercise?.gifUrl, exercise?.imageUrl, displayCategory]);
 
-  const defaultGifUrl = authentic.gifUrl || getExerciseGifUrl(targetName, displayCategory);
+  const defaultGifUrl = React.useMemo(
+    () => authentic.gifUrl || getExerciseGifUrl(targetName, displayCategory),
+    [authentic.gifUrl, targetName, displayCategory]
+  );
   const primaryRawUrl = authentic.gifUrl || defaultGifUrl;
   const initialResolvedUrl = resolveAdminMediaUrl(primaryRawUrl) || defaultGifUrl;
   
@@ -79,8 +85,13 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
   const [hasError, setHasError] = React.useState(false);
   const [retryCount, setRetryCount] = React.useState(0);
   const imgRef = React.useRef<HTMLImageElement | null>(null);
+  const retryTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
     const nextUrl = resolveAdminMediaUrl(primaryRawUrl) || defaultGifUrl;
     setActiveMediaUrl(nextUrl);
     setHasError(false);
@@ -90,6 +101,12 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
     } else {
       setLoading(true);
     }
+    return () => {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    };
   }, [primaryRawUrl, defaultGifUrl]);
 
   const resolvedMediaUrl = activeMediaUrl || initialResolvedUrl;
@@ -97,7 +114,9 @@ const WorkoutVisual = React.memo(function WorkoutVisual({
 
   const handleMediaError = () => {
     if (retryCount < 2) {
-      setTimeout(() => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = setTimeout(() => {
+        retryTimerRef.current = null;
         setRetryCount(prev => prev + 1);
       }, 800);
     } else {

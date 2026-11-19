@@ -1,6 +1,10 @@
 import { db, auth, isMockFirebase, cleanFirestoreData, isFirestoreQuotaExhausted, safeFirestoreSetDoc } from "../lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
+let cachedCooldownDates: string[] | null = null;
+let cachedCooldownScanAt = 0;
+let cachedStorageLength = -1;
+
 /**
  * Consistency Streak Manager
  * Authoritative tracking of consecutive daily workout completions across all programs:
@@ -318,21 +322,28 @@ export function collectAllCompletedDates(activityLogs: Array<{ date: string }> =
       console.warn("Could not parse fit_programs_wait_all for streaks:", e);
     }
 
-    // 3. Scan program cooldown keys (fit_program_cooldown_*)
+    // 3. Scan program cooldown keys (fit_program_cooldown_*) with brief cache to avoid O(N) full storage scans per render
     try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith("fit_program_cooldown_")) {
-          const raw = localStorage.getItem(key);
-          if (raw) {
-            const data = JSON.parse(raw);
-            if (data?.completedDateStr || data?.completedAt) {
-              const dStr = data.completedDateStr || normalizeDateToLocalDateStr(data.completedAt);
-              dateSet.add(dStr);
+      const now = Date.now();
+      if (!cachedCooldownDates || now - cachedCooldownScanAt > 5000 || cachedStorageLength !== localStorage.length) {
+        const scanned: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith("fit_program_cooldown_")) {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+              const data = JSON.parse(raw);
+              if (data?.completedDateStr || data?.completedAt) {
+                scanned.push(data.completedDateStr || normalizeDateToLocalDateStr(data.completedAt));
+              }
             }
           }
         }
+        cachedCooldownDates = scanned;
+        cachedCooldownScanAt = now;
+        cachedStorageLength = localStorage.length;
       }
+      cachedCooldownDates.forEach(dStr => dateSet.add(dStr));
     } catch (e) {}
 
     // 4. Scan 90-Day Challenge database in local storage

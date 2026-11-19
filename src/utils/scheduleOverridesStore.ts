@@ -89,13 +89,24 @@ export async function refreshScheduleOverridesFromServer(forceFresh = false): Pr
     const canSyncDeleted = typeof window !== "undefined" && Boolean(window.localStorage);
     const shouldFetchDeleted = canSyncDeleted && (forceFresh || Date.now() - lastDeletedSyncAt > 60_000);
     const url = forceFresh ? "/api/admin/programs/overrides?fresh=true" : "/api/admin/programs/overrides";
+    const ctrl = new AbortController();
+    const timer = !forceFresh ? setTimeout(() => ctrl.abort(), 1600) : null;
 
-    const [res, delRes] = await Promise.all([
-      fetch(url, forceFresh ? { cache: "no-store" } : undefined),
-      shouldFetchDeleted
-        ? fetch("/api/exercises/deleted").catch(() => null)
-        : Promise.resolve(null)
-    ]);
+    let res: Response;
+    let delRes: Response | null;
+    try {
+      [res, delRes] = await Promise.all([
+        fetch(url, {
+          ...(forceFresh ? { cache: "no-store" } : {}),
+          signal: ctrl.signal
+        }),
+        shouldFetchDeleted
+          ? fetch("/api/exercises/deleted", { signal: ctrl.signal }).catch(() => null)
+          : Promise.resolve(null)
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
 
     if (delRes && delRes.ok && canSyncDeleted) {
       lastDeletedSyncAt = Date.now();
@@ -341,7 +352,7 @@ export function purgeExerciseFromAllSchedules(
   exerciseName?: string
 ): { updatedOverrides: Record<string, any>; purgedCount: number } {
   const current = getScheduleOverrides();
-  const next: Record<string, any> = JSON.parse(JSON.stringify(current));
+  const next: Record<string, any> = { ...current };
   let purgedCount = 0;
 
   const targetId = (exerciseId || "").toLowerCase().trim();
@@ -365,12 +376,16 @@ export function purgeExerciseFromAllSchedules(
   };
 
   for (const progKey of Object.keys(next)) {
-    const progData = next[progKey];
-    if (!progData || typeof progData !== "object") continue;
+    const rawProg = next[progKey];
+    if (!rawProg || typeof rawProg !== "object") continue;
+    const progData: Record<string, any> = { ...rawProg };
+    let progChanged = false;
 
     for (const dayKey of Object.keys(progData)) {
-      const dayData = progData[dayKey];
-      if (!dayData || typeof dayData !== "object") continue;
+      const rawDay = progData[dayKey];
+      if (!rawDay || typeof rawDay !== "object") continue;
+      const beforeDayPurged = purgedCount;
+      const dayData: Record<string, any> = { ...rawDay };
 
       if (Array.isArray(dayData.exercises)) {
         dayData.exercises = sanitizeList(dayData.exercises);
@@ -385,6 +400,7 @@ export function purgeExerciseFromAllSchedules(
         dayData.advancedExercises = sanitizeList(dayData.advancedExercises);
       }
       if (dayData.levels && typeof dayData.levels === "object") {
+        dayData.levels = { ...dayData.levels };
         if (Array.isArray(dayData.levels.beginner)) {
           dayData.levels.beginner = sanitizeList(dayData.levels.beginner);
         }
@@ -395,7 +411,12 @@ export function purgeExerciseFromAllSchedules(
           dayData.levels.advanced = sanitizeList(dayData.levels.advanced);
         }
       }
+      if (purgedCount > beforeDayPurged) {
+        progData[dayKey] = dayData;
+        progChanged = true;
+      }
     }
+    if (progChanged) next[progKey] = progData;
   }
 
   if (purgedCount > 0) {
@@ -414,7 +435,7 @@ export function updateExerciseInAllSchedules(
   updates: Record<string, any>
 ): { updatedOverrides: Record<string, any>; updatedCount: number } {
   const current = getScheduleOverrides();
-  const next: Record<string, any> = JSON.parse(JSON.stringify(current));
+  const next: Record<string, any> = { ...current };
   let updatedCount = 0;
 
   const targetId = (exerciseId || "").toLowerCase().trim();
@@ -450,12 +471,16 @@ export function updateExerciseInAllSchedules(
   };
 
   for (const progKey of Object.keys(next)) {
-    const progData = next[progKey];
-    if (!progData || typeof progData !== "object") continue;
+    const rawProg = next[progKey];
+    if (!rawProg || typeof rawProg !== "object") continue;
+    const progData: Record<string, any> = { ...rawProg };
+    let progChanged = false;
 
     for (const dayKey of Object.keys(progData)) {
-      const dayData = progData[dayKey];
-      if (!dayData || typeof dayData !== "object") continue;
+      const rawDay = progData[dayKey];
+      if (!rawDay || typeof rawDay !== "object") continue;
+      const beforeDayUpdated = updatedCount;
+      const dayData: Record<string, any> = { ...rawDay };
 
       if (Array.isArray(dayData.exercises)) {
         dayData.exercises = updateList(dayData.exercises);
@@ -470,6 +495,7 @@ export function updateExerciseInAllSchedules(
         dayData.advancedExercises = updateList(dayData.advancedExercises);
       }
       if (dayData.levels && typeof dayData.levels === "object") {
+        dayData.levels = { ...dayData.levels };
         if (Array.isArray(dayData.levels.beginner)) {
           dayData.levels.beginner = updateList(dayData.levels.beginner);
         }
@@ -480,7 +506,12 @@ export function updateExerciseInAllSchedules(
           dayData.levels.advanced = updateList(dayData.levels.advanced);
         }
       }
+      if (updatedCount > beforeDayUpdated) {
+        progData[dayKey] = dayData;
+        progChanged = true;
+      }
     }
+    if (progChanged) next[progKey] = progData;
   }
 
   if (updatedCount > 0) {
@@ -500,11 +531,10 @@ export function addExerciseToProgramSchedule(
   targetTier: "beginner" | "intermediate" | "advanced" = "beginner"
 ): Record<string, any> {
   const current = getScheduleOverrides();
-  const next: Record<string, any> = JSON.parse(JSON.stringify(current));
-
-  if (!next[targetProgramId]) {
-    next[targetProgramId] = {};
-  }
+  const next: Record<string, any> = {
+    ...current,
+    [targetProgramId]: current[targetProgramId] ? { ...current[targetProgramId] } : {}
+  };
 
   const dayKey = String(targetDay);
   const cycleKey = `cycle_${((targetDay - 1) % 7) + 1}`;
@@ -569,7 +599,7 @@ export function removeDrillFromProgramSchedule(opts: {
   totalDays?: number;
 }): { updatedOverrides: Record<string, any>; removedCount: number } {
   const current = getScheduleOverrides();
-  const next: Record<string, any> = JSON.parse(JSON.stringify(current));
+  const next: Record<string, any> = { ...current };
   const progData = next[opts.programId] ? { ...next[opts.programId] } : {};
 
   const safeDay = Math.max(1, Number(opts.dayNumber) || 1);
@@ -612,7 +642,7 @@ export function removeDrillFromProgramSchedule(opts: {
     });
   };
 
-  const dayCopy = JSON.parse(JSON.stringify(existingDay));
+  const dayCopy: Record<string, any> = { ...existingDay };
   dayCopy.levels = dayCopy.levels && typeof dayCopy.levels === "object" ? { ...dayCopy.levels } : {};
   const tierKey = `${opts.tier}Exercises` as "beginnerExercises" | "intermediateExercises" | "advancedExercises";
 

@@ -5445,9 +5445,12 @@ async function syncExerciseMediaToProgramSchedules(exerciseId: string, mediaUrl:
       return false;
     };
 
+    let currentProgModified = false;
+
     const updateItem = (item: any) => {
       if (!isMatch(item)) return item;
       modified = true;
+      currentProgModified = true;
       return {
         ...item,
         gifUrl: mediaUrl,
@@ -5465,7 +5468,7 @@ async function syncExerciseMediaToProgramSchedules(exerciseId: string, mediaUrl:
     for (const progKey of Object.keys(allOverrides)) {
       const progData = allOverrides[progKey];
       if (!progData || typeof progData !== "object") continue;
-      let progModified = false;
+      currentProgModified = false;
 
       for (const dayKey of Object.keys(progData)) {
         const dayData = progData[dayKey];
@@ -5496,7 +5499,7 @@ async function syncExerciseMediaToProgramSchedules(exerciseId: string, mediaUrl:
         }
       }
 
-      if (progModified || modified) {
+      if (currentProgModified) {
         touchedKeys.push(progKey);
       }
     }

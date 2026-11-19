@@ -188,24 +188,35 @@ export default function WomenConfidenceProgram() {
   useEffect(() => {
     let isMounted = true;
     const loadProgress = async () => {
-      setIsLoading(true);
+      let loadedState: WomenConfidenceProgressState | null = null;
+      let releasedFromCache = false;
       try {
-        let loadedState: WomenConfidenceProgressState | null = null;
-        
-        // 1. Try local storage
+        // 1. Try local storage first for 0ms boot
         const local = localStorage.getItem(storageKey);
         if (local) {
           try {
             loadedState = JSON.parse(local);
+            if (loadedState && loadedState.onboarding && isMounted) {
+              setProgState(loadedState);
+              setSelectedDayNumber(loadedState.currentDay || 1);
+              setIsLoading(false);
+              releasedFromCache = true;
+            }
           } catch (e) {}
         }
+        if (!releasedFromCache && isMounted) {
+          setIsLoading(true);
+        }
 
-        // 2. Try Firestore if logged in
+        // 2. Try Firestore if logged in (capped at 1500ms so startup never hangs)
         if (user?.uid && typeof user.uid === "string" && user.uid.trim() && !isMockFirebase) {
           try {
             const docRef = doc(db, "users", user.uid.trim(), "programs", "women_confidence");
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
+            const docSnap = await Promise.race([
+              getDoc(docRef),
+              new Promise<null>(resolve => setTimeout(() => resolve(null), 1500))
+            ]);
+            if (docSnap && docSnap.exists()) {
               const remoteData = docSnap.data() as WomenConfidenceProgressState;
               loadedState = { ...DEFAULT_CONFIDENCE_STATE, ...loadedState, ...remoteData };
             }
@@ -276,7 +287,7 @@ export default function WomenConfidenceProgram() {
 
     loadProgress();
     return () => { isMounted = false; };
-  }, [uid, storageKey, user]);
+  }, [uid, storageKey]);
 
   // Sync state to local storage and remote Firestore
   const persistState = async (newState: WomenConfidenceProgressState) => {
@@ -315,13 +326,8 @@ export default function WomenConfidenceProgram() {
     const unsub = subscribeScheduleOverrides(() => {
       setScheduleOverridesTick(t => t + 1);
     });
-    const handleOverrides = () => setScheduleOverridesTick(t => t + 1);
-    window.addEventListener("fit_schedule_overrides_updated", handleOverrides);
-    window.addEventListener("fit_program_schedule_overrides_updated", handleOverrides);
     return () => {
       unsub();
-      window.removeEventListener("fit_schedule_overrides_updated", handleOverrides);
-      window.removeEventListener("fit_program_schedule_overrides_updated", handleOverrides);
     };
   }, []);
 
@@ -447,14 +453,16 @@ export default function WomenConfidenceProgram() {
     });
   };
 
-  // Live ticker for 24-hour progressive unlocks
+  // Live ticker for 24-hour progressive unlocks (runs only when dashboard & cooldown timestamps exist)
   const [nowTime, setNowTime] = useState<number>(Date.now());
+  const hasActiveUnlockCooldowns = activeTab === "dashboard" && Object.keys(progState.dayCompletedTimestamps || {}).length > 0;
   useEffect(() => {
+    if (!hasActiveUnlockCooldowns) return;
     const timer = setInterval(() => {
       setNowTime(Date.now());
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [hasActiveUnlockCooldowns]);
 
   // Helper to check if a specific day is unlocked
   const getDayUnlockStatus = (dayNum: number) => {

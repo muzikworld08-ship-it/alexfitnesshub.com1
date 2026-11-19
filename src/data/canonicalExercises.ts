@@ -34,7 +34,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "4",
     recommendedReps: "8-10 reps",
     restTime: "90s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-BENCH-PRESS.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -62,7 +62,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "10-12 reps",
     restTime: "75s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -90,7 +90,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3",
     recommendedReps: "12-15 reps",
     restTime: "60s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Cable-Fly.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -118,7 +118,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3",
     recommendedReps: "12-15 reps",
     restTime: "60s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Pec-Deck-Fly.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -146,7 +146,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3",
     recommendedReps: "8-12 reps",
     restTime: "75s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Chest-Dip.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -174,7 +174,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "15-20 reps",
     restTime: "45s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
+    gifUrl: "",
     programAssignments: ["Home Workout Programs"]
   },
 
@@ -206,7 +206,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "12-15 reps",
     restTime: "60s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Pushdown.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -234,7 +234,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3",
     recommendedReps: "10-12 reps",
     restTime: "75s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Triceps-Extension.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -262,7 +262,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3",
     recommendedReps: "10-12 reps",
     restTime: "60s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Overhead-Triceps-Extension.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -290,7 +290,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "8-10 reps",
     restTime: "90s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Close-Grip-Bench-Press.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
 
@@ -322,7 +322,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "4",
     recommendedReps: "8-10 reps",
     restTime: "90s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bent-Over-Row.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -350,7 +350,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "10-12 reps",
     restTime: "75s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lat-Pulldown.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -378,7 +378,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3",
     recommendedReps: "10-12 reps",
     restTime: "60s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Seated-Cable-Row.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -406,7 +406,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3",
     recommendedReps: "6-10 reps",
     restTime: "90s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Pull-up.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -434,7 +434,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "10-12 reps",
     restTime: "60s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Curl.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -462,7 +462,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3",
     recommendedReps: "10-12 reps",
     restTime: "60s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Hammer-Curl.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
 
@@ -494,7 +494,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "4",
     recommendedReps: "8-10 reps",
     restTime: "120s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-SQUAT.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -522,7 +522,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "10-12 reps",
     restTime: "90s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Romanian-Deadlift.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -550,7 +550,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3",
     recommendedReps: "12-14 strides per leg",
     restTime: "75s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lunges.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -578,7 +578,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "10-12 reps",
     restTime: "90s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Press.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -606,7 +606,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "4",
     recommendedReps: "15-20 reps",
     restTime: "45s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Calf-Raise.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
 
@@ -638,7 +638,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "4",
     recommendedReps: "8-10 reps",
     restTime: "90s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Military-Press.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
   {
@@ -666,7 +666,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "4",
     recommendedReps: "12-15 reps",
     restTime: "60s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
+    gifUrl: "",
     programAssignments: ["Gym Workout Programs"]
   },
 
@@ -698,7 +698,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "12-15 reps",
     restTime: "45s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hanging-Leg-Raise.gif",
+    gifUrl: "",
     programAssignments: []
   },
   {
@@ -727,7 +727,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "45-60s hold",
     duration: "45-60s hold",
     restTime: "45s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Plank.gif",
+    gifUrl: "",
     programAssignments: ["Posture Correction Challenge"]
   },
   {
@@ -755,7 +755,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3",
     recommendedReps: "20 alternating reps",
     restTime: "40s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bicycle-Crunch.gif",
+    gifUrl: "",
     programAssignments: []
   },
   {
@@ -784,7 +784,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "40s work / 20s rest",
     duration: "40s continuous",
     restTime: "20s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Mountain-Climber.gif",
+    gifUrl: "",
     programAssignments: ["Cardio", "Calisthenics & Military (30 Days)"]
   },
   {
@@ -812,7 +812,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3",
     recommendedReps: "20 alternating twists",
     restTime: "45s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Russian-Twist.gif",
+    gifUrl: "",
     programAssignments: []
   },
 
@@ -845,7 +845,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "5.0 - 10.0 KM",
     duration: "50-70 mins",
     restTime: "Full Rest Post-Cardio",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Running.gif",
+    gifUrl: "",
     programAssignments: []
   },
   {
@@ -873,7 +873,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "12-15 reps",
     restTime: "60s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Burpee.gif",
+    gifUrl: "",
     programAssignments: ["Cardio", "Calisthenics & Military (30 Days)"]
   },
 
@@ -905,7 +905,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "15-20 reps",
     restTime: "45s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Squat.gif",
+    gifUrl: "",
     programAssignments: []
   },
   {
@@ -932,7 +932,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "20 total strides",
     restTime: "45s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Walking-Lunge.gif",
+    gifUrl: "",
     programAssignments: []
   },
   {
@@ -960,7 +960,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "15-20 reps",
     restTime: "45s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Glute-Bridge.gif",
+    gifUrl: "",
     programAssignments: ["Posture Correction Challenge"]
   },
   {
@@ -987,7 +987,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "12 reps per leg",
     restTime: "60s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Bulgarian-Split-Squat.gif",
+    gifUrl: "",
     programAssignments: []
   },
   {
@@ -1014,7 +1014,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "20-25 reps",
     restTime: "30s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Calf-Raise.gif",
+    gifUrl: "",
     programAssignments: []
   },
   {
@@ -1042,7 +1042,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "45s-60s hold",
     duration: "45s hold",
     restTime: "45s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Wall-Sit.gif",
+    gifUrl: "",
     programAssignments: []
   },
 
@@ -1073,7 +1073,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "10-15 reps",
     restTime: "60s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Diamond-Push-up.gif",
+    gifUrl: "",
     programAssignments: []
   },
   {
@@ -1100,7 +1100,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "12-15 reps",
     restTime: "45s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Push-Up.gif",
+    gifUrl: "",
     programAssignments: []
   },
   {
@@ -1127,7 +1127,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "10-12 reps",
     restTime: "60s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Decline-Push-Up.gif",
+    gifUrl: "",
     programAssignments: []
   },
   {
@@ -1154,7 +1154,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedSets: "3-4",
     recommendedReps: "12-15 reps",
     restTime: "45s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bench-Dips.gif",
+    gifUrl: "",
     programAssignments: []
   },
 
@@ -1186,7 +1186,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "8-10 flows",
     duration: "60s Flow",
     restTime: "30s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/07/Downward-Facing-Dog.gif",
+    gifUrl: "",
     programAssignments: ["Posture Correction Challenge"]
   },
   {
@@ -1214,7 +1214,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "10-12 breath cycles",
     duration: "60s Flow",
     restTime: "20s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Cat-Cow-Stretch.gif",
+    gifUrl: "",
     programAssignments: ["Posture Correction Challenge"]
   },
   {
@@ -1242,7 +1242,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "45s per side",
     duration: "45s Each Leg",
     restTime: "15s transition",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Standing-Quad-Stretch.gif",
+    gifUrl: "",
     programAssignments: []
   },
   {
@@ -1270,7 +1270,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "45s per side",
     duration: "45s Each Leg",
     restTime: "15s transition",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/04/Figure-Four-Stretch.gif",
+    gifUrl: "",
     programAssignments: []
   },
   {
@@ -1298,7 +1298,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "60s-90s hold",
     duration: "60s Hold",
     restTime: "30s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Child-Pose.gif",
+    gifUrl: "",
     programAssignments: ["Posture Correction Challenge"]
   },
   {
@@ -1327,7 +1327,7 @@ export const CANONICAL_EXERCISES: Exercise[] = [
     recommendedReps: "5 flows per side",
     duration: "60s Total",
     restTime: "20s",
-    gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Side-Bend-Stretch.gif",
+    gifUrl: "",
     programAssignments: []
   }
 ];

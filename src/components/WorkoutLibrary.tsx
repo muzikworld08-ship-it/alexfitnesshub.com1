@@ -580,11 +580,11 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
   const [activeSearchTab, setActiveSearchTab] = useState<"all" | "workouts" | "exercises" | "mealplans">("all");
 
   // Pagination for heavy exercise cards lists
-  const [visibleCount, setVisibleCount] = useState(12);
+  const [visibleCount, setVisibleCount] = useState(24);
 
   // Reset pagination count on search query or filters change
   useEffect(() => {
-    setVisibleCount(12);
+    setVisibleCount(24);
   }, [searchQuery, selectedCategory, selectedDifficulty, selectedMuscleGroup, selectedEquipment, selectedExerciseType, selectedTrainingGoal]);
 
   // Completed set logger inputs
@@ -1166,10 +1166,11 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
     });
   }, [deferredSearchQuery, selectedMuscleGroup, selectedDifficulty, selectedEnvironment]);
 
-  // Display all matching exercises
+  // Paginate heavy un-filtered lists to avoid mounting hundreds of cards/GIFs at once; show all when searching
   const displayedExercises = useMemo(() => {
-    return filteredExercises;
-  }, [filteredExercises]);
+    if (deferredSearchQuery.trim()) return filteredExercises;
+    return filteredExercises.slice(0, visibleCount);
+  }, [filteredExercises, deferredSearchQuery, visibleCount]);
 
   // Group matching exercises by canonical category casing for clean presentation across public tabs
   const groupedExercises = useMemo(() => {
@@ -4041,8 +4042,8 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
             /* CATEGORY-GROUPED PRESENTATION: Organizes workouts strictly by their category */
             <div className="space-y-12">
               {(Object.entries(groupedExercises) as [string, Exercise[]][]).map(([categoryName, categoryList]) => {
-                // Show all exercises in this category
-                const topExercises = categoryList;
+                // Show top 6 exercises per category unless actively searching (keeps initial DOM light)
+                const topExercises = deferredSearchQuery.trim() ? categoryList : categoryList.slice(0, 6);
                 
                 return (
                   <div key={categoryName} className="space-y-4 cv-auto-section">
@@ -4372,13 +4373,13 @@ export default function WorkoutLibrary({ setView }: { setView?: (view: string) =
                 })}
               </div>
 
-              {/* Show more button if filtered exercises exceeds visibleCount (Disabled as all are displayed) */}
-              {false && filteredExercises.length > visibleCount && (
+              {/* Show more button if un-searched category exercises exceed visibleCount */}
+              {!deferredSearchQuery.trim() && filteredExercises.length > visibleCount && (
                 <div className="flex justify-center pt-4">
                   <button
                     type="button"
                     onClick={() => {
-                      triggerLiveLoad("Throttling and loading records...", 400, () => setVisibleCount((prev) => prev + 12));
+                      setVisibleCount((prev) => prev + 24);
                     }}
                     className="px-6 py-3 bg-[#C0392B] hover:bg-[#A82E22] text-white font-extrabold text-[11px] font-mono uppercase tracking-wider rounded-xl transition shadow hover:shadow-md cursor-pointer"
                   >

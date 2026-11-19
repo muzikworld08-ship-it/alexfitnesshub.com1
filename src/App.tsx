@@ -58,6 +58,16 @@ const MyDigitalProductsView = lazyWithRetry(() => import("./components/pdf/MyDig
 
 
 
+function WorkoutTimerFloatingMount({ currentView }: { currentView: string }) {
+  const { isActive: isTimerActive } = useWorkoutTimer();
+  if (!isTimerActive || currentView === "admin") return null;
+  return (
+    <React.Suspense fallback={null}>
+      <FloatingWorkoutTimerOverlay />
+    </React.Suspense>
+  );
+}
+
 function FitnessAppContent() {
   const { 
     user, 
@@ -76,7 +86,6 @@ function FitnessAppContent() {
     isCheckoutOpen,
     lastAddedItem
   } = useStore();
-  const { isActive: isTimerActive } = useWorkoutTimer();
   const [hasOpenedCart, setHasOpenedCart] = useState(false);
   const [hasOpenedCheckout, setHasOpenedCheckout] = useState(false);
   useEffect(() => {
@@ -126,7 +135,7 @@ function FitnessAppContent() {
     );
   };
 
-  // Instantly enforce pure white light theme on initial render and warm critical media cache
+  // Instantly enforce pure white light theme on initial render
   React.useLayoutEffect(() => {
     try {
       const root = window.document.documentElement;
@@ -134,6 +143,10 @@ function FitnessAppContent() {
       root.setAttribute("data-theme", "light");
       localStorage.setItem("fit_theme", "light");
     } catch (e) {}
+  }, []);
+
+  // Warm critical media cache after initial 2s boot window
+  React.useEffect(() => {
     preloadCriticalFitnessAssets();
   }, []);
 
@@ -843,12 +856,8 @@ function FitnessAppContent() {
         </React.Suspense>
       )}
 
-      {/* Persistent Floating Workout Rest Timer Overlay (Only fetched/mounted when a timer session is active) */}
-      {isTimerActive && currentView !== "admin" && (
-        <React.Suspense fallback={null}>
-          <FloatingWorkoutTimerOverlay />
-        </React.Suspense>
-      )}
+      {/* Persistent Floating Workout Rest Timer Overlay (Isolated so timer ticks don't re-render root app) */}
+      <WorkoutTimerFloatingMount currentView={currentView} />
 
       {/* Network Connectivity & PWA Offline Status Indicator */}
       <React.Suspense fallback={null}>

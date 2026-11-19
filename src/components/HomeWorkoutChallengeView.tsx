@@ -187,27 +187,32 @@ export default function HomeWorkoutChallengeView() {
         return;
       }
 
+      const uidKey = user.uid ? user.uid.trim() : "guest";
+      const local = localStorage.getItem(`fit_home_challenge_${uidKey}`);
+      if (local) {
+        try {
+          loadedState = JSON.parse(local);
+          if (loadedState && loadedState.onboarding && isMounted) {
+            setState(loadedState);
+            setSelectedDayNumber(loadedState.currentDay || 1);
+            setLoading(false);
+          }
+        } catch (e) {}
+      }
+
       try {
         if (!isMockFirebase && user.uid && typeof user.uid === "string" && user.uid.trim()) {
           const docRef = doc(db, "home_workout_challenge", user.uid.trim());
-          const snap = await getDoc(docRef);
-          if (snap.exists()) {
+          const snap = await Promise.race([
+            getDoc(docRef),
+            new Promise<null>(resolve => setTimeout(() => resolve(null), 1500))
+          ]);
+          if (snap && snap.exists()) {
             loadedState = snap.data() as HomeChallengeState;
           }
         }
       } catch (e) {
         console.warn("[HomeChallenge] Firestore fetch fallback:", e);
-      }
-
-      // Fallback to local storage
-      if (!loadedState) {
-        const uidKey = user.uid ? user.uid.trim() : "guest";
-        const local = localStorage.getItem(`fit_home_challenge_${uidKey}`);
-        if (local) {
-          try {
-            loadedState = JSON.parse(local);
-          } catch (e) {}
-        }
       }
 
       if (isMounted) {
@@ -253,7 +258,7 @@ export default function HomeWorkoutChallengeView() {
 
     loadData();
     return () => { isMounted = false; };
-  }, [user]);
+  }, [user?.uid]);
 
   // Sync state to local and Firestore
   const saveState = async (newState: HomeChallengeState) => {
@@ -318,13 +323,8 @@ export default function HomeWorkoutChallengeView() {
   const [overrideTick, setOverrideTick] = useState(0);
   useEffect(() => {
     const unsub = subscribeScheduleOverrides(() => setOverrideTick(t => t + 1));
-    const handleOverrides = () => setOverrideTick(t => t + 1);
-    window.addEventListener("fit_program_schedule_overrides_updated", handleOverrides);
-    window.addEventListener("fit_schedule_overrides_updated", handleOverrides);
     return () => {
       unsub();
-      window.removeEventListener("fit_program_schedule_overrides_updated", handleOverrides);
-      window.removeEventListener("fit_schedule_overrides_updated", handleOverrides);
     };
   }, []);
 

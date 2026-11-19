@@ -121,18 +121,19 @@ export function preloadCriticalFitnessAssets(): void {
 
   const schedulePreload = () => {
     CRITICAL_URLS.forEach((url, idx) => {
-      // Stagger slightly so network isn't saturated at 0ms
       setTimeout(() => {
-        preloadImage(url, idx < 2);
-      }, idx * 100);
+        preloadImage(url, false);
+      }, idx * 150);
     });
   };
 
-  if ("requestIdleCallback" in window) {
-    (window as any).requestIdleCallback(schedulePreload, { timeout: 2000 });
-  } else {
-    setTimeout(schedulePreload, 800);
-  }
+  setTimeout(() => {
+    if ("requestIdleCallback" in window) {
+      (window as any).requestIdleCallback(schedulePreload, { timeout: 2000 });
+    } else {
+      schedulePreload();
+    }
+  }, 2200);
 }
 
 export default {

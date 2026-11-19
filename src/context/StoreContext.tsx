@@ -144,6 +144,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [lastCompletedOrder, setLastCompletedOrder] = useState<StoreOrder | null>(null);
   const [lastAddedItem, setLastAddedItem] = useState<{ product: Product; size: string; color: string; quantity: number } | null>(null);
   const toastTimerRef = useRef<any>(null);
+  const latestStoreRef = useRef({
+    cart,
+    user,
+    cartSubtotal: 0,
+    shippingFee: 0,
+    discountAmount: 0,
+    orderTotal: 0,
+    selectedProductForDetail,
+    selectedProductForBuyNow
+  });
 
   // Sync cart to localStorage
   useEffect(() => {
@@ -331,6 +341,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [appliedPromoCode, cartSubtotal, shippingFee]);
 
   const orderTotal = Math.max(0, cartSubtotal - discountAmount + shippingFee);
+  latestStoreRef.current = {
+    cart,
+    user,
+    cartSubtotal,
+    shippingFee,
+    discountAmount,
+    orderTotal,
+    selectedProductForDetail,
+    selectedProductForBuyNow
+  };
 
   const applyPromoCode = useCallback((code: string) => {
     const clean = code.trim().toUpperCase();
@@ -448,11 +468,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   // Submit Store Order
-  const submitStoreOrder = async (
+  const submitStoreOrder = useCallback(async (
     deliveryInfo: StoreDeliveryInfo,
     paymentReference?: string
   ): Promise<{ success: boolean; orderId?: string; orderNumber?: string; error?: string }> => {
-    if (cart.length === 0) {
+    const snap = latestStoreRef.current;
+    if (snap.cart.length === 0) {
       return { success: false, error: "Cart is empty." };
     }
 
@@ -464,16 +485,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const newOrder: StoreOrder = {
         id: orderId,
         orderNumber,
-        userId: user?.uid || "guest",
+        userId: snap.user?.uid || "guest",
         customerName: deliveryInfo.customerName,
         customerEmail: deliveryInfo.customerEmail,
         customerPhone: deliveryInfo.customerPhone,
         shippingAddress: deliveryInfo,
-        items: [...cart],
-        subtotal: cartSubtotal,
-        shippingFee,
-        discount: discountAmount,
-        totalAmount: orderTotal,
+        items: [...snap.cart],
+        subtotal: snap.cartSubtotal,
+        shippingFee: snap.shippingFee,
+        discount: snap.discountAmount,
+        totalAmount: snap.orderTotal,
         currency: "NGN",
         // Orders can only be marked "paid" server-side after verified Paystack transaction / webhook confirmation
         paymentStatus: "pending",
@@ -494,10 +515,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.error("[Store] Order creation failed:", err);
       return { success: false, error: err.message || "Failed to process order." };
     }
-  };
+  }, []);
 
   // --- Admin Product Actions ---
-  const addProduct = async (productData: Omit<Product, "id">): Promise<{ success: boolean; id?: string; error?: string }> => {
+  const addProduct = useCallback(async (productData: Omit<Product, "id">): Promise<{ success: boolean; id?: string; error?: string }> => {
     try {
       const id = `afh_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       const newProduct: Product = {
@@ -518,9 +539,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch (err: any) {
       return { success: false, error: err.message || "Failed to add product." };
     }
-  };
+  }, []);
 
-  const updateProduct = async (productId: string, updates: Partial<Product>): Promise<{ success: boolean; error?: string }> => {
+  const updateProduct = useCallback(async (productId: string, updates: Partial<Product>): Promise<{ success: boolean; error?: string }> => {
     try {
       const productRef = doc(db, "products", productId);
       await setDoc(productRef, {
@@ -538,10 +559,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch (err: any) {
       return { success: false, error: err.message || "Failed to update product." };
     }
-  };
+  }, []);
 
-  const permanentlyDeleteProduct = async (productId: string): Promise<{ success: boolean; error?: string }> => {
+  const permanentlyDeleteProduct = useCallback(async (productId: string): Promise<{ success: boolean; error?: string }> => {
     try {
+      const snap = latestStoreRef.current;
       // 1. Mark in memory & local storage immediately for 0ms UI latency
       const currentSet = getStoredDeletedIds();
       currentSet.add(productId);
@@ -561,10 +583,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setCart((prev) => prev.filter((item) => item.productId !== productId));
 
       // 4. Close any open detail or checkout modals pointing to this product
-      if (selectedProductForDetail?.id === productId) {
+      if (snap.selectedProductForDetail?.id === productId) {
         setSelectedProductForDetail(null);
       }
-      if (selectedProductForBuyNow?.id === productId) {
+      if (snap.selectedProductForBuyNow?.id === productId) {
         setSelectedProductForBuyNow(null);
       }
 
@@ -580,7 +602,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         await setDoc(doc(db, "deleted_products", productId), {
           id: productId,
           deletedAt: new Date().toISOString(),
-          deletedBy: user?.email || "admin",
+          deletedBy: snap.user?.email || "admin",
           source: "alexfitness_admin_desk"
         }, { merge: true });
       } catch (tombErr) {
@@ -617,7 +639,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         await setDoc(doc(db, "admin_logs", `del_prod_${Date.now()}`), {
           action: "PERMANENT_DELETE_STORE_PRODUCT",
           productId,
-          performedBy: user?.email || "admin",
+          performedBy: snap.user?.email || "admin",
           timestamp: new Date().toISOString()
         });
       } catch (logErr) {}
@@ -627,11 +649,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.error("[Store] Failed to permanently delete product:", err);
       return { success: false, error: err.message || "Failed to permanently delete product." };
     }
-  };
+  }, []);
 
   const deleteProduct = permanentlyDeleteProduct;
 
-  const updateOrderStatus = async (
+  const updateOrderStatus = useCallback(async (
     orderId: string, 
     orderStatus: StoreOrder["orderStatus"], 
     trackingNumber?: string,
@@ -651,7 +673,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch (err: any) {
       return { success: false, error: err.message || "Failed to update order status." };
     }
-  };
+  }, []);
 
   const resetToDefaultProducts = useCallback(async () => {
     for (const prod of INITIAL_STORE_PRODUCTS) {

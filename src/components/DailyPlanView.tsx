@@ -111,22 +111,21 @@ export default function DailyPlanView() {
   }, [user?.email]);
 
   useEffect(() => {
+    if (!cooldownState.isWaiting) return;
     const interval = setInterval(() => {
       const nextState = getProgramWaitState("daily_plan");
-      setCooldownState((prev) => {
-        if (prev.isWaiting && !nextState.isWaiting) {
-          // 5-hour cooldown period has elapsed; advance to next training day
-          const nextDay = currentPlanDay + 1;
-          setCurrentPlanDay(nextDay);
-          localStorage.setItem("fit_daily_plan_current_day", nextDay.toString());
-          setCompletedExercises({});
-          setTimeout(() => fetchDailyPlan(), 0);
-        }
-        return nextState;
-      });
+      setCooldownState(nextState);
+      if (!nextState.isWaiting) {
+        // 5-hour cooldown period has elapsed; advance to next training day
+        const nextDay = currentPlanDay + 1;
+        setCurrentPlanDay(nextDay);
+        localStorage.setItem("fit_daily_plan_current_day", nextDay.toString());
+        setCompletedExercises({});
+        setTimeout(() => fetchDailyPlan(), 0);
+      }
     }, 1000);
     return () => clearInterval(interval);
-  }, [currentPlanDay]);
+  }, [cooldownState.isWaiting, currentPlanDay]);
 
   const handleFinishDailyWorkout = async () => {
     try {
@@ -284,12 +283,15 @@ export default function DailyPlanView() {
       };
     };
 
+    const abortCtrl = new AbortController();
+    const fetchTimer = setTimeout(() => abortCtrl.abort(), 1600);
     try {
       const token = auth?.currentUser 
         ? await auth.currentUser.getIdToken() 
         : (localStorage.getItem("fit_active_uid") || "");
       const response = await fetch("/api/gemini/generate-plan", {
         method: "POST",
+        signal: abortCtrl.signal,
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
@@ -329,6 +331,7 @@ export default function DailyPlanView() {
       setPlan(clientPlan);
       setMethod("Personalized Biometric Baseline");
     } finally {
+      clearTimeout(fetchTimer);
       setLoading(false);
     }
   };
@@ -341,13 +344,8 @@ export default function DailyPlanView() {
     const unsub = subscribeScheduleOverrides(() => {
       fetchDailyPlan();
     });
-    const handleOverrides = () => fetchDailyPlan();
-    window.addEventListener("fit_schedule_overrides_updated", handleOverrides);
-    window.addEventListener("fit_program_schedule_overrides_updated", handleOverrides);
     return () => {
       unsub();
-      window.removeEventListener("fit_schedule_overrides_updated", handleOverrides);
-      window.removeEventListener("fit_program_schedule_overrides_updated", handleOverrides);
     };
   }, [currentPlanDay, scaleDaysState]);
 

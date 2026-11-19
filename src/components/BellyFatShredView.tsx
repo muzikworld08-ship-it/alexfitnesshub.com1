@@ -441,7 +441,7 @@ interface BoldDrillCardProps {
   customGifUrl?: string;
 }
 
-const BoldDrillCard: React.FC<BoldDrillCardProps> = ({
+const BoldDrillCard: React.FC<BoldDrillCardProps> = React.memo(({
   drill,
   sectionType,
   sectionTitle,
@@ -453,8 +453,8 @@ const BoldDrillCard: React.FC<BoldDrillCardProps> = ({
   accentColor = "#D32F2F",
   customGifUrl
 }) => {
-  const details = parseDrillDetails(drill, sectionType);
-  const authentic = resolveAuthenticExercise(details.libName || details.name, customGifUrl);
+  const details = React.useMemo(() => parseDrillDetails(drill, sectionType), [drill, sectionType]);
+  const authentic = React.useMemo(() => resolveAuthenticExercise(details.libName || details.name, customGifUrl), [details.libName, details.name, customGifUrl]);
   const finalMediaUrl = customGifUrl !== undefined ? customGifUrl : authentic.gifUrl;
 
   return (
@@ -576,7 +576,7 @@ const BoldDrillCard: React.FC<BoldDrillCardProps> = ({
       </div>
     </div>
   );
-};
+});
 
 export default function BellyFatShredView() {
   const { user, setView, theme, recordProgramStopPoint, markProgramWorkoutComplete } = useApp();
@@ -641,13 +641,8 @@ export default function BellyFatShredView() {
     const unsub = subscribeScheduleOverrides((updated) => {
       setProgramScheduleOverrides(updated);
     });
-    const handleOverrides = () => setProgramScheduleOverrides(getScheduleOverrides());
-    window.addEventListener("fit_program_schedule_overrides_updated", handleOverrides);
-    window.addEventListener("fit_schedule_overrides_updated", handleOverrides);
     return () => {
       unsub();
-      window.removeEventListener("fit_program_schedule_overrides_updated", handleOverrides);
-      window.removeEventListener("fit_schedule_overrides_updated", handleOverrides);
     };
   }, []);
 
@@ -856,13 +851,10 @@ export default function BellyFatShredView() {
 
   useEffect(() => {
     loadUserData();
-  }, [user]);
+  }, [user?.uid]);
 
   const loadUserData = async () => {
     const uid = user?.uid || "guest";
-    setLoadingDb(true);
-    
-    // 1. Local Fallback baseline
     const localKey = `belly_fat_shred_progress_${uid}`;
     const cached = localStorage.getItem(localKey);
     let initialProgress: BellyFatShredProgress = {
@@ -909,17 +901,25 @@ export default function BellyFatShredView() {
     if (cached) {
       try {
         initialProgress = JSON.parse(cached);
+        setProgress(initialProgress);
+        setLoadingDb(false);
       } catch (e) {
         console.warn("Could not parse cached program progress", e);
+        setLoadingDb(true);
       }
+    } else {
+      setLoadingDb(true);
     }
 
-    // 2. Firestore integration load
+    // 2. Firestore integration load (capped at 1500ms so startup never stalls)
     if (!isMockFirebase && user?.uid && typeof user.uid === "string" && user.uid.trim()) {
       try {
         const docRef = doc(db, "belly_fat_shred_progress", user.uid.trim());
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
+        const docSnap = await Promise.race([
+          getDoc(docRef),
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 1500))
+        ]);
+        if (docSnap && docSnap.exists()) {
           const dbData = docSnap.data() as BellyFatShredProgress;
           initialProgress = { ...initialProgress, ...dbData };
         }

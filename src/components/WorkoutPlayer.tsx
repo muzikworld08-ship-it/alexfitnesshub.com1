@@ -54,6 +54,10 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
   const [heartRate, setHeartRate] = useState(75);
   const [heartRateHistory, setHeartRateHistory] = useState<number[]>(Array(15).fill(75));
   const [elapsedTime, setElapsedTime] = useState(0);
+  const secondsRemainingRef = useRef<number>(secondsRemaining);
+  secondsRemainingRef.current = secondsRemaining;
+  const heartRateRef = useRef<number>(heartRate);
+  heartRateRef.current = heartRate;
 
   // Exercise Swapper State
   const [isSwapperOpen, setIsSwapperOpen] = useState(false);
@@ -157,53 +161,55 @@ export default function WorkoutPlayer({ exercises, sessionTitle, onClose, onComp
       }
 
       timer = setInterval(() => {
-        setSecondsRemaining(prev => {
-          if (prev <= 1) {
-            handlePhaseTransition();
-            return 0;
-          }
+        const prev = secondsRemainingRef.current;
+        if (prev <= 1) {
+          secondsRemainingRef.current = 0;
+          setSecondsRemaining(0);
+          handlePhaseTransition();
+          return;
+        }
 
-          // Voice ticking countdown for last 3 seconds
-          const nextVal = prev - 1;
-          if (nextVal <= 3 && nextVal > 0) {
-            speak(nextVal.toString());
-          }
+        const nextVal = prev - 1;
+        secondsRemainingRef.current = nextVal;
+        setSecondsRemaining(nextVal);
 
-          // Calories math
-          if (phase === "work") {
-            const met = currentExercise?.difficulty === "Advanced" ? 8 : currentExercise?.difficulty === "Intermediate" ? 6 : 4;
-            setCaloriesBurned(c => parseFloat((c + (met * 3.5 * 70) / (200 * 60)).toFixed(1)));
-            
-            // Heart rate increase
-            setHeartRate(hr => {
-              const maxHr = currentExercise?.difficulty === "Advanced" ? 165 : currentExercise?.difficulty === "Intermediate" ? 145 : 125;
-              if (hr < maxHr) return hr + Math.floor(Math.random() * 3) + 1;
-              return hr + (Math.random() > 0.5 ? 1 : -1);
-            });
-          } else {
-            // Heart rate decay on rest
-            setHeartRate(hr => {
-              if (hr > 80) return hr - Math.floor(Math.random() * 2) - 1;
-              return hr;
-            });
-          }
+        // Voice ticking countdown for last 3 seconds
+        if (nextVal <= 3 && nextVal > 0) {
+          speak(nextVal.toString());
+        }
 
-          return nextVal;
-        });
+        // Calories math
+        if (phase === "work") {
+          const met = currentExercise?.difficulty === "Advanced" ? 8 : currentExercise?.difficulty === "Intermediate" ? 6 : 4;
+          setCaloriesBurned(c => parseFloat((c + (met * 3.5 * 70) / (200 * 60)).toFixed(1)));
+          
+          // Heart rate increase
+          setHeartRate(hr => {
+            const maxHr = currentExercise?.difficulty === "Advanced" ? 165 : currentExercise?.difficulty === "Intermediate" ? 145 : 125;
+            if (hr < maxHr) return hr + Math.floor(Math.random() * 3) + 1;
+            return hr + (Math.random() > 0.5 ? 1 : -1);
+          });
+        } else {
+          // Heart rate decay on rest
+          setHeartRate(hr => {
+            if (hr > 80) return hr - Math.floor(Math.random() * 2) - 1;
+            return hr;
+          });
+        }
       }, 1000);
     }
     return () => clearInterval(timer);
   }, [isPlaying, phase, currentIndex, currentSet, isTimeBased]);
 
-  // Track HR history for active dashboard
+  // Track HR history for active dashboard without recreating interval on every HR change
   useEffect(() => {
     if (isPlaying && phase !== "completed") {
       const interval = setInterval(() => {
-        setHeartRateHistory(prev => [...prev.slice(1), heartRate]);
+        setHeartRateHistory(prev => [...prev.slice(1), heartRateRef.current]);
       }, 2000);
       return () => clearInterval(interval);
     }
-  }, [isPlaying, heartRate, phase]);
+  }, [isPlaying, phase]);
 
   const handlePhaseTransition = () => {
     if (phase === "prep") {
